@@ -12,16 +12,7 @@ Example target question:
 
 > How do I change the status of a WorkPlay? What should I be careful about?
 
-The mature knowledge pack should combine:
-
-- how users perform actions in the UI
-- business behavior and status transitions
-- validations and permissions
-- side effects and integrations
-- Feature/PBI/Sprint history
-- current delivery state
-- gaps and improvement opportunities
-- evidence supporting important claims
+The mature knowledge pack should combine UI operation, business behavior/state transitions, validations/permissions, side effects/integrations, delivery history and traceable evidence.
 
 ## Non-negotiable compiler architecture
 
@@ -43,92 +34,173 @@ CANONICAL KNOWLEDGE MODEL
 DETERMINISTIC MARKDOWN RENDERER
 ```
 
-## Frontend architecture decision
-
-Frontend technology must stay outside the compiler core.
-
-```text
-React / Angular / future MVC-Razor / Blazor / Vue
-                    ↓
-              IFrontendAdapter
-                    ↓
-          canonical `ui-*` evidence
-                    ↓
-             FrontendScanner
-                    ↓
-          generic relation linker
-                    ↓
-          shared evidence pipeline
-```
-
-Current frontend adapters:
-
-- React/TypeScript static
-- Angular static
-
-New frameworks must be adapters that emit the same canonical facts; do not add framework branches to feature/knowledge compilation.
-
 ## Current verified state
 
-**V0.4.2 PokeTrade real-system knowledge benchmark is COMPLETE.**
+**V0.4.3 Analyzer Fidelity Hardening is COMPLETE.**
 
-Final acceptance code/contract commit: `b29bb0d6d7c56f0676dd0c9eddbe9faf8c9ddec7`
-
-Final CI run: `34620984359`
-
-Verified in the same run:
-
-- PKC solution build
-- all unit/regression tests
-- local `.NET tool` pack/install and `pkc` execution
-- WorkPlay end-to-end knowledge build
-- PokeTrade .NET 10 backend build
-- PokeTrade Angular 22 frontend build
-- PokeTrade runtime branch acceptance
-- generated product-knowledge contract assertions
-
-PKC is cleared for **V0.4.3 external real-project trial**.
-
-## PokeTrade benchmark coverage
-
-The mini project was reviewed file-by-file across backend and frontend, then used to harden the compiler.
-
-The acceptance suite locks representative behavior for:
+Verified acceptance commit:
 
 ```text
-stock sufficient → reserve → ReadyForDelivery + Delivery
-stock insufficient → AwaitingStock + PurchaseStock WorkPlay
-PurchaseStock QuantityToBuy = shortage + reorder level
-order validation failures
-WorkPlay Open → InProgress → Completed
-invalid WorkPlay transitions / invalid purchased quantity
-missing WorkPlay → 404
-complete purchase → inventory increase + waiting-order re-evaluation
-waiting orders iterated in ascending order ID
-Delivery Pending → Dispatched → Delivered
-invalid Delivery transitions
-missing Delivery → 404
+8f69d6c931e917ce7538b9a991a05211e624cb45
 ```
 
-## Compiler gaps fixed during the full benchmark review
+Verified CI run:
 
-The PokeTrade review found and closed these blockers:
+```text
+34627169975  (#85)
+```
 
-1. business-important object construction was being suppressed as initializer noise;
-2. computed domain properties such as `Order.Total` were missing;
-3. waiting-order collection/loop semantics were under-described;
-4. Angular UI action evidence lacked surrounding status guards;
-5. two-hop component/helper → service → HTTP read flows were incomplete;
-6. configured authorization policy definitions were missing;
-7. passive page-load API flows were under-linked;
-8. null-coalescing `?? throw` lookup behavior was not represented strongly enough;
-9. controller 400 / 404 / 409 error-response mappings were not captured as knowledge.
+Both `test` and `poketrade-real-system` are green.
 
-These are now regression/acceptance-covered in the PokeTrade benchmark.
+Tool package version:
 
-## Current generated knowledge
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.1
+```
 
-Commands:
+## Why V0.4.3 exists
+
+External review correctly found that the previous implementation could sound stronger than its analyzer fidelity actually was:
+
+- C# used Roslyn but built a loose compilation from repository source + runtime trusted platform assemblies instead of the target project's real build graph;
+- React and Angular frontend extraction were primarily regex/text scanners.
+
+V0.4.3 does not change the evidence-first architecture. It strengthens the analyzer layer and makes fallback provenance explicit.
+
+## C# analyzer fidelity
+
+Preferred path:
+
+```text
+.csproj
+  ↓
+MSBuildWorkspace
+  ↓
+target project compilation/references
+  ↓
+Roslyn SemanticModel
+  ↓
+analysisMode = project-semantic
+analysisConfidence = high
+```
+
+PokeTrade acceptance proves:
+
+- `Microsoft.AspNetCore.Mvc.ControllerBase` resolves semantically;
+- ASP.NET Core HTTP attributes resolve semantically;
+- project-backed semantic call relations are rebuilt from the target compilation.
+
+If project loading/source mapping fails, PKC keeps conservative loose Roslyn evidence and marks it:
+
+```text
+analysisMode = loose-roslyn-fallback
+analysisConfidence = medium
+semanticContext = runtime-platform-assemblies-only
+analysisFallbackReason = ...
+```
+
+Never hide this fallback.
+
+## Frontend analyzer fidelity
+
+Frontend technology remains outside compiler core:
+
+```text
+framework adapter
+  ↓
+canonical ui-* evidence
+  ↓
+generic linker
+  ↓
+shared workflow/feature compiler
+```
+
+### Angular
+
+TypeScript source prefers project-local TypeScript AST:
+
+```text
+analysisMode = typescript-ast
+analysisConfidence = high
+```
+
+Currently AST-backed:
+
+- component class detection
+- application routes
+- method structure needed for passive load linkage
+- HTTP call expressions
+
+Angular template action/visibility extraction is **still fallback**, explicitly tagged:
+
+```text
+analysisMode = angular-template-regex-fallback
+analysisConfidence = medium
+```
+
+If the TypeScript AST path is unavailable, the Angular adapter can fall back further to:
+
+```text
+analysisMode = regex-fallback
+analysisConfidence = low
+```
+
+### React
+
+React remains a conservative regex/text adapter for now:
+
+```text
+analysisMode = regex-fallback
+analysisConfidence = low
+```
+
+Do not describe React as AST-backed.
+
+## Fallback propagation into knowledge
+
+`analysisMode` and `analysisConfidence` are stored in evidence metadata.
+
+If fallback facts materially contribute to a workflow, `CrossStackFeatureCandidateBuilder` adds an explicit warning to the candidate `Unknowns`, which is rendered into Markdown under `Important unknowns`.
+
+The rule is:
+
+```text
+fallback may contribute evidence
+          ↓
+provenance remains visible
+          ↓
+knowledge must not silently upgrade confidence
+```
+
+## PokeTrade fidelity acceptance
+
+PokeTrade remains the runnable `.NET 10 + Angular 22` acceptance benchmark. Its business behavior is unchanged, but frontend source was deliberately restyled so the old Angular regex-only scanner would miss important facts:
+
+- multiline/chained `HttpClient.post(...)` for Create Order;
+- quoted `path` / `component` object keys for the Orders route.
+
+CI still generates the expected knowledge and explicitly requires:
+
+```text
+project-semantic
+target-project semantic context
+Microsoft.AspNetCore.Mvc.ControllerBase
+semantic HTTP attribute resolution
+typescript-ast
+angular-template-regex-fallback
+```
+
+and rejects a full Angular `regex-fallback` path for this benchmark.
+
+The installed CLI also verifies `project-semantic` scanning on WorkPlay.
+
+## Important interpretation of “verified”
+
+WorkPlay and PokeTrade prove the current acceptance contracts. They do **not** prove arbitrary real-world repositories are already robustly supported.
+
+That distinction is important for external reviews and user-facing claims.
+
+## Current commands
 
 ```bash
 pkc scan <repository-path>
@@ -146,34 +218,31 @@ knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
 
-`knowledge/` is portable and intended to be consumable by any capable AI. Current authority remains `code-observed`; it is not business-approved intent.
-
-## Known boundaries — not V0.4.2 blockers
-
-- frontend static adapters currently cover React/TypeScript and Angular
-- Azure DevOps delivery/history/intent is not compiled yet
-- runtime browser/UI exploration is not implemented yet
-- analyzers intentionally prefer explicit unknowns over guessing
-- minimal API endpoints such as `/health` are outside the current MVC endpoint scanner and are operational rather than core benchmark knowledge
-
 ## Next engineering target — keep narrow
 
-**V0.4.3 external real-project trial.**
+**V0.4.4 external real-project trial.**
 
-Do not add speculative capability first. Run the current compiler against a real repository and let real missing/wrong knowledge drive the next fixes.
+Do not add speculative capability first.
 
-Recommended gate for V0.4.3:
+Use one genuine repository:
 
 ```text
 real project builds/runs normally
     ↓
 pkc build <real-project>
     ↓
-generated knowledge reviewed against source + known product behavior
+inspect analyzer modes/fallbacks
     ↓
-classify failures as parser / linker / grouping / synthesis / renderer gaps
+review generated knowledge against source + known behavior
+    ↓
+classify failures:
+  wrong claim
+  missing important behavior
+  noise
+  unsupported stack/pattern
+  unexpected fallback
     ↓
 fix only proven gaps + add regression fixture
 ```
 
-Do not start V0.5 Azure DevOps or incremental architecture work until the external trial is understood.
+Do not start V0.5 Azure DevOps, React AST, MVC/Blazor/Vue adapters, Playwright, or incremental architecture unless the external trial proves they are the next blocker.
