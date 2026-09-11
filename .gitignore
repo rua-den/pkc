@@ -1,0 +1,7 @@
+bin/
+obj/
+.pkc/
+.vs/
+.idea/
+*.user
+*.suo

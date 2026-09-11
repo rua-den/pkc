@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>pkc</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pkc.Core/Pkc.Core.csproj" />
+    <ProjectReference Include="../Pkc.CSharp/Pkc.CSharp.csproj" />
+  </ItemGroup>
+</Project>
