@@ -4,24 +4,26 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.3 frontend static evidence — COMPLETE**
+**V0.4.1 frontend adapter architecture — COMPLETE**
 
-Verified implementation commit: `26a7c381362dd3cf155974fc55883cbc72f8891a`
-Verified golden commit: `1ee1d7bc2f7e5aff8f5d808a5d14b891144abee6`
-GitHub Actions run: `34583992309` — SUCCESS
+Implementation commit: `e6fa94a1c6e55f6019fcad463493ac07483d64f1`
+Test-fix commit: `8ace3741a61f74096287a4cd33391ebb8ab1071a`
+GitHub Actions run: `34598118760` — SUCCESS
 
 Verified:
 
-- solution build
-- C# evidence tests
-- frontend static evidence tests
-- end-to-end `pkc build samples/WorkPlaySample`
-- UI facts in `.pkc/facts.json`
-- feature candidate coverage includes `frontend-static`
-- UI action/API route is linked to backend endpoint by HTTP method + normalized route
-- generated Markdown contains UI route, action, permission guard and UI-to-backend call
-- frontend unknown is removed when matching UI evidence exists
-- golden Markdown exactly matches regenerated output
+- `IFrontendAdapter` is the framework adapter contract
+- `FrontendScanner` owns 0..N adapter orchestration
+- CLI no longer branches on Angular vs React
+- React and Angular emit the same canonical `ui-screen`, `ui-route`, `ui-action`, `ui-api-call` facts
+- generic frontend linker creates conservative `ui-action -> triggers-api -> ui-api-call` relations
+- Angular component action can link to an HTTP call in a separate service file
+- `CrossStackFeatureCandidateBuilder` consumes canonical frontend relations instead of framework-specific source structure
+- WorkPlay React regression remains green
+- PokeTrade .NET 10 backend builds
+- PokeTrade Angular 22 frontend builds
+- PokeTrade Order → WorkPlay → Delivery smoke flow passes
+- PKC successfully compiles PokeTrade product knowledge after the adapter refactor
 
 ## Current commands
 
@@ -35,37 +37,47 @@ Outputs:
 ```text
 .pkc/facts.json
 .pkc/feature-candidates.json
+.pkc/product-features.json
+knowledge/index.md
 knowledge/features/**/*.md
+knowledge/workflows/**/*.md
 ```
 
-## AI-testable WorkPlay knowledge
+## Frontend support
 
-```text
-samples/WorkPlaySample/knowledge/features/workplay/complete.md
-```
+Implemented adapters:
 
-The sample now grounds these answers:
+- React/TypeScript static adapter
+- Angular static adapter
 
-- open `/workplays/:id`
-- click `Complete` on `WorkPlayDetailPage`
-- UI guard: `ManageWorkPlay`
-- UI sends the Complete request to the WorkPlay backend endpoint
-- backend requires `ManageWorkPlay`
-- Completed WorkPlay cannot change status
-- status is changed and a status-changed publication-like call occurs
+Architecture-ready but not implemented yet:
 
-## Countdown to AI test
+- ASP.NET MVC / Razor Pages
+- Blazor
+- Vue
+- other UI stacks
+
+Those should be added only as `IFrontendAdapter` implementations. Core knowledge compilation must not add framework branches.
+
+## Real-system benchmark
+
+`samples/PokeTradeSystem` is the current benchmark:
+
+- backend: .NET 10
+- frontend: Angular 22
+- business: Pokemon card catalog, customer orders, purchase-stock WorkPlay tasks, inventory replenishment and delivery lifecycle
+- independently runnable for behavior-vs-knowledge comparison
+
+CI validates the live API business flow and then runs PKC against the same source tree.
+
+## Countdown to AI-testable Markdown
 
 **0 steps remaining.**
 
-The Markdown contains backend + frontend-static knowledge and can be attached directly to another AI.
+Both the WorkPlay sample and PokeTrade benchmark can generate portable Markdown today.
 
-## Current limitation
+## Next target — narrow
 
-V0.3 intentionally uses a conservative React/TypeScript static scanner for common patterns. It is not yet a full TypeScript AST engine and does not claim runtime-confirmed UI behavior.
+**V0.4.2 PokeTrade knowledge review.**
 
-## Next target
-
-**V0.4 — Azure DevOps evidence**
-
-Add Epic/Feature/PBI, Sprint/iteration, work-item state, acceptance criteria/description, selected history/revisions, PR/commit traceability, and link delivery evidence to generated product features.
+Review generated PokeTrade Markdown against the runnable app and fix only correctness/coverage gaps exposed by that benchmark. Do not add Azure DevOps, Playwright, MVC/Blazor/Vue adapters or incremental compilation until this benchmark is clean enough to take to a real external project.

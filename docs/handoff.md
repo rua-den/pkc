@@ -23,35 +23,76 @@ The mature knowledge pack should combine:
 - gaps and improvement opportunities
 - evidence supporting important claims
 
-## Intended inputs
-
-1. Backend/source code — implementation behavior.
-2. Frontend/UI — user-facing screens, actions, conditions and API flows.
-3. Azure DevOps — Epic/Feature/PBI/Sprint/history, intent and delivery traceability.
-
-## Non-negotiable architecture
+## Non-negotiable compiler architecture
 
 Do not implement `source -> LLM -> Markdown` directly.
 
 ```text
 SOURCE
   ↓
-DETERMINISTIC ANALYZERS
+DETERMINISTIC ANALYZERS / ADAPTERS
   ↓
 EVIDENCE / FACT MODEL
   ↓
 FEATURE / WORKFLOW CANDIDATES
   ↓
-KNOWLEDGE SYNTHESIZER
+KNOWLEDGE SYNTHESIS
   ↓
 CANONICAL KNOWLEDGE MODEL
   ↓
 DETERMINISTIC MARKDOWN RENDERER
 ```
 
+## Frontend architecture decision
+
+Frontend technology must stay outside the compiler core.
+
+```text
+React / Angular / future MVC-Razor / Blazor / Vue
+                    ↓
+              IFrontendAdapter
+                    ↓
+          canonical `ui-*` evidence
+                    ↓
+             FrontendScanner
+                    ↓
+          generic relation linker
+                    ↓
+          shared evidence pipeline
+```
+
+Current canonical frontend facts:
+
+- `ui-screen`
+- `ui-route`
+- `ui-action`
+- `ui-api-call`
+
+Current common relations:
+
+- `renders`
+- `triggers-handler`
+- `triggers-api`
+- `calls-endpoint`
+
+Framework names are provenance metadata only. Feature/workflow synthesis must not branch on React, Angular, Blazor, MVC, etc.
+
 ## Current verified state
 
-V0.3 backend + frontend-static knowledge is complete and green.
+**V0.4.1 frontend adapter architecture is complete and green.**
+
+Implementation: `e6fa94a1c6e55f6019fcad463493ac07483d64f1`
+Test fix: `8ace3741a61f74096287a4cd33391ebb8ab1071a`
+CI run: `34598118760` — success.
+
+Verified in that run:
+
+- PKC solution builds and tests pass
+- WorkPlay React end-to-end knowledge regression passes
+- PokeTrade .NET 10 backend builds
+- PokeTrade Angular 22 frontend builds
+- PokeTrade Order → WorkPlay → Delivery business smoke passes
+- PKC compiles PokeTrade knowledge through the same framework-agnostic `FrontendScanner`
 
 Commands:
 
@@ -65,63 +106,45 @@ Outputs:
 ```text
 .pkc/facts.json
 .pkc/feature-candidates.json
+.pkc/product-features.json
+knowledge/index.md
 knowledge/features/**/*.md
+knowledge/workflows/**/*.md
 ```
 
-Concrete sample:
+## Runnable benchmark
+
+`samples/PokeTradeSystem` is intentionally a small real application used to compare generated knowledge with actual behavior.
+
+Business flow:
 
 ```text
-samples/WorkPlaySample/knowledge/features/workplay/complete.md
+Customer places card order
+  ↓
+stock sufficient? ── yes → reserve → ReadyForDelivery → Delivery
+  ↓ no
+AwaitingStock
+  ↓
+auto-create PurchaseStock WorkPlay
+  ↓
+Staff Start → Complete with purchased quantity
+  ↓
+inventory increases + waiting orders rechecked
+  ↓
+ReadyForDelivery → Dispatch → Delivered
 ```
 
-The sample Markdown now has coverage:
+This benchmark exists to expose compiler gaps, not to become a large demo product.
 
-```yaml
-coverage:
-  - backend-code
-  - frontend-static
-```
+## Supported frontend adapters today
 
-It includes:
+- React/TypeScript static
+- Angular static
 
-- UI route `/workplays/:id`
-- `Complete` action on `WorkPlayDetailPage`
-- UI permission guard `ManageWorkPlay`
-- matching UI API call
-- backend endpoint and authorization
-- Completed-status guard/exception
-- meaningful state mutation
-- publication-like side effect
-- backend call flow
-- exact source evidence from TSX and C#
-- explicit Azure DevOps unknown
+Do not implement MVC/Razor, Blazor or Vue inside core. When needed, add one adapter that emits the same canonical facts.
 
-Frontend evidence is attached to a backend feature only when HTTP method + normalized API route match. This conservative linkage is intentional.
+## Next engineering target — keep narrow
 
-## Verified checkpoint
+**V0.4.2 PokeTrade knowledge review.**
 
-Implementation: `26a7c381362dd3cf155974fc55883cbc72f8891a`
-Golden output: `1ee1d7bc2f7e5aff8f5d808a5d14b891144abee6`
-CI run: `34583992309` — success.
-
-Countdown to an AI-testable Markdown with UI instructions is **0**.
-
-## Frontend scope today
-
-`Pkc.Frontend` is a deterministic React/TypeScript static analyzer for common patterns, including function components, React Router routes, buttons/direct handlers, common permission guards, `fetch`, and common HTTP client methods.
-
-It is deliberately not yet a full TypeScript AST implementation and does not represent runtime-confirmed UI behavior.
-
-## Next engineering target
-
-V0.4 Azure DevOps evidence:
-
-- Epic / Feature / PBI
-- Sprint / iteration
-- current work-item state
-- description / acceptance criteria
-- selected revisions/history
-- PR/commit relationships
-- map delivery evidence into the same feature knowledge
-
-Target outcome: a PO can ask both “how does this feature work?” and “why/when was it built, what changed, and how far is delivery?” from the portable Markdown pack.
+Generate/review PokeTrade Markdown against the runnable application and fix only incorrect or missing knowledge exposed by the benchmark. Do not jump to Azure DevOps, Playwright, incremental builds or more frontend frameworks before this benchmark is clean enough for an external real-project trial.

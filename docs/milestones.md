@@ -24,22 +24,22 @@ React/TypeScript static evidence adds routes, screens, actions, permission guard
 
 Actions are rendered as workflow Markdown and grouped into product-level feature Markdown plus `knowledge/index.md` and `.pkc/product-features.json`.
 
-### V0.4.1 — Frontend adapter architecture — CURRENT
+### V0.4.1 — Frontend adapter architecture — COMPLETE
 
-Narrow refactor only:
+- `IFrontendAdapter` contract
+- framework-agnostic `FrontendScanner`
+- React and Angular adapters emit the same canonical `ui-*` facts
+- generic `UI action → API call` relation linker
+- CLI has no Angular-vs-React branch
+- cross-file Angular component → service API pattern verified
 
-- add `IFrontendAdapter`
-- make frontend orchestration framework-agnostic
-- migrate React and Angular scanners behind the adapter boundary
-- normalize both into the existing canonical `ui-*` facts
-- link common `UI action → API call` relations outside framework adapters
-- remove Angular-vs-React branching from the CLI
+MVC/Razor, Blazor and Vue remain future adapters; they are not part of this milestone.
 
-MVC/Razor, Blazor and Vue are **not** implemented in this milestone. They should be future adapters using the same contract.
+### V0.4.2 — PokeTrade real-system benchmark — CURRENT
 
-### V0.4.2 — PokeTrade real-system benchmark
+The `.NET 10 + Angular 22` PokeTrade app now builds and its Order → WorkPlay → Delivery business smoke passes in CI. PKC also compiles knowledge from the same source tree.
 
-Use the runnable `.NET 10 + Angular` PokeTrade sample to validate that PKC knowledge matches an independently runnable application across Order, WorkPlay and Delivery flows.
+Remaining work in this milestone is deliberately narrow: review the generated PokeTrade knowledge against the running behavior and fix only correctness/coverage gaps needed before testing PKC on an external real project.
 
 ## V0.5 — Azure DevOps evidence
 
