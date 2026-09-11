@@ -17,10 +17,10 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         var entryPoints = BuildEntryPoints(endpoint);
         var permissions = BuildPermissions(endpoint);
         var rules = BuildRules(candidate, factsById);
-        var stateChanges = BuildStateChanges(candidate);
+        var stateChanges = BuildStateChanges(candidate, endpoint);
         var sideEffects = BuildSideEffects(candidate);
         var flow = BuildFlow(candidate, factsById);
-        var evidence = BuildEvidence(candidate);
+        var evidence = BuildEvidence(candidate, endpoint);
         var unknowns = candidate.Unknowns.Select(FriendlyUnknown).ToArray();
 
         var action = endpoint?.Name ?? candidate.Name;
@@ -134,10 +134,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         return rules.Distinct(StringComparer.Ordinal).ToArray();
     }
 
-    private static IReadOnlyList<string> BuildStateChanges(FeatureCandidate candidate) =>
+    private static IReadOnlyList<string> BuildStateChanges(FeatureCandidate candidate, EvidenceFact? endpoint) =>
         candidate.Facts
-            .Where(fact => fact.Kind == "mutation")
-            .Where(fact => fact.Metadata.TryGetValue("stateMutationCandidate", out var value) && value == "true")
+            .Where(fact => IsKnowledgeMutation(fact, endpoint))
             .Select(fact =>
             {
                 fact.Metadata.TryGetValue("target", out var target);
@@ -171,9 +170,11 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-    private static IReadOnlyList<KnowledgeEvidence> BuildEvidence(FeatureCandidate candidate) =>
+    private static IReadOnlyList<KnowledgeEvidence> BuildEvidence(FeatureCandidate candidate, EvidenceFact? endpoint) =>
         candidate.Facts
-            .Where(fact => fact.Kind is "endpoint" or "method" or "condition" or "throw" or "mutation")
+            .Where(fact =>
+                fact.Kind is "endpoint" or "method" or "condition" or "throw" ||
+                IsKnowledgeMutation(fact, endpoint))
             .Select(fact => new KnowledgeEvidence(
                 fact.Id,
                 fact.Kind,
@@ -182,6 +183,36 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             .OrderBy(item => item.Source.Path, StringComparer.Ordinal)
             .ThenBy(item => item.Source.StartLine)
             .ToArray();
+
+    private static bool IsKnowledgeMutation(EvidenceFact fact, EvidenceFact? endpoint)
+    {
+        if (fact.Kind != "mutation" ||
+            !fact.Metadata.TryGetValue("stateMutationCandidate", out var stateCandidate) ||
+            stateCandidate != "true")
+        {
+            return false;
+        }
+
+        if (endpoint is null || !string.Equals(fact.Container, endpoint.Name, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (!fact.Metadata.TryGetValue("target", out var target) || target.Contains('.', StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (!fact.Metadata.TryGetValue("value", out var value) ||
+            !endpoint.Metadata.TryGetValue("parameters", out var parameters))
+        {
+            return true;
+        }
+
+        // Treat simple endpoint assignments sourced directly from endpoint parameters as request/entity setup,
+        // not as product state changes. The raw fact remains in .pkc/facts.json for traceability.
+        return !parameters.Contains(value, StringComparison.Ordinal);
+    }
 
     private static string DescribeFact(EvidenceFact fact) => fact.Kind switch
     {
