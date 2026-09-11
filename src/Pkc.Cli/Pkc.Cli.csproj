@@ -2,6 +2,14 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>pkc</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>pkc</ToolCommandName>
+    <PackageId>RuaDen.Pkc.Tool</PackageId>
+    <Version>0.4.2-preview.1</Version>
+    <Authors>rua-den</Authors>
+    <Description>Product Knowledge Compiler: compile grounded implementation evidence into portable product knowledge.</Description>
+    <RepositoryUrl>https://github.com/rua-den/pkc</RepositoryUrl>
+    <PackageTags>product-knowledge;documentation;roslyn;ai;dotnet-tool</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Pkc.Core/Pkc.Core.csproj" />
