@@ -19,10 +19,11 @@ jobs:
         run: |
           rm -rf artifacts/tool /tmp/pkc-tool
           dotnet pack src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -o artifacts/tool
-          dotnet tool install --tool-path /tmp/pkc-tool --add-source artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
+          dotnet tool install --tool-path /tmp/pkc-tool --add-source artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.1
           /tmp/pkc-tool/pkc scan samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
           test -s samples/WorkPlaySample/.pkc/feature-candidates.json
+          grep -Fq '"analysisMode": "project-semantic"' samples/WorkPlaySample/.pkc/facts.json
       - name: End-to-end build WorkPlay knowledge
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build samples/WorkPlaySample
@@ -35,6 +36,7 @@ jobs:
           grep -q 'WorkPlay Status Management' samples/WorkPlaySample/knowledge/index.md
           grep -q 'Click `Complete`' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
           grep -q 'ManageWorkPlay' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
+          grep -Fq 'regex/template fallback analysis' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
 
   poketrade-real-system:
     runs-on: ubuntu-latest
@@ -128,6 +130,7 @@ jobs:
           test -s samples/PokeTradeSystem/.pkc/product-features.json
           test -s samples/PokeTradeSystem/knowledge/index.md
 
+          FACTS=samples/PokeTradeSystem/.pkc/facts.json
           GET_CARDS=samples/PokeTradeSystem/knowledge/workflows/cards/getcards.md
           CREATE_ORDER=samples/PokeTradeSystem/knowledge/workflows/orders/createorder.md
           GET_ORDERS=samples/PokeTradeSystem/knowledge/workflows/orders/getorders.md
@@ -139,12 +142,21 @@ jobs:
           DELIVERED=samples/PokeTradeSystem/knowledge/workflows/deliveries/markdeliverydelivered.md
           INDEX=samples/PokeTradeSystem/knowledge/index.md
 
-          grep -Fq '"kind": "computed-property"' samples/PokeTradeSystem/.pkc/facts.json
-          grep -Fq '"kind": "object-construction"' samples/PokeTradeSystem/.pkc/facts.json
-          grep -Fq '"kind": "loop"' samples/PokeTradeSystem/.pkc/facts.json
-          grep -Fq '"kind": "authorization-policy"' samples/PokeTradeSystem/.pkc/facts.json
-          grep -Fq 'null-coalescing-throw' samples/PokeTradeSystem/.pkc/facts.json
-          grep -Fq 'exception-response' samples/PokeTradeSystem/.pkc/facts.json
+          # Analyzer fidelity contract: backend must load the target project; Angular TS structure must use AST.
+          grep -Fq '"analysisMode": "project-semantic"' "$FACTS"
+          grep -Fq '"semanticContext": "target-project"' "$FACTS"
+          grep -Fq '"semanticBaseType": "Microsoft.AspNetCore.Mvc.ControllerBase"' "$FACTS"
+          grep -Fq '"endpointAttributeResolution": "semantic"' "$FACTS"
+          grep -Fq '"analysisMode": "typescript-ast"' "$FACTS"
+          grep -Fq '"analysisMode": "angular-template-regex-fallback"' "$FACTS"
+          ! grep -Fq '"analysisMode": "regex-fallback"' "$FACTS"
+
+          grep -Fq '"kind": "computed-property"' "$FACTS"
+          grep -Fq '"kind": "object-construction"' "$FACTS"
+          grep -Fq '"kind": "loop"' "$FACTS"
+          grep -Fq '"kind": "authorization-policy"' "$FACTS"
+          grep -Fq 'null-coalescing-throw' "$FACTS"
+          grep -Fq 'exception-response' "$FACTS"
           grep -Fq 'ManageWorkPlay' samples/PokeTradeSystem/.pkc/feature-candidates.json
 
           grep -Fq 'Open route `/catalog`.' "$GET_CARDS"
@@ -152,6 +164,8 @@ jobs:
 
           grep -Fq 'Open route `/catalog`.' "$CREATE_ORDER"
           grep -Fq 'Click `Place order` on `CatalogComponent`.' "$CREATE_ORDER"
+          grep -Fq 'UI sends `POST /api/orders`.' "$CREATE_ORDER"
+          grep -Fq 'regex/template fallback analysis' "$CREATE_ORDER"
           grep -Fq 'Customer name is required.' "$CREATE_ORDER"
           grep -Fq 'Delivery address is required.' "$CREATE_ORDER"
           grep -Fq 'return BadRequest(new { message = exception.Message })' "$CREATE_ORDER"
@@ -165,6 +179,7 @@ jobs:
           grep -Fq 'Order #' "$CREATE_ORDER"
           ! grep -Fq 'Increments `_next' "$CREATE_ORDER"
 
+          # /orders is intentionally written with quoted route keys, which the previous regex route parser misses.
           grep -Fq 'Open route `/orders`.' "$GET_ORDERS"
           grep -Fq 'Click `Refresh` on `OrdersComponent`.' "$GET_ORDERS"
           grep -Fq 'UI sends `GET /api/orders`.' "$GET_ORDERS"
