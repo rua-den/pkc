@@ -70,5 +70,4 @@ Observed UI and backend behavior for the Complete action in WorkPlay.
 - `WorkPlayFeature.cs:L26-L29` — Condition: workPlay.Status == WorkPlayStatus.Completed
 - `WorkPlayFeature.cs:L28-L28` — Throws InvalidOperationException
 - `WorkPlayFeature.cs:L35-L38` — Method WorkPlaySample.WorkPlayService.PublishStatusChanged
-- `WorkPlayFeature.cs:L37-L37` — Mutation: _
 - `WorkPlayFeature.cs:L47-L54` — Endpoint WorkPlaySample.WorkPlayController.Complete
