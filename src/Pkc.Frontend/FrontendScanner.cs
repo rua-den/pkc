@@ -32,7 +32,8 @@ public sealed class FrontendScanner
                 continue;
             }
 
-            documents.Add(await adapter.ScanAsync(rootPath, cancellationToken));
+            var document = await adapter.ScanAsync(rootPath, cancellationToken);
+            documents.Add(EnsureAnalyzerMetadata(document, adapter.Id));
         }
 
         var merged = Merge(documents);
@@ -42,7 +43,35 @@ public sealed class FrontendScanner
     private static IEnumerable<IFrontendAdapter> DefaultAdapters()
     {
         yield return new ReactFrontendAdapter();
-        yield return new AngularRepositoryScanner();
+        yield return new AngularFrontendAdapter();
+    }
+
+    private static FactDocument EnsureAnalyzerMetadata(FactDocument document, string adapterId)
+    {
+        var facts = document.Facts.Select(fact =>
+        {
+            if (fact.Metadata.ContainsKey("analysisMode"))
+            {
+                return fact;
+            }
+
+            var metadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal);
+            if (string.Equals(adapterId, "react-static", StringComparison.Ordinal))
+            {
+                metadata["analysisMode"] = "regex-fallback";
+                metadata["analysisConfidence"] = "low";
+                metadata["analysisFallbackReason"] = "react-adapter-not-yet-ast-backed";
+            }
+            else
+            {
+                metadata["analysisMode"] = "static-adapter";
+                metadata["analysisConfidence"] = "medium";
+            }
+
+            return fact with { Metadata = metadata };
+        }).ToArray();
+
+        return document with { Facts = facts };
     }
 
     private static FactDocument Merge(IReadOnlyList<FactDocument> documents)
@@ -65,6 +94,6 @@ public sealed class FrontendScanner
             .ThenBy(relation => relation.Target, StringComparer.Ordinal)
             .ToArray();
 
-        return new FactDocument("0.4.1-frontend", facts, relations);
+        return new FactDocument("0.4.3-frontend", facts, relations);
     }
 }
