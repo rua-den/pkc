@@ -53,6 +53,12 @@ DETERMINISTIC MARKDOWN RENDERER
 
 The first backend-only Markdown proof is complete and green.
 
+Verified product-knowledge checkpoint:
+
+- implementation/golden commit: `049dccd4374ccf2441e77d016ae3a093a84a3b3a`
+- GitHub Actions run: `34582626084`
+- result: build, tests, E2E knowledge generation and golden Markdown diff all pass
+
 Commands:
 
 ```bash
@@ -80,6 +86,8 @@ samples/WorkPlaySample/knowledge/features/workplay/complete.md
 ```
 
 The sample Markdown is `authority: code-observed` and includes the WorkPlay Complete endpoint, `ManageWorkPlay` permission, the Completed guard/exception, Status mutation, publication-like side effect, backend flow and exact source evidence.
+
+Endpoint setup noise such as `Id = id` and discard assignments are deliberately excluded from product-level knowledge while raw facts remain preserved for traceability.
 
 It explicitly says that frontend/UI and Azure DevOps have not yet been analyzed.
 
