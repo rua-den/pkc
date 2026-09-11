@@ -94,11 +94,14 @@ jobs:
           grep -Fq 'OrderStatus.AwaitingStock' "$CREATE_ORDER"
           grep -Fq 'Applies `-=` to `FindCard(line.CardId).Stock` with `line.Quantity`.' "$CREATE_ORDER"
           ! grep -Fq 'Sets `Id`' "$CREATE_ORDER"
+          ! grep -Fq 'Increments `_next' "$CREATE_ORDER"
 
           grep -Fq 'Click `Complete` on `WorkPlaysComponent`' "$COMPLETE_WORKPLAY"
           grep -Fq 'Only an InProgress WorkPlay can be completed.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Purchased quantity must be greater than zero.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Applies `+=` to `card.Stock` with `request.PurchasedQuantity`.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'Sets `order.Status` to `OrderStatus.ReadyForDelivery`.' "$COMPLETE_WORKPLAY"
+          ! grep -Fq 'Increments `_next' "$COMPLETE_WORKPLAY"
 
           grep -Fq 'Click `Dispatch` on `DeliveriesComponent`' "$DISPATCH_DELIVERY"
           grep -Fq 'Only a Pending delivery can be dispatched.' "$DISPATCH_DELIVERY"
