@@ -6,9 +6,9 @@ Last updated: 2026-09-11
 
 **V0.2 first AI-testable Markdown proof — COMPLETE**
 
-Verified implementation commit: `ca47a20af3cdfaab3a6e4040d29ef681189820bf`
+Verified implementation/golden commit: `049dccd4374ccf2441e77d016ae3a093a84a3b3a`
 
-GitHub Actions run `34579689784` passed:
+GitHub Actions run `34582626084` passed all checks:
 
 - solution build
 - all tests
@@ -17,6 +17,9 @@ GitHub Actions run `34579689784` passed:
 - generated feature candidate
 - generated Markdown knowledge
 - expected WorkPlay permission/rule/side-effect checks
+- committed golden Markdown matches regenerated output exactly
+
+A final quality fix filters endpoint setup noise such as `Id = id` and discard assignments from product-level state changes/evidence while preserving the raw facts in `.pkc/facts.json` for traceability.
 
 ## Current commands
 
@@ -51,7 +54,7 @@ It contains:
 - backend API entry point
 - authorization policy
 - observed guard/exception rule
-- state mutation
+- meaningful state mutation
 - publication-like side effect
 - backend call flow
 - source evidence with line ranges
