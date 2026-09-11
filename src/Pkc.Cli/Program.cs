@@ -114,5 +114,5 @@ static FactDocument Merge(params FactDocument[] documents)
         .ThenBy(relation => relation.Target, StringComparer.Ordinal)
         .ToArray();
 
-    return new FactDocument("0.4.2", facts, relations);
+    return new FactDocument("0.4.3", facts, relations);
 }
