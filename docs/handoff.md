@@ -77,7 +77,7 @@ The LLM belongs between grounded facts and product knowledge. It should not be r
 
 ## Current implementation
 
-V0.1 baseline is complete. V0.1.1 behavior-evidence extraction is the active slice.
+V0.1 baseline and **V0.1.1 behavior evidence are complete and green**.
 
 Command:
 
@@ -91,23 +91,28 @@ Output:
 <repository-path>/.pkc/facts.json
 ```
 
-V0.1.1 enriches that file with source-grounded behavior evidence:
+Current schema: `0.1.1`.
 
+Current facts include source-grounded:
+
+- symbols / methods / endpoints / properties / enums
 - `if` / guard conditions
 - thrown exceptions
 - assignment/state-mutation candidates
-- semantic method-call targets where Roslyn can resolve them
+- semantic call targets where Roslyn can resolve them
 - combined controller/action routes
 - authorization policies/roles
 - message/event publication candidates
+- exact source line ranges
 
-See `docs/status.md` for exact verified CI state.
+Verified implementation commit: `59473783fbd03d17ad5510dfa46d4bb77b163e44`
+Verified CI run: `34576273132`
 
 ## Shortest path to first AI-testable Markdown
 
-After V0.1.1 is green, there are **2 engineering steps** to the first Markdown knowledge file suitable for attaching to an AI:
+**2 engineering steps remain from the V0.1.1 checkpoint:**
 
-1. **V0.1.2 — Feature/Workflow candidate synthesis model**
+1. **V0.1.2 — Feature/Workflow candidate synthesis model** — ACTIVE NEXT
    - group related evidence around one behavior such as WorkPlay status management
    - emit a compact grounded payload for synthesis
 
@@ -150,4 +155,4 @@ Do not jump early into:
 - Azure DevOps ingestion
 - Playwright/runtime UI exploration
 
-Those are later stages. First prove that compact, traceable source evidence can support useful product knowledge generation.
+First prove that compact, traceable source evidence can support useful product knowledge generation.
