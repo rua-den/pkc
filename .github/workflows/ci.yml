@@ -19,5 +19,10 @@ jobs:
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- scan samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "endpoint"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"name": "Complete"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"schemaVersion": "0.1.1"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"kind": "condition"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"kind": "throw"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"kind": "mutation"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"fullRoute": "api/workplays/{id:int}/complete"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"authorizationPolicies": "ManageWorkPlay"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"kind": "message-publication-candidate"' samples/WorkPlaySample/.pkc/facts.json
