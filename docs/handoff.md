@@ -83,16 +83,18 @@ Framework names are provenance metadata only. Feature/workflow synthesis must no
 
 Implementation: `e6fa94a1c6e55f6019fcad463493ac07483d64f1`
 Test fix: `8ace3741a61f74096287a4cd33391ebb8ab1071a`
-CI run: `34598118760` — success.
+Frontend-adapter CI: `34598118760` — success.
 
-Verified in that run:
+An external review then triggered a narrow pre-V0.5 hardening pass. CI run `34602582122` is green and verifies:
 
 - PKC solution builds and tests pass
 - WorkPlay React end-to-end knowledge regression passes
 - PokeTrade .NET 10 backend builds
 - PokeTrade Angular 22 frontend builds
 - PokeTrade Order → WorkPlay → Delivery business smoke passes
-- PKC compiles PokeTrade knowledge through the same framework-agnostic `FrontendScanner`
+- PKC compiles PokeTrade knowledge through the framework-agnostic `FrontendScanner`
+- `Pkc.Cli` packs as `.NET tool` package `RuaDen.Pkc.Tool` version `0.4.2-preview.1`
+- CI installs that local `.nupkg` with `dotnet tool install` and successfully runs `pkc scan`
 
 Commands:
 
@@ -100,6 +102,16 @@ Commands:
 pkc scan <repository-path>
 pkc build <repository-path>
 ```
+
+Current source-based local-tool quickstart:
+
+```bash
+dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
+dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
+./.pkc-tool/pkc build <repository-path>
+```
+
+Public NuGet/release publishing is intentionally deferred until package/version/license decisions are made.
 
 Outputs:
 
@@ -111,6 +123,8 @@ knowledge/index.md
 knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
+
+`docs/status.md` is the current-state source of truth. `docs/golden-output.md` documents generated-output/golden maintenance policy.
 
 ## Runnable benchmark
 
@@ -142,6 +156,16 @@ This benchmark exists to expose compiler gaps, not to become a large demo produc
 - Angular static
 
 Do not implement MVC/Razor, Blazor or Vue inside core. When needed, add one adapter that emits the same canonical facts.
+
+## Deferred review items
+
+Do not broaden scope just because they were mentioned in review. Still deferred:
+
+- public NuGet.org release / GitHub release
+- LICENSE choice
+- CONTRIBUTING and GitHub repository topics
+- extra language/framework adapters
+- Azure DevOps, Playwright/runtime UI and incremental compilation
 
 ## Next engineering target — keep narrow
 
