@@ -26,3 +26,4 @@ jobs:
           grep -q 'ManageWorkPlay' samples/WorkPlaySample/knowledge/features/workplay/complete.md
           grep -q 'Completed WorkPlay cannot change status' samples/WorkPlaySample/knowledge/features/workplay/complete.md
           grep -q 'PublishStatusChanged' samples/WorkPlaySample/knowledge/features/workplay/complete.md
+          git diff --exit-code -- samples/WorkPlaySample/knowledge/features/workplay/complete.md

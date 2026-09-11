@@ -1,36 +1,45 @@
 # PKC — Product Knowledge Compiler
 
-PKC compiles source-code evidence into portable product knowledge that a Product Owner can attach to any capable AI.
+PKC turns implementation evidence into portable product knowledge that a Product Owner can attach to ChatGPT, Claude, Gemini, Copilot or another capable AI.
 
-## Current prototype
+## Current working proof
 
-The current C# prototype uses Roslyn to build deterministic source evidence and then groups endpoint-centered evidence into compact feature candidates.
+The C# backend pipeline is now end-to-end:
 
 ```text
 C# source
   ↓
-Roslyn evidence extraction
+Roslyn evidence
   ↓
 .pkc/facts.json
   ↓
-feature candidate grouping
+feature candidates
   ↓
 .pkc/feature-candidates.json
+  ↓
+grounded knowledge model
+  ↓
+knowledge/features/**/*.md
 ```
 
-Run:
+`scan` stops at compact machine evidence:
 
 ```bash
 dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- scan <repository-path>
 ```
 
-Current output:
+`build` produces the portable Markdown knowledge pack:
 
-```text
-<repository-path>/.pkc/facts.json
-<repository-path>/.pkc/feature-candidates.json
+```bash
+dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- build <repository-path>
 ```
 
-The next milestone turns grounded feature candidates into the first portable Markdown knowledge file for AI testing.
+For the sample:
 
-See `docs/vision.md`, `docs/architecture.md`, `docs/status.md`, and `docs/handoff.md` for the project direction and current checkpoint.
+```text
+samples/WorkPlaySample/knowledge/features/workplay/complete.md
+```
+
+The generated Markdown is intentionally marked `authority: code-observed`. Frontend/UI paths, Azure DevOps history and business approval are not invented when those sources have not been analyzed.
+
+See `docs/vision.md`, `docs/architecture.md`, `docs/status.md`, `docs/handoff.md` and `docs/milestones.md`.

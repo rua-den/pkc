@@ -4,38 +4,73 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.1.2 feature/workflow candidate synthesis — IN PROGRESS**
+**V0.2 first AI-testable Markdown proof — COMPLETE**
 
-V0.1.1 behavior evidence is complete and green.
+Verified implementation commit: `ca47a20af3cdfaab3a6e4040d29ef681189820bf`
 
-Candidate synthesis adds a deterministic grouping layer between raw facts and future LLM synthesis.
+GitHub Actions run `34579689784` passed:
 
-Current pipeline:
+- solution build
+- all tests
+- end-to-end `pkc build samples/WorkPlaySample`
+- generated facts
+- generated feature candidate
+- generated Markdown knowledge
+- expected WorkPlay permission/rule/side-effect checks
 
-```text
-C# source
-  ↓
-Roslyn evidence
-  ↓
-.pkc/facts.json
-  ↓
-endpoint-centered evidence grouping
-  ↓
-.pkc/feature-candidates.json
+## Current commands
+
+Evidence + candidate only:
+
+```bash
+pkc scan <repository-path>
 ```
 
-Each feature candidate starts from one HTTP endpoint and follows semantic `invokes` relations through related methods. It includes attached condition, throw, mutation and message-publication evidence.
+Full knowledge build:
 
-## Path to first AI-testable Markdown
+```bash
+pkc build <repository-path>
+```
 
-After V0.1.2 is green, **1 engineering step remains**:
+Current outputs:
 
-**V0.2 — Knowledge synthesis + Markdown renderer**
+```text
+.pkc/facts.json
+.pkc/feature-candidates.json
+knowledge/features/**/*.md
+```
 
-- synthesize canonical product knowledge from one grounded feature candidate
-- render `knowledge/features/.../*.md`
-- validate by attaching the Markdown to an AI and asking:
-  - “How do I change WorkPlay status?”
-  - “What should I be careful about?”
+## First portable knowledge file
 
-Frontend/UI and Azure DevOps stay out of the first proof. They will enrich the knowledge after backend-derived Markdown works.
+```text
+samples/WorkPlaySample/knowledge/features/workplay/complete.md
+```
+
+It contains:
+
+- backend API entry point
+- authorization policy
+- observed guard/exception rule
+- state mutation
+- publication-like side effect
+- backend call flow
+- source evidence with line ranges
+- explicit unknowns for UI and Azure DevOps
+
+## Countdown to AI test
+
+**0 steps remaining.**
+
+The Markdown file can now be attached directly to another AI and tested with questions such as:
+
+> How do I change WorkPlay status? What should I be careful about?
+
+At this stage the correct answer should be honest about the missing UI path and delivery history, because those inputs have not been compiled yet.
+
+## Architectural note
+
+The first Markdown proof uses a deterministic grounded synthesizer rather than an external LLM. This proves the portable knowledge contract without provider cost or hallucination. `IKnowledgeSynthesizer` is already an abstraction point for later LLM-backed enrichment when business inference requires it.
+
+## Next target
+
+Add frontend static evidence so PKC can answer **how the user actually performs the action**, not only what the backend does.

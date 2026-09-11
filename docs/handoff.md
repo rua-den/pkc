@@ -6,95 +6,101 @@ Use this file when continuing PKC in another chat/session.
 
 PKC means **Product/System Knowledge Compiler**.
 
-The target user is a Product Owner. The PO should be able to take PKC's generated knowledge folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product without making that AI re-read or grep the source repository.
+The target user is a Product Owner. A PO should be able to take PKC's generated `knowledge/` folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product without making that AI re-read or grep the source repository.
 
 Example target question:
 
 > How do I change the status of a WorkPlay? What should I be careful about?
 
-A mature PKC knowledge pack should answer with user steps, valid transitions, validations, permissions, side effects, caveats, delivery history, gaps/improvements and evidence.
+The mature knowledge pack should combine:
 
-## Inputs
+- how users perform actions in the UI
+- business behavior and status transitions
+- validations and permissions
+- side effects and integrations
+- Feature/PBI/Sprint history
+- current delivery state
+- gaps and improvement opportunities
+- evidence supporting important claims
 
-1. Backend/source code — current behavior, validation, state transitions, permissions, side effects, integrations, events, data relationships.
-2. Frontend/UI — screens, routes, actions, conditional visibility, forms, API calls and later runtime user flows.
-3. Azure DevOps — Epic/Feature/PBI/Sprint, acceptance criteria, status/history, PR/commit links, intent and later changes.
+## Intended inputs
 
-## Architecture rule
+1. Backend/source code — implementation behavior.
+2. Frontend/UI — real user-facing screens, actions, conditions and API flows.
+3. Azure DevOps — Epic/Feature/PBI/Sprint/history, intent and delivery traceability.
 
-Never implement `source -> LLM -> Markdown` directly.
+## Non-negotiable architecture
+
+Do not implement `source -> LLM -> Markdown` directly.
 
 ```text
 SOURCE
   ↓
-DETERMINISTIC ANALYZER
+DETERMINISTIC ANALYZERS
   ↓
 EVIDENCE / FACT MODEL
   ↓
 FEATURE / WORKFLOW CANDIDATES
   ↓
-LLM SYNTHESIS
+KNOWLEDGE SYNTHESIZER
   ↓
-KNOWLEDGE MODEL
+CANONICAL KNOWLEDGE MODEL
   ↓
-MARKDOWN RENDERER
+DETERMINISTIC MARKDOWN RENDERER
 ```
 
-## Current state
+## Current verified state
 
-V0.1.1 behavior evidence is complete and green.
+The first backend-only Markdown proof is complete and green.
 
-V0.1.2 is the active slice. It groups endpoint-centered evidence into:
+Commands:
+
+```bash
+pkc scan <repository-path>
+pkc build <repository-path>
+```
+
+`scan` emits:
 
 ```text
+.pkc/facts.json
 .pkc/feature-candidates.json
 ```
 
-The grouping starts at an HTTP endpoint, follows semantic `invokes` relations through related backend methods, and includes attached condition, throw, mutation and publication evidence. This gives the next LLM a compact grounded payload instead of the full repository.
-
-Command remains:
-
-```bash
-dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- scan <repository-path>
-```
-
-Current intended outputs:
+`build` additionally emits:
 
 ```text
-<repository-path>/.pkc/facts.json
-<repository-path>/.pkc/feature-candidates.json
+knowledge/features/**/*.md
 ```
 
-## Countdown to first AI-testable Markdown
+Concrete sample:
 
-Once V0.1.2 is green, only **1 engineering step remains**:
+```text
+samples/WorkPlaySample/knowledge/features/workplay/complete.md
+```
 
-### V0.2 — Knowledge synthesis + Markdown renderer
+The sample Markdown is `authority: code-observed` and includes the WorkPlay Complete endpoint, `ManageWorkPlay` permission, the Completed guard/exception, Status mutation, publication-like side effect, backend flow and exact source evidence.
 
-Take a grounded feature candidate, synthesize the canonical product-knowledge model, then deterministically render a Markdown file under `knowledge/features/...`.
+It explicitly says that frontend/UI and Azure DevOps have not yet been analyzed.
 
-First proof question:
+## Important implementation detail
+
+The first knowledge synthesizer is deterministic and grounded. This was intentional: prove the portable Markdown contract before spending tokens or coupling PKC to an LLM vendor.
+
+`IKnowledgeSynthesizer` exists so a later model-backed synthesizer can infer richer business meaning from compact evidence rather than raw source.
+
+## AI-test checkpoint
+
+Countdown is now **0**. Attach the sample Markdown to an AI and ask:
 
 > How do I change WorkPlay status? What should I be careful about?
 
-The first Markdown proof is backend-only. Frontend/UI and Azure DevOps are added after this proof works.
+Expected behavior today: the AI should explain the backend Complete action and caveats, while admitting that the UI path and delivery history are unknown.
 
-## Future update model
+## Next engineering target
 
-Later PKC should support incremental compilation:
+Frontend static evidence.
 
-```text
-changed source
-  ↓
-changed hashes/facts
-  ↓
-affected feature/workflow
-  ↓
-regenerate only affected Markdown
-```
+Extract supported frontend routes, pages/components, actions/buttons, permission conditions and API calls. Then connect those facts to backend feature candidates so the knowledge can answer the user-facing “how do I do it?” part.
 
-Expected modes later: manual full build, incremental build, PR/CI diff, merge-time knowledge publication.
-
-## Scope discipline
-
-Do not jump early into GraphRAG, vector databases, fine-tuning, graph databases, Azure DevOps ingestion or Playwright runtime exploration before the first Markdown proof works.
+Azure DevOps comes after the UI proof, then incremental compilation/change impact.

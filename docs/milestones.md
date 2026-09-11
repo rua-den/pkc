@@ -1,44 +1,43 @@
 # Milestones
 
-## V0.1 — C# evidence compiler
+## V0.1 — C# evidence compiler — COMPLETE
 
-Goal: prove that PKC can deterministically extract implementation evidence without an LLM.
+Deterministic Roslyn scanner producing `.pkc/facts.json` with symbols, endpoints, routes, permissions, semantic calls and source locations.
 
-Deliverables:
+### V0.1.1 — Behavior evidence — COMPLETE
 
-- .NET solution and CLI
-- `pkc scan <repository-path>`
-- Roslyn-based C# scanner
-- `.pkc/facts.json`
-- source locations for extracted facts
-- sample project and automated tests
+Added conditions/guards, throws, state-mutation candidates, semantic call targets, combined routes and publication candidates.
 
-Exit criteria:
+### V0.1.2 — Feature candidate grouping — COMPLETE
 
-- scanner runs against a sample C# project
-- facts are deterministic
-- endpoints, symbols and basic call relations are visible in JSON
+Endpoint-centered traversal groups compact backend evidence into `.pkc/feature-candidates.json`.
 
-## V0.2 — Frontend static evidence
+## V0.2 — First portable Markdown proof — COMPLETE
 
-Extract routes, screens/components, visible actions, permission checks and API calls from supported frontend stacks.
+`pkc build <repository-path>` turns grounded candidates into a canonical knowledge model and renders `knowledge/features/**/*.md`.
 
-## V0.3 — Feature/workflow synthesis
+The first sample is `WorkPlay Complete`. It is suitable for attaching to another AI today.
 
-Combine backend and frontend evidence into feature and user-workflow candidates. Introduce LLM synthesis over compact evidence, not raw repositories.
+## V0.3 — Frontend static evidence — NEXT
 
-## V0.4 — Azure DevOps evidence
+Extract routes, screens/components, visible actions, permission checks and API calls. Link frontend interactions to backend features.
 
-Ingest Epic/Feature/PBI/Sprint/history and link delivery evidence to product features through PRs/commits where possible.
+## V0.4 — Cross-stack feature/workflow synthesis
 
-## V0.5 — Incremental compilation
+Combine backend + frontend evidence into stronger user-facing feature/workflow knowledge. Add optional LLM-backed synthesis over compact evidence where deterministic logic is insufficient.
 
-Use file/symbol hashes and dependency impact to rebuild only affected evidence and knowledge.
+## V0.5 — Azure DevOps evidence
 
-## V0.6 — Runtime UI exploration
+Ingest Epic/Feature/PBI/Sprint/history and link product/delivery evidence through PRs/commits where possible.
+
+## V0.6 — Incremental compilation
+
+Use file/symbol hashes and dependency impact to rebuild only affected evidence and knowledge. Add PR/CI knowledge diffs.
+
+## V0.7 — Runtime UI exploration
 
 Use browser automation to confirm actual user-visible flows and states.
 
-## V0.7 — Product insight
+## V0.8 — Product insight
 
 Surface gaps, inconsistencies, requirement-vs-implementation drift and improvement opportunities with evidence.
