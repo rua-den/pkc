@@ -8,15 +8,23 @@ public sealed class CrossStackFeatureCandidateBuilder
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
     private static readonly Regex RouteParameterRegex = new(@"\{[^}/]+\}|:[A-Za-z0-9_]+", RegexOptions.Compiled);
 
+    private const string CSharpFallbackWarning =
+        "Some C# evidence in this workflow was analyzed without the target project's full MSBuild reference graph. Treat semantic symbol and call resolution as lower confidence.";
+
+    private const string FrontendFallbackWarning =
+        "Some frontend evidence in this workflow comes from conservative regex/template fallback analysis. Treat exact UI structure and linkage as lower confidence than AST-backed evidence.";
+
     public FeatureCandidateDocument Build(FactDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
         var baseline = new FeatureCandidateBuilder().Build(document);
-        return new FeatureCandidateDocument("0.4.1", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+        return new FeatureCandidateDocument("0.4.3", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
     }
 
     private static FeatureCandidate Enrich(FeatureCandidate candidate, FactDocument document)
     {
+        candidate = AddAnalysisWarnings(candidate);
+
         var endpoint = document.Facts.FirstOrDefault(fact => fact.Id == candidate.SeedFactId);
         if (endpoint is null ||
             !endpoint.Metadata.TryGetValue("httpMethod", out var endpointMethod) ||
@@ -80,7 +88,7 @@ public sealed class CrossStackFeatureCandidateBuilder
 
         var coverage = candidate.Coverage.Append("frontend-static").Distinct(StringComparer.Ordinal).ToArray();
         var unknowns = candidate.Unknowns.Where(item => item != "frontend-ui-not-analyzed").ToArray();
-        return candidate with
+        var enriched = candidate with
         {
             Coverage = coverage,
             Unknowns = unknowns,
@@ -89,6 +97,33 @@ public sealed class CrossStackFeatureCandidateBuilder
                 .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray()
+        };
+
+        return AddAnalysisWarnings(enriched);
+    }
+
+    private static FeatureCandidate AddAnalysisWarnings(FeatureCandidate candidate)
+    {
+        var unknowns = candidate.Unknowns.ToList();
+
+        if (candidate.Facts.Any(fact =>
+                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
+                string.Equals(mode, "loose-roslyn-fallback", StringComparison.Ordinal)))
+        {
+            unknowns.Add(CSharpFallbackWarning);
+        }
+
+        if (candidate.Facts.Any(fact =>
+                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
+                (mode.Contains("regex-fallback", StringComparison.Ordinal) ||
+                 mode.Contains("template-regex-fallback", StringComparison.Ordinal))))
+        {
+            unknowns.Add(FrontendFallbackWarning);
+        }
+
+        return candidate with
+        {
+            Unknowns = unknowns.Distinct(StringComparer.Ordinal).ToArray()
         };
     }
 
