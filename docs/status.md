@@ -4,38 +4,29 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.2 first AI-testable Markdown proof — COMPLETE**
+**V0.3 frontend static evidence — IN PROGRESS**
 
-Verified implementation/golden commit: `049dccd4374ccf2441e77d016ae3a093a84a3b3a`
+Implementation commit prepared: `c57537f9287cfeee8f2bd100e40fb637a6a87d94`
 
-GitHub Actions run `34582626084` passed all checks:
+This slice adds React/TypeScript static UI evidence and connects matching UI API calls to backend endpoint feature candidates using HTTP method + normalized route.
 
-- solution build
-- all tests
-- end-to-end `pkc build samples/WorkPlaySample`
-- generated facts
-- generated feature candidate
-- generated Markdown knowledge
-- expected WorkPlay permission/rule/side-effect checks
-- committed golden Markdown matches regenerated output exactly
+## Target evidence in V0.3
 
-A final quality fix filters endpoint setup noise such as `Id = id` and discard assignments from product-level state changes/evidence while preserving the raw facts in `.pkc/facts.json` for traceability.
+- React screen/component facts
+- React Router route facts
+- button/action facts
+- common permission guards such as `hasPermission(...)`, `can(...)`, `canAccess(...)`
+- `fetch(...)` and common client `.post/.put/.patch/.delete/.get` API calls
+- UI action -> API -> backend feature linkage
+- Markdown sections describing how to perform the action in the UI
 
-## Current commands
-
-Evidence + candidate only:
-
-```bash
-pkc scan <repository-path>
-```
-
-Full knowledge build:
+## Current command target
 
 ```bash
 pkc build <repository-path>
 ```
 
-Current outputs:
+Expected outputs remain:
 
 ```text
 .pkc/facts.json
@@ -43,37 +34,8 @@ Current outputs:
 knowledge/features/**/*.md
 ```
 
-## First portable knowledge file
+## Countdown to Markdown with UI instructions
 
-```text
-samples/WorkPlaySample/knowledge/features/workplay/complete.md
-```
+**1 verification step remaining:** CI must prove build/tests/E2E and confirm the WorkPlay sample Markdown contains the route, Complete action, UI permission guard and matched backend API without retaining the old frontend-unknown warning.
 
-It contains:
-
-- backend API entry point
-- authorization policy
-- observed guard/exception rule
-- meaningful state mutation
-- publication-like side effect
-- backend call flow
-- source evidence with line ranges
-- explicit unknowns for UI and Azure DevOps
-
-## Countdown to AI test
-
-**0 steps remaining.**
-
-The Markdown file can now be attached directly to another AI and tested with questions such as:
-
-> How do I change WorkPlay status? What should I be careful about?
-
-At this stage the correct answer should be honest about the missing UI path and delivery history, because those inputs have not been compiled yet.
-
-## Architectural note
-
-The first Markdown proof uses a deterministic grounded synthesizer rather than an external LLM. This proves the portable knowledge contract without provider cost or hallucination. `IKnowledgeSynthesizer` is already an abstraction point for later LLM-backed enrichment when business inference requires it.
-
-## Next target
-
-Add frontend static evidence so PKC can answer **how the user actually performs the action**, not only what the backend does.
+After that, the next major input source is Azure DevOps delivery/product history.
