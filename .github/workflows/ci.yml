@@ -20,18 +20,19 @@ jobs:
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
           test -s samples/WorkPlaySample/.pkc/feature-candidates.json
-          test -s samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q '"kind": "condition"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "ui-action"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "ui-api-call"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"name": "WorkPlay Complete"' samples/WorkPlaySample/.pkc/feature-candidates.json
-          grep -q 'frontend-static' samples/WorkPlaySample/.pkc/feature-candidates.json
-          grep -q 'ManageWorkPlay' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q 'Completed WorkPlay cannot change status' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q 'PublishStatusChanged' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q 'How to do it in the UI' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q '/workplays/:id' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q 'Click `Complete`' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          grep -q 'frontend-static' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          ! grep -q 'Frontend/UI entry point and user interaction path have not been analyzed yet' samples/WorkPlaySample/knowledge/features/workplay/complete.md
-          git diff --exit-code -- samples/WorkPlaySample/knowledge/features/workplay/complete.md
+          test -s samples/WorkPlaySample/.pkc/product-features.json
+          test -s samples/WorkPlaySample/knowledge/index.md
+          test -s samples/WorkPlaySample/knowledge/features/workplay/status-management.md
+          test -s samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
+          test -s samples/WorkPlaySample/knowledge/workflows/workplay/cancel.md
+          test -s samples/WorkPlaySample/knowledge/workflows/workplay/reopen.md
+          grep -q '"title": "WorkPlay Status Management"' samples/WorkPlaySample/.pkc/product-features.json
+          grep -q '"category": "status-management"' samples/WorkPlaySample/.pkc/product-features.json
+          grep -q 'WorkPlay Status Management' samples/WorkPlaySample/knowledge/index.md
+          grep -q '3 workflows' samples/WorkPlaySample/knowledge/index.md
+          grep -q 'WorkPlay Complete' samples/WorkPlaySample/knowledge/features/workplay/status-management.md
+          grep -q 'WorkPlay Cancel' samples/WorkPlaySample/knowledge/features/workplay/status-management.md
+          grep -q 'WorkPlay Reopen' samples/WorkPlaySample/knowledge/features/workplay/status-management.md
+          grep -q 'Click `Complete`' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
+          grep -q 'ManageWorkPlay' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
+          grep -q 'frontend-static' samples/WorkPlaySample/knowledge/workflows/workplay/complete.md
