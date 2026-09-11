@@ -7,7 +7,7 @@ import { DeliveriesComponent } from './pages/deliveries.component';
 export const routes: Routes = [
   { path: '', redirectTo: 'catalog', pathMatch: 'full' },
   { path: 'catalog', component: CatalogComponent },
-  { path: 'orders', component: OrdersComponent },
+  { 'path': 'orders', 'component': OrdersComponent },
   { path: 'workplays', component: WorkPlaysComponent },
   { path: 'deliveries', component: DeliveriesComponent }
 ];
