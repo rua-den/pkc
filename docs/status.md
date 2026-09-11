@@ -4,63 +4,38 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.1.1 behavior evidence — COMPLETE**
+**V0.1.2 feature/workflow candidate synthesis — IN PROGRESS**
 
-Verified implementation commit: `59473783fbd03d17ad5510dfa46d4bb77b163e44`
+V0.1.1 behavior evidence is complete and green.
 
-GitHub Actions run `34576273132` passed all checks:
+Candidate synthesis adds a deterministic grouping layer between raw facts and future LLM synthesis.
 
-- `dotnet build PKC.sln --configuration Release`
-- unit tests
-- end-to-end `pkc scan samples/WorkPlaySample`
-- output schema is `0.1.1`
-- sample output contains condition, throw, mutation, full-route, authorization-policy and publication-candidate evidence
-
-## Evidence currently extracted
-
-Structural evidence:
-
-- class / interface / struct / record
-- enum and enum members
-- methods / constructors / properties
-- attributes
-- HTTP endpoint method
-- exact source file and line ranges
-
-Behavior evidence added in V0.1.1:
-
-- `if` / guard conditions
-- thrown exceptions
-- assignments and state-mutation candidates
-- semantic method-call targets when Roslyn can resolve them
-- syntactic call fallback
-- combined controller + action route
-- authorization policies/roles
-- message/event publication candidates
-
-Output remains deterministic:
+Current pipeline:
 
 ```text
+C# source
+  ↓
+Roslyn evidence
+  ↓
 .pkc/facts.json
+  ↓
+endpoint-centered evidence grouping
+  ↓
+.pkc/feature-candidates.json
 ```
 
-Schema version: `0.1.1`.
+Each feature candidate starts from one HTTP endpoint and follows semantic `invokes` relations through related methods. It includes attached condition, throw, mutation and message-publication evidence.
 
 ## Path to first AI-testable Markdown
 
-**2 engineering steps remaining.**
+After V0.1.2 is green, **1 engineering step remains**:
 
-1. **V0.1.2 — Feature/Workflow candidate synthesis model**
-   - group related evidence around a user-facing behavior such as WorkPlay status management
-   - output a compact grounded intermediate payload that does not require the LLM to crawl source
+**V0.2 — Knowledge synthesis + Markdown renderer**
 
-2. **V0.2 — Knowledge synthesis + Markdown renderer**
-   - LLM turns grounded feature/workflow evidence into the canonical knowledge model
-   - deterministic renderer emits `knowledge/features/.../*.md`
-   - validate using: “How do I change WorkPlay status? What should I be careful about?”
+- synthesize canonical product knowledge from one grounded feature candidate
+- render `knowledge/features/.../*.md`
+- validate by attaching the Markdown to an AI and asking:
+  - “How do I change WorkPlay status?”
+  - “What should I be careful about?”
 
-Frontend/UI and Azure DevOps intentionally come after the first backend-derived Markdown proof.
-
-## Active next step
-
-**V0.1.2 — Feature/Workflow candidate synthesis model.**
+Frontend/UI and Azure DevOps stay out of the first proof. They will enrich the knowledge after backend-derived Markdown works.
