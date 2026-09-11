@@ -14,14 +14,14 @@ public sealed class CSharpEvidenceScanner
             baseline,
             cancellationToken);
 
-        var facts = baseline.Facts
+        var rawFacts = baseline.Facts
             .Concat(supplemental.Facts)
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
             .ToArray();
 
-        var relations = baseline.Relations
+        var rawRelations = baseline.Relations
             .Concat(supplemental.Relations)
             .GroupBy(
                 relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}",
@@ -32,6 +32,10 @@ public sealed class CSharpEvidenceScanner
             .ThenBy(relation => relation.Target, StringComparer.Ordinal)
             .ToArray();
 
-        return new FactDocument("0.4.2-csharp", facts, relations);
+        var raw = new FactDocument("0.4.3-csharp-raw", rawFacts, rawRelations);
+        return await new CSharpProjectSemanticEnricher().EnrichAsync(
+            repositoryPath,
+            raw,
+            cancellationToken);
     }
 }
