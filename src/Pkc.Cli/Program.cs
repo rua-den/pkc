@@ -42,28 +42,48 @@ try
     var candidatesPath = Path.Combine(outputDirectory, "feature-candidates.json");
     await File.WriteAllTextAsync(candidatesPath, JsonSerializer.Serialize(candidates, options));
 
-    Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} feature candidates");
+    Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} workflow candidates");
     Console.WriteLine(factsPath);
     Console.WriteLine(candidatesPath);
 
     if (command == "build")
     {
         var synthesizer = new GroundedKnowledgeSynthesizer();
-        var renderer = new MarkdownKnowledgeRenderer();
-        var generated = 0;
+        var workflowRenderer = new MarkdownKnowledgeRenderer();
+        var workflows = new List<FeatureKnowledge>();
 
         foreach (var candidate in candidates.Candidates)
         {
-            var knowledge = await synthesizer.SynthesizeAsync(candidate);
-            var relativePath = renderer.GetRelativePath(knowledge);
-            var outputPath = Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var workflow = await synthesizer.SynthesizeAsync(candidate);
+            workflows.Add(workflow);
+
+            var relativePath = workflowRenderer.GetRelativePath(workflow);
+            var outputPath = Resolve(repositoryPath, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, renderer.Render(knowledge));
+            await File.WriteAllTextAsync(outputPath, workflowRenderer.Render(workflow));
             Console.WriteLine(outputPath);
-            generated++;
         }
 
-        Console.WriteLine($"PKC build complete: {generated} Markdown knowledge files generated");
+        var productFeatures = new ProductFeatureBuilder().Build(workflows);
+        var productFeaturesPath = Path.Combine(outputDirectory, "product-features.json");
+        await File.WriteAllTextAsync(productFeaturesPath, JsonSerializer.Serialize(productFeatures, options));
+        Console.WriteLine(productFeaturesPath);
+
+        var featureRenderer = new ProductFeatureMarkdownRenderer();
+        foreach (var feature in productFeatures.Features)
+        {
+            var outputPath = Resolve(repositoryPath, featureRenderer.GetRelativePath(feature));
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            await File.WriteAllTextAsync(outputPath, featureRenderer.Render(feature));
+            Console.WriteLine(outputPath);
+        }
+
+        var indexPath = Resolve(repositoryPath, "knowledge/index.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
+        await File.WriteAllTextAsync(indexPath, featureRenderer.RenderIndex(productFeatures));
+        Console.WriteLine(indexPath);
+
+        Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, 1 knowledge index generated");
     }
 
     return 0;
@@ -74,9 +94,12 @@ catch (Exception exception)
     return 1;
 }
 
+static string Resolve(string repositoryPath, string relativePath) =>
+    Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
 static FactDocument Merge(params FactDocument[] documents) =>
     new(
-        "0.3.0",
+        "0.4.0",
         documents.SelectMany(document => document.Facts)
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
             .ToArray(),
