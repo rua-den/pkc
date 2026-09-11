@@ -15,13 +15,14 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet build PKC.sln --configuration Release
       - run: dotnet test PKC.sln --configuration Release --no-build
-      - name: End-to-end scan sample
+      - name: End-to-end build sample knowledge
         run: |
-          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- scan samples/WorkPlaySample
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
           test -s samples/WorkPlaySample/.pkc/feature-candidates.json
+          test -s samples/WorkPlaySample/knowledge/features/workplay/complete.md
           grep -q '"kind": "condition"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "throw"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "mutation"' samples/WorkPlaySample/.pkc/facts.json
           grep -q '"name": "WorkPlay Complete"' samples/WorkPlaySample/.pkc/feature-candidates.json
-          grep -q 'frontend-ui-not-analyzed' samples/WorkPlaySample/.pkc/feature-candidates.json
+          grep -q 'ManageWorkPlay' samples/WorkPlaySample/knowledge/features/workplay/complete.md
+          grep -q 'Completed WorkPlay cannot change status' samples/WorkPlaySample/knowledge/features/workplay/complete.md
+          grep -q 'PublishStatusChanged' samples/WorkPlaySample/knowledge/features/workplay/complete.md

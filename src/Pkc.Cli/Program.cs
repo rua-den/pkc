@@ -3,9 +3,10 @@ using System.Text.Json.Serialization;
 using Pkc.CSharp;
 using Pkc.Knowledge;
 
-if (args.Length != 2 || !string.Equals(args[0], "scan", StringComparison.OrdinalIgnoreCase))
+var command = args.Length > 0 ? args[0] : string.Empty;
+if (args.Length != 2 || (command != "scan" && command != "build"))
 {
-    Console.Error.WriteLine("Usage: pkc scan <repository-path>");
+    Console.Error.WriteLine("Usage: pkc <scan|build> <repository-path>");
     return 2;
 }
 
@@ -41,10 +42,31 @@ try
     Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} feature candidates");
     Console.WriteLine(factsPath);
     Console.WriteLine(candidatesPath);
+
+    if (command == "build")
+    {
+        var synthesizer = new GroundedKnowledgeSynthesizer();
+        var renderer = new MarkdownKnowledgeRenderer();
+        var generated = 0;
+
+        foreach (var candidate in candidates.Candidates)
+        {
+            var knowledge = await synthesizer.SynthesizeAsync(candidate);
+            var relativePath = renderer.GetRelativePath(knowledge);
+            var outputPath = Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            await File.WriteAllTextAsync(outputPath, renderer.Render(knowledge));
+            Console.WriteLine(outputPath);
+            generated++;
+        }
+
+        Console.WriteLine($"PKC build complete: {generated} Markdown knowledge files generated");
+    }
+
     return 0;
 }
 catch (Exception exception)
 {
-    Console.Error.WriteLine($"PKC scan failed: {exception.Message}");
+    Console.Error.WriteLine($"PKC {command} failed: {exception.Message}");
     return 1;
 }
