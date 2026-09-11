@@ -4,63 +4,130 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.4.2 PokeTrade real-system knowledge benchmark — COMPLETE**
+**V0.4.3 Analyzer Fidelity Hardening — COMPLETE**
 
-Final acceptance commit: `b29bb0d6d7c56f0676dd0c9eddbe9faf8c9ddec7`
+Verified implementation/acceptance commit: `8f69d6c931e917ce7538b9a991a05211e624cb45`
 
-Final GitHub Actions run: `34620984359`
+Verified GitHub Actions run: `34627169975` (#85)
 
 Both jobs are green:
 
-- `test`: solution build, unit/regression tests, local `.NET tool` pack/install, WorkPlay end-to-end knowledge build
-- `poketrade-real-system`: .NET 10 backend build, Angular 22 frontend build, runtime branch acceptance, PKC product-knowledge contract
+- `test`: solution build, unit/regression tests, `0.4.3-preview.1` local .NET tool pack/install, WorkPlay end-to-end knowledge build
+- `poketrade-real-system`: .NET 10 backend build, Angular 22 frontend build, runtime branch acceptance, analyzer-fidelity contract and product-knowledge contract
 
-PKC is now cleared for the **V0.4.3 external real-project trial**.
+## What V0.4.3 changes
 
-## What V0.4.2 now proves
+### C# backend
 
-The PokeTrade benchmark is no longer only a happy-path smoke test. CI now locks representative runtime behavior and matching generated knowledge for:
+PKC now prefers the target project's actual compilation context:
 
 ```text
-stock sufficient → reserve immediately → ReadyForDelivery + Delivery
-stock insufficient → AwaitingStock + PurchaseStock WorkPlay
-WorkPlay QuantityToBuy = shortage + reorder level
-invalid order validation → 400
-invalid WorkPlay transition / quantity → 409
-missing WorkPlay → 404
-Complete WorkPlay → inventory increase + waiting-order re-evaluation
-waiting orders processed in ascending order ID
-Delivery Pending → Dispatched → Delivered
-invalid Delivery transition → 409
-missing Delivery → 404
+.csproj
+  ↓
+MSBuildWorkspace
+  ↓
+target project references / framework references / compilation
+  ↓
+Roslyn SemanticModel
 ```
 
-The full PokeTrade backend/frontend source was reviewed against generated Markdown, and the blocking gaps found during that review were fixed and locked by regression/acceptance assertions.
+Facts loaded through this path are tagged:
 
-## Compiler capabilities verified by PokeTrade
+```text
+analysisMode: project-semantic
+analysisConfidence: high
+semanticContext: target-project
+```
 
-- deterministic C# fact extraction
-- semantic call relations with conservative fallback
-- guards / conditions / throws
-- assignments and compound state mutations (`=`, `+=`, `-=`)
-- computed domain properties such as `Order.Total`
-- business-relevant object construction such as `PurchaseStock` WorkPlay creation
-- collection / loop evidence needed for waiting-order fulfillment
-- controller/action routes
-- authorization policy names and observed policy definitions
-- Angular routes, screens and actions
-- UI permission + status visibility guards
-- Angular component → helper/reload → service → HTTP linking
-- passive page-load read flows such as route → `ngOnInit` → API
-- controller error-response semantics such as 400 / 404 / 409 mappings
-- product feature grouping and workflow Markdown generation
-- portable `knowledge/index.md` + feature/workflow documents
+PokeTrade acceptance proves semantic resolution of `Microsoft.AspNetCore.Mvc.ControllerBase` and HTTP method attributes. Semantic call relations for project-backed methods are re-enriched from the target project SemanticModel.
+
+If a project cannot be loaded/mapped, PKC keeps the existing loose Roslyn analysis but explicitly tags it as:
+
+```text
+analysisMode: loose-roslyn-fallback
+analysisConfidence: medium
+semanticContext: runtime-platform-assemblies-only
+```
+
+Fallback is allowed; silent fallback is not.
+
+### Angular frontend
+
+Angular TypeScript structure now prefers the target project's local TypeScript parser/AST for:
+
+- component classes
+- application routes
+- method structure needed by page-load flows
+- HTTP call expressions
+
+These facts are tagged:
+
+```text
+analysisMode: typescript-ast
+analysisConfidence: high
+```
+
+Angular template action/visibility extraction is **not AST-backed yet**. It remains a conservative fallback and is tagged:
+
+```text
+analysisMode: angular-template-regex-fallback
+analysisConfidence: medium
+```
+
+If the Angular TypeScript runtime/Node AST path is unavailable, the adapter can fall back to the legacy text scanner with:
+
+```text
+analysisMode: regex-fallback
+analysisConfidence: low
+```
+
+### React frontend
+
+React is still the existing conservative regex/text adapter. Its evidence is now explicitly tagged `regex-fallback` / `low` instead of being presented with ambiguous fidelity.
+
+### Knowledge boundary
+
+When fallback evidence contributes to a workflow, the candidate/Markdown carries an explicit `Important unknowns` warning. Downstream synthesis must not silently promote fallback evidence to high-confidence claims.
+
+## Acceptance evidence
+
+The PokeTrade benchmark was deliberately changed without changing behavior so that the previous Angular regex-only implementation would miss important facts:
+
+- `createOrder` uses a multiline/chained `HttpClient.post(...)` call;
+- the `/orders` route uses quoted object-property keys.
+
+Run #85 still produces the expected knowledge and additionally asserts:
+
+```text
+project-semantic
+semanticContext = target-project
+semanticBaseType = Microsoft.AspNetCore.Mvc.ControllerBase
+endpointAttributeResolution = semantic
+typescript-ast
+angular-template-regex-fallback
+```
+
+and rejects a full Angular `regex-fallback` path for this benchmark.
+
+The packaged CLI also scans WorkPlay through `project-semantic` in CI.
+
+## What “verified” means
+
+“Verified” means verified against the current WorkPlay and PokeTrade acceptance systems. It does **not** mean PKC has already proven robustness across arbitrary real-world repository styles.
+
+That is the next milestone.
 
 ## Current commands
 
 ```bash
 pkc scan <repository-path>
 pkc build <repository-path>
+```
+
+Current local tool package version:
+
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.1
 ```
 
 Outputs:
@@ -74,21 +141,31 @@ knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
 
-## Known boundaries — not blockers for V0.4.3
+## Known boundaries — explicit, not hidden
 
-These are current scope limits, not reasons to delay the external trial:
-
-- frontend static adapters currently cover React/TypeScript and Angular; other frameworks are not implemented yet
-- Azure DevOps intent/history is not compiled yet
-- runtime browser/UI exploration is not implemented yet
-- product intent is still separate from code-observed implementation
-- analyzers are intentionally conservative and can leave unknowns instead of guessing
-- minimal API endpoints such as `/health` are outside the current MVC endpoint path and are not core product-knowledge coverage
+- Angular TypeScript is AST-backed, but Angular template actions remain a regex/template fallback.
+- React remains regex fallback; React AST is not part of V0.4.3.
+- Other frontend frameworks are not implemented yet.
+- Azure DevOps intent/history is not compiled yet.
+- runtime browser/UI exploration is not implemented yet.
+- product intent is separate from code-observed implementation.
+- project load can still fail on unusual/build-environment-dependent C# repositories; this must surface as fallback provenance rather than be hidden.
+- minimal API endpoints such as `/health` remain outside the current MVC endpoint path.
 
 ## Next target
 
-**V0.4.3 — external real-project trial.**
+**V0.4.4 — external real-project trial.**
 
-Run PKC against a real repository and use failures/missing knowledge from that project as the next acceptance signal. Do not widen scope preemptively.
+Run the packaged V0.4.3 tool against one genuine repository and classify findings as:
 
-Only after the real-project trial is understood should V0.5 Azure DevOps/incremental work be reconsidered.
+```text
+wrong claim
+missing important behavior
+noise
+unsupported stack/pattern
+unexpected fallback
+```
+
+Fix only gaps proven by the external repository and add a regression fixture for each fix.
+
+Do not start V0.5 Azure DevOps yet.
