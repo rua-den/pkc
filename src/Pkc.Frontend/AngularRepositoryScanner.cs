@@ -20,7 +20,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         RegexOptions.Compiled);
 
     private static readonly Regex RouteRegex = new(
-        @"\{\s*path\s*:\s*[""'](?<path>[^""']*)[""'][\s\S]*?component\s*:\s*(?<component>[A-Z][A-Za-z0-9_]*)\s*\}",
+        @"\{\s*path\s*:\s*[""'](?<path>[^""']*)[""'][^}]*?component\s*:\s*(?<component>[A-Z][A-Za-z0-9_]*)\s*\}",
         RegexOptions.Compiled);
 
     private static readonly Regex ButtonRegex = new(
