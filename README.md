@@ -27,7 +27,7 @@ Current verified scope:
 - C#/.NET evidence with Roslyn, preferring the target project's real `MSBuildWorkspace` compilation;
 - explicit C# fallback when the target project cannot be loaded;
 - behavior evidence such as endpoints, permissions, guards, throws, mutations and call relations;
-- Angular TypeScript structure/routes/HTTP calls through the project-local TypeScript AST when available;
+- Angular TypeScript structure/routes/HTTP-call shapes through the project-local TypeScript syntactic AST when available;
 - Angular template actions through an explicit conservative template-regex fallback;
 - React/TypeScript through an explicit conservative regex fallback;
 - framework-agnostic frontend adapter boundary (`IFrontendAdapter`);
@@ -44,12 +44,43 @@ Analyzer fidelity is part of the evidence and is not hidden behind a generic "st
 Current modes include:
 
 ```text
-project-semantic                  high    C# loaded from the target .csproj through MSBuildWorkspace
-typescript-ast                    high    Angular TypeScript parsed with the target project's TypeScript runtime
-loose-roslyn-fallback             medium  C# source analyzed without the full target-project reference graph
-angular-template-regex-fallback   medium  Angular template action/visibility extraction
-regex-fallback                    low     conservative text-pattern fallback, currently including React
+project-semantic                  high/medium
+  C# target-project MSBuildWorkspace context. Declaration node matches are high confidence;
+  if the project loads but the original fact cannot be matched back to a syntax node, the fact is
+  explicitly marked semanticNodeMatch=failed and confidence is reduced to medium.
+
+typescript-ast-syntactic          high/medium
+  Angular uses the target repo's local TypeScript parser via ts.createSourceFile.
+  Structural ui-screen/ui-route evidence is high confidence.
+  ui-api-call evidence is medium because receiver type is not checked by a TypeChecker.
+
+loose-roslyn-fallback             medium
+  C# source analyzed without the full target-project reference graph.
+
+angular-template-regex-fallback   medium
+  Angular template action/visibility extraction.
+
+regex-fallback                    low
+  conservative text-pattern fallback, currently including React and Angular when the TS AST path is unavailable.
 ```
+
+Angular `ui-api-call` facts additionally carry:
+
+```text
+typescriptSemanticContext: syntax-only-no-type-checker
+httpReceiverResolution: syntactic-unverified
+```
+
+This is intentional: a property-access call named `.get/.post/.put/.patch/.delete` can be detected syntactically, but PKC does not currently prove that its receiver is Angular `HttpClient`.
+
+### Angular AST runtime precondition
+
+The higher-fidelity Angular TypeScript path currently requires:
+
+1. `node` available on `PATH`;
+2. a project-local `node_modules/typescript/lib/typescript.js` in or above the Angular project directory, normally produced by `npm install`, `npm ci`, `pnpm install`, or the repository's equivalent dependency-install step.
+
+If those prerequisites are unavailable, PKC does not hide the downgrade: the Angular adapter falls back to `regex-fallback` / `low` and records the fallback reason.
 
 Facts carry `analysisMode` and `analysisConfidence`. When fallback evidence contributes to a workflow, generated Markdown surfaces that limitation under `Important unknowns` instead of silently upgrading it to high-confidence evidence.
 
@@ -61,7 +92,7 @@ Until a public NuGet package/release is published, PKC can be packed and install
 
 ```bash
 dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
-dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.1
+dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.2
 ./.pkc-tool/pkc build /path/to/your/repository
 ```
 
@@ -111,6 +142,7 @@ CI builds both applications, executes representative runtime branches, runs PKC 
 
 ## Planned, not implemented yet
 
+- TypeScript `Program` / `TypeChecker` semantic analysis for Angular receiver/type resolution;
 - React AST-backed analysis;
 - full Angular template AST/compiler analysis;
 - ASP.NET MVC / Razor Pages, Blazor and Vue frontend adapters;

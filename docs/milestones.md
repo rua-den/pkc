@@ -36,41 +36,33 @@ Actions are rendered as workflow Markdown and grouped into product-level feature
 
 The runnable `.NET 10 + Angular 22` PokeTrade application is the behavioral acceptance benchmark.
 
-Completed hardening includes:
-
-- full source review across backend and frontend;
-- branch-level live API acceptance beyond the happy path;
-- computed domain properties;
-- business object construction;
-- collection/loop semantics;
-- permission + status visibility guards;
-- multi-hop frontend read/action linkage;
-- observed policy definitions;
-- 400 / 404 / 409 response semantics;
-- generated knowledge assertions against the running system.
+Completed hardening includes full source review, branch-level live API acceptance, computed domain properties, business object construction, collection/loop semantics, permission/status guards, multi-hop frontend linkage, observed policy definitions, 400/404/409 response semantics and generated knowledge assertions.
 
 ### V0.4.3 — Analyzer fidelity hardening — COMPLETE
 
-External review identified that previous analyzer internals were weaker than the architecture wording could imply. This milestone makes fidelity explicit and strengthens the analyzer layer without changing the knowledge architecture.
+This milestone makes analyzer fidelity explicit and strengthens the analyzer layer without changing the evidence-first knowledge architecture.
 
 Completed:
 
 - C# target-project semantic enrichment through `MSBuildWorkspace`;
 - semantic framework resolution verified for ASP.NET Core controller base types and HTTP attributes;
 - explicit `loose-roslyn-fallback` when target-project semantic context is unavailable;
-- Angular TypeScript AST primary path for components/routes/method structure/HTTP calls;
+- declaration-level `semanticNodeMatch` provenance so a loaded project is not confused with a successful fact→syntax-node match;
+- node-match failure lowers confidence and carries an explicit caveat;
+- Angular TypeScript syntactic-AST primary path using the target repo's local TypeScript runtime;
+- explicit distinction between high-confidence structural `ui-screen`/`ui-route` evidence and medium-confidence syntactic `ui-api-call` evidence;
+- explicit `httpReceiverResolution=syntactic-unverified` because TypeScript `TypeChecker` resolution is not implemented yet;
+- documented Node.js + installed local TypeScript runtime prerequisites for the Angular AST path;
 - explicit `angular-template-regex-fallback` for template actions/visibility;
 - explicit React `regex-fallback` until a React AST adapter is implemented;
-- `analysisMode` / `analysisConfidence` provenance on facts;
-- generated knowledge warns when fallback evidence contributes;
-- PokeTrade deliberately reformatted so important route/HTTP facts defeat the old Angular regex-only patterns while the same business knowledge still passes.
+- analyzer provenance locked in CI against PokeTrade.
 
 Acceptance:
 
-- commit `8f69d6c931e917ce7538b9a991a05211e624cb45`
-- GitHub Actions run `34627169975` (#85), both jobs green
-- packaged `0.4.3-preview.1` tool verifies project-semantic WorkPlay scanning
-- PokeTrade verifies `project-semantic`, `typescript-ast`, semantic ASP.NET Core symbols, explicit template fallback and the existing product-knowledge contract
+- commit `5c457111d072ad5f7b93bf3cff49d27960ac79fb`
+- GitHub Actions run `34630303904` (#95), both jobs green
+- packaged `0.4.3-preview.2` tool verifies project-semantic WorkPlay scanning and matched declaration provenance
+- PokeTrade verifies `project-semantic`, `typescript-ast-syntactic`, split confidence, unverified HTTP receiver provenance, semantic ASP.NET Core symbols, explicit template fallback and the existing product-knowledge contract
 
 ### V0.4.4 — External real-project trial — NEXT
 

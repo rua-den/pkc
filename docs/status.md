@@ -1,121 +1,108 @@
 # PKC Status
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
 
 ## Current milestone
 
-**V0.4.3 Analyzer Fidelity Hardening — COMPLETE**
+**V0.4.3 Analyzer Fidelity Hardening — COMPLETE, post-review fixes included**
 
-Verified implementation/acceptance commit: `8f69d6c931e917ce7538b9a991a05211e624cb45`
+Verified implementation/acceptance commit: `5c457111d072ad5f7b93bf3cff49d27960ac79fb`
 
-Verified GitHub Actions run: `34627169975` (#85)
+Verified GitHub Actions run: `34630303904` (#95)
 
 Both jobs are green:
 
-- `test`: solution build, unit/regression tests, `0.4.3-preview.1` local .NET tool pack/install, WorkPlay end-to-end knowledge build
-- `poketrade-real-system`: .NET 10 backend build, Angular 22 frontend build, runtime branch acceptance, analyzer-fidelity contract and product-knowledge contract
+- `test`: solution build, unit/regression tests, `0.4.3-preview.2` local .NET tool pack/install, WorkPlay end-to-end knowledge build;
+- `poketrade-real-system`: .NET 10 backend build, Angular 22 frontend build, runtime branch acceptance, analyzer-fidelity contract and product-knowledge contract.
 
-## What V0.4.3 changes
+## External-review findings closed in this checkpoint
 
-### C# backend
+A follow-up review confirmed the MSBuildWorkspace implementation, fallback propagation and CI path were real, then identified two fidelity-label gaps. They are now fixed.
 
-PKC now prefers the target project's actual compilation context:
+### C# project loaded vs. declaration actually matched
+
+`project-semantic` no longer implies that declaration-node matching always succeeded.
+
+For declaration-like facts PKC now records:
 
 ```text
-.csproj
-  ↓
-MSBuildWorkspace
-  ↓
-target project references / framework references / compilation
-  ↓
-Roslyn SemanticModel
+semanticNodeMatch: matched | failed
 ```
 
-Facts loaded through this path are tagged:
+If the target project loads but PKC cannot match the original fact back to the corresponding syntax node:
 
 ```text
 analysisMode: project-semantic
-analysisConfidence: high
-semanticContext: target-project
-```
-
-PokeTrade acceptance proves semantic resolution of `Microsoft.AspNetCore.Mvc.ControllerBase` and HTTP method attributes. Semantic call relations for project-backed methods are re-enriched from the target project SemanticModel.
-
-If a project cannot be loaded/mapped, PKC keeps the existing loose Roslyn analysis but explicitly tags it as:
-
-```text
-analysisMode: loose-roslyn-fallback
 analysisConfidence: medium
-semanticContext: runtime-platform-assemblies-only
+semanticNodeMatch: failed
+analysisCaveat: target-project-loaded-but-fact-node-match-failed
 ```
 
-Fallback is allowed; silent fallback is not.
+A regression test intentionally supplies a mismatched fact location and locks this behavior. Non-declaration evidence uses `semanticNodeMatch: not-applicable`.
 
-### Angular frontend
+### Angular TypeScript is syntactic AST, not type-checked semantics
 
-Angular TypeScript structure now prefers the target project's local TypeScript parser/AST for:
+The Angular scanner uses the target repo's local TypeScript parser with `ts.createSourceFile`. It does **not** yet create a TypeScript `Program` or use a `TypeChecker`.
 
-- component classes
-- application routes
-- method structure needed by page-load flows
-- HTTP call expressions
-
-These facts are tagged:
+The provenance label is therefore now:
 
 ```text
-analysisMode: typescript-ast
-analysisConfidence: high
+analysisMode: typescript-ast-syntactic
+typescriptSemanticContext: syntax-only-no-type-checker
 ```
 
-Angular template action/visibility extraction is **not AST-backed yet**. It remains a conservative fallback and is tagged:
+Confidence is split by evidence kind:
 
 ```text
-analysisMode: angular-template-regex-fallback
-analysisConfidence: medium
+ui-screen / ui-route   high
+ui-api-call            medium
 ```
 
-If the Angular TypeScript runtime/Node AST path is unavailable, the adapter can fall back to the legacy text scanner with:
+`ui-api-call` additionally carries:
 
 ```text
-analysisMode: regex-fallback
-analysisConfidence: low
+httpReceiverResolution: syntactic-unverified
+analysisCaveat: http-method-name-and-url-shape-detected-without-receiver-type-checking
 ```
 
-### React frontend
+This avoids claiming that `.get/.post/.put/.patch/.delete` receiver types are proven to be Angular `HttpClient` when they are currently matched syntactically.
 
-React is still the existing conservative regex/text adapter. Its evidence is now explicitly tagged `regex-fallback` / `low` instead of being presented with ambiguous fidelity.
+### Angular AST runtime precondition
 
-### Knowledge boundary
+The syntactic AST path currently requires:
 
-When fallback evidence contributes to a workflow, the candidate/Markdown carries an explicit `Important unknowns` warning. Downstream synthesis must not silently promote fallback evidence to high-confidence claims.
+- `node` available on `PATH`;
+- a target-repository local `node_modules/typescript/lib/typescript.js`, normally after the repository dependency-install step (`npm install`, `npm ci`, `pnpm install`, etc.).
+
+If unavailable, Angular explicitly falls back to `regex-fallback` / `low` with a recorded reason such as `local-typescript-runtime-not-found` or `node-unavailable: ...`.
 
 ## Acceptance evidence
 
-The PokeTrade benchmark was deliberately changed without changing behavior so that the previous Angular regex-only implementation would miss important facts:
-
-- `createOrder` uses a multiline/chained `HttpClient.post(...)` call;
-- the `/orders` route uses quoted object-property keys.
-
-Run #85 still produces the expected knowledge and additionally asserts:
+Run #95 asserts all of the following against real generated `.pkc/facts.json`:
 
 ```text
 project-semantic
 semanticContext = target-project
+semanticNodeMatch = matched
 semanticBaseType = Microsoft.AspNetCore.Mvc.ControllerBase
 endpointAttributeResolution = semantic
-typescript-ast
+typescript-ast-syntactic
+typescriptSemanticContext = syntax-only-no-type-checker
+ui-api-call confidence = medium
+httpReceiverResolution = syntactic-unverified
+ui-screen/ui-route confidence = high
 angular-template-regex-fallback
 ```
 
-and rejects a full Angular `regex-fallback` path for this benchmark.
+and rejects a full Angular `regex-fallback` path for PokeTrade.
 
-The packaged CLI also scans WorkPlay through `project-semantic` in CI.
+The packaged CLI also scans WorkPlay through `project-semantic` and verifies at least one declaration `semanticNodeMatch=matched`.
 
 ## What “verified” means
 
 “Verified” means verified against the current WorkPlay and PokeTrade acceptance systems. It does **not** mean PKC has already proven robustness across arbitrary real-world repository styles.
 
-That is the next milestone.
+That remains the next milestone.
 
 ## Current commands
 
@@ -127,7 +114,7 @@ pkc build <repository-path>
 Current local tool package version:
 
 ```text
-RuaDen.Pkc.Tool 0.4.3-preview.1
+RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
 Outputs:
@@ -143,13 +130,16 @@ knowledge/workflows/**/*.md
 
 ## Known boundaries — explicit, not hidden
 
-- Angular TypeScript is AST-backed, but Angular template actions remain a regex/template fallback.
+- Angular TypeScript is syntactic-AST-backed, but `ui-api-call` receiver types are not type-checked yet.
+- Angular template actions remain a regex/template fallback.
+- The Angular AST path depends on Node.js and the target repo's installed local TypeScript runtime.
 - React remains regex fallback; React AST is not part of V0.4.3.
 - Other frontend frameworks are not implemented yet.
 - Azure DevOps intent/history is not compiled yet.
 - runtime browser/UI exploration is not implemented yet.
 - product intent is separate from code-observed implementation.
-- project load can still fail on unusual/build-environment-dependent C# repositories; this must surface as fallback provenance rather than be hidden.
+- project load can still fail on unusual/build-environment-dependent C# repositories; this surfaces as explicit fallback provenance.
+- declaration node matching can fail even after a project loads; this now surfaces as `semanticNodeMatch=failed` and reduced confidence.
 - minimal API endpoints such as `/health` remain outside the current MVC endpoint path.
 
 ## Next target

@@ -26,16 +26,18 @@ Direct source-to-Markdown generation makes traceability, incremental rebuilds, t
 
 ## Analyzer fidelity is evidence
 
-PKC does not treat every extracted fact as equally reliable. Analyzer mode and confidence travel with evidence.
+PKC does not treat every extracted fact as equally reliable. Analyzer mode, confidence and caveats travel with evidence.
 
 Current modes:
 
 ```text
-project-semantic                  high
-  C# loaded through the target project's MSBuildWorkspace compilation.
+project-semantic                  high/medium
+  C# target-project MSBuildWorkspace context. A declaration fact is high confidence when its
+  syntax node is matched; a project-loaded-but-node-match-failed declaration is reduced to medium.
 
-typescript-ast                    high
-  Angular TypeScript structure parsed with the target project's TypeScript runtime.
+typescript-ast-syntactic          high/medium
+  Angular TypeScript parsed with the target repo's local TypeScript parser using ts.createSourceFile.
+  Structural screen/route evidence is high; HTTP-call evidence is medium because receiver types are not checked.
 
 loose-roslyn-fallback             medium
   C# Roslyn analysis without the target project's complete reference graph.
@@ -44,16 +46,17 @@ angular-template-regex-fallback   medium
   Conservative Angular template action/visibility extraction.
 
 regex-fallback                    low
-  Conservative text-pattern extraction, currently including React.
+  Conservative text-pattern extraction, currently including React and Angular when the AST path is unavailable.
 ```
 
 Rules:
 
 1. Prefer the strongest available deterministic analyzer.
 2. Fallback is allowed only when its provenance is explicit.
-3. Downstream grouping/synthesis must not silently upgrade fallback evidence.
-4. When fallback contributes materially to a workflow, generated knowledge surfaces a caveat under `Important unknowns`.
-5. “Verified” means verified against an acceptance fixture/benchmark, not universal robustness across arbitrary repositories.
+3. A loaded semantic environment and a successfully resolved/matched symbol are separate claims.
+4. Syntactic AST evidence must not be labeled as type-checked semantic evidence.
+5. Downstream grouping/synthesis must not silently upgrade fallback evidence.
+6. “Verified” means verified against an acceptance fixture/benchmark, not universal robustness across arbitrary repositories.
 
 ## Backend evidence
 
@@ -73,11 +76,15 @@ Roslyn Compilation + SemanticModel
 project-semantic evidence
 ```
 
-This path is used to enrich symbols and semantic call relations and to prove framework symbols such as ASP.NET Core controller base types and HTTP attributes.
+For declaration-like facts, PKC records whether the original evidence fact matched a declaration node in the MSBuild-loaded syntax tree:
+
+```text
+semanticNodeMatch = matched | failed
+```
+
+A failed match does not discard the fact, but it lowers confidence and adds an explicit caveat. This prevents “project loaded successfully” from being conflated with “this declaration was semantically enriched successfully”.
 
 If the target project cannot be loaded or a source file cannot be mapped to its project compilation, PKC retains conservative loose Roslyn evidence and tags it `loose-roslyn-fallback` rather than pretending the full target semantic context was available.
-
-Existing syntax facts remain useful raw evidence; project-semantic enrichment adds stronger symbol context rather than replacing the whole extraction layer.
 
 ## Frontend adapter boundary
 
@@ -101,8 +108,6 @@ shared evidence model
 feature/workflow compiler
 ```
 
-`FrontendScanner` may run zero, one or multiple adapters for a repository. The compiler core must not branch on a framework name.
-
 Current canonical UI fact kinds are deliberately small:
 
 - `ui-screen`
@@ -110,20 +115,31 @@ Current canonical UI fact kinds are deliberately small:
 - `ui-action`
 - `ui-api-call`
 
-Current common relations include:
-
-- route `renders` screen
-- action `triggers-handler`
-- action `triggers-api`
-- API call `calls-endpoint` after backend matching
-
 ### Angular
 
-Angular TypeScript structure currently prefers the project-local TypeScript compiler AST for components, routes, method structure and HTTP call expressions.
+Angular TypeScript currently uses a project-local **syntactic** TypeScript AST. The Node helper loads the target repo's own `node_modules/typescript/lib/typescript.js` and parses with `ts.createSourceFile`.
 
-Angular template action/visibility extraction is still conservative fallback logic and is explicitly tagged `angular-template-regex-fallback`. This is an intentional current boundary, not hidden AST coverage.
+It does not yet use `ts.createProgram()` or a `TypeChecker`.
 
-If TypeScript/Node AST execution is unavailable, Angular can fall back to the legacy text analyzer with `regex-fallback` provenance.
+Therefore:
+
+- component/screen and route structure can be high-confidence syntactic evidence;
+- `ui-api-call` is only medium-confidence because method names and URL shapes are recognized without proving the receiver type;
+- method-call graph helpers are name-based and remain syntactic rather than symbol-resolved.
+
+Angular `ui-api-call` carries `httpReceiverResolution=syntactic-unverified` so downstream consumers can distinguish it from future TypeChecker-backed HTTP evidence.
+
+Runtime prerequisites for this path are explicit:
+
+```text
+node available on PATH
++ target repo dependencies installed
++ local node_modules/typescript/lib/typescript.js present
+```
+
+If those prerequisites are unavailable, Angular falls back to the legacy text analyzer with `regex-fallback` provenance.
+
+Angular template action/visibility extraction remains conservative fallback logic and is explicitly tagged `angular-template-regex-fallback`.
 
 ### React
 
@@ -135,7 +151,7 @@ Framework identity such as `react-static` or `angular-static` remains metadata f
 
 ### Deterministic layer
 
-Responsible for facts that can be proven from source syntax/semantics and their locations. It must preserve analyzer provenance and confidence.
+Responsible for facts that can be proven from source syntax/semantics and their locations. It must preserve analyzer provenance, confidence and caveats.
 
 ### Inference layer
 
@@ -143,7 +159,7 @@ Responsible for grouping evidence into product concepts such as features, workfl
 
 ### Presentation layer
 
-Renders the canonical knowledge model into portable Markdown/YAML. Markdown is output, not the internal source of truth for compilation. Fallback caveats are presentation-relevant because an AI/PO should know when a workflow contains lower-confidence evidence.
+Renders the canonical knowledge model into portable Markdown/YAML. Markdown is output, not the internal source of truth for compilation.
 
 ## Non-goal
 
