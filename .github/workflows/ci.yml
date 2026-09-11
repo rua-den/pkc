@@ -128,10 +128,13 @@ jobs:
           test -s samples/PokeTradeSystem/.pkc/product-features.json
           test -s samples/PokeTradeSystem/knowledge/index.md
 
+          GET_CARDS=samples/PokeTradeSystem/knowledge/workflows/cards/getcards.md
           CREATE_ORDER=samples/PokeTradeSystem/knowledge/workflows/orders/createorder.md
           GET_ORDERS=samples/PokeTradeSystem/knowledge/workflows/orders/getorders.md
+          GET_WORKPLAYS=samples/PokeTradeSystem/knowledge/workflows/workplays/getworkplays.md
           START_WORKPLAY=samples/PokeTradeSystem/knowledge/workflows/workplays/startworkplay.md
           COMPLETE_WORKPLAY=samples/PokeTradeSystem/knowledge/workflows/workplays/completeworkplay.md
+          GET_DELIVERIES=samples/PokeTradeSystem/knowledge/workflows/deliveries/getdeliveries.md
           DISPATCH_DELIVERY=samples/PokeTradeSystem/knowledge/workflows/deliveries/dispatchdelivery.md
           DELIVERED=samples/PokeTradeSystem/knowledge/workflows/deliveries/markdeliverydelivered.md
           INDEX=samples/PokeTradeSystem/knowledge/index.md
@@ -140,12 +143,19 @@ jobs:
           grep -Fq '"kind": "object-construction"' samples/PokeTradeSystem/.pkc/facts.json
           grep -Fq '"kind": "loop"' samples/PokeTradeSystem/.pkc/facts.json
           grep -Fq '"kind": "authorization-policy"' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq 'null-coalescing-throw' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq 'exception-response' samples/PokeTradeSystem/.pkc/facts.json
           grep -Fq 'ManageWorkPlay' samples/PokeTradeSystem/.pkc/feature-candidates.json
+
+          grep -Fq 'Open route `/catalog`.' "$GET_CARDS"
+          grep -Fq 'UI sends `GET /api/cards`.' "$GET_CARDS"
 
           grep -Fq 'Open route `/catalog`.' "$CREATE_ORDER"
           grep -Fq 'Click `Place order` on `CatalogComponent`.' "$CREATE_ORDER"
           grep -Fq 'Customer name is required.' "$CREATE_ORDER"
           grep -Fq 'Delivery address is required.' "$CREATE_ORDER"
+          grep -Fq 'return BadRequest(new { message = exception.Message })' "$CREATE_ORDER"
+          grep -Fq 'Card {id} was not found.' "$CREATE_ORDER"
           grep -Fq 'OrderStatus.AwaitingStock' "$CREATE_ORDER"
           grep -Fq 'Applies `-=` to `FindCard(line.CardId).Stock` with `line.Quantity`.' "$CREATE_ORDER"
           grep -Fq 'PokeTrade.Api.Order.Total' "$CREATE_ORDER"
@@ -160,14 +170,23 @@ jobs:
           grep -Fq 'UI sends `GET /api/orders`.' "$GET_ORDERS"
           grep -Fq 'PokeTrade.Api.Order.Total' "$GET_ORDERS"
 
+          grep -Fq 'Open route `/workplays`.' "$GET_WORKPLAYS"
+          grep -Fq 'UI sends `GET /api/workplays`.' "$GET_WORKPLAYS"
+
           grep -Fq "workPlay.status === 'Open'" "$START_WORKPLAY"
           grep -Fq 'Policy definition observed: ManageWorkPlay' "$START_WORKPLAY"
           grep -Fq 'RequireAssertion(_ => true)' "$START_WORKPLAY"
+          grep -Fq 'WorkPlay {id} was not found.' "$START_WORKPLAY"
+          grep -Fq 'return NotFound(new { message = exception.Message })' "$START_WORKPLAY"
+          grep -Fq 'return Conflict(new { message = exception.Message })' "$START_WORKPLAY"
 
           grep -Fq 'Click `Complete` on `WorkPlaysComponent`' "$COMPLETE_WORKPLAY"
           grep -Fq "workPlay.status === 'InProgress'" "$COMPLETE_WORKPLAY"
           grep -Fq 'Only an InProgress WorkPlay can be completed.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Purchased quantity must be greater than zero.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'WorkPlay {id} was not found.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'return NotFound(new { message = exception.Message })' "$COMPLETE_WORKPLAY"
+          grep -Fq 'return Conflict(new { message = exception.Message })' "$COMPLETE_WORKPLAY"
           grep -Fq 'Applies `+=` to `card.Stock` with `request.PurchasedQuantity`.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Sets `order.Status` to `OrderStatus.ReadyForDelivery`.' "$COMPLETE_WORKPLAY"
           grep -Fq 'OrderStatus.AwaitingStock' "$COMPLETE_WORKPLAY"
@@ -175,24 +194,30 @@ jobs:
           grep -Fq 'Policy definition observed: ManageWorkPlay' "$COMPLETE_WORKPLAY"
           ! grep -Fq 'Increments `_next' "$COMPLETE_WORKPLAY"
 
+          grep -Fq 'Open route `/deliveries`.' "$GET_DELIVERIES"
+          grep -Fq 'UI sends `GET /api/deliveries`.' "$GET_DELIVERIES"
+
           grep -Fq 'Click `Dispatch` on `DeliveriesComponent`' "$DISPATCH_DELIVERY"
           grep -Fq "delivery.status === 'Pending'" "$DISPATCH_DELIVERY"
           grep -Fq 'Only a Pending delivery can be dispatched.' "$DISPATCH_DELIVERY"
           grep -Fq 'Order must be ReadyForDelivery before dispatch.' "$DISPATCH_DELIVERY"
+          grep -Fq 'Delivery {id} was not found.' "$DISPATCH_DELIVERY"
+          grep -Fq 'return NotFound(new { message = exception.Message })' "$DISPATCH_DELIVERY"
+          grep -Fq 'return Conflict(new { message = exception.Message })' "$DISPATCH_DELIVERY"
           grep -Fq 'Policy definition observed: ManageDelivery' "$DISPATCH_DELIVERY"
           ! grep -Fq 'publication-like method `PokeTrade.Api.PokeTradeStore.DispatchDelivery`' "$DISPATCH_DELIVERY"
 
           grep -Fq "delivery.status === 'Dispatched'" "$DELIVERED"
           grep -Fq 'Only a Dispatched delivery can be marked delivered.' "$DELIVERED"
+          grep -Fq 'Delivery {id} was not found.' "$DELIVERED"
+          grep -Fq 'return NotFound(new { message = exception.Message })' "$DELIVERED"
+          grep -Fq 'return Conflict(new { message = exception.Message })' "$DELIVERED"
           grep -Fq 'Policy definition observed: ManageDelivery' "$DELIVERED"
 
+          grep -Fq 'Cards Discovery' "$INDEX"
           grep -Fq 'Deliveries Discovery' "$INDEX"
           grep -Fq 'Deliveries Status Management' "$INDEX"
+          grep -Fq 'Orders Discovery' "$INDEX"
+          grep -Fq 'Orders Management' "$INDEX"
+          grep -Fq 'WorkPlays Discovery' "$INDEX"
           grep -Fq 'WorkPlays Status Management' "$INDEX"
-
-      - name: Print generated PokeTrade knowledge for full review
-        run: |
-          find samples/PokeTradeSystem/knowledge -type f -name '*.md' | sort | while read -r file; do
-            echo "===== $file ====="
-            cat "$file"
-          done
