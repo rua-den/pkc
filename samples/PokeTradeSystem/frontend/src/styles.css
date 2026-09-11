@@ -1,0 +1,21 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #1f2937; background: #f6f7fb; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; }
+.shell { max-width: 1180px; margin: 0 auto; padding: 24px; }
+nav { background: #111827; color: white; }
+nav .shell { display: flex; gap: 18px; align-items: center; }
+nav strong { margin-right: auto; }
+nav a.active { color: #facc15; }
+.card { background: white; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 16px; }
+table { width: 100%; border-collapse: collapse; background: white; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+button { border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; background: #2563eb; color: white; margin-right: 6px; }
+button.secondary { background: #4b5563; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+input, select { padding: 9px; border: 1px solid #d1d5db; border-radius: 8px; margin-right: 8px; }
+.badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #eef2ff; font-size: 12px; }
+.error { color: #b91c1c; }
+.success { color: #047857; }
