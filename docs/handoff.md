@@ -70,79 +70,121 @@ New frameworks must be adapters that emit the same canonical facts; do not add f
 
 ## Current verified state
 
-**V0.4.2 PokeTrade real-system knowledge benchmark is COMPLETE and green.**
+**V0.4.2 PokeTrade benchmark is REOPENED after a full-source review.**
 
-Final verification commit: `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d`
-Final CI run: `34604840944` — success.
+The earlier verification commit `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d` and CI run `34604840944` are green, but they prove a principal smoke/business slice rather than full source-to-knowledge coverage.
 
-The final CI proves:
+Still verified:
 
-- PKC solution builds and tests pass
-- local `.NET tool` package `RuaDen.Pkc.Tool` can be packed, installed and executed
+- PKC solution builds/tests pass
+- local `.NET tool` packaging works
 - WorkPlay React regression passes
 - PokeTrade .NET 10 backend builds
 - PokeTrade Angular 22 frontend builds
-- live Order → WorkPlay → Delivery business smoke passes
-- PKC-generated Markdown is checked against concrete PokeTrade behavior
+- principal live Order → WorkPlay → Delivery smoke passes
+- previously fixed compiler correctness issues remain fixed
 
-## Important benchmark fixes now in shared PKC code
+Do **not** tell the user PKC is ready for an external real repository yet.
 
-PokeTrade exposed these compiler/knowledge issues and they are fixed:
+## Full PokeTrade source reviewed
 
-- conditions no longer pair with unrelated throws
-- compound assignments retain `+=` / `-=` semantics
-- object-construction/internal counter noise is suppressed from PO state changes
-- ordinary business methods named `Dispatch...` are not reported as message publication side effects
-- Angular object-shaped service parameters can be parsed/link actions to API calls
-- Angular redirect routes no longer steal the next component's route
-- lifecycle action grouping uses word-level semantics instead of substring matches
-- syntactic member-assignment fallback preserves state transitions when Roslyn semantic binding is incomplete
+The mini project was reviewed file-by-file across:
 
-A key verified cross-method behavior is now retained:
+### Backend
 
 ```text
-Complete WorkPlay
-  ↓
-stock += purchased quantity
-  ↓
-FulfillWaitingOrders
-  ↓
-order.Status = ReadyForDelivery
+Program.cs
+Domain.cs
+PokeTradeStore.cs
+Controllers/CardsController.cs
+Controllers/OrdersController.cs
+Controllers/WorkPlaysController.cs
+Controllers/DeliveriesController.cs
+PokeTrade.Api.csproj
 ```
 
-## Commands
-
-```bash
-pkc scan <repository-path>
-pkc build <repository-path>
-```
-
-Local tool quickstart from this source repository:
-
-```bash
-dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
-dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
-./.pkc-tool/pkc build <repository-path>
-```
-
-Outputs:
+### Frontend
 
 ```text
-.pkc/facts.json
-.pkc/feature-candidates.json
-.pkc/product-features.json
-knowledge/index.md
-knowledge/features/**/*.md
-knowledge/workflows/**/*.md
+src/main.ts
+src/index.html
+src/styles.css
+src/app/app.config.ts
+src/app/app.component.ts
+src/app/app.routes.ts
+src/app/api.service.ts
+src/app/models.ts
+src/app/pages/catalog.component.ts
+src/app/pages/orders.component.ts
+src/app/pages/workplays.component.ts
+src/app/pages/deliveries.component.ts
+package.json
+angular.json
+proxy.conf.json
 ```
 
-`knowledge/index.md` is the preferred entry point for an AI assistant.
+## Important full-review findings
 
-## Runnable benchmark
+### High priority blockers
 
-`samples/PokeTradeSystem` is intentionally a small real application used to compare generated knowledge with actual behavior.
+1. **Business-important object construction is being suppressed.**
 
-Business flow:
+`CreatePurchaseWorkPlays` constructs WorkPlays using:
+
+```text
+QuantityToBuy = shortage + card.ReorderLevel
+Type = PurchaseStock
+Reason = shortage explanation
+```
+
+Current PO-facing object-initializer filtering removes these semantics together with actual initializer noise.
+
+2. **Computed business properties are not represented.**
+
+`Order.Total` is:
+
+```text
+Lines.Sum(line => line.Quantity * line.UnitPrice)
+```
+
+Current property evidence does not preserve that expression.
+
+3. **Waiting-order fulfillment semantics are incomplete.**
+
+`CompleteWorkPlay` calls `FulfillWaitingOrders`, which scans all `AwaitingStock` orders ordered by ID, reserves any now-fulfillable order, sets it to `ReadyForDelivery`, and creates a delivery. Some transitive mutations survive, but the loop/collection semantics do not.
+
+### Medium priority gaps
+
+4. Angular action evidence records permission guards but not the surrounding status guard. Example:
+
+```text
+ManageWorkPlay + Open       → Start visible
+ManageWorkPlay + InProgress → Complete visible
+ManageDelivery + Pending    → Dispatch visible
+ManageDelivery + Dispatched → Mark delivered visible
+```
+
+5. Two-hop read flows are incomplete. Example:
+
+```text
+Orders Refresh
+  → component reload()
+  → ApiService.getOrders()
+  → GET /api/orders
+```
+
+Current action/API linking is strongest when component handler and service method names match.
+
+6. Authorization implementation semantics are not analyzed. The sample's `ManageWorkPlay` and `ManageDelivery` policies intentionally use always-true assertions, while generated knowledge currently reports only the policy/guard names.
+
+Additional lower-priority observations:
+
+- the backend supports multiple order lines while the current Catalog UI creates one line at a time;
+- WorkPlay completion accepts any positive purchased quantity, while the UI defaults the value to `QuantityToBuy`;
+- API error status mapping (400/409/404) is not currently part of product knowledge;
+- `/health` is a minimal API endpoint and is not part of the MVC endpoint scanner; this is operational rather than core product behavior.
+
+## Runnable benchmark business flow
 
 ```text
 Customer places card order
@@ -155,42 +197,29 @@ auto-create PurchaseStock WorkPlay
   ↓
 Staff Start → Complete with purchased quantity
   ↓
-inventory increases + waiting orders rechecked
+inventory increases + ALL waiting orders are re-evaluated
   ↓
-ReadyForDelivery → Dispatch → Delivered
+fulfillable orders reserve stock → ReadyForDelivery → Delivery
+  ↓
+Dispatch → order Shipped
+  ↓
+Mark delivered → order Delivered
 ```
-
-The sample exists to expose compiler gaps, not to grow into a large demo product.
-
-## Known limitations that are not blockers for a real trial
-
-- passive GET/page-load flows can lack a complete route/screen chain
-- deterministic feature grouping does not yet synthesize one cross-domain journey across Order/WorkPlay/Delivery
-- Azure DevOps evidence is not implemented
-- runtime UI confirmation is not implemented
-- incremental compilation is not implemented
-- public package/release and OSS governance are intentionally deferred
 
 ## Next engineering target — keep narrow
 
-**External real-project trial before V0.5.**
+Finish V0.4.2 before any external trial.
 
-Run PKC on one genuine repository. Review:
+Order of work:
 
-```text
-.pkc/product-features.json
-knowledge/index.md
-knowledge/features/
-knowledge/workflows/
-```
+1. preserve business-relevant object construction while still filtering implementation noise;
+2. extract computed property/domain expressions such as `Order.Total`;
+3. add deterministic collection/loop evidence needed for `FulfillWaitingOrders`;
+4. capture Angular status predicates around actions;
+5. improve two-hop component → service → HTTP linking for real read/refresh patterns;
+6. expand PokeTrade CI to cover representative branches and compare generated knowledge;
+7. review all generated PokeTrade Markdown again.
 
-Tag each problem as one of:
+Only after that should V0.4.3 external real-project trial begin.
 
-- wrong claim
-- missing important behavior
-- noise
-- unsupported stack/pattern
-
-Use those findings to make only evidence-backed compiler fixes.
-
-Do **not** begin Azure DevOps work until the real-project trial has been reviewed.
+Do **not** start V0.5 Azure DevOps yet.
