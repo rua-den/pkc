@@ -19,11 +19,12 @@ jobs:
         run: |
           rm -rf artifacts/tool /tmp/pkc-tool
           dotnet pack src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -o artifacts/tool
-          dotnet tool install --tool-path /tmp/pkc-tool --add-source artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.1
+          dotnet tool install --tool-path /tmp/pkc-tool --add-source artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.2
           /tmp/pkc-tool/pkc scan samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
           test -s samples/WorkPlaySample/.pkc/feature-candidates.json
           grep -Fq '"analysisMode": "project-semantic"' samples/WorkPlaySample/.pkc/facts.json
+          grep -Fq '"semanticNodeMatch": "matched"' samples/WorkPlaySample/.pkc/facts.json
       - name: End-to-end build WorkPlay knowledge
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build samples/WorkPlaySample
@@ -142,12 +143,16 @@ jobs:
           DELIVERED=samples/PokeTradeSystem/knowledge/workflows/deliveries/markdeliverydelivered.md
           INDEX=samples/PokeTradeSystem/knowledge/index.md
 
-          # Analyzer fidelity contract: backend must load the target project; Angular TS structure must use AST.
+          # Analyzer fidelity contract: backend must load/match target-project symbols; Angular TS evidence must be syntactic-AST labeled.
           grep -Fq '"analysisMode": "project-semantic"' "$FACTS"
           grep -Fq '"semanticContext": "target-project"' "$FACTS"
+          grep -Fq '"semanticNodeMatch": "matched"' "$FACTS"
           grep -Fq '"semanticBaseType": "Microsoft.AspNetCore.Mvc.ControllerBase"' "$FACTS"
           grep -Fq '"endpointAttributeResolution": "semantic"' "$FACTS"
-          grep -Fq '"analysisMode": "typescript-ast"' "$FACTS"
+          grep -Fq '"analysisMode": "typescript-ast-syntactic"' "$FACTS"
+          grep -Fq '"typescriptSemanticContext": "syntax-only-no-type-checker"' "$FACTS"
+          jq -e '.facts[] | select(.kind == "ui-api-call" and .metadata.analysisMode == "typescript-ast-syntactic" and .metadata.analysisConfidence == "medium" and .metadata.httpReceiverResolution == "syntactic-unverified")' "$FACTS" >/dev/null
+          jq -e '.facts[] | select((.kind == "ui-screen" or .kind == "ui-route") and .metadata.analysisMode == "typescript-ast-syntactic" and .metadata.analysisConfidence == "high")' "$FACTS" >/dev/null
           grep -Fq '"analysisMode": "angular-template-regex-fallback"' "$FACTS"
           ! grep -Fq '"analysisMode": "regex-fallback"' "$FACTS"
 
