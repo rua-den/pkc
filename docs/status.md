@@ -4,47 +4,48 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.4.1 frontend adapter architecture — COMPLETE**
+**V0.4.2 PokeTrade real-system knowledge benchmark — COMPLETE**
 
-Implementation commit: `e6fa94a1c6e55f6019fcad463493ac07483d64f1`
-Test-fix commit: `8ace3741a61f74096287a4cd33391ebb8ab1071a`
-Frontend-adapter CI run: `34598118760` — SUCCESS
+Final verification commit: `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d`
+GitHub Actions run: `34604840944` — SUCCESS
 
-Verified:
+Verified end to end:
 
-- `IFrontendAdapter` is the framework adapter contract
-- `FrontendScanner` owns 0..N adapter orchestration
-- CLI no longer branches on Angular vs React
-- React and Angular emit the same canonical `ui-screen`, `ui-route`, `ui-action`, `ui-api-call` facts
-- generic frontend linker creates conservative `ui-action -> triggers-api -> ui-api-call` relations
-- Angular component action can link to an HTTP call in a separate service file
-- `CrossStackFeatureCandidateBuilder` consumes canonical frontend relations instead of framework-specific source structure
+- PKC solution builds and all tests pass
+- `RuaDen.Pkc.Tool` packs, installs from a local `.nupkg`, and runs as `pkc`
 - WorkPlay React regression remains green
 - PokeTrade .NET 10 backend builds
 - PokeTrade Angular 22 frontend builds
-- PokeTrade Order → WorkPlay → Delivery smoke flow passes
-- PKC successfully compiles PokeTrade product knowledge after the adapter refactor
+- live Order → WorkPlay → Delivery business smoke passes
+- PKC compiles the same PokeTrade source into portable Markdown
+- CI verifies the generated Markdown against the live business behavior
 
-## Pre-V0.5 hardening from external review — COMPLETE
+## Correctness gaps fixed by the PokeTrade benchmark
 
-CI run: `34602582122` — SUCCESS
+The benchmark exposed real compiler/knowledge bugs rather than sample-specific issues. V0.4.2 fixed them in shared PKC code:
 
-Accepted high-value feedback that did not expand product scope:
+- guard conditions are paired only with their own contained throw instead of every throw in the method
+- compound mutations preserve semantics (`+=`, `-=`, increment/decrement) instead of being rendered as simple assignment
+- object-initializer and internal `_next...` counter noise is removed from PO-facing state changes
+- `DispatchDelivery` is no longer presented as a message-publication side effect
+- Angular service methods with object-shaped parameters can link component actions to HTTP calls
+- Angular redirect routes no longer swallow the following component route (`/catalog` is preserved)
+- lifecycle actions such as Start/Complete/Dispatch/Delivered group into Status Management while reads such as Get Deliveries stay Discovery
+- member assignments remain available as state evidence when semantic binding is incomplete, allowing transitive transitions such as `order.Status = ReadyForDelivery` to survive analysis
 
-- README now matches the actual generated knowledge layout and identifies `docs/status.md` as current-state source of truth
-- README has explicit **what works today** vs **planned** sections
-- `Pkc.Cli` is packable as .NET tool package `RuaDen.Pkc.Tool` (`0.4.2-preview.1`)
-- CI proves the package can be installed from a local `.nupkg` and can execute `pkc scan`
-- `docs/golden-output.md` documents generated-output/golden maintenance policy
-- PokeTrade live-system regression remains green after the hardening changes
+Final CI explicitly verifies, among other things:
 
-Deferred intentionally:
-
-- public NuGet.org publishing / GitHub release
-- LICENSE choice
-- CONTRIBUTING and repository topics
-- new frontend adapters
-- Azure DevOps / runtime UI / incremental build
+```text
+/catalog → Place order → POST /api/orders
+invalid order input → matching validation message
+insufficient stock → OrderStatus.AwaitingStock
+reserve stock → -= quantity
+Complete WorkPlay → += purchased quantity
+Complete WorkPlay → waiting Order becomes ReadyForDelivery
+Dispatch → Pending/ReadyForDelivery guards
+no false DispatchDelivery publication side effect
+Deliveries Discovery != Deliveries Status Management
+```
 
 ## Current commands
 
@@ -53,7 +54,7 @@ pkc scan <repository-path>
 pkc build <repository-path>
 ```
 
-From source, PKC can also be packed and installed locally:
+From source, PKC can be packed and installed locally:
 
 ```bash
 dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
@@ -72,12 +73,12 @@ knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
 
-## Frontend support
+## Frontend support today
 
 Implemented adapters:
 
-- React/TypeScript static adapter
-- Angular static adapter
+- React/TypeScript static
+- Angular static
 
 Architecture-ready but not implemented yet:
 
@@ -86,27 +87,35 @@ Architecture-ready but not implemented yet:
 - Vue
 - other UI stacks
 
-Those should be added only as `IFrontendAdapter` implementations. Core knowledge compilation must not add framework branches.
+New UI technologies must be added as `IFrontendAdapter` implementations; compiler/knowledge core must remain framework-agnostic.
 
-## Real-system benchmark
+## Known non-blocking limitations
 
-`samples/PokeTradeSystem` is the current benchmark:
+These are deliberately deferred until evidence from a real external repository says they matter:
 
-- backend: .NET 10
-- frontend: Angular 22
-- business: Pokemon card catalog, customer orders, purchase-stock WorkPlay tasks, inventory replenishment and delivery lifecycle
-- independently runnable for behavior-vs-knowledge comparison
+- passive page-load/read flows may have an API-call fact without a complete screen/user-path chain
+- cross-domain business journeys such as Order → WorkPlay → Delivery are still represented as deterministic area/workflow knowledge rather than one inferred product journey
+- Azure DevOps intent/history is not implemented
+- runtime UI confirmation is not implemented
+- incremental compilation is not implemented
+- public NuGet.org/GitHub release, LICENSE and wider OSS packaging remain deferred
 
-CI validates the live API business flow and then runs PKC against the same source tree.
-
-## Countdown to AI-testable Markdown
+## Countdown to external real-project trial
 
 **0 steps remaining.**
 
-Both the WorkPlay sample and PokeTrade benchmark can generate portable Markdown today.
+PKC is ready to be run against a real external repository using the local .NET tool package.
 
 ## Next target — narrow
 
-**V0.4.2 PokeTrade knowledge review.**
+**External real-project trial.**
 
-Review generated PokeTrade Markdown against the runnable app and fix only correctness/coverage gaps exposed by that benchmark. Do not add Azure DevOps, Playwright, MVC/Blazor/Vue adapters or incremental compilation until this benchmark is clean enough to take to a real external project.
+Run PKC on one genuine repository and review only:
+
+1. `.pkc/product-features.json`
+2. `knowledge/index.md`
+3. the generated `knowledge/features/` and `knowledge/workflows/`
+
+Classify findings as **wrong claim**, **missing important behavior**, **noise**, or **unsupported stack/pattern**. Fix compiler abstractions only when the real repository demonstrates the need.
+
+Do not start V0.5 Azure DevOps until this trial is reviewed.
