@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Pkc.Core;
 using Pkc.CSharp;
+using Pkc.Frontend;
 using Pkc.Knowledge;
 
 var command = args.Length > 0 ? args[0] : string.Empty;
@@ -19,8 +21,9 @@ if (!Directory.Exists(repositoryPath))
 
 try
 {
-    var scanner = new CSharpRepositoryScanner();
-    var facts = await scanner.ScanAsync(repositoryPath);
+    var csharpFacts = await new CSharpRepositoryScanner().ScanAsync(repositoryPath);
+    var frontendFacts = await new FrontendRepositoryScanner().ScanAsync(repositoryPath);
+    var facts = Merge(csharpFacts, frontendFacts);
     var candidates = new FeatureCandidateBuilder().Build(facts);
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
@@ -70,3 +73,15 @@ catch (Exception exception)
     Console.Error.WriteLine($"PKC {command} failed: {exception.Message}");
     return 1;
 }
+
+static FactDocument Merge(params FactDocument[] documents) =>
+    new(
+        "0.3.0",
+        documents.SelectMany(document => document.Facts)
+            .OrderBy(fact => fact.Id, StringComparer.Ordinal)
+            .ToArray(),
+        documents.SelectMany(document => document.Relations)
+            .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
+            .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
+            .ThenBy(relation => relation.Target, StringComparer.Ordinal)
+            .ToArray());

@@ -24,7 +24,10 @@ public sealed partial class MarkdownKnowledgeRenderer
         builder.AppendLine($"authority: {Yaml(knowledge.Authority)}");
         builder.AppendLine("generated: true");
         builder.AppendLine("coverage:");
-        builder.AppendLine("  - backend-code");
+        foreach (var coverage in knowledge.Coverage)
+        {
+            builder.AppendLine($"  - {coverage}");
+        }
         builder.AppendLine("---");
         builder.AppendLine();
         builder.AppendLine($"# {knowledge.Title}");
@@ -36,6 +39,8 @@ public sealed partial class MarkdownKnowledgeRenderer
         builder.AppendLine(knowledge.Summary);
         builder.AppendLine();
 
+        AppendListSection(builder, "How to do it in the UI", knowledge.UiSteps);
+        AppendListSection(builder, "UI to backend", knowledge.UiToBackend);
         AppendListSection(builder, "Backend entry point", knowledge.EntryPoints);
         AppendListSection(builder, "Permissions", knowledge.Permissions);
         AppendListSection(builder, "Observed business rules", knowledge.Rules);

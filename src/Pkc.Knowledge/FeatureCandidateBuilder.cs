@@ -14,6 +14,9 @@ public sealed partial class FeatureCandidateBuilder
         "mutates"
     };
 
+    private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
+    private static readonly Regex RouteParameterRegex = new(@"\{[^}/]+\}|:[A-Za-z0-9_]+", RegexOptions.Compiled);
+
     public FeatureCandidateDocument Build(FactDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -32,14 +35,15 @@ public sealed partial class FeatureCandidateBuilder
         var candidates = document.Facts
             .Where(fact => fact.Kind == "endpoint")
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
-            .Select(endpoint => BuildCandidate(endpoint, factsById, relationsBySource, callableByTarget))
+            .Select(endpoint => BuildCandidate(endpoint, document, factsById, relationsBySource, callableByTarget))
             .ToArray();
 
-        return new FeatureCandidateDocument("0.1.2", candidates);
+        return new FeatureCandidateDocument("0.3.0", candidates);
     }
 
     private static FeatureCandidate BuildCandidate(
         EvidenceFact endpoint,
+        FactDocument document,
         IReadOnlyDictionary<string, EvidenceFact> factsById,
         IReadOnlyDictionary<string, EvidenceRelation[]> relationsBySource,
         IReadOnlyDictionary<string, EvidenceFact[]> callableByTarget)
@@ -99,23 +103,118 @@ public sealed partial class FeatureCandidateBuilder
             }
         }
 
+        var hasFrontend = AddFrontendEvidence(endpoint, document, includedFacts, includedRelations, seenRelations);
         var area = InferArea(endpoint.Container);
         var name = $"{area} {SplitWords(endpoint.Name)}".Trim();
         var id = $"feature:{Slug(area)}:{Slug(endpoint.Name)}";
+        var coverage = hasFrontend ? new[] { "backend-code", "frontend-static" } : new[] { "backend-code" };
+        var unknowns = hasFrontend
+            ? new[] { "delivery-history-not-analyzed" }
+            : new[] { "frontend-ui-not-analyzed", "delivery-history-not-analyzed" };
 
         return new FeatureCandidate(
             id,
             name,
             area,
             endpoint.Id,
-            ["backend-code"],
-            ["frontend-ui-not-analyzed", "delivery-history-not-analyzed"],
+            coverage,
+            unknowns,
             includedFacts.Values.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             includedRelations
                 .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray());
+    }
+
+    private static bool AddFrontendEvidence(
+        EvidenceFact endpoint,
+        FactDocument document,
+        IDictionary<string, EvidenceFact> includedFacts,
+        ICollection<EvidenceRelation> includedRelations,
+        ISet<string> seenRelations)
+    {
+        if (!endpoint.Metadata.TryGetValue("httpMethod", out var endpointMethod) ||
+            !endpoint.Metadata.TryGetValue("fullRoute", out var endpointRoute))
+        {
+            return false;
+        }
+
+        var endpointRouteKey = NormalizeRouteKey(endpointRoute);
+        var apiCalls = document.Facts
+            .Where(fact => fact.Kind == "ui-api-call")
+            .Where(fact => fact.Metadata.TryGetValue("httpMethod", out var method) &&
+                           string.Equals(method, endpointMethod, StringComparison.OrdinalIgnoreCase))
+            .Where(fact => fact.Metadata.TryGetValue("routeKey", out var routeKey) &&
+                           string.Equals(routeKey, endpointRouteKey, StringComparison.Ordinal))
+            .ToArray();
+
+        if (apiCalls.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var apiCall in apiCalls)
+        {
+            includedFacts[apiCall.Id] = apiCall;
+            AddRelation(
+                new EvidenceRelation(apiCall.Id, "calls-endpoint", endpoint.Id, apiCall.Source),
+                includedRelations,
+                seenRelations);
+
+            var sameFileFacts = document.Facts.Where(fact =>
+                string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
+
+            var actions = sameFileFacts
+                .Where(fact => fact.Kind == "ui-action")
+                .Where(fact =>
+                    !fact.Metadata.TryGetValue("handler", out var handler) ||
+                    string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+                .ToArray();
+
+            foreach (var action in actions)
+            {
+                includedFacts[action.Id] = action;
+                AddRelation(
+                    new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source),
+                    includedRelations,
+                    seenRelations);
+            }
+
+            var screens = sameFileFacts.Where(fact => fact.Kind == "ui-screen").ToArray();
+            foreach (var screen in screens)
+            {
+                includedFacts[screen.Id] = screen;
+            }
+
+            var screenNames = screens.Select(screen => screen.Name).ToHashSet(StringComparer.Ordinal);
+            foreach (var route in document.Facts.Where(fact => fact.Kind == "ui-route"))
+            {
+                if (route.Metadata.TryGetValue("component", out var component) && screenNames.Contains(component))
+                {
+                    includedFacts[route.Id] = route;
+                    AddRelation(
+                        new EvidenceRelation(route.Id, "renders-screen", component, route.Source),
+                        includedRelations,
+                        seenRelations);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static string NormalizeRouteKey(string value)
+    {
+        var route = value.Split('?', '#')[0].Trim();
+        route = TemplateParameterRegex.Replace(route, "{param}");
+        route = RouteParameterRegex.Replace(route, "{param}");
+        if (!route.StartsWith('/'))
+        {
+            route = "/" + route;
+        }
+
+        return route.TrimEnd('/').ToLowerInvariant();
     }
 
     private static bool IsCallable(EvidenceFact fact) =>
