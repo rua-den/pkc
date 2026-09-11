@@ -27,14 +27,19 @@ public sealed class AngularComplexServiceSignatureTests
                 }
                 """);
             await File.WriteAllTextAsync(Path.Combine(root, "app.routes.ts"), """
-                export const routes = [{ path: 'catalog', component: CatalogComponent }];
+                export const routes = [
+                  { path: '', redirectTo: 'catalog', pathMatch: 'full' },
+                  { path: 'catalog', component: CatalogComponent }
+                ];
                 """);
 
             var document = await new FrontendScanner().ScanAsync(root);
             var action = Assert.Single(document.Facts, fact => fact.Kind == "ui-action" && fact.Name == "Place order");
             var apiCall = Assert.Single(document.Facts, fact => fact.Kind == "ui-api-call" && fact.Metadata["routeKey"] == "/api/orders");
+            var route = Assert.Single(document.Facts, fact => fact.Kind == "ui-route" && fact.Metadata["component"] == "CatalogComponent");
 
             Assert.Equal("createOrder", apiCall.Container);
+            Assert.Equal("/catalog", route.Metadata["path"]);
             Assert.Contains(document.Relations, relation =>
                 relation.FromFactId == action.Id && relation.Kind == "triggers-api" && relation.Target == apiCall.Id);
         }
