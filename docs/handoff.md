@@ -77,7 +77,7 @@ The LLM belongs between grounded facts and product knowledge. It should not be r
 
 ## Current implementation
 
-V0.1 baseline is complete and green.
+V0.1 baseline is complete. V0.1.1 behavior-evidence extraction is the active slice.
 
 Command:
 
@@ -91,20 +91,53 @@ Output:
 <repository-path>/.pkc/facts.json
 ```
 
-See `docs/status.md` for exact current capabilities and verified CI state.
+V0.1.1 enriches that file with source-grounded behavior evidence:
 
-## Next step
+- `if` / guard conditions
+- thrown exceptions
+- assignment/state-mutation candidates
+- semantic method-call targets where Roslyn can resolve them
+- combined controller/action routes
+- authorization policies/roles
+- message/event publication candidates
 
-Stay in the C# evidence layer for the next slice. Add deterministic behavior evidence before adding an LLM:
+See `docs/status.md` for exact verified CI state.
 
-- guards/conditions
-- exceptions
-- state mutations
-- semantic call targets
-- routes/permissions
-- events/integration calls
+## Shortest path to first AI-testable Markdown
 
-Only once these facts are useful should PKC start synthesizing Feature/Workflow knowledge.
+After V0.1.1 is green, there are **2 engineering steps** to the first Markdown knowledge file suitable for attaching to an AI:
+
+1. **V0.1.2 — Feature/Workflow candidate synthesis model**
+   - group related evidence around one behavior such as WorkPlay status management
+   - emit a compact grounded payload for synthesis
+
+2. **V0.2 — Knowledge synthesis + Markdown renderer**
+   - synthesize a canonical product-knowledge model from the grounded payload
+   - deterministically render `knowledge/features/.../*.md`
+   - test it with: “How do I change WorkPlay status? What should I be careful about?”
+
+The first Markdown proof should use backend evidence only. Frontend/UI and Azure DevOps are added after that proof works.
+
+## Future change/update model
+
+Long term PKC should support incremental compilation:
+
+```text
+changed source
+  ↓
+changed hashes/facts
+  ↓
+affected feature/workflow
+  ↓
+regenerate only affected Markdown
+```
+
+Expected modes later:
+
+- manual full build
+- incremental build
+- PR/CI diff
+- merge-time publication of updated knowledge
 
 ## Scope discipline
 
