@@ -30,6 +30,7 @@ public sealed class CrossStackFeatureCandidateBuilder
             .ToArray();
         if (apiCalls.Length == 0) return candidate;
 
+        var factsById = document.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
         var facts = candidate.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
         var relations = candidate.Relations.ToList();
         var relationKeys = relations.Select(RelationKey).ToHashSet(StringComparer.Ordinal);
@@ -39,23 +40,36 @@ public sealed class CrossStackFeatureCandidateBuilder
             facts[apiCall.Id] = apiCall;
             AddRelation(new EvidenceRelation(apiCall.Id, "calls-endpoint", endpoint.Id, apiCall.Source), relations, relationKeys);
 
-            var handler = apiCall.Container;
-            if (string.IsNullOrWhiteSpace(handler)) continue;
-
-            var actions = document.Facts.Where(fact => fact.Kind == "ui-action")
-                .Where(fact => fact.Metadata.TryGetValue("handler", out var actionHandler) && string.Equals(actionHandler, handler, StringComparison.Ordinal))
+            var actionRelations = document.Relations
+                .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
                 .ToArray();
+
+            var actions = actionRelations
+                .Select(relation => factsById.TryGetValue(relation.FromFactId, out var fact) ? fact : null)
+                .Where(fact => fact?.Kind == "ui-action")
+                .Cast<EvidenceFact>()
+                .ToArray();
+
+            if (actions.Length == 0 && !string.IsNullOrWhiteSpace(apiCall.Container))
+            {
+                actions = document.Facts.Where(fact => fact.Kind == "ui-action")
+                    .Where(fact => fact.Metadata.TryGetValue("handler", out var handler) && string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+                    .ToArray();
+            }
 
             foreach (var action in actions)
             {
                 facts[action.Id] = action;
                 AddRelation(new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source), relations, relationKeys);
 
-                var screens = document.Facts.Where(fact => fact.Kind == "ui-screen" && string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal)).ToArray();
+                var screens = FindScreensForAction(document, action).ToArray();
                 foreach (var screen in screens)
                 {
                     facts[screen.Id] = screen;
-                    foreach (var route in document.Facts.Where(fact => fact.Kind == "ui-route" && fact.Metadata.TryGetValue("component", out var component) && string.Equals(component, screen.Name, StringComparison.Ordinal)))
+                    foreach (var route in document.Facts.Where(fact =>
+                                 fact.Kind == "ui-route" &&
+                                 fact.Metadata.TryGetValue("component", out var component) &&
+                                 string.Equals(component, screen.Name, StringComparison.Ordinal)))
                     {
                         facts[route.Id] = route;
                         AddRelation(new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source), relations, relationKeys);
@@ -76,6 +90,22 @@ public sealed class CrossStackFeatureCandidateBuilder
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray()
         };
+    }
+
+    private static IEnumerable<EvidenceFact> FindScreensForAction(FactDocument document, EvidenceFact action)
+    {
+        if (!string.IsNullOrWhiteSpace(action.Container))
+        {
+            var byName = document.Facts.Where(fact =>
+                fact.Kind == "ui-screen" && string.Equals(fact.Name, action.Container, StringComparison.Ordinal)).ToArray();
+            if (byName.Length > 0)
+            {
+                return byName;
+            }
+        }
+
+        return document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" && string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
     }
 
     private static void AddRelation(EvidenceRelation relation, ICollection<EvidenceRelation> relations, ISet<string> keys)

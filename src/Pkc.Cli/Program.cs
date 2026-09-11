@@ -22,7 +22,7 @@ if (!Directory.Exists(repositoryPath))
 try
 {
     var csharpFacts = await new CSharpRepositoryScanner().ScanAsync(repositoryPath);
-    var frontendFacts = await ScanFrontendAsync(repositoryPath);
+    var frontendFacts = await new FrontendScanner().ScanAsync(repositoryPath);
     var facts = Merge(csharpFacts, frontendFacts);
     var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
 
@@ -89,17 +89,6 @@ catch (Exception exception)
 {
     Console.Error.WriteLine($"PKC {command} failed: {exception.Message}");
     return 1;
-}
-
-static async Task<FactDocument> ScanFrontendAsync(string repositoryPath)
-{
-    var isAngular = Directory.EnumerateFiles(repositoryPath, "angular.json", SearchOption.AllDirectories)
-        .Any(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => string.Equals(segment, "node_modules", StringComparison.OrdinalIgnoreCase)));
-
-    return isAngular
-        ? await new AngularRepositoryScanner().ScanAsync(repositoryPath)
-        : await new FrontendRepositoryScanner().ScanAsync(repositoryPath);
 }
 
 static string Resolve(string repositoryPath, string relativePath) =>

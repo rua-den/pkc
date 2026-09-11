@@ -8,23 +8,38 @@ Deterministic Roslyn scanner producing `.pkc/facts.json` with symbols, endpoints
 
 Added conditions/guards, throws, state-mutation candidates, semantic call targets, combined routes and publication candidates.
 
-### V0.1.2 — Feature candidate grouping — COMPLETE
+### V0.1.2 — Workflow candidate grouping — COMPLETE
 
 Endpoint-centered traversal groups compact backend evidence into `.pkc/feature-candidates.json`.
 
 ## V0.2 — First portable Markdown proof — COMPLETE
 
-`pkc build <repository-path>` turns grounded candidates into a canonical knowledge model and renders `knowledge/features/**/*.md`.
+`pkc build <repository-path>` turns grounded candidates into canonical knowledge and portable Markdown.
 
-The first sample is `WorkPlay Complete`. It is suitable for attaching to another AI today.
+## V0.3 — Frontend static evidence — COMPLETE
 
-## V0.3 — Frontend static evidence — NEXT
+React/TypeScript static evidence adds routes, screens, actions, permission guards and API calls and links them to backend behavior.
 
-Extract routes, screens/components, visible actions, permission checks and API calls. Link frontend interactions to backend features.
+## V0.4 — Product feature/workflow synthesis — COMPLETE
 
-## V0.4 — Cross-stack feature/workflow synthesis
+Actions are rendered as workflow Markdown and grouped into product-level feature Markdown plus `knowledge/index.md` and `.pkc/product-features.json`.
 
-Combine backend + frontend evidence into stronger user-facing feature/workflow knowledge. Add optional LLM-backed synthesis over compact evidence where deterministic logic is insufficient.
+### V0.4.1 — Frontend adapter architecture — CURRENT
+
+Narrow refactor only:
+
+- add `IFrontendAdapter`
+- make frontend orchestration framework-agnostic
+- migrate React and Angular scanners behind the adapter boundary
+- normalize both into the existing canonical `ui-*` facts
+- link common `UI action → API call` relations outside framework adapters
+- remove Angular-vs-React branching from the CLI
+
+MVC/Razor, Blazor and Vue are **not** implemented in this milestone. They should be future adapters using the same contract.
+
+### V0.4.2 — PokeTrade real-system benchmark
+
+Use the runnable `.NET 10 + Angular` PokeTrade sample to validate that PKC knowledge matches an independently runnable application across Order, WorkPlay and Delivery flows.
 
 ## V0.5 — Azure DevOps evidence
 

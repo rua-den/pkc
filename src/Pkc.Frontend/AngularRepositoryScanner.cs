@@ -3,7 +3,7 @@ using Pkc.Core;
 
 namespace Pkc.Frontend;
 
-public sealed class AngularRepositoryScanner
+public sealed class AngularRepositoryScanner : IFrontendAdapter
 {
     private static readonly HashSet<string> ExcludedDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -49,6 +49,30 @@ public sealed class AngularRepositoryScanner
     private static readonly Regex AngularInterpolationRegex = new(@"\{\{[^}]+\}\}", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
+    public string Id => "angular-static";
+
+    public bool CanHandle(string repositoryPath)
+    {
+        if (Directory.EnumerateFiles(repositoryPath, "angular.json", SearchOption.AllDirectories)
+            .Any(path => !IsExcluded(repositoryPath, path)))
+        {
+            return true;
+        }
+
+        foreach (var packageJson in Directory.EnumerateFiles(repositoryPath, "package.json", SearchOption.AllDirectories)
+                     .Where(path => !IsExcluded(repositoryPath, path)))
+        {
+            if (File.ReadAllText(packageJson).Contains("\"@angular/core\"", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return Directory.EnumerateFiles(repositoryPath, "*.ts", SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(repositoryPath, path))
+            .Any(path => File.ReadAllText(path).Contains("@Component", StringComparison.Ordinal));
+    }
+
     public async Task<FactDocument> ScanAsync(string repositoryPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryPath);
@@ -71,7 +95,7 @@ public sealed class AngularRepositoryScanner
         }
 
         return new FactDocument(
-            "0.4.0-angular",
+            "0.4.1-angular",
             facts.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             relations.OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Kind, StringComparer.Ordinal)

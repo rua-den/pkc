@@ -3,7 +3,7 @@ using Pkc.Core;
 
 namespace Pkc.Frontend;
 
-public sealed class FrontendRepositoryScanner
+public sealed class ReactFrontendAdapter : IFrontendAdapter
 {
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -56,6 +56,13 @@ public sealed class FrontendRepositoryScanner
     private static readonly Regex JsxNoiseRegex = new("<[^>]+>|\\{[^}]*\\}", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
+    public string Id => "react-static";
+
+    public bool CanHandle(string repositoryPath) =>
+        Directory.EnumerateFiles(repositoryPath, "*.*", SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(repositoryPath, path))
+            .Any(path => Path.GetExtension(path) is ".tsx" or ".jsx");
+
     public async Task<FactDocument> ScanAsync(string repositoryPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryPath);
@@ -84,7 +91,7 @@ public sealed class FrontendRepositoryScanner
         }
 
         return new FactDocument(
-            "0.3.0-frontend",
+            "0.4.1-react",
             facts.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             relations
                 .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
@@ -121,7 +128,8 @@ public sealed class FrontendRepositoryScanner
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["path"] = path,
-                    ["component"] = component
+                    ["component"] = component,
+                    ["framework"] = "react-static"
                 });
             facts.Add(fact);
             relations.Add(new EvidenceRelation(fact.Id, "renders", component, fact.Source));
@@ -138,7 +146,8 @@ public sealed class FrontendRepositoryScanner
 
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["label"] = label
+                ["label"] = label,
+                ["framework"] = "react-static"
             };
 
             var onClick = OnClickRegex.Match(attrs);
@@ -201,7 +210,8 @@ public sealed class FrontendRepositoryScanner
             ["httpMethod"] = method,
             ["url"] = url,
             ["routeKey"] = NormalizeRouteKey(url),
-            ["client"] = client
+            ["client"] = client,
+            ["framework"] = "react-static"
         };
 
         facts.Add(CreateFact(relativePath, text, match, "ui-api-call", $"{method} {url}", handler, metadata));
