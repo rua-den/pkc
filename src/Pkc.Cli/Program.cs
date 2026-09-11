@@ -22,9 +22,9 @@ if (!Directory.Exists(repositoryPath))
 try
 {
     var csharpFacts = await new CSharpRepositoryScanner().ScanAsync(repositoryPath);
-    var frontendFacts = await new FrontendRepositoryScanner().ScanAsync(repositoryPath);
+    var frontendFacts = await ScanFrontendAsync(repositoryPath);
     var facts = Merge(csharpFacts, frontendFacts);
-    var candidates = new FeatureCandidateBuilder().Build(facts);
+    var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
@@ -56,9 +56,7 @@ try
         {
             var workflow = await synthesizer.SynthesizeAsync(candidate);
             workflows.Add(workflow);
-
-            var relativePath = workflowRenderer.GetRelativePath(workflow);
-            var outputPath = Resolve(repositoryPath, relativePath);
+            var outputPath = Resolve(repositoryPath, workflowRenderer.GetRelativePath(workflow));
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
             await File.WriteAllTextAsync(outputPath, workflowRenderer.Render(workflow));
             Console.WriteLine(outputPath);
@@ -82,7 +80,6 @@ try
         Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
         await File.WriteAllTextAsync(indexPath, featureRenderer.RenderIndex(productFeatures));
         Console.WriteLine(indexPath);
-
         Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, 1 knowledge index generated");
     }
 
@@ -94,15 +91,24 @@ catch (Exception exception)
     return 1;
 }
 
+static async Task<FactDocument> ScanFrontendAsync(string repositoryPath)
+{
+    var isAngular = Directory.EnumerateFiles(repositoryPath, "angular.json", SearchOption.AllDirectories)
+        .Any(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(segment => string.Equals(segment, "node_modules", StringComparison.OrdinalIgnoreCase)));
+
+    return isAngular
+        ? await new AngularRepositoryScanner().ScanAsync(repositoryPath)
+        : await new FrontendRepositoryScanner().ScanAsync(repositoryPath);
+}
+
 static string Resolve(string repositoryPath, string relativePath) =>
     Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
 static FactDocument Merge(params FactDocument[] documents) =>
     new(
-        "0.4.0",
-        documents.SelectMany(document => document.Facts)
-            .OrderBy(fact => fact.Id, StringComparer.Ordinal)
-            .ToArray(),
+        "0.4.1",
+        documents.SelectMany(document => document.Facts).OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
         documents.SelectMany(document => document.Relations)
             .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
             .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
