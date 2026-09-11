@@ -13,5 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - run: dotnet build src/Pkc.Cli/Pkc.Cli.csproj --configuration Release
-      - run: dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --configuration Release
+      - run: dotnet build PKC.sln --configuration Release
+      - run: dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --configuration Release --no-build
+      - name: End-to-end scan sample
+        run: |
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- scan samples/WorkPlaySample
+          test -s samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"kind": "endpoint"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"name": "Complete"' samples/WorkPlaySample/.pkc/facts.json
