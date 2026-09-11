@@ -35,15 +35,43 @@ Actions are rendered as workflow Markdown and grouped into product-level feature
 
 MVC/Razor, Blazor and Vue remain future adapters; they are not part of this milestone.
 
-### V0.4.2 — PokeTrade real-system benchmark — CURRENT
+### V0.4.2 — PokeTrade real-system benchmark — COMPLETE
 
-The `.NET 10 + Angular 22` PokeTrade app now builds and its Order → WorkPlay → Delivery business smoke passes in CI. PKC also compiles knowledge from the same source tree.
+The `.NET 10 + Angular 22` PokeTrade application is independently runnable and its Order → WorkPlay → Delivery flow is verified in CI. PKC compiles the same source tree and CI checks generated Markdown against the live business behavior.
 
-Remaining work in this milestone is deliberately narrow: review the generated PokeTrade knowledge against the running behavior and fix only correctness/coverage gaps needed before testing PKC on an external real project.
+Benchmark-driven fixes include:
+
+- correct guard → throw pairing
+- correct compound mutation semantics
+- removal of PO-facing object-initializer/internal-counter noise
+- conservative publication-side-effect classification
+- Angular object-shaped service method linking
+- correct Angular redirect/component route extraction
+- lifecycle-vs-discovery grouping without substring collisions
+- state-mutation fallback when semantic binding is incomplete
+
+Final verification: commit `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d`, CI run `34604840944` — SUCCESS.
+
+### V0.4.3 — External real-project trial — CURRENT
+
+Run the packaged PKC tool against one genuine external repository before widening the product surface.
+
+Review only the generated evidence/knowledge:
+
+```text
+.pkc/product-features.json
+knowledge/index.md
+knowledge/features/
+knowledge/workflows/
+```
+
+Classify real-project findings as wrong claim, missing important behavior, noise, or unsupported stack/pattern. Make only compiler fixes justified by those findings.
 
 ## V0.5 — Azure DevOps evidence
 
 Ingest Epic/Feature/PBI/Sprint/history and link product/delivery evidence through PRs/commits where possible.
+
+Do not start this milestone until V0.4.3 external real-project trial is reviewed.
 
 ## V0.6 — Incremental compilation
 
