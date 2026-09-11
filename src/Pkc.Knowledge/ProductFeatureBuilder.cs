@@ -6,8 +6,9 @@ public sealed partial class ProductFeatureBuilder
 {
     private static readonly string[] StatusTerms =
     [
-        "status", "start", "complete", "cancel", "reopen", "activate", "deactivate", "approve", "reject",
-        "submit", "close", "archive", "restore", "suspend", "resume", "dispatch", "deliver", "ship"
+        "status", "start", "started", "complete", "completed", "cancel", "cancelled", "canceled", "reopen",
+        "activate", "deactivate", "approve", "reject", "submit", "close", "archive", "restore", "suspend",
+        "resume", "dispatch", "dispatched", "deliver", "delivered", "ship", "shipped"
     ];
 
     private static readonly string[] ManagementTerms =
@@ -102,7 +103,7 @@ public sealed partial class ProductFeatureBuilder
     }
 
     private static bool ContainsWord(string value, string term) =>
-        value.Contains(term, StringComparison.OrdinalIgnoreCase);
+        Regex.IsMatch(value, $@"\b{Regex.Escape(term)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static string WorkflowPath(FeatureKnowledge workflow)
     {
