@@ -37,16 +37,16 @@ public sealed class AngularRepositoryScannerTests
             Assert.Contains(document.Facts, fact => fact.Kind == "ui-screen" && fact.Name == "WorkPlaysComponent");
             Assert.Contains(document.Facts, fact => fact.Kind == "ui-route" && fact.Metadata["path"] == "/workplays");
 
-            var action = Assert.Single(document.Facts.Where(fact =>
+            var action = Assert.Single(document.Facts, fact =>
                 fact.Kind == "ui-action" &&
                 fact.Metadata["handler"] == "startWorkPlay" &&
-                fact.Metadata["permission"] == "ManageWorkPlay"));
+                fact.Metadata["permission"] == "ManageWorkPlay");
 
-            var apiCall = Assert.Single(document.Facts.Where(fact =>
+            var apiCall = Assert.Single(document.Facts, fact =>
                 fact.Kind == "ui-api-call" &&
                 fact.Metadata["httpMethod"] == "PATCH" &&
                 fact.Metadata["routeKey"] == "/api/workplays/{param}/start" &&
-                fact.Container == "startWorkPlay"));
+                fact.Container == "startWorkPlay");
 
             Assert.Equal("angular-static", action.Metadata["framework"]);
             Assert.NotEqual(action.Source.Path, apiCall.Source.Path);

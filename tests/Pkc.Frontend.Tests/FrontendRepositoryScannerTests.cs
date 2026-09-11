@@ -23,16 +23,16 @@ public sealed class FrontendRepositoryScannerTests
                 fact.Kind == "ui-route" &&
                 fact.Metadata.TryGetValue("path", out var path) && path == "/workplays/:id");
 
-            var action = Assert.Single(result.Facts.Where(fact =>
+            var action = Assert.Single(result.Facts, fact =>
                 fact.Kind == "ui-action" &&
                 fact.Name == "Complete" &&
-                fact.Metadata.TryGetValue("handler", out var handler) && handler == "handleComplete"));
+                fact.Metadata.TryGetValue("handler", out var handler) && handler == "handleComplete");
 
-            var apiCall = Assert.Single(result.Facts.Where(fact =>
+            var apiCall = Assert.Single(result.Facts, fact =>
                 fact.Kind == "ui-api-call" &&
                 fact.Container == "handleComplete" &&
                 fact.Metadata.TryGetValue("httpMethod", out var method) && method == "POST" &&
-                fact.Metadata.TryGetValue("routeKey", out var routeKey) && routeKey == "/api/workplays/{param}/complete"));
+                fact.Metadata.TryGetValue("routeKey", out var routeKey) && routeKey == "/api/workplays/{param}/complete");
 
             Assert.Equal("ManageWorkPlay", action.Metadata["permission"]);
             Assert.Equal("react-static", action.Metadata["framework"]);
