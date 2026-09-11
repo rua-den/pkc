@@ -13,4 +13,5 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - run: dotnet build src/Pkc.Cli/Pkc.Cli.csproj --configuration Release
       - run: dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --configuration Release
