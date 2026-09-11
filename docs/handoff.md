@@ -70,156 +70,110 @@ New frameworks must be adapters that emit the same canonical facts; do not add f
 
 ## Current verified state
 
-**V0.4.2 PokeTrade benchmark is REOPENED after a full-source review.**
+**V0.4.2 PokeTrade real-system knowledge benchmark is COMPLETE.**
 
-The earlier verification commit `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d` and CI run `34604840944` are green, but they prove a principal smoke/business slice rather than full source-to-knowledge coverage.
+Final acceptance code/contract commit: `b29bb0d6d7c56f0676dd0c9eddbe9faf8c9ddec7`
 
-Still verified:
+Final CI run: `34620984359`
 
-- PKC solution builds/tests pass
-- local `.NET tool` packaging works
-- WorkPlay React regression passes
-- PokeTrade .NET 10 backend builds
-- PokeTrade Angular 22 frontend builds
-- principal live Order → WorkPlay → Delivery smoke passes
-- previously fixed compiler correctness issues remain fixed
+Verified in the same run:
 
-Do **not** tell the user PKC is ready for an external real repository yet.
+- PKC solution build
+- all unit/regression tests
+- local `.NET tool` pack/install and `pkc` execution
+- WorkPlay end-to-end knowledge build
+- PokeTrade .NET 10 backend build
+- PokeTrade Angular 22 frontend build
+- PokeTrade runtime branch acceptance
+- generated product-knowledge contract assertions
 
-## Full PokeTrade source reviewed
+PKC is cleared for **V0.4.3 external real-project trial**.
 
-The mini project was reviewed file-by-file across:
+## PokeTrade benchmark coverage
 
-### Backend
+The mini project was reviewed file-by-file across backend and frontend, then used to harden the compiler.
 
-```text
-Program.cs
-Domain.cs
-PokeTradeStore.cs
-Controllers/CardsController.cs
-Controllers/OrdersController.cs
-Controllers/WorkPlaysController.cs
-Controllers/DeliveriesController.cs
-PokeTrade.Api.csproj
-```
-
-### Frontend
+The acceptance suite locks representative behavior for:
 
 ```text
-src/main.ts
-src/index.html
-src/styles.css
-src/app/app.config.ts
-src/app/app.component.ts
-src/app/app.routes.ts
-src/app/api.service.ts
-src/app/models.ts
-src/app/pages/catalog.component.ts
-src/app/pages/orders.component.ts
-src/app/pages/workplays.component.ts
-src/app/pages/deliveries.component.ts
-package.json
-angular.json
-proxy.conf.json
+stock sufficient → reserve → ReadyForDelivery + Delivery
+stock insufficient → AwaitingStock + PurchaseStock WorkPlay
+PurchaseStock QuantityToBuy = shortage + reorder level
+order validation failures
+WorkPlay Open → InProgress → Completed
+invalid WorkPlay transitions / invalid purchased quantity
+missing WorkPlay → 404
+complete purchase → inventory increase + waiting-order re-evaluation
+waiting orders iterated in ascending order ID
+Delivery Pending → Dispatched → Delivered
+invalid Delivery transitions
+missing Delivery → 404
 ```
 
-## Important full-review findings
+## Compiler gaps fixed during the full benchmark review
 
-### High priority blockers
+The PokeTrade review found and closed these blockers:
 
-1. **Business-important object construction is being suppressed.**
+1. business-important object construction was being suppressed as initializer noise;
+2. computed domain properties such as `Order.Total` were missing;
+3. waiting-order collection/loop semantics were under-described;
+4. Angular UI action evidence lacked surrounding status guards;
+5. two-hop component/helper → service → HTTP read flows were incomplete;
+6. configured authorization policy definitions were missing;
+7. passive page-load API flows were under-linked;
+8. null-coalescing `?? throw` lookup behavior was not represented strongly enough;
+9. controller 400 / 404 / 409 error-response mappings were not captured as knowledge.
 
-`CreatePurchaseWorkPlays` constructs WorkPlays using:
+These are now regression/acceptance-covered in the PokeTrade benchmark.
+
+## Current generated knowledge
+
+Commands:
+
+```bash
+pkc scan <repository-path>
+pkc build <repository-path>
+```
+
+Main outputs:
 
 ```text
-QuantityToBuy = shortage + card.ReorderLevel
-Type = PurchaseStock
-Reason = shortage explanation
+.pkc/facts.json
+.pkc/feature-candidates.json
+.pkc/product-features.json
+knowledge/index.md
+knowledge/features/**/*.md
+knowledge/workflows/**/*.md
 ```
 
-Current PO-facing object-initializer filtering removes these semantics together with actual initializer noise.
+`knowledge/` is portable and intended to be consumable by any capable AI. Current authority remains `code-observed`; it is not business-approved intent.
 
-2. **Computed business properties are not represented.**
+## Known boundaries — not V0.4.2 blockers
 
-`Order.Total` is:
-
-```text
-Lines.Sum(line => line.Quantity * line.UnitPrice)
-```
-
-Current property evidence does not preserve that expression.
-
-3. **Waiting-order fulfillment semantics are incomplete.**
-
-`CompleteWorkPlay` calls `FulfillWaitingOrders`, which scans all `AwaitingStock` orders ordered by ID, reserves any now-fulfillable order, sets it to `ReadyForDelivery`, and creates a delivery. Some transitive mutations survive, but the loop/collection semantics do not.
-
-### Medium priority gaps
-
-4. Angular action evidence records permission guards but not the surrounding status guard. Example:
-
-```text
-ManageWorkPlay + Open       → Start visible
-ManageWorkPlay + InProgress → Complete visible
-ManageDelivery + Pending    → Dispatch visible
-ManageDelivery + Dispatched → Mark delivered visible
-```
-
-5. Two-hop read flows are incomplete. Example:
-
-```text
-Orders Refresh
-  → component reload()
-  → ApiService.getOrders()
-  → GET /api/orders
-```
-
-Current action/API linking is strongest when component handler and service method names match.
-
-6. Authorization implementation semantics are not analyzed. The sample's `ManageWorkPlay` and `ManageDelivery` policies intentionally use always-true assertions, while generated knowledge currently reports only the policy/guard names.
-
-Additional lower-priority observations:
-
-- the backend supports multiple order lines while the current Catalog UI creates one line at a time;
-- WorkPlay completion accepts any positive purchased quantity, while the UI defaults the value to `QuantityToBuy`;
-- API error status mapping (400/409/404) is not currently part of product knowledge;
-- `/health` is a minimal API endpoint and is not part of the MVC endpoint scanner; this is operational rather than core product behavior.
-
-## Runnable benchmark business flow
-
-```text
-Customer places card order
-  ↓
-stock sufficient? ── yes → reserve → ReadyForDelivery → Delivery
-  ↓ no
-AwaitingStock
-  ↓
-auto-create PurchaseStock WorkPlay
-  ↓
-Staff Start → Complete with purchased quantity
-  ↓
-inventory increases + ALL waiting orders are re-evaluated
-  ↓
-fulfillable orders reserve stock → ReadyForDelivery → Delivery
-  ↓
-Dispatch → order Shipped
-  ↓
-Mark delivered → order Delivered
-```
+- frontend static adapters currently cover React/TypeScript and Angular
+- Azure DevOps delivery/history/intent is not compiled yet
+- runtime browser/UI exploration is not implemented yet
+- analyzers intentionally prefer explicit unknowns over guessing
+- minimal API endpoints such as `/health` are outside the current MVC endpoint scanner and are operational rather than core benchmark knowledge
 
 ## Next engineering target — keep narrow
 
-Finish V0.4.2 before any external trial.
+**V0.4.3 external real-project trial.**
 
-Order of work:
+Do not add speculative capability first. Run the current compiler against a real repository and let real missing/wrong knowledge drive the next fixes.
 
-1. preserve business-relevant object construction while still filtering implementation noise;
-2. extract computed property/domain expressions such as `Order.Total`;
-3. add deterministic collection/loop evidence needed for `FulfillWaitingOrders`;
-4. capture Angular status predicates around actions;
-5. improve two-hop component → service → HTTP linking for real read/refresh patterns;
-6. expand PokeTrade CI to cover representative branches and compare generated knowledge;
-7. review all generated PokeTrade Markdown again.
+Recommended gate for V0.4.3:
 
-Only after that should V0.4.3 external real-project trial begin.
+```text
+real project builds/runs normally
+    ↓
+pkc build <real-project>
+    ↓
+generated knowledge reviewed against source + known product behavior
+    ↓
+classify failures as parser / linker / grouping / synthesis / renderer gaps
+    ↓
+fix only proven gaps + add regression fixture
+```
 
-Do **not** start V0.5 Azure DevOps yet.
+Do not start V0.5 Azure DevOps or incremental architecture work until the external trial is understood.
