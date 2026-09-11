@@ -17,7 +17,7 @@ public sealed class FrontendRepositoryScannerTests
 
             var result = await new FrontendScanner().ScanAsync(root);
 
-            Assert.Equal("0.4.1-frontend", result.SchemaVersion);
+            Assert.Equal("0.4.3-frontend", result.SchemaVersion);
             Assert.Contains(result.Facts, fact => fact.Kind == "ui-screen" && fact.Name == "WorkPlayDetailPage");
             Assert.Contains(result.Facts, fact =>
                 fact.Kind == "ui-route" &&
@@ -36,6 +36,8 @@ public sealed class FrontendRepositoryScannerTests
 
             Assert.Equal("ManageWorkPlay", action.Metadata["permission"]);
             Assert.Equal("react-static", action.Metadata["framework"]);
+            Assert.Equal("regex-fallback", action.Metadata["analysisMode"]);
+            Assert.Equal("low", action.Metadata["analysisConfidence"]);
             Assert.Contains(result.Relations, relation =>
                 relation.FromFactId == action.Id &&
                 relation.Kind == "triggers-api" &&
