@@ -25,7 +25,7 @@ internal static class FrontendRelationLinker
 
         foreach (var action in document.Facts.Where(fact => fact.Kind == "ui-action"))
         {
-            var candidates = ResolveApiCalls(action, apiCallsByHandler)
+            var candidates = ResolveApiCalls(action, "handler", "calledMethods", apiCallsByHandler)
                 .Where(apiCall => SameFramework(action, apiCall))
                 .DistinctBy(apiCall => apiCall.Id, StringComparer.Ordinal)
                 .ToArray();
@@ -35,15 +35,34 @@ internal static class FrontendRelationLinker
                 continue;
             }
 
-            var relation = new EvidenceRelation(
-                action.Id,
-                "triggers-api",
-                candidates[0].Id,
-                action.Source);
+            AddRelation(
+                new EvidenceRelation(action.Id, "triggers-api", candidates[0].Id, action.Source),
+                relations,
+                seen);
+        }
 
-            if (seen.Add(RelationKey(relation)))
+        foreach (var screen in document.Facts.Where(fact => fact.Kind == "ui-screen"))
+        {
+            if (!screen.Metadata.TryGetValue("loadMethods", out var loadMethods) ||
+                string.IsNullOrWhiteSpace(loadMethods))
             {
-                relations.Add(relation);
+                continue;
+            }
+
+            foreach (var methodName in SplitMethods(loadMethods))
+            {
+                if (!apiCallsByHandler.TryGetValue(methodName, out var apiCalls))
+                {
+                    continue;
+                }
+
+                foreach (var apiCall in apiCalls.Where(apiCall => SameFramework(screen, apiCall)))
+                {
+                    AddRelation(
+                        new EvidenceRelation(screen.Id, "loads-api", apiCall.Id, screen.Source),
+                        relations,
+                        seen);
+                }
             }
         }
 
@@ -59,9 +78,11 @@ internal static class FrontendRelationLinker
 
     private static IEnumerable<EvidenceFact> ResolveApiCalls(
         EvidenceFact action,
+        string directKey,
+        string calledMethodsKey,
         IReadOnlyDictionary<string, EvidenceFact[]> apiCallsByHandler)
     {
-        if (action.Metadata.TryGetValue("handler", out var handler) &&
+        if (action.Metadata.TryGetValue(directKey, out var handler) &&
             !string.IsNullOrWhiteSpace(handler) &&
             apiCallsByHandler.TryGetValue(handler, out var direct))
         {
@@ -71,14 +92,12 @@ internal static class FrontendRelationLinker
             }
         }
 
-        if (!action.Metadata.TryGetValue("calledMethods", out var calledMethods))
+        if (!action.Metadata.TryGetValue(calledMethodsKey, out var calledMethods))
         {
             yield break;
         }
 
-        foreach (var calledMethod in calledMethods.Split(
-                     ',',
-                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var calledMethod in SplitMethods(calledMethods))
         {
             if (!apiCallsByHandler.TryGetValue(calledMethod, out var nested))
             {
@@ -92,6 +111,9 @@ internal static class FrontendRelationLinker
         }
     }
 
+    private static IEnumerable<string> SplitMethods(string value) =>
+        value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private static bool SameFramework(EvidenceFact left, EvidenceFact right)
     {
         var hasLeft = left.Metadata.TryGetValue("framework", out var leftFramework);
@@ -100,6 +122,17 @@ internal static class FrontendRelationLinker
         return !hasLeft ||
                !hasRight ||
                string.Equals(leftFramework, rightFramework, StringComparison.Ordinal);
+    }
+
+    private static void AddRelation(
+        EvidenceRelation relation,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> seen)
+    {
+        if (seen.Add(RelationKey(relation)))
+        {
+            relations.Add(relation);
+        }
     }
 
     private static string RelationKey(EvidenceRelation relation) =>

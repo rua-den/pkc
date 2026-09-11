@@ -121,10 +121,21 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         ICollection<EvidenceRelation> relations)
     {
         var screenFacts = new List<EvidenceFact>();
+        var loadMethods = FindTransitiveCalledMethods(text, "ngOnInit", maxDepth: 3);
 
         foreach (Match match in ScreenRegex.Matches(text))
         {
             var name = match.Groups["name"].Value;
+            var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["framework"] = "angular-static"
+            };
+
+            if (loadMethods.Count > 0)
+            {
+                metadata["loadMethods"] = string.Join(", ", loadMethods);
+            }
+
             var fact = CreateFact(
                 relativePath,
                 text,
@@ -132,10 +143,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 "ui-screen",
                 name,
                 null,
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["framework"] = "angular-static"
-                });
+                metadata);
 
             facts.Add(fact);
             screenFacts.Add(fact);
@@ -185,7 +193,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 var handler = click.Groups["handler"].Value;
                 metadata["handler"] = handler;
 
-                var calledMethods = FindCalledMethods(text, handler);
+                var calledMethods = FindTransitiveCalledMethods(text, handler, maxDepth: 3);
                 if (calledMethods.Count > 0)
                 {
                     metadata["calledMethods"] = string.Join(", ", calledMethods);
@@ -252,21 +260,43 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         }
     }
 
-    private static IReadOnlyList<string> FindCalledMethods(string text, string handler)
+    private static IReadOnlyList<string> FindTransitiveCalledMethods(
+        string text,
+        string rootMethod,
+        int maxDepth)
     {
-        var body = FindMethodBody(text, handler);
-        if (string.IsNullOrWhiteSpace(body))
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal) { rootMethod };
+        var queue = new Queue<(string Name, int Depth)>();
+        queue.Enqueue((rootMethod, 0));
+
+        while (queue.Count > 0)
         {
-            return [];
+            var (methodName, depth) = queue.Dequeue();
+            var body = FindMethodBody(text, methodName);
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                continue;
+            }
+
+            foreach (var called in CalledMethodRegex.Matches(body)
+                         .Select(match => match.Groups["name"].Value)
+                         .Where(name => !ReservedMethodNames.Contains(name)))
+            {
+                if (!seen.Add(called))
+                {
+                    continue;
+                }
+
+                result.Add(called);
+                if (depth + 1 < maxDepth && FindMethodBody(text, called) is not null)
+                {
+                    queue.Enqueue((called, depth + 1));
+                }
+            }
         }
 
-        return CalledMethodRegex.Matches(body)
-            .Select(match => match.Groups["name"].Value)
-            .Where(name =>
-                !string.Equals(name, handler, StringComparison.Ordinal) &&
-                !ReservedMethodNames.Contains(name))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+        return result;
     }
 
     private static string? FindMethodBody(string text, string methodName)

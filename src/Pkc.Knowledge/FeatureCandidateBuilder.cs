@@ -13,7 +13,8 @@ public sealed partial class FeatureCandidateBuilder
         "throws",
         "mutates",
         "constructs",
-        "contains-loop"
+        "contains-loop",
+        "handles-exception"
     };
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
@@ -230,77 +231,114 @@ public sealed partial class FeatureCandidateBuilder
                 includedRelations,
                 seenRelations);
 
-            var actionRelations = document.Relations
-                .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
-                .ToArray();
-
-            var actions = actionRelations
-                .Select(relation => document.Facts.FirstOrDefault(fact => fact.Id == relation.FromFactId))
-                .Where(fact => fact?.Kind == "ui-action")
-                .Cast<EvidenceFact>()
-                .ToArray();
-
-            if (actions.Length == 0)
-            {
-                var sameFileFacts = document.Facts.Where(fact =>
-                    string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
-
-                actions = sameFileFacts
-                    .Where(fact => fact.Kind == "ui-action")
-                    .Where(fact =>
-                        !fact.Metadata.TryGetValue("handler", out var handler) ||
-                        string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
-                    .ToArray();
-            }
-
-            foreach (var action in actions)
-            {
-                includedFacts[action.Id] = action;
-                AddRelation(
-                    new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source),
-                    includedRelations,
-                    seenRelations);
-
-                var screens = FindScreensForAction(document, action).ToArray();
-                foreach (var screen in screens)
-                {
-                    includedFacts[screen.Id] = screen;
-
-                    foreach (var route in document.Facts.Where(fact =>
-                                 fact.Kind == "ui-route" &&
-                                 fact.Metadata.TryGetValue("component", out var component) &&
-                                 string.Equals(component, screen.Name, StringComparison.Ordinal)))
-                    {
-                        includedFacts[route.Id] = route;
-                        AddRelation(
-                            new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source),
-                            includedRelations,
-                            seenRelations);
-                    }
-                }
-            }
+            AddActionEvidence(apiCall, document, includedFacts, includedRelations, seenRelations);
+            AddLoadEvidence(apiCall, document, includedFacts, includedRelations, seenRelations);
         }
 
         return true;
     }
 
-    private static IEnumerable<EvidenceFact> FindScreensForAction(FactDocument document, EvidenceFact action)
+    private static void AddActionEvidence(
+        EvidenceFact apiCall,
+        FactDocument document,
+        IDictionary<string, EvidenceFact> includedFacts,
+        ICollection<EvidenceRelation> includedRelations,
+        ISet<string> seenRelations)
     {
-        if (!string.IsNullOrWhiteSpace(action.Container))
-        {
-            var byName = document.Facts.Where(fact =>
-                fact.Kind == "ui-screen" &&
-                string.Equals(fact.Name, action.Container, StringComparison.Ordinal)).ToArray();
+        var actionRelations = document.Relations
+            .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
+            .ToArray();
 
-            if (byName.Length > 0)
-            {
-                return byName;
-            }
+        var actions = actionRelations
+            .Select(relation => document.Facts.FirstOrDefault(fact => fact.Id == relation.FromFactId))
+            .Where(fact => fact?.Kind == "ui-action")
+            .Cast<EvidenceFact>()
+            .ToArray();
+
+        if (actions.Length == 0)
+        {
+            var sameFileFacts = document.Facts.Where(fact =>
+                string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
+
+            actions = sameFileFacts
+                .Where(fact => fact.Kind == "ui-action")
+                .Where(fact =>
+                    !fact.Metadata.TryGetValue("handler", out var handler) ||
+                    string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+                .ToArray();
         }
 
-        return document.Facts.Where(fact =>
-            fact.Kind == "ui-screen" &&
-            string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
+        foreach (var action in actions)
+        {
+            includedFacts[action.Id] = action;
+            AddRelation(
+                new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source),
+                includedRelations,
+                seenRelations);
+
+            AddScreenAndRoutes(document, action.Container, action.Source.Path, includedFacts, includedRelations, seenRelations);
+        }
+    }
+
+    private static void AddLoadEvidence(
+        EvidenceFact apiCall,
+        FactDocument document,
+        IDictionary<string, EvidenceFact> includedFacts,
+        ICollection<EvidenceRelation> includedRelations,
+        ISet<string> seenRelations)
+    {
+        var screenRelations = document.Relations
+            .Where(relation => relation.Kind == "loads-api" && relation.Target == apiCall.Id)
+            .ToArray();
+
+        foreach (var relation in screenRelations)
+        {
+            var screen = document.Facts.FirstOrDefault(fact =>
+                fact.Id == relation.FromFactId && fact.Kind == "ui-screen");
+
+            if (screen is null)
+            {
+                continue;
+            }
+
+            includedFacts[screen.Id] = screen;
+            AddRelation(relation, includedRelations, seenRelations);
+            AddScreenAndRoutes(document, screen.Name, screen.Source.Path, includedFacts, includedRelations, seenRelations);
+        }
+    }
+
+    private static void AddScreenAndRoutes(
+        FactDocument document,
+        string? screenName,
+        string sourcePath,
+        IDictionary<string, EvidenceFact> includedFacts,
+        ICollection<EvidenceRelation> includedRelations,
+        ISet<string> seenRelations)
+    {
+        var screens = !string.IsNullOrWhiteSpace(screenName)
+            ? document.Facts.Where(fact =>
+                fact.Kind == "ui-screen" &&
+                string.Equals(fact.Name, screenName, StringComparison.Ordinal)).ToArray()
+            : document.Facts.Where(fact =>
+                fact.Kind == "ui-screen" &&
+                string.Equals(fact.Source.Path, sourcePath, StringComparison.Ordinal)).ToArray();
+
+        foreach (var screen in screens)
+        {
+            includedFacts[screen.Id] = screen;
+
+            foreach (var route in document.Facts.Where(fact =>
+                         fact.Kind == "ui-route" &&
+                         fact.Metadata.TryGetValue("component", out var component) &&
+                         string.Equals(component, screen.Name, StringComparison.Ordinal)))
+            {
+                includedFacts[route.Id] = route;
+                AddRelation(
+                    new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source),
+                    includedRelations,
+                    seenRelations);
+            }
+        }
     }
 
     private static string NormalizeRouteKey(string value)

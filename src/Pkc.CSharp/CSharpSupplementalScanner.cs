@@ -63,8 +63,7 @@ internal sealed class CSharpSupplementalScanner
             var expression = property.ExpressionBody?.Expression
                 ?? property.AccessorList?.Accessors
                     .FirstOrDefault(accessor =>
-                        accessor.IsKind(SyntaxKind.GetAccessorDeclaration) &&
-                        accessor.ExpressionBody is not null)
+                        accessor.IsKind(SyntaxKind.GetAccessorDeclaration) && accessor.ExpressionBody is not null)
                     ?.ExpressionBody?.Expression;
 
             if (expression is null)
@@ -72,19 +71,17 @@ internal sealed class CSharpSupplementalScanner
                 continue;
             }
 
-            var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["type"] = property.Type.ToString(),
-                ["expression"] = expression.ToString()
-            };
-
             facts.Add(CreateFact(
                 property,
                 relativePath,
                 "computed-property",
                 property.Identifier.ValueText,
                 GetContainingType(property),
-                metadata));
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["type"] = property.Type.ToString(),
+                    ["expression"] = expression.ToString()
+                }));
         }
     }
 
@@ -103,21 +100,37 @@ internal sealed class CSharpSupplementalScanner
                 continue;
             }
 
+            foreach (var coalesce in method.DescendantNodes().OfType<BinaryExpressionSyntax>()
+                         .Where(expression => expression.IsKind(SyntaxKind.CoalesceExpression)))
+            {
+                if (coalesce.Right is not ThrowExpressionSyntax)
+                {
+                    continue;
+                }
+
+                AddCondition(
+                    owner,
+                    coalesce,
+                    relativePath,
+                    $"{coalesce.Left} == null",
+                    "null-coalescing-throw",
+                    facts,
+                    relations);
+            }
+
             foreach (var loop in method.DescendantNodes().OfType<ForEachStatementSyntax>())
             {
-                var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["iterator"] = loop.Identifier.ValueText,
-                    ["collection"] = loop.Expression.ToString()
-                };
-
                 var loopFact = CreateFact(
                     loop,
                     relativePath,
                     "loop",
                     "foreach",
                     owner.Name,
-                    metadata);
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["iterator"] = loop.Identifier.ValueText,
+                        ["collection"] = loop.Expression.ToString()
+                    });
 
                 facts.Add(loopFact);
                 relations.Add(new EvidenceRelation(owner.Id, "contains-loop", loopFact.Id, loopFact.Source));
@@ -133,16 +146,9 @@ internal sealed class CSharpSupplementalScanner
                 var invocation = creation.Ancestors()
                     .OfType<InvocationExpressionSyntax>()
                     .FirstOrDefault(candidate =>
-                        candidate.ArgumentList.Arguments.Any(argument =>
-                            argument.Expression.Span.Contains(creation.Span)));
+                        candidate.ArgumentList.Arguments.Any(argument => argument.Expression.Span.Contains(creation.Span)));
 
-                if (invocation is null)
-                {
-                    continue;
-                }
-
-                var operationName = GetInvocationName(invocation.Expression);
-                if (!CollectionMutationMethods.Contains(operationName))
+                if (invocation is null || !CollectionMutationMethods.Contains(GetInvocationName(invocation.Expression)))
                 {
                     continue;
                 }
@@ -150,11 +156,7 @@ internal sealed class CSharpSupplementalScanner
                 var assignments = creation.Initializer.Expressions
                     .OfType<AssignmentExpressionSyntax>()
                     .Where(assignment => assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
-                    .Select(assignment => new
-                    {
-                        Target = assignment.Left.ToString(),
-                        Value = assignment.Right.ToString()
-                    })
+                    .Select(assignment => new { Target = assignment.Left.ToString(), Value = assignment.Right.ToString() })
                     .Where(item =>
                         !(string.Equals(item.Target, "Id", StringComparison.Ordinal) &&
                           item.Value.StartsWith("_next", StringComparison.Ordinal)))
@@ -166,25 +168,72 @@ internal sealed class CSharpSupplementalScanner
                     continue;
                 }
 
-                var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["type"] = creation.Type.ToString(),
-                    ["operation"] = invocation.Expression.ToString(),
-                    ["assignments"] = string.Join("; ", assignments)
-                };
-
                 var constructionFact = CreateFact(
                     creation,
                     relativePath,
                     "object-construction",
                     creation.Type.ToString(),
                     owner.Name,
-                    metadata);
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["type"] = creation.Type.ToString(),
+                        ["operation"] = invocation.Expression.ToString(),
+                        ["assignments"] = string.Join("; ", assignments)
+                    });
 
                 facts.Add(constructionFact);
                 relations.Add(new EvidenceRelation(owner.Id, "constructs", constructionFact.Id, constructionFact.Source));
             }
+
+            foreach (var catchClause in method.DescendantNodes().OfType<CatchClauseSyntax>())
+            {
+                var returnStatement = catchClause.Block.DescendantNodes().OfType<ReturnStatementSyntax>().FirstOrDefault();
+                if (returnStatement?.Expression is null)
+                {
+                    continue;
+                }
+
+                var caughtType = catchClause.Declaration?.Type.ToString() ?? "exception";
+                var filterText = catchClause.Filter?.FilterExpression is { } filter
+                    ? $" when {filter}"
+                    : string.Empty;
+                var response = returnStatement.Expression.ToString();
+
+                AddCondition(
+                    owner,
+                    catchClause,
+                    relativePath,
+                    $"catch {caughtType}{filterText} => return {response}",
+                    "exception-response",
+                    facts,
+                    relations);
+            }
         }
+    }
+
+    private static void AddCondition(
+        EvidenceFact owner,
+        SyntaxNode node,
+        string relativePath,
+        string expression,
+        string sourceKind,
+        ICollection<EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations)
+    {
+        var fact = CreateFact(
+            node,
+            relativePath,
+            "condition",
+            expression,
+            owner.Name,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["expression"] = expression,
+                ["sourceKind"] = sourceKind
+            });
+
+        facts.Add(fact);
+        relations.Add(new EvidenceRelation(owner.Id, "contains-condition", fact.Id, fact.Source));
     }
 
     private static void ExtractAuthorizationPolicies(
@@ -194,12 +243,8 @@ internal sealed class CSharpSupplementalScanner
     {
         foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
-            if (!string.Equals(GetInvocationName(invocation.Expression), "AddPolicy", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (invocation.ArgumentList.Arguments.Count < 2)
+            if (!string.Equals(GetInvocationName(invocation.Expression), "AddPolicy", StringComparison.Ordinal) ||
+                invocation.ArgumentList.Arguments.Count < 2)
             {
                 continue;
             }
@@ -212,21 +257,17 @@ internal sealed class CSharpSupplementalScanner
             }
 
             var policyName = literal.Token.ValueText;
-            var definition = invocation.ArgumentList.Arguments[1].Expression.ToString();
-
-            var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["policyName"] = policyName,
-                ["definition"] = definition
-            };
-
             facts.Add(CreateFact(
                 invocation,
                 relativePath,
                 "authorization-policy",
                 policyName,
                 null,
-                metadata));
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["policyName"] = policyName,
+                    ["definition"] = invocation.ArgumentList.Arguments[1].Expression.ToString()
+                }));
         }
     }
 
