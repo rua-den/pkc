@@ -215,15 +215,25 @@ function location(sf, node) {
   const end = sf.getLineAndCharacterOfPosition(node.getEnd());
   return { path: relative(sf.fileName), startLine: start.line + 1, endLine: end.line + 1 };
 }
-function baseMetadata() {
-  return { framework: 'angular-static', analysisMode: 'typescript-ast', analysisConfidence: 'high' };
+function baseMetadata(kind) {
+  const metadata = {
+    framework: 'angular-static',
+    analysisMode: 'typescript-ast-syntactic',
+    analysisConfidence: kind === 'ui-api-call' ? 'medium' : 'high',
+    typescriptSemanticContext: 'syntax-only-no-type-checker'
+  };
+  if (kind === 'ui-api-call') {
+    metadata.analysisCaveat = 'http-method-name-and-url-shape-detected-without-receiver-type-checking';
+    metadata.httpReceiverResolution = 'syntactic-unverified';
+  }
+  return metadata;
 }
 function addFact(sf, node, kind, name, container, metadata = {}) {
   const source = location(sf, node);
   const fact = {
     id: `tsast:${source.path}:${source.startLine}:${kind}:${name}`,
     kind, name, container: container || null, source,
-    metadata: Object.assign(baseMetadata(), metadata)
+    metadata: Object.assign(baseMetadata(kind), metadata)
   };
   facts.push(fact);
   return fact;
