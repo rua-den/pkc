@@ -6,8 +6,8 @@ public sealed partial class ProductFeatureBuilder
 {
     private static readonly string[] StatusTerms =
     [
-        "status", "complete", "cancel", "reopen", "activate", "deactivate", "approve", "reject",
-        "submit", "close", "archive", "restore", "suspend", "resume"
+        "status", "start", "complete", "cancel", "reopen", "activate", "deactivate", "approve", "reject",
+        "submit", "close", "archive", "restore", "suspend", "resume", "dispatch", "deliver", "ship"
     ];
 
     private static readonly string[] ManagementTerms =
