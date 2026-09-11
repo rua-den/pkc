@@ -2,11 +2,11 @@
 
 ## V0.1 — C# evidence compiler — COMPLETE
 
-Deterministic Roslyn scanner producing `.pkc/facts.json` with symbols, endpoints, routes, permissions, semantic calls and source locations.
+Deterministic Roslyn scanner producing `.pkc/facts.json` with symbols, endpoints, routes, permissions, call evidence and source locations.
 
 ### V0.1.1 — Behavior evidence — COMPLETE
 
-Added conditions/guards, throws, state-mutation candidates, semantic call targets, combined routes and publication candidates.
+Added conditions/guards, throws, state-mutation candidates, call targets, combined routes and publication candidates.
 
 ### V0.1.2 — Workflow candidate grouping — COMPLETE
 
@@ -31,33 +31,62 @@ Actions are rendered as workflow Markdown and grouped into product-level feature
 - React and Angular adapters emit the same canonical `ui-*` facts
 - generic `UI action → API call` relation linker
 - CLI has no Angular-vs-React branch
-- cross-file Angular component → service API pattern verified
 
-MVC/Razor, Blazor and Vue remain future adapters; they are not part of this milestone.
+### V0.4.2 — PokeTrade real-system benchmark — COMPLETE
 
-### V0.4.2 — PokeTrade real-system benchmark — REOPENED
+The runnable `.NET 10 + Angular 22` PokeTrade application is the behavioral acceptance benchmark.
 
-The `.NET 10 + Angular 22` PokeTrade application builds, runs and has a green principal Order → WorkPlay → Delivery smoke path. PKC also compiles the same source tree and prior benchmark work fixed several real correctness bugs.
+Completed hardening includes:
 
-However, a later file-by-file review of the complete sample source showed that the benchmark had been declared complete too early.
+- full source review across backend and frontend;
+- branch-level live API acceptance beyond the happy path;
+- computed domain properties;
+- business object construction;
+- collection/loop semantics;
+- permission + status visibility guards;
+- multi-hop frontend read/action linkage;
+- observed policy definitions;
+- 400 / 404 / 409 response semantics;
+- generated knowledge assertions against the running system.
 
-Remaining benchmark blockers:
+### V0.4.3 — Analyzer fidelity hardening — COMPLETE
 
-- business-important object construction such as `WorkPlay.QuantityToBuy = shortage + ReorderLevel` is filtered too aggressively;
-- computed domain expressions such as `Order.Total = Sum(quantity * unit price)` are not carried into knowledge;
-- collection/loop semantics in `FulfillWaitingOrders` are under-described;
-- Angular status-based button visibility is not captured as UI evidence;
-- two-hop component → service → HTTP read/refresh chains are incomplete;
-- authorization policy implementation semantics are not analyzed;
-- CI needs representative branch coverage, not only the principal happy path.
+External review identified that previous analyzer internals were weaker than the architecture wording could imply. This milestone makes fidelity explicit and strengthens the analyzer layer without changing the knowledge architecture.
 
-V0.4.2 closes only after source, live behavior and generated Markdown have been reviewed together for the whole mini application at an appropriate business-behavior level.
+Completed:
 
-### V0.4.3 — External real-project trial — BLOCKED
+- C# target-project semantic enrichment through `MSBuildWorkspace`;
+- semantic framework resolution verified for ASP.NET Core controller base types and HTTP attributes;
+- explicit `loose-roslyn-fallback` when target-project semantic context is unavailable;
+- Angular TypeScript AST primary path for components/routes/method structure/HTTP calls;
+- explicit `angular-template-regex-fallback` for template actions/visibility;
+- explicit React `regex-fallback` until a React AST adapter is implemented;
+- `analysisMode` / `analysisConfidence` provenance on facts;
+- generated knowledge warns when fallback evidence contributes;
+- PokeTrade deliberately reformatted so important route/HTTP facts defeat the old Angular regex-only patterns while the same business knowledge still passes.
 
-Do not run the external real-project trial as the next engineering step until V0.4.2 is clean again.
+Acceptance:
 
-When unblocked, run the packaged PKC tool against one genuine external repository and classify findings as wrong claim, missing important behavior, noise, or unsupported stack/pattern.
+- commit `8f69d6c931e917ce7538b9a991a05211e624cb45`
+- GitHub Actions run `34627169975` (#85), both jobs green
+- packaged `0.4.3-preview.1` tool verifies project-semantic WorkPlay scanning
+- PokeTrade verifies `project-semantic`, `typescript-ast`, semantic ASP.NET Core symbols, explicit template fallback and the existing product-knowledge contract
+
+### V0.4.4 — External real-project trial — NEXT
+
+Run the packaged V0.4.3 tool against one genuine external repository.
+
+Classify findings as:
+
+```text
+wrong claim
+missing important behavior
+noise
+unsupported stack/pattern
+unexpected fallback
+```
+
+Fix only proven gaps and add regression fixtures. Passing WorkPlay/PokeTrade proves benchmark behavior; it is not treated as universal real-world robustness.
 
 ## V0.5 — Azure DevOps evidence
 
