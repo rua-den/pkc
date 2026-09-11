@@ -15,6 +15,14 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet build PKC.sln --configuration Release
       - run: dotnet test PKC.sln --configuration Release --no-build
+      - name: Pack and install PKC as a local .NET tool
+        run: |
+          rm -rf artifacts/tool /tmp/pkc-tool
+          dotnet pack src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -o artifacts/tool
+          dotnet tool install --tool-path /tmp/pkc-tool --add-source artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
+          /tmp/pkc-tool/pkc scan samples/WorkPlaySample
+          test -s samples/WorkPlaySample/.pkc/facts.json
+          test -s samples/WorkPlaySample/.pkc/feature-candidates.json
       - name: End-to-end build WorkPlay knowledge
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build samples/WorkPlaySample
