@@ -40,7 +40,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex MethodRegex = new(
-        @"(?m)^\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*\([^;\r\n)]*\)\s*(?::\s*[^{\r\n]+)?\{",
+        @"(?m)^\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*\([^\r\n)]*\)\s*(?::\s*[^{\r\n]+)?\{",
         RegexOptions.Compiled);
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
