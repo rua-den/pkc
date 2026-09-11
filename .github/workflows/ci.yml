@@ -72,21 +72,39 @@ jobs:
           curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/dispatch | grep -q 'Dispatched'
           curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/delivered | grep -q 'Delivered'
           curl -fsS http://localhost:5080/api/orders | grep -q 'Delivered'
-      - name: Compile PokeTrade product knowledge with PKC
+      - name: Compile and verify PokeTrade product knowledge with PKC
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release -- build samples/PokeTradeSystem
           test -s samples/PokeTradeSystem/.pkc/facts.json
           test -s samples/PokeTradeSystem/.pkc/product-features.json
           test -s samples/PokeTradeSystem/knowledge/index.md
+
+          CREATE_ORDER=samples/PokeTradeSystem/knowledge/workflows/orders/createorder.md
+          COMPLETE_WORKPLAY=samples/PokeTradeSystem/knowledge/workflows/workplays/completeworkplay.md
+          DISPATCH_DELIVERY=samples/PokeTradeSystem/knowledge/workflows/deliveries/dispatchdelivery.md
+          INDEX=samples/PokeTradeSystem/knowledge/index.md
+
           grep -q 'angular-static' samples/PokeTradeSystem/.pkc/facts.json
           grep -q 'ManageWorkPlay' samples/PokeTradeSystem/.pkc/feature-candidates.json
-          grep -R -q 'Click `Start`' samples/PokeTradeSystem/knowledge/workflows
-          grep -R -q 'Click `Complete`' samples/PokeTradeSystem/knowledge/workflows
-          grep -R -q 'Click `Dispatch`' samples/PokeTradeSystem/knowledge/workflows
-          grep -R -q 'AwaitingStock' samples/PokeTradeSystem/knowledge || true
-          echo '=== POKETRADE KNOWLEDGE BEGIN ==='
-          find samples/PokeTradeSystem/knowledge -type f -name '*.md' | sort | while read -r file; do
-            echo "===== $file ====="
-            cat "$file"
-          done
-          echo '=== POKETRADE KNOWLEDGE END ==='
+
+          grep -Fq 'Open route `/catalog`.' "$CREATE_ORDER"
+          grep -Fq 'Click `Place order` on `CatalogComponent`.' "$CREATE_ORDER"
+          grep -Fq 'Customer name is required.' "$CREATE_ORDER"
+          grep -Fq 'Delivery address is required.' "$CREATE_ORDER"
+          grep -Fq 'OrderStatus.AwaitingStock' "$CREATE_ORDER"
+          grep -Fq 'Applies `-=` to `FindCard(line.CardId).Stock` with `line.Quantity`.' "$CREATE_ORDER"
+          ! grep -Fq 'Sets `Id`' "$CREATE_ORDER"
+
+          grep -Fq 'Click `Complete` on `WorkPlaysComponent`' "$COMPLETE_WORKPLAY"
+          grep -Fq 'Only an InProgress WorkPlay can be completed.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'Purchased quantity must be greater than zero.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'Applies `+=` to `card.Stock` with `request.PurchasedQuantity`.' "$COMPLETE_WORKPLAY"
+
+          grep -Fq 'Click `Dispatch` on `DeliveriesComponent`' "$DISPATCH_DELIVERY"
+          grep -Fq 'Only a Pending delivery can be dispatched.' "$DISPATCH_DELIVERY"
+          grep -Fq 'Order must be ReadyForDelivery before dispatch.' "$DISPATCH_DELIVERY"
+          ! grep -Fq 'publication-like method `PokeTrade.Api.PokeTradeStore.DispatchDelivery`' "$DISPATCH_DELIVERY"
+
+          grep -Fq 'Deliveries Discovery' "$INDEX"
+          grep -Fq 'Deliveries Status Management' "$INDEX"
+          grep -Fq 'WorkPlays Status Management' "$INDEX"
