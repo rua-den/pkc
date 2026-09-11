@@ -9,7 +9,11 @@ export class ApiService {
   getCards() { return this.http.get<PokemonCard[]>('/api/cards'); }
   getOrders() { return this.http.get<Order[]>('/api/orders'); }
   createOrder(request: { customerName: string; deliveryAddress: string; lines: { cardId: number; quantity: number }[] }) {
-    return this.http.post<Order>('/api/orders', request);
+    return this.http
+      .post<Order>(
+        '/api/orders',
+        request
+      );
   }
   getWorkPlays() { return this.http.get<WorkPlay[]>('/api/workplays'); }
   startWorkPlay(id: number) { return this.http.patch<WorkPlay>(`/api/workplays/${id}/start`, {}); }
