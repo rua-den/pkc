@@ -4,62 +4,83 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.4.2 PokeTrade real-system knowledge benchmark — COMPLETE**
+**V0.4.2 PokeTrade real-system knowledge benchmark — REOPENED**
 
-Final verification commit: `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d`
-GitHub Actions run: `34604840944` — SUCCESS
+The previous verification commit `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d` and GitHub Actions run `34604840944` are still green, but they verified a smoke/business slice, not a full source-to-knowledge review.
 
-Verified end to end:
+A subsequent file-by-file review of the entire PokeTrade backend and frontend source found additional knowledge-coverage gaps. Therefore PKC is **not yet cleared for the external real-project trial**.
 
-- PKC solution builds and all tests pass
+## What is still verified
+
+- PKC solution builds and all current tests pass
 - `RuaDen.Pkc.Tool` packs, installs from a local `.nupkg`, and runs as `pkc`
 - WorkPlay React regression remains green
 - PokeTrade .NET 10 backend builds
 - PokeTrade Angular 22 frontend builds
-- live Order → WorkPlay → Delivery business smoke passes
-- PKC compiles the same PokeTrade source into portable Markdown
-- CI verifies the generated Markdown against the live business behavior
+- live happy-path Order → WorkPlay → Delivery smoke passes
+- generated Markdown correctly covers the already-asserted validations, permissions, state mutations and UI actions
+- previously fixed correctness bugs remain fixed: guard/throw pairing, compound assignments, false publication classification, redirect route parsing, lifecycle grouping, Angular object-shaped service signatures, and syntactic member-mutation fallback
 
-## Correctness gaps fixed by the PokeTrade benchmark
+## Full-source review findings that block external trial
 
-The benchmark exposed real compiler/knowledge bugs rather than sample-specific issues. V0.4.2 fixed them in shared PKC code:
+### High priority
 
-- guard conditions are paired only with their own contained throw instead of every throw in the method
-- compound mutations preserve semantics (`+=`, `-=`, increment/decrement) instead of being rendered as simple assignment
-- object-initializer and internal `_next...` counter noise is removed from PO-facing state changes
-- `DispatchDelivery` is no longer presented as a message-publication side effect
-- Angular service methods with object-shaped parameters can link component actions to HTTP calls
-- Angular redirect routes no longer swallow the following component route (`/catalog` is preserved)
-- lifecycle actions such as Start/Complete/Dispatch/Delivered group into Status Management while reads such as Get Deliveries stay Discovery
-- member assignments remain available as state evidence when semantic binding is incomplete, allowing transitive transitions such as `order.Status = ReadyForDelivery` to survive analysis
+1. **Business-important object construction is over-filtered as noise.**
+   `CreatePurchaseWorkPlays` creates a `PurchaseStock` WorkPlay with:
 
-Final CI explicitly verifies, among other things:
+   ```text
+   QuantityToBuy = shortage + card.ReorderLevel
+   Type = PurchaseStock
+   Reason = Order shortage explanation
+   ```
+
+   The current PO-facing mutation filter suppresses object-initializer assignments broadly, so these business semantics are not represented strongly enough in generated knowledge.
+
+2. **Computed domain rule is missing.**
+   `Order.Total` is defined as:
+
+   ```text
+   Sum(line.Quantity * line.UnitPrice)
+   ```
+
+   Current C# property evidence records the property/type but not expression-bodied computed semantics, so the product rule is absent from knowledge.
+
+3. **Waiting-order fulfillment semantics are under-described.**
+   Completing one WorkPlay calls `FulfillWaitingOrders`, which iterates all `AwaitingStock` orders in ascending order ID, reserves any now-fulfillable order, moves it to `ReadyForDelivery`, and creates a delivery. Current knowledge retains some transitive mutations/calls but does not represent the quantified/ordered loop semantics clearly enough.
+
+### Medium priority
+
+4. **UI status visibility guards are missing as UI evidence.**
+   WorkPlay buttons depend on both permission and status (`Open` / `InProgress`); Delivery buttons depend on permission and status (`Pending` / `Dispatched`). The Angular adapter currently records the permission guard but not the surrounding status predicate.
+
+5. **Read/refresh UI chains are incomplete.**
+   Example: Orders `Refresh` calls component `reload()`, which calls `ApiService.getOrders()`, which performs `GET /api/orders`. Current static linking handles same-name handler/service patterns better than this two-hop differently-named chain.
+
+6. **Configured policy semantics are not analyzed.**
+   The sample registers `ManageWorkPlay` and `ManageDelivery` with always-true assertions for demo purposes. PKC reports the policy attributes/guards but not the effective policy implementation. This is not a wrong claim, but it is incomplete authorization context.
+
+## Benchmark quality gap
+
+The live CI smoke currently proves one principal business path. Before V0.4.2 can close again, the benchmark must also lock representative branches such as:
 
 ```text
-/catalog → Place order → POST /api/orders
-invalid order input → matching validation message
-insufficient stock → OrderStatus.AwaitingStock
-reserve stock → -= quantity
-Complete WorkPlay → += purchased quantity
-Complete WorkPlay → waiting Order becomes ReadyForDelivery
-Dispatch → Pending/ReadyForDelivery guards
-no false DispatchDelivery publication side effect
-Deliveries Discovery != Deliveries Status Management
+stock sufficient → reserve immediately → ReadyForDelivery + Delivery
+stock insufficient → AwaitingStock + PurchaseStock WorkPlay
+WorkPlay QuantityToBuy uses shortage + reorder level
+invalid order validations
+invalid WorkPlay transitions / purchased quantity
+Complete WorkPlay with replenishment → waiting-order re-evaluation
+Delivery Pending → Dispatched → Delivered
+missing IDs / invalid transitions return the expected API behavior
 ```
+
+The goal is not exhaustive application testing. The goal is enough behavioral coverage to compare source, running behavior and generated knowledge without declaring readiness from one happy path.
 
 ## Current commands
 
 ```bash
 pkc scan <repository-path>
 pkc build <repository-path>
-```
-
-From source, PKC can be packed and installed locally:
-
-```bash
-dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
-dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
-./.pkc-tool/pkc build <repository-path>
 ```
 
 Outputs:
@@ -73,49 +94,19 @@ knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
 
-## Frontend support today
-
-Implemented adapters:
-
-- React/TypeScript static
-- Angular static
-
-Architecture-ready but not implemented yet:
-
-- ASP.NET MVC / Razor Pages
-- Blazor
-- Vue
-- other UI stacks
-
-New UI technologies must be added as `IFrontendAdapter` implementations; compiler/knowledge core must remain framework-agnostic.
-
-## Known non-blocking limitations
-
-These are deliberately deferred until evidence from a real external repository says they matter:
-
-- passive page-load/read flows may have an API-call fact without a complete screen/user-path chain
-- cross-domain business journeys such as Order → WorkPlay → Delivery are still represented as deterministic area/workflow knowledge rather than one inferred product journey
-- Azure DevOps intent/history is not implemented
-- runtime UI confirmation is not implemented
-- incremental compilation is not implemented
-- public NuGet.org/GitHub release, LICENSE and wider OSS packaging remain deferred
-
-## Countdown to external real-project trial
-
-**0 steps remaining.**
-
-PKC is ready to be run against a real external repository using the local .NET tool package.
-
 ## Next target — narrow
 
-**External real-project trial.**
+**Finish V0.4.2 full-source benchmark.**
 
-Run PKC on one genuine repository and review only:
+Work in this order:
 
-1. `.pkc/product-features.json`
-2. `knowledge/index.md`
-3. the generated `knowledge/features/` and `knowledge/workflows/`
+1. preserve business-important object-construction facts without reintroducing initializer noise;
+2. extract useful computed property/domain-expression evidence such as `Order.Total`;
+3. represent important loop/collection business semantics needed for `FulfillWaitingOrders`;
+4. improve Angular UI status-condition and two-hop component → service → HTTP linking where the PokeTrade sample proves the need;
+5. expand PokeTrade CI with branch-level behavioral assertions and matching knowledge assertions;
+6. review all generated PokeTrade feature/workflow Markdown again.
 
-Classify findings as **wrong claim**, **missing important behavior**, **noise**, or **unsupported stack/pattern**. Fix compiler abstractions only when the real repository demonstrates the need.
+Only after that review is clean should V0.4.3 external real-project trial begin.
 
-Do not start V0.5 Azure DevOps until this trial is reviewed.
+Do not start V0.5 Azure DevOps yet.
