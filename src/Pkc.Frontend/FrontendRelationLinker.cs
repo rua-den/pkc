@@ -14,29 +14,33 @@ internal static class FrontendRelationLinker
             .ToHashSet(StringComparer.Ordinal);
 
         var apiCallsByHandler = document.Facts
-            .Where(fact => fact.Kind == "ui-api-call" && !string.IsNullOrWhiteSpace(fact.Container))
+            .Where(fact =>
+                fact.Kind == "ui-api-call" &&
+                !string.IsNullOrWhiteSpace(fact.Container))
             .GroupBy(fact => fact.Container!, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToArray(),
+                StringComparer.Ordinal);
 
         foreach (var action in document.Facts.Where(fact => fact.Kind == "ui-action"))
         {
-            if (!action.Metadata.TryGetValue("handler", out var handler) ||
-                string.IsNullOrWhiteSpace(handler) ||
-                !apiCallsByHandler.TryGetValue(handler, out var apiCalls))
-            {
-                continue;
-            }
-
-            var sameFramework = apiCalls
+            var candidates = ResolveApiCalls(action, apiCallsByHandler)
                 .Where(apiCall => SameFramework(action, apiCall))
+                .DistinctBy(apiCall => apiCall.Id, StringComparer.Ordinal)
                 .ToArray();
 
-            if (sameFramework.Length != 1)
+            if (candidates.Length != 1)
             {
                 continue;
             }
 
-            var relation = new EvidenceRelation(action.Id, "triggers-api", sameFramework[0].Id, action.Source);
+            var relation = new EvidenceRelation(
+                action.Id,
+                "triggers-api",
+                candidates[0].Id,
+                action.Source);
+
             if (seen.Add(RelationKey(relation)))
             {
                 relations.Add(relation);
@@ -53,12 +57,49 @@ internal static class FrontendRelationLinker
                 .ToArray());
     }
 
+    private static IEnumerable<EvidenceFact> ResolveApiCalls(
+        EvidenceFact action,
+        IReadOnlyDictionary<string, EvidenceFact[]> apiCallsByHandler)
+    {
+        if (action.Metadata.TryGetValue("handler", out var handler) &&
+            !string.IsNullOrWhiteSpace(handler) &&
+            apiCallsByHandler.TryGetValue(handler, out var direct))
+        {
+            foreach (var apiCall in direct)
+            {
+                yield return apiCall;
+            }
+        }
+
+        if (!action.Metadata.TryGetValue("calledMethods", out var calledMethods))
+        {
+            yield break;
+        }
+
+        foreach (var calledMethod in calledMethods.Split(
+                     ',',
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!apiCallsByHandler.TryGetValue(calledMethod, out var nested))
+            {
+                continue;
+            }
+
+            foreach (var apiCall in nested)
+            {
+                yield return apiCall;
+            }
+        }
+    }
+
     private static bool SameFramework(EvidenceFact left, EvidenceFact right)
     {
         var hasLeft = left.Metadata.TryGetValue("framework", out var leftFramework);
         var hasRight = right.Metadata.TryGetValue("framework", out var rightFramework);
 
-        return !hasLeft || !hasRight || string.Equals(leftFramework, rightFramework, StringComparison.Ordinal);
+        return !hasLeft ||
+               !hasRight ||
+               string.Equals(leftFramework, rightFramework, StringComparison.Ordinal);
     }
 
     private static string RelationKey(EvidenceRelation relation) =>

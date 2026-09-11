@@ -21,7 +21,7 @@ if (!Directory.Exists(repositoryPath))
 
 try
 {
-    var csharpFacts = await new CSharpRepositoryScanner().ScanAsync(repositoryPath);
+    var csharpFacts = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
     var frontendFacts = await new FrontendScanner().ScanAsync(repositoryPath);
     var facts = Merge(csharpFacts, frontendFacts);
     var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
@@ -94,12 +94,25 @@ catch (Exception exception)
 static string Resolve(string repositoryPath, string relativePath) =>
     Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
-static FactDocument Merge(params FactDocument[] documents) =>
-    new(
-        "0.4.1",
-        documents.SelectMany(document => document.Facts).OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
-        documents.SelectMany(document => document.Relations)
-            .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
-            .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
-            .ThenBy(relation => relation.Target, StringComparer.Ordinal)
-            .ToArray());
+static FactDocument Merge(params FactDocument[] documents)
+{
+    var facts = documents
+        .SelectMany(document => document.Facts)
+        .GroupBy(fact => fact.Id, StringComparer.Ordinal)
+        .Select(group => group.First())
+        .OrderBy(fact => fact.Id, StringComparer.Ordinal)
+        .ToArray();
+
+    var relations = documents
+        .SelectMany(document => document.Relations)
+        .GroupBy(
+            relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}",
+            StringComparer.Ordinal)
+        .Select(group => group.First())
+        .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
+        .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
+        .ThenBy(relation => relation.Target, StringComparer.Ordinal)
+        .ToArray();
+
+    return new FactDocument("0.4.2", facts, relations);
+}

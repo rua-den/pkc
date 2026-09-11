@@ -11,7 +11,9 @@ public sealed partial class FeatureCandidateBuilder
     {
         "contains-condition",
         "throws",
-        "mutates"
+        "mutates",
+        "constructs",
+        "contains-loop"
     };
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
@@ -38,7 +40,7 @@ public sealed partial class FeatureCandidateBuilder
             .Select(endpoint => BuildCandidate(endpoint, document, factsById, relationsBySource, callableByTarget))
             .ToArray();
 
-        return new FeatureCandidateDocument("0.3.0", candidates);
+        return new FeatureCandidateDocument("0.4.2", candidates);
     }
 
     private static FeatureCandidate BuildCandidate(
@@ -103,6 +105,8 @@ public sealed partial class FeatureCandidateBuilder
             }
         }
 
+        AddEndpointContextEvidence(endpoint, document, includedFacts, includedRelations, seenRelations);
+
         var hasFrontend = AddFrontendEvidence(endpoint, document, includedFacts, includedRelations, seenRelations);
         var area = InferArea(endpoint.Container);
         var name = $"{area} {SplitWords(endpoint.Name)}".Trim();
@@ -126,6 +130,70 @@ public sealed partial class FeatureCandidateBuilder
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray());
     }
+
+    private static void AddEndpointContextEvidence(
+        EvidenceFact endpoint,
+        FactDocument document,
+        IDictionary<string, EvidenceFact> includedFacts,
+        ICollection<EvidenceRelation> includedRelations,
+        ISet<string> seenRelations)
+    {
+        var signature = string.Join(
+            " ",
+            new[]
+            {
+                endpoint.Metadata.TryGetValue("returnType", out var returnType) ? returnType : string.Empty,
+                endpoint.Metadata.TryGetValue("parameters", out var parameters) ? parameters : string.Empty
+            });
+
+        foreach (var property in document.Facts.Where(fact => fact.Kind == "computed-property"))
+        {
+            var typeName = property.Container?.Split('.').LastOrDefault();
+            if (string.IsNullOrWhiteSpace(typeName) || !ContainsIdentifier(signature, typeName))
+            {
+                continue;
+            }
+
+            includedFacts[property.Id] = property;
+            AddRelation(
+                new EvidenceRelation(endpoint.Id, "exposes-computed-property", property.Id, property.Source),
+                includedRelations,
+                seenRelations);
+        }
+
+        if (!endpoint.Metadata.TryGetValue("authorizationPolicies", out var policies))
+        {
+            return;
+        }
+
+        var requestedPolicies = policies
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var policy in document.Facts.Where(fact => fact.Kind == "authorization-policy"))
+        {
+            var policyName = policy.Metadata.TryGetValue("policyName", out var name)
+                ? name
+                : policy.Name;
+
+            if (!requestedPolicies.Contains(policyName))
+            {
+                continue;
+            }
+
+            includedFacts[policy.Id] = policy;
+            AddRelation(
+                new EvidenceRelation(endpoint.Id, "uses-policy-definition", policy.Id, policy.Source),
+                includedRelations,
+                seenRelations);
+        }
+    }
+
+    private static bool ContainsIdentifier(string value, string identifier) =>
+        Regex.IsMatch(
+            value,
+            $@"(?<![A-Za-z0-9_]){Regex.Escape(identifier)}(?![A-Za-z0-9_])",
+            RegexOptions.CultureInvariant);
 
     private static bool AddFrontendEvidence(
         EvidenceFact endpoint,
@@ -162,15 +230,28 @@ public sealed partial class FeatureCandidateBuilder
                 includedRelations,
                 seenRelations);
 
-            var sameFileFacts = document.Facts.Where(fact =>
-                string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
-
-            var actions = sameFileFacts
-                .Where(fact => fact.Kind == "ui-action")
-                .Where(fact =>
-                    !fact.Metadata.TryGetValue("handler", out var handler) ||
-                    string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+            var actionRelations = document.Relations
+                .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
                 .ToArray();
+
+            var actions = actionRelations
+                .Select(relation => document.Facts.FirstOrDefault(fact => fact.Id == relation.FromFactId))
+                .Where(fact => fact?.Kind == "ui-action")
+                .Cast<EvidenceFact>()
+                .ToArray();
+
+            if (actions.Length == 0)
+            {
+                var sameFileFacts = document.Facts.Where(fact =>
+                    string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
+
+                actions = sameFileFacts
+                    .Where(fact => fact.Kind == "ui-action")
+                    .Where(fact =>
+                        !fact.Metadata.TryGetValue("handler", out var handler) ||
+                        string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+                    .ToArray();
+            }
 
             foreach (var action in actions)
             {
@@ -179,29 +260,47 @@ public sealed partial class FeatureCandidateBuilder
                     new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source),
                     includedRelations,
                     seenRelations);
-            }
 
-            var screens = sameFileFacts.Where(fact => fact.Kind == "ui-screen").ToArray();
-            foreach (var screen in screens)
-            {
-                includedFacts[screen.Id] = screen;
-            }
-
-            var screenNames = screens.Select(screen => screen.Name).ToHashSet(StringComparer.Ordinal);
-            foreach (var route in document.Facts.Where(fact => fact.Kind == "ui-route"))
-            {
-                if (route.Metadata.TryGetValue("component", out var component) && screenNames.Contains(component))
+                var screens = FindScreensForAction(document, action).ToArray();
+                foreach (var screen in screens)
                 {
-                    includedFacts[route.Id] = route;
-                    AddRelation(
-                        new EvidenceRelation(route.Id, "renders-screen", component, route.Source),
-                        includedRelations,
-                        seenRelations);
+                    includedFacts[screen.Id] = screen;
+
+                    foreach (var route in document.Facts.Where(fact =>
+                                 fact.Kind == "ui-route" &&
+                                 fact.Metadata.TryGetValue("component", out var component) &&
+                                 string.Equals(component, screen.Name, StringComparison.Ordinal)))
+                    {
+                        includedFacts[route.Id] = route;
+                        AddRelation(
+                            new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source),
+                            includedRelations,
+                            seenRelations);
+                    }
                 }
             }
         }
 
         return true;
+    }
+
+    private static IEnumerable<EvidenceFact> FindScreensForAction(FactDocument document, EvidenceFact action)
+    {
+        if (!string.IsNullOrWhiteSpace(action.Container))
+        {
+            var byName = document.Facts.Where(fact =>
+                fact.Kind == "ui-screen" &&
+                string.Equals(fact.Name, action.Container, StringComparison.Ordinal)).ToArray();
+
+            if (byName.Length > 0)
+            {
+                return byName;
+            }
+        }
+
+        return document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" &&
+            string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
     }
 
     private static string NormalizeRouteKey(string value)

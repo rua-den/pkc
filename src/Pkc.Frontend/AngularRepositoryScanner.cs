@@ -35,12 +35,20 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         @"hasPermission\s*\(\s*[""'](?<permission>[^""']+)[""']\s*\)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    private static readonly Regex VisibilityConditionRegex = new(
+        @"@if\s*\((?<condition>[^\r\n]*)\)\s*\{",
+        RegexOptions.Compiled);
+
     private static readonly Regex HttpCallRegex = new(
         @"(?<client>[A-Za-z_$][A-Za-z0-9_$.]*)\.(?<method>get|post|put|patch|delete)(?:<[^>]+>)?\s*\(\s*(?<quote>[`""'])(?<url>[\s\S]*?)\k<quote>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex MethodRegex = new(
         @"(?m)^\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*\([^\r\n)]*\)\s*(?::\s*[^{\r\n]+)?\{",
+        RegexOptions.Compiled);
+
+    private static readonly Regex CalledMethodRegex = new(
+        @"(?:this\.)?(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*\(",
         RegexOptions.Compiled);
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
@@ -77,7 +85,10 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryPath);
         var rootPath = Path.GetFullPath(repositoryPath);
-        if (!Directory.Exists(rootPath)) throw new DirectoryNotFoundException($"Repository path does not exist: {rootPath}");
+        if (!Directory.Exists(rootPath))
+        {
+            throw new DirectoryNotFoundException($"Repository path does not exist: {rootPath}");
+        }
 
         var facts = new List<EvidenceFact>();
         var relations = new List<EvidenceRelation>();
@@ -95,7 +106,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         }
 
         return new FactDocument(
-            "0.4.1-angular",
+            "0.4.2-angular",
             facts.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             relations.OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
@@ -103,14 +114,29 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 .ToArray());
     }
 
-    private static void ExtractFile(string relativePath, string text, ICollection<EvidenceFact> facts, ICollection<EvidenceRelation> relations)
+    private static void ExtractFile(
+        string relativePath,
+        string text,
+        ICollection<EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations)
     {
         var screenFacts = new List<EvidenceFact>();
+
         foreach (Match match in ScreenRegex.Matches(text))
         {
             var name = match.Groups["name"].Value;
-            var fact = CreateFact(relativePath, text, match, "ui-screen", name, null,
-                new Dictionary<string, string>(StringComparer.Ordinal) { ["framework"] = "angular-static" });
+            var fact = CreateFact(
+                relativePath,
+                text,
+                match,
+                "ui-screen",
+                name,
+                null,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["framework"] = "angular-static"
+                });
+
             facts.Add(fact);
             screenFacts.Add(fact);
         }
@@ -119,8 +145,21 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         {
             var path = "/" + match.Groups["path"].Value.Trim('/');
             var component = match.Groups["component"].Value;
-            var fact = CreateFact(relativePath, text, match, "ui-route", path, component,
-                new Dictionary<string, string>(StringComparer.Ordinal) { ["path"] = path, ["component"] = component, ["framework"] = "angular-static" });
+
+            var fact = CreateFact(
+                relativePath,
+                text,
+                match,
+                "ui-route",
+                path,
+                component,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["path"] = path,
+                    ["component"] = component,
+                    ["framework"] = "angular-static"
+                });
+
             facts.Add(fact);
             relations.Add(new EvidenceRelation(fact.Id, "renders", component, fact.Source));
         }
@@ -129,23 +168,62 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         {
             var attrs = match.Groups["attrs"].Value;
             var label = CleanLabel(match.Groups["body"].Value);
-            if (string.IsNullOrWhiteSpace(label)) label = "button";
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                label = "button";
+            }
 
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["label"] = label,
                 ["framework"] = "angular-static"
             };
+
             var click = ClickRegex.Match(attrs);
-            if (click.Success) metadata["handler"] = click.Groups["handler"].Value;
+            if (click.Success)
+            {
+                var handler = click.Groups["handler"].Value;
+                metadata["handler"] = handler;
+
+                var calledMethods = FindCalledMethods(text, handler);
+                if (calledMethods.Count > 0)
+                {
+                    metadata["calledMethods"] = string.Join(", ", calledMethods);
+                }
+            }
+
             var permission = FindNearbyPermission(text, match.Index);
-            if (!string.IsNullOrWhiteSpace(permission)) metadata["permission"] = permission;
+            if (!string.IsNullOrWhiteSpace(permission))
+            {
+                metadata["permission"] = permission;
+            }
+
+            var visibilityCondition = FindNearbyVisibilityCondition(text, match.Index);
+            if (!string.IsNullOrWhiteSpace(visibilityCondition))
+            {
+                metadata["visibilityCondition"] = visibilityCondition;
+            }
 
             var screen = screenFacts.FirstOrDefault()?.Name;
-            var fact = CreateFact(relativePath, text, match, "ui-action", label, screen, metadata);
+            var fact = CreateFact(
+                relativePath,
+                text,
+                match,
+                "ui-action",
+                label,
+                screen,
+                metadata);
+
             facts.Add(fact);
-            if (metadata.TryGetValue("handler", out var handler))
-                relations.Add(new EvidenceRelation(fact.Id, "triggers-handler", handler, fact.Source));
+
+            if (metadata.TryGetValue("handler", out var handlerName))
+            {
+                relations.Add(new EvidenceRelation(
+                    fact.Id,
+                    "triggers-handler",
+                    handlerName,
+                    fact.Source));
+            }
         }
 
         foreach (Match match in HttpCallRegex.Matches(text))
@@ -153,6 +231,7 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
             var method = match.Groups["method"].Value.ToUpperInvariant();
             var url = match.Groups["url"].Value;
             var container = FindNearestMethodName(text, match.Index);
+
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["httpMethod"] = method,
@@ -161,18 +240,86 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 ["client"] = match.Groups["client"].Value,
                 ["framework"] = "angular-static"
             };
-            facts.Add(CreateFact(relativePath, text, match, "ui-api-call", $"{method} {url}", container, metadata));
+
+            facts.Add(CreateFact(
+                relativePath,
+                text,
+                match,
+                "ui-api-call",
+                $"{method} {url}",
+                container,
+                metadata));
         }
+    }
+
+    private static IReadOnlyList<string> FindCalledMethods(string text, string handler)
+    {
+        var body = FindMethodBody(text, handler);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return [];
+        }
+
+        return CalledMethodRegex.Matches(body)
+            .Select(match => match.Groups["name"].Value)
+            .Where(name =>
+                !string.Equals(name, handler, StringComparison.Ordinal) &&
+                !ReservedMethodNames.Contains(name))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string? FindMethodBody(string text, string methodName)
+    {
+        var method = MethodRegex.Matches(text)
+            .Cast<Match>()
+            .FirstOrDefault(match =>
+                string.Equals(match.Groups["name"].Value, methodName, StringComparison.Ordinal));
+
+        if (method is null)
+        {
+            return null;
+        }
+
+        var openBrace = method.Index + method.Length - 1;
+        if (openBrace < 0 || openBrace >= text.Length || text[openBrace] != '{')
+        {
+            return null;
+        }
+
+        var depth = 0;
+        for (var index = openBrace; index < text.Length; index++)
+        {
+            if (text[index] == '{')
+            {
+                depth++;
+            }
+            else if (text[index] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return text[(openBrace + 1)..index];
+                }
+            }
+        }
+
+        return null;
     }
 
     private static string? FindNearestMethodName(string text, int beforeIndex)
     {
         string? name = null;
+
         foreach (Match match in MethodRegex.Matches(text[..Math.Min(beforeIndex, text.Length)]))
         {
             var candidate = match.Groups["name"].Value;
-            if (!ReservedMethodNames.Contains(candidate)) name = candidate;
+            if (!ReservedMethodNames.Contains(candidate))
+            {
+                name = candidate;
+            }
         }
+
         return name;
     }
 
@@ -180,7 +327,18 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
     {
         var start = Math.Max(0, beforeIndex - 500);
         var matches = PermissionRegex.Matches(text[start..beforeIndex]);
-        return matches.Count == 0 ? null : matches[^1].Groups["permission"].Value;
+        return matches.Count == 0
+            ? null
+            : matches[^1].Groups["permission"].Value;
+    }
+
+    private static string? FindNearbyVisibilityCondition(string text, int beforeIndex)
+    {
+        var start = Math.Max(0, beforeIndex - 700);
+        var matches = VisibilityConditionRegex.Matches(text[start..beforeIndex]);
+        return matches.Count == 0
+            ? null
+            : WhitespaceRegex.Replace(matches[^1].Groups["condition"].Value, " ").Trim();
     }
 
     private static string CleanLabel(string value)
@@ -195,30 +353,72 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         var route = value.Split('?', '#')[0].Trim();
         route = TemplateParameterRegex.Replace(route, "{param}");
         route = RouteParameterRegex.Replace(route, "{param}");
-        while (route.Contains("//", StringComparison.Ordinal)) route = route.Replace("//", "/", StringComparison.Ordinal);
-        if (!route.StartsWith('/')) route = "/" + route;
+
+        while (route.Contains("//", StringComparison.Ordinal))
+        {
+            route = route.Replace("//", "/", StringComparison.Ordinal);
+        }
+
+        if (!route.StartsWith('/'))
+        {
+            route = "/" + route;
+        }
+
         return route.TrimEnd('/').ToLowerInvariant();
     }
 
-    private static EvidenceFact CreateFact(string relativePath, string text, Match match, string kind, string name, string? container, IReadOnlyDictionary<string, string> metadata)
+    private static EvidenceFact CreateFact(
+        string relativePath,
+        string text,
+        Match match,
+        string kind,
+        string name,
+        string? container,
+        IReadOnlyDictionary<string, string> metadata)
     {
         var source = GetLocation(relativePath, text, match.Index, match.Length);
-        return new EvidenceFact($"ng:{relativePath}:{source.StartLine}:{kind}:{name}", kind, name, container, source, [], metadata);
+        return new EvidenceFact(
+            $"ng:{relativePath}:{source.StartLine}:{kind}:{name}",
+            kind,
+            name,
+            container,
+            source,
+            [],
+            metadata);
     }
 
-    private static SourceLocation GetLocation(string path, string text, int index, int length)
+    private static SourceLocation GetLocation(
+        string path,
+        string text,
+        int index,
+        int length)
     {
         var start = 1;
-        for (var i = 0; i < index && i < text.Length; i++) if (text[i] == '\n') start++;
+        for (var i = 0; i < index && i < text.Length; i++)
+        {
+            if (text[i] == '\n')
+            {
+                start++;
+            }
+        }
+
         var end = start;
-        for (var i = index; i < Math.Min(text.Length, index + length); i++) if (text[i] == '\n') end++;
+        for (var i = index; i < Math.Min(text.Length, index + length); i++)
+        {
+            if (text[i] == '\n')
+            {
+                end++;
+            }
+        }
+
         return new SourceLocation(path, start, end);
     }
 
     private static bool IsExcluded(string rootPath, string path)
     {
         var relative = Path.GetRelativePath(rootPath, path);
-        return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+        return relative
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(segment => ExcludedDirectoryNames.Contains(segment));
     }
 

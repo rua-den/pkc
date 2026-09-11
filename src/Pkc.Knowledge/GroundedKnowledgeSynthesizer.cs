@@ -69,9 +69,28 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         {
             action.Metadata.TryGetValue("label", out var label);
             action.Metadata.TryGetValue("permission", out var permission);
-            var screen = string.IsNullOrWhiteSpace(action.Container) ? string.Empty : $" on `{action.Container}`";
-            var permissionNote = string.IsNullOrWhiteSpace(permission) ? string.Empty : $"; UI guard: `{permission}`";
-            result.Add($"Click `{label ?? action.Name}`{screen}{permissionNote}.");
+            action.Metadata.TryGetValue("visibilityCondition", out var visibilityCondition);
+
+            var screen = string.IsNullOrWhiteSpace(action.Container)
+                ? string.Empty
+                : $" on `{action.Container}`";
+
+            var guardParts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(permission))
+            {
+                guardParts.Add($"permission `{permission}`");
+            }
+
+            if (!string.IsNullOrWhiteSpace(visibilityCondition))
+            {
+                guardParts.Add($"visible when `{visibilityCondition}`");
+            }
+
+            var guardNote = guardParts.Count == 0
+                ? string.Empty
+                : $"; {string.Join("; ", guardParts)}";
+
+            result.Add($"Click `{label ?? action.Name}`{screen}{guardNote}.");
         }
 
         return result.Distinct(StringComparer.Ordinal).ToArray();
@@ -111,7 +130,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         return [$"{method ?? "HTTP"} {normalizedRoute}".Trim()];
     }
 
-    private static IReadOnlyList<string> BuildPermissions(FeatureCandidate candidate, EvidenceFact? endpoint)
+    private static IReadOnlyList<string> BuildPermissions(
+        FeatureCandidate candidate,
+        EvidenceFact? endpoint)
     {
         var permissions = new List<string>();
 
@@ -127,7 +148,8 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                 permissions.AddRange(SplitMetadataList(roles).Select(role => $"Role: {role}"));
             }
 
-            if (permissions.Count == 0 && endpoint.Metadata.TryGetValue("authorization", out var authorization))
+            if (permissions.Count == 0 &&
+                endpoint.Metadata.TryGetValue("authorization", out var authorization))
             {
                 permissions.Add($"Authorization required: {authorization}");
             }
@@ -139,6 +161,18 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             .Where(permission => !string.IsNullOrWhiteSpace(permission))
             .Select(permission => $"UI visibility guard: {permission}"));
 
+        permissions.AddRange(candidate.Facts
+            .Where(fact => fact.Kind == "authorization-policy")
+            .Select(fact =>
+            {
+                fact.Metadata.TryGetValue("policyName", out var policyName);
+                fact.Metadata.TryGetValue("definition", out var definition);
+                var name = policyName ?? fact.Name;
+                return string.IsNullOrWhiteSpace(definition)
+                    ? $"Policy definition observed: {name}."
+                    : $"Policy definition observed: {name} → `{definition}`.";
+            }));
+
         return permissions.Distinct(StringComparer.Ordinal).ToArray();
     }
 
@@ -147,6 +181,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         IReadOnlyDictionary<string, EvidenceFact> factsById)
     {
         var rules = new List<string>();
+
         var conditions = candidate.Relations
             .Where(relation => relation.Kind == "contains-condition")
             .Select(relation => factsById.TryGetValue(relation.Target, out var fact) ? fact : null)
@@ -184,7 +219,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             }
 
             var ownedThrows = throws
-                .Where(throwFact => throwOwner.TryGetValue(throwFact.Id, out var ownerId) && ownerId == condition.Id)
+                .Where(throwFact =>
+                    throwOwner.TryGetValue(throwFact.Id, out var ownerId) &&
+                    ownerId == condition.Id)
                 .ToArray();
 
             if (ownedThrows.Length == 0)
@@ -197,10 +234,65 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             {
                 throwFact.Metadata.TryGetValue("exceptionType", out var exceptionType);
                 throwFact.Metadata.TryGetValue("expression", out var throwExpression);
-                var exception = string.IsNullOrWhiteSpace(exceptionType) ? "an exception" : $"`{exceptionType}`";
-                var detail = string.IsNullOrWhiteSpace(throwExpression) ? string.Empty : $" using `{throwExpression}`";
+
+                var exception = string.IsNullOrWhiteSpace(exceptionType)
+                    ? "an exception"
+                    : $"`{exceptionType}`";
+
+                var detail = string.IsNullOrWhiteSpace(throwExpression)
+                    ? string.Empty
+                    : $" using `{throwExpression}`";
+
                 rules.Add($"When `{expression}`, the implementation throws {exception}{detail}.");
             }
+        }
+
+        foreach (var property in candidate.Facts.Where(fact => fact.Kind == "computed-property"))
+        {
+            if (!property.Metadata.TryGetValue("expression", out var expression))
+            {
+                continue;
+            }
+
+            var displayName = string.IsNullOrWhiteSpace(property.Container)
+                ? property.Name
+                : $"{property.Container}.{property.Name}";
+
+            rules.Add($"Computed property `{displayName}` = `{expression}`.");
+        }
+
+        foreach (var construction in candidate.Facts.Where(fact => fact.Kind == "object-construction"))
+        {
+            construction.Metadata.TryGetValue("type", out var type);
+            construction.Metadata.TryGetValue("operation", out var operation);
+            construction.Metadata.TryGetValue("assignments", out var assignments);
+
+            var typeName = type ?? construction.Name;
+            if (string.IsNullOrWhiteSpace(assignments))
+            {
+                continue;
+            }
+
+            var via = string.IsNullOrWhiteSpace(operation)
+                ? string.Empty
+                : $" via `{operation}`";
+
+            rules.Add($"Creates `{typeName}`{via} with `{assignments}`.");
+        }
+
+        foreach (var loop in candidate.Facts.Where(fact => fact.Kind == "loop"))
+        {
+            if (!loop.Metadata.TryGetValue("collection", out var collection))
+            {
+                continue;
+            }
+
+            loop.Metadata.TryGetValue("iterator", out var iterator);
+            var iteratorText = string.IsNullOrWhiteSpace(iterator)
+                ? string.Empty
+                : $" as `{iterator}`";
+
+            rules.Add($"Iterates `{collection}`{iteratorText}.");
         }
 
         return rules.Distinct(StringComparer.Ordinal).ToArray();
@@ -226,18 +318,35 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         fact.Metadata.TryGetValue("target", out var target);
         fact.Metadata.TryGetValue("value", out var value);
         fact.Metadata.TryGetValue("operator", out var mutationOperator);
+
         var displayTarget = target ?? fact.Name;
 
         return mutationOperator switch
         {
-            "+=" when !string.IsNullOrWhiteSpace(value) => $"Applies `+=` to `{displayTarget}` with `{value}`.",
-            "-=" when !string.IsNullOrWhiteSpace(value) => $"Applies `-=` to `{displayTarget}` with `{value}`.",
-            "*=" when !string.IsNullOrWhiteSpace(value) => $"Applies `*=` to `{displayTarget}` with `{value}`.",
-            "/=" when !string.IsNullOrWhiteSpace(value) => $"Applies `/=` to `{displayTarget}` with `{value}`.",
-            "%=" when !string.IsNullOrWhiteSpace(value) => $"Applies `%=` to `{displayTarget}` with `{value}`.",
-            string op when op?.Contains("Increment", StringComparison.Ordinal) == true => $"Increments `{displayTarget}` by 1.",
-            string op when op?.Contains("Decrement", StringComparison.Ordinal) == true => $"Decrements `{displayTarget}` by 1.",
-            _ when string.IsNullOrWhiteSpace(value) => $"Mutates `{displayTarget}`.",
+            "+=" when !string.IsNullOrWhiteSpace(value) =>
+                $"Applies `+=` to `{displayTarget}` with `{value}`.",
+
+            "-=" when !string.IsNullOrWhiteSpace(value) =>
+                $"Applies `-=` to `{displayTarget}` with `{value}`.",
+
+            "*=" when !string.IsNullOrWhiteSpace(value) =>
+                $"Applies `*=` to `{displayTarget}` with `{value}`.",
+
+            "/=" when !string.IsNullOrWhiteSpace(value) =>
+                $"Applies `/=` to `{displayTarget}` with `{value}`.",
+
+            "%=" when !string.IsNullOrWhiteSpace(value) =>
+                $"Applies `%=` to `{displayTarget}` with `{value}`.",
+
+            string op when op?.Contains("Increment", StringComparison.Ordinal) == true =>
+                $"Increments `{displayTarget}` by 1.",
+
+            string op when op?.Contains("Decrement", StringComparison.Ordinal) == true =>
+                $"Decrements `{displayTarget}` by 1.",
+
+            _ when string.IsNullOrWhiteSpace(value) =>
+                $"Mutates `{displayTarget}`.",
+
             _ => $"Sets `{displayTarget}` to `{value}`."
         };
     }
@@ -253,7 +362,8 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
     private static bool IsTrustedPublicationTarget(string target)
     {
         var methodName = target.Split('.').LastOrDefault() ?? target;
-        return TrustedPublicationPrefixes.Any(prefix => methodName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return TrustedPublicationPrefixes.Any(prefix =>
+            methodName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
     private static IReadOnlyList<string> BuildFlow(
@@ -266,6 +376,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                 var source = factsById.TryGetValue(relation.FromFactId, out var sourceFact)
                     ? DisplayFact(sourceFact)
                     : relation.FromFactId;
+
                 return $"{source} → {relation.Target}";
             })
             .Distinct(StringComparer.Ordinal)
@@ -277,7 +388,19 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         EvidenceFact? endpoint) =>
         candidate.Facts
             .Where(fact =>
-                fact.Kind is "endpoint" or "method" or "condition" or "throw" or "ui-screen" or "ui-route" or "ui-action" or "ui-api-call" ||
+                fact.Kind is
+                    "endpoint" or
+                    "method" or
+                    "condition" or
+                    "throw" or
+                    "computed-property" or
+                    "object-construction" or
+                    "loop" or
+                    "authorization-policy" or
+                    "ui-screen" or
+                    "ui-route" or
+                    "ui-action" or
+                    "ui-api-call" ||
                 IsKnowledgeMutation(candidate, factsById, fact, endpoint))
             .Select(fact => new KnowledgeEvidence(
                 fact.Id,
@@ -300,24 +423,34 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         fact.Metadata.TryGetValue("target", out var target);
-        var semanticCandidate = fact.Metadata.TryGetValue("stateMutationCandidate", out var stateCandidate) && stateCandidate == "true";
-        var syntacticMemberCandidate = !string.IsNullOrWhiteSpace(target) && target.Contains('.', StringComparison.Ordinal);
+
+        var semanticCandidate =
+            fact.Metadata.TryGetValue("stateMutationCandidate", out var stateCandidate) &&
+            stateCandidate == "true";
+
+        var syntacticMemberCandidate =
+            !string.IsNullOrWhiteSpace(target) &&
+            target.Contains('.', StringComparison.Ordinal);
+
         if (!semanticCandidate && !syntacticMemberCandidate)
         {
             return false;
         }
 
-        if (IsObjectInitializerLikeMutation(candidate, factsById, fact) || IsImplementationCounterMutation(fact))
+        if (IsObjectInitializerLikeMutation(candidate, factsById, fact) ||
+            IsImplementationCounterMutation(fact))
         {
             return false;
         }
 
-        if (endpoint is null || !string.Equals(fact.Container, endpoint.Name, StringComparison.Ordinal))
+        if (endpoint is null ||
+            !string.Equals(fact.Container, endpoint.Name, StringComparison.Ordinal))
         {
             return true;
         }
 
-        if (string.IsNullOrWhiteSpace(target) || target.Contains('.', StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(target) ||
+            target.Contains('.', StringComparison.Ordinal))
         {
             return true;
         }
@@ -348,15 +481,19 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         IReadOnlyDictionary<string, EvidenceFact> factsById,
         EvidenceFact mutation)
     {
-        if (!mutation.Metadata.TryGetValue("target", out var target) || target.Contains('.', StringComparison.Ordinal) ||
+        if (!mutation.Metadata.TryGetValue("target", out var target) ||
+            target.Contains('.', StringComparison.Ordinal) ||
             !mutation.Metadata.TryGetValue("targetSymbol", out var targetSymbol))
         {
             return false;
         }
 
         var sourceRelation = candidate.Relations.FirstOrDefault(relation =>
-            relation.Kind == "mutates" && relation.Target == mutation.Id);
-        if (sourceRelation is null || !factsById.TryGetValue(sourceRelation.FromFactId, out var sourceMethod) ||
+            relation.Kind == "mutates" &&
+            relation.Target == mutation.Id);
+
+        if (sourceRelation is null ||
+            !factsById.TryGetValue(sourceRelation.FromFactId, out var sourceMethod) ||
             string.IsNullOrWhiteSpace(sourceMethod.Container))
         {
             return false;
@@ -376,13 +513,40 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
     {
         "endpoint" => $"Endpoint {DisplayFact(fact)}",
         "method" => $"Method {DisplayFact(fact)}",
-        "condition" when fact.Metadata.TryGetValue("expression", out var expression) => $"Condition: {expression}",
-        "throw" when fact.Metadata.TryGetValue("exceptionType", out var type) => $"Throws {type}",
-        "mutation" when fact.Metadata.TryGetValue("target", out var target) => $"Mutation: {target}",
+
+        "condition" when fact.Metadata.TryGetValue("expression", out var expression) =>
+            $"Condition: {expression}",
+
+        "throw" when fact.Metadata.TryGetValue("exceptionType", out var type) =>
+            $"Throws {type}",
+
+        "mutation" when fact.Metadata.TryGetValue("target", out var target) =>
+            $"Mutation: {target}",
+
+        "computed-property" when fact.Metadata.TryGetValue("expression", out var computed) =>
+            $"Computed property {DisplayFact(fact)} = {computed}",
+
+        "object-construction" when fact.Metadata.TryGetValue("assignments", out var assignments) =>
+            $"Constructs {fact.Name}: {assignments}",
+
+        "loop" when fact.Metadata.TryGetValue("collection", out var collection) =>
+            $"Iterates {collection}",
+
+        "authorization-policy" when fact.Metadata.TryGetValue("definition", out var definition) =>
+            $"Authorization policy {fact.Name}: {definition}",
+
         "ui-screen" => $"UI screen/component {fact.Name}",
-        "ui-route" when fact.Metadata.TryGetValue("path", out var path) => $"UI route {path}",
+
+        "ui-route" when fact.Metadata.TryGetValue("path", out var path) =>
+            $"UI route {path}",
+
         "ui-action" => $"UI action {fact.Name}",
-        "ui-api-call" when fact.Metadata.TryGetValue("httpMethod", out var method) && fact.Metadata.TryGetValue("url", out var url) => $"UI API call {method} {url}",
+
+        "ui-api-call"
+            when fact.Metadata.TryGetValue("httpMethod", out var method) &&
+                 fact.Metadata.TryGetValue("url", out var url) =>
+            $"UI API call {method} {url}",
+
         _ => $"{fact.Kind}: {fact.Name}"
     };
 
@@ -396,8 +560,12 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 
     private static string FriendlyUnknown(string unknown) => unknown switch
     {
-        "frontend-ui-not-analyzed" => "Frontend/UI entry point and user interaction path have not been analyzed yet.",
-        "delivery-history-not-analyzed" => "Azure DevOps delivery history and product intent have not been analyzed yet.",
+        "frontend-ui-not-analyzed" =>
+            "Frontend/UI entry point and user interaction path have not been analyzed yet.",
+
+        "delivery-history-not-analyzed" =>
+            "Azure DevOps delivery history and product intent have not been analyzed yet.",
+
         _ => unknown
     };
 }
