@@ -55,23 +55,72 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run build
-      - name: Smoke test business flow
+      - name: Acceptance test PokeTrade business branches
         run: |
           dotnet run --project samples/PokeTradeSystem/backend/PokeTrade.Api/PokeTrade.Api.csproj --configuration Release --no-build > /tmp/poketrade-api.log 2>&1 &
           API_PID=$!
           trap 'kill $API_PID || true' EXIT
           for i in {1..30}; do curl -fsS http://localhost:5080/health && break || sleep 1; done
           curl -fsS http://localhost:5080/health
-          ORDER=$(curl -fsS -X POST http://localhost:5080/api/orders -H 'Content-Type: application/json' -d '{"customerName":"CI Trainer","deliveryAddress":"1 Indigo Plateau","lines":[{"cardId":3,"quantity":3}]}')
-          echo "$ORDER" | grep -q 'AwaitingStock'
-          WORKPLAY_ID=$(curl -fsS http://localhost:5080/api/workplays | jq -r '.[0].id')
-          curl -fsS -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/start | grep -q 'InProgress'
-          curl -fsS -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/complete -H 'Content-Type: application/json' -d '{"purchasedQuantity":4}' | grep -q 'Completed'
-          curl -fsS http://localhost:5080/api/orders | grep -q 'ReadyForDelivery'
-          DELIVERY_ID=$(curl -fsS http://localhost:5080/api/deliveries | jq -r '.[0].id')
-          curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/dispatch | grep -q 'Dispatched'
-          curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/delivered | grep -q 'Delivered'
-          curl -fsS http://localhost:5080/api/orders | grep -q 'Delivered'
+
+          INVALID_ORDER_CODE=$(curl -sS -o /tmp/invalid-order.json -w '%{http_code}' -X POST http://localhost:5080/api/orders -H 'Content-Type: application/json' -d '{"customerName":"","deliveryAddress":"1 Indigo Plateau","lines":[{"cardId":2,"quantity":1}]}')
+          test "$INVALID_ORDER_CODE" = "400"
+          grep -Fq 'Customer name is required.' /tmp/invalid-order.json
+
+          SUFFICIENT=$(curl -fsS -X POST http://localhost:5080/api/orders -H 'Content-Type: application/json' -d '{"customerName":"Misty","deliveryAddress":"Cerulean Gym","lines":[{"cardId":2,"quantity":2}]}')
+          echo "$SUFFICIENT" | jq -e '.status == "ReadyForDelivery" and .total == 85'
+          SUFFICIENT_ID=$(echo "$SUFFICIENT" | jq -r '.id')
+          curl -fsS http://localhost:5080/api/deliveries | jq -e --argjson id "$SUFFICIENT_ID" '.[] | select(.orderId == $id and .status == "Pending")'
+
+          SHORT=$(curl -fsS -X POST http://localhost:5080/api/orders -H 'Content-Type: application/json' -d '{"customerName":"CI Trainer","deliveryAddress":"1 Indigo Plateau","lines":[{"cardId":3,"quantity":3}]}')
+          echo "$SHORT" | jq -e '.status == "AwaitingStock"'
+          SHORT_ID=$(echo "$SHORT" | jq -r '.id')
+          WORKPLAY=$(curl -fsS http://localhost:5080/api/workplays | jq -c --argjson id "$SHORT_ID" '.[] | select(.orderId == $id)')
+          echo "$WORKPLAY" | jq -e '.status == "Open" and .type == "PurchaseStock" and .quantityToBuy == 4 and (.reason | contains("needs 3 but only 1"))'
+          WORKPLAY_ID=$(echo "$WORKPLAY" | jq -r '.id')
+
+          COMPLETE_OPEN_CODE=$(curl -sS -o /tmp/complete-open.json -w '%{http_code}' -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/complete -H 'Content-Type: application/json' -d '{"purchasedQuantity":4}')
+          test "$COMPLETE_OPEN_CODE" = "409"
+          grep -Fq 'Only an InProgress WorkPlay can be completed.' /tmp/complete-open.json
+
+          curl -fsS -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/start | jq -e '.status == "InProgress"'
+
+          START_AGAIN_CODE=$(curl -sS -o /tmp/start-again.json -w '%{http_code}' -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/start)
+          test "$START_AGAIN_CODE" = "409"
+          grep -Fq 'Only an Open WorkPlay can be started.' /tmp/start-again.json
+
+          INVALID_QUANTITY_CODE=$(curl -sS -o /tmp/invalid-quantity.json -w '%{http_code}' -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/complete -H 'Content-Type: application/json' -d '{"purchasedQuantity":0}')
+          test "$INVALID_QUANTITY_CODE" = "409"
+          grep -Fq 'Purchased quantity must be greater than zero.' /tmp/invalid-quantity.json
+
+          curl -fsS -X PATCH http://localhost:5080/api/workplays/$WORKPLAY_ID/complete -H 'Content-Type: application/json' -d '{"purchasedQuantity":4}' | jq -e '.status == "Completed" and .purchasedQuantity == 4'
+          curl -fsS http://localhost:5080/api/orders | jq -e --argjson id "$SHORT_ID" '.[] | select(.id == $id and .status == "ReadyForDelivery")'
+          curl -fsS http://localhost:5080/api/cards | jq -e '.[] | select(.id == 3 and .stock == 2)'
+
+          MISSING_WORKPLAY_CODE=$(curl -sS -o /tmp/missing-workplay.json -w '%{http_code}' -X PATCH http://localhost:5080/api/workplays/999999/start)
+          test "$MISSING_WORKPLAY_CODE" = "404"
+          grep -Fq 'WorkPlay 999999 was not found.' /tmp/missing-workplay.json
+
+          DELIVERY_ID=$(curl -fsS http://localhost:5080/api/deliveries | jq -r --argjson id "$SHORT_ID" '.[] | select(.orderId == $id) | .id')
+          test -n "$DELIVERY_ID"
+          curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/dispatch | jq -e '.status == "Dispatched"'
+          curl -fsS http://localhost:5080/api/orders | jq -e --argjson id "$SHORT_ID" '.[] | select(.id == $id and .status == "Shipped")'
+
+          DISPATCH_AGAIN_CODE=$(curl -sS -o /tmp/dispatch-again.json -w '%{http_code}' -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/dispatch)
+          test "$DISPATCH_AGAIN_CODE" = "409"
+          grep -Fq 'Only a Pending delivery can be dispatched.' /tmp/dispatch-again.json
+
+          curl -fsS -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/delivered | jq -e '.status == "Delivered"'
+          curl -fsS http://localhost:5080/api/orders | jq -e --argjson id "$SHORT_ID" '.[] | select(.id == $id and .status == "Delivered")'
+
+          DELIVER_AGAIN_CODE=$(curl -sS -o /tmp/deliver-again.json -w '%{http_code}' -X PATCH http://localhost:5080/api/deliveries/$DELIVERY_ID/delivered)
+          test "$DELIVER_AGAIN_CODE" = "409"
+          grep -Fq 'Only a Dispatched delivery can be marked delivered.' /tmp/deliver-again.json
+
+          MISSING_DELIVERY_CODE=$(curl -sS -o /tmp/missing-delivery.json -w '%{http_code}' -X PATCH http://localhost:5080/api/deliveries/999999/dispatch)
+          test "$MISSING_DELIVERY_CODE" = "404"
+          grep -Fq 'Delivery 999999 was not found.' /tmp/missing-delivery.json
+
       - name: Compile and verify PokeTrade product knowledge with PKC
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release -- build samples/PokeTradeSystem
@@ -80,12 +129,18 @@ jobs:
           test -s samples/PokeTradeSystem/knowledge/index.md
 
           CREATE_ORDER=samples/PokeTradeSystem/knowledge/workflows/orders/createorder.md
+          GET_ORDERS=samples/PokeTradeSystem/knowledge/workflows/orders/getorders.md
+          START_WORKPLAY=samples/PokeTradeSystem/knowledge/workflows/workplays/startworkplay.md
           COMPLETE_WORKPLAY=samples/PokeTradeSystem/knowledge/workflows/workplays/completeworkplay.md
           DISPATCH_DELIVERY=samples/PokeTradeSystem/knowledge/workflows/deliveries/dispatchdelivery.md
+          DELIVERED=samples/PokeTradeSystem/knowledge/workflows/deliveries/markdeliverydelivered.md
           INDEX=samples/PokeTradeSystem/knowledge/index.md
 
-          grep -q 'angular-static' samples/PokeTradeSystem/.pkc/facts.json
-          grep -q 'ManageWorkPlay' samples/PokeTradeSystem/.pkc/feature-candidates.json
+          grep -Fq '"kind": "computed-property"' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq '"kind": "object-construction"' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq '"kind": "loop"' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq '"kind": "authorization-policy"' samples/PokeTradeSystem/.pkc/facts.json
+          grep -Fq 'ManageWorkPlay' samples/PokeTradeSystem/.pkc/feature-candidates.json
 
           grep -Fq 'Open route `/catalog`.' "$CREATE_ORDER"
           grep -Fq 'Click `Place order` on `CatalogComponent`.' "$CREATE_ORDER"
@@ -93,21 +148,51 @@ jobs:
           grep -Fq 'Delivery address is required.' "$CREATE_ORDER"
           grep -Fq 'OrderStatus.AwaitingStock' "$CREATE_ORDER"
           grep -Fq 'Applies `-=` to `FindCard(line.CardId).Stock` with `line.Quantity`.' "$CREATE_ORDER"
-          ! grep -Fq 'Sets `Id`' "$CREATE_ORDER"
+          grep -Fq 'PokeTrade.Api.Order.Total' "$CREATE_ORDER"
+          grep -Fq 'Lines.Sum(line => line.Quantity * line.UnitPrice)' "$CREATE_ORDER"
+          grep -Fq 'QuantityToBuy = shortage + card.ReorderLevel' "$CREATE_ORDER"
+          grep -Fq 'Type = "PurchaseStock"' "$CREATE_ORDER"
+          grep -Fq 'Order #' "$CREATE_ORDER"
           ! grep -Fq 'Increments `_next' "$CREATE_ORDER"
 
+          grep -Fq 'Open route `/orders`.' "$GET_ORDERS"
+          grep -Fq 'Click `Refresh` on `OrdersComponent`.' "$GET_ORDERS"
+          grep -Fq 'UI sends `GET /api/orders`.' "$GET_ORDERS"
+          grep -Fq 'PokeTrade.Api.Order.Total' "$GET_ORDERS"
+
+          grep -Fq "workPlay.status === 'Open'" "$START_WORKPLAY"
+          grep -Fq 'Policy definition observed: ManageWorkPlay' "$START_WORKPLAY"
+          grep -Fq 'RequireAssertion(_ => true)' "$START_WORKPLAY"
+
           grep -Fq 'Click `Complete` on `WorkPlaysComponent`' "$COMPLETE_WORKPLAY"
+          grep -Fq "workPlay.status === 'InProgress'" "$COMPLETE_WORKPLAY"
           grep -Fq 'Only an InProgress WorkPlay can be completed.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Purchased quantity must be greater than zero.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Applies `+=` to `card.Stock` with `request.PurchasedQuantity`.' "$COMPLETE_WORKPLAY"
           grep -Fq 'Sets `order.Status` to `OrderStatus.ReadyForDelivery`.' "$COMPLETE_WORKPLAY"
+          grep -Fq 'OrderStatus.AwaitingStock' "$COMPLETE_WORKPLAY"
+          grep -Fq 'OrderBy(order => order.Id)' "$COMPLETE_WORKPLAY"
+          grep -Fq 'Policy definition observed: ManageWorkPlay' "$COMPLETE_WORKPLAY"
           ! grep -Fq 'Increments `_next' "$COMPLETE_WORKPLAY"
 
           grep -Fq 'Click `Dispatch` on `DeliveriesComponent`' "$DISPATCH_DELIVERY"
+          grep -Fq "delivery.status === 'Pending'" "$DISPATCH_DELIVERY"
           grep -Fq 'Only a Pending delivery can be dispatched.' "$DISPATCH_DELIVERY"
           grep -Fq 'Order must be ReadyForDelivery before dispatch.' "$DISPATCH_DELIVERY"
+          grep -Fq 'Policy definition observed: ManageDelivery' "$DISPATCH_DELIVERY"
           ! grep -Fq 'publication-like method `PokeTrade.Api.PokeTradeStore.DispatchDelivery`' "$DISPATCH_DELIVERY"
+
+          grep -Fq "delivery.status === 'Dispatched'" "$DELIVERED"
+          grep -Fq 'Only a Dispatched delivery can be marked delivered.' "$DELIVERED"
+          grep -Fq 'Policy definition observed: ManageDelivery' "$DELIVERED"
 
           grep -Fq 'Deliveries Discovery' "$INDEX"
           grep -Fq 'Deliveries Status Management' "$INDEX"
           grep -Fq 'WorkPlays Status Management' "$INDEX"
+
+      - name: Print generated PokeTrade knowledge for full review
+        run: |
+          find samples/PokeTradeSystem/knowledge -type f -name '*.md' | sort | while read -r file; do
+            echo "===== $file ====="
+            cat "$file"
+          done
