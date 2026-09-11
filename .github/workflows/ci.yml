@@ -84,3 +84,9 @@ jobs:
           grep -R -q 'Click `Complete`' samples/PokeTradeSystem/knowledge/workflows
           grep -R -q 'Click `Dispatch`' samples/PokeTradeSystem/knowledge/workflows
           grep -R -q 'AwaitingStock' samples/PokeTradeSystem/knowledge || true
+          echo '=== POKETRADE KNOWLEDGE BEGIN ==='
+          find samples/PokeTradeSystem/knowledge -type f -name '*.md' | sort | while read -r file; do
+            echo "===== $file ====="
+            cat "$file"
+          done
+          echo '=== POKETRADE KNOWLEDGE END ==='
