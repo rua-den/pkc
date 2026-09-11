@@ -26,7 +26,7 @@ The mature knowledge pack should combine:
 ## Intended inputs
 
 1. Backend/source code — implementation behavior.
-2. Frontend/UI — real user-facing screens, actions, conditions and API flows.
+2. Frontend/UI — user-facing screens, actions, conditions and API flows.
 3. Azure DevOps — Epic/Feature/PBI/Sprint/history, intent and delivery traceability.
 
 ## Non-negotiable architecture
@@ -49,9 +49,9 @@ CANONICAL KNOWLEDGE MODEL
 DETERMINISTIC MARKDOWN RENDERER
 ```
 
-## Verified baseline before V0.3
+## Current verified state
 
-V0.2 is green and already produces backend-only Markdown with exact evidence.
+V0.3 backend + frontend-static knowledge is complete and green.
 
 Commands:
 
@@ -68,28 +68,13 @@ Outputs:
 knowledge/features/**/*.md
 ```
 
-## Active slice: V0.3 frontend static evidence
+Concrete sample:
 
-The implementation adds a separate `Pkc.Frontend` analyzer for React/TypeScript-style source and keeps frontend extraction deterministic.
+```text
+samples/WorkPlaySample/knowledge/features/workplay/complete.md
+```
 
-Current target facts:
-
-- `ui-screen`
-- `ui-route`
-- `ui-action`
-- `ui-api-call`
-
-Initial patterns cover:
-
-- React function components
-- React Router `<Route ...>`
-- `<button>` / `<Button>` actions with direct handlers
-- common permission guards: `hasPermission`, `can`, `canAccess`
-- `fetch(...)` and common client `.get/.post/.put/.patch/.delete(...)` calls
-
-Frontend evidence is only attached to a backend feature when HTTP method + normalized API route match the backend endpoint. This is intentionally conservative to avoid assigning unrelated UI to a feature.
-
-When matched, feature coverage becomes:
+The sample Markdown now has coverage:
 
 ```yaml
 coverage:
@@ -97,17 +82,46 @@ coverage:
   - frontend-static
 ```
 
-and generated Markdown gains:
+It includes:
 
-- `How to do it in the UI`
-- `UI to backend`
-- UI permission evidence
-- UI source evidence
+- UI route `/workplays/:id`
+- `Complete` action on `WorkPlayDetailPage`
+- UI permission guard `ManageWorkPlay`
+- matching UI API call
+- backend endpoint and authorization
+- Completed-status guard/exception
+- meaningful state mutation
+- publication-like side effect
+- backend call flow
+- exact source evidence from TSX and C#
+- explicit Azure DevOps unknown
 
-The old `frontend-ui-not-analyzed` unknown is removed only when a matching frontend flow is found. Azure DevOps remains unknown until the next major input slice.
+Frontend evidence is attached to a backend feature only when HTTP method + normalized API route match. This conservative linkage is intentional.
 
-## Countdown
+## Verified checkpoint
 
-After V0.3 CI is green, countdown to Markdown with grounded UI instructions is **0**.
+Implementation: `26a7c381362dd3cf155974fc55883cbc72f8891a`
+Golden output: `1ee1d7bc2f7e5aff8f5d808a5d14b891144abee6`
+CI run: `34583992309` — success.
 
-Next major engineering target after that is Azure DevOps evidence: Feature/PBI/Sprint/history and delivery traceability.
+Countdown to an AI-testable Markdown with UI instructions is **0**.
+
+## Frontend scope today
+
+`Pkc.Frontend` is a deterministic React/TypeScript static analyzer for common patterns, including function components, React Router routes, buttons/direct handlers, common permission guards, `fetch`, and common HTTP client methods.
+
+It is deliberately not yet a full TypeScript AST implementation and does not represent runtime-confirmed UI behavior.
+
+## Next engineering target
+
+V0.4 Azure DevOps evidence:
+
+- Epic / Feature / PBI
+- Sprint / iteration
+- current work-item state
+- description / acceptance criteria
+- selected revisions/history
+- PR/commit relationships
+- map delivery evidence into the same feature knowledge
+
+Target outcome: a PO can ask both “how does this feature work?” and “why/when was it built, what changed, and how far is delivery?” from the portable Markdown pack.

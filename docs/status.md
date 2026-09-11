@@ -4,29 +4,33 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.3 frontend static evidence — IN PROGRESS**
+**V0.3 frontend static evidence — COMPLETE**
 
-Implementation commit prepared: `f517787e22d9262114db3a0f0680d8b1c98713d4`
+Verified implementation commit: `26a7c381362dd3cf155974fc55883cbc72f8891a`
+Verified golden commit: `1ee1d7bc2f7e5aff8f5d808a5d14b891144abee6`
+GitHub Actions run: `34583992309` — SUCCESS
 
-This slice adds React/TypeScript static UI evidence and connects matching UI API calls to backend endpoint feature candidates using HTTP method + normalized route.
+Verified:
 
-## Target evidence in V0.3
+- solution build
+- C# evidence tests
+- frontend static evidence tests
+- end-to-end `pkc build samples/WorkPlaySample`
+- UI facts in `.pkc/facts.json`
+- feature candidate coverage includes `frontend-static`
+- UI action/API route is linked to backend endpoint by HTTP method + normalized route
+- generated Markdown contains UI route, action, permission guard and UI-to-backend call
+- frontend unknown is removed when matching UI evidence exists
+- golden Markdown exactly matches regenerated output
 
-- React screen/component facts
-- React Router route facts
-- button/action facts
-- common permission guards such as `hasPermission(...)`, `can(...)`, `canAccess(...)`
-- `fetch(...)` and common client `.post/.put/.patch/.delete/.get` API calls
-- UI action -> API -> backend feature linkage
-- Markdown sections describing how to perform the action in the UI
-
-## Current command target
+## Current commands
 
 ```bash
+pkc scan <repository-path>
 pkc build <repository-path>
 ```
 
-Expected outputs remain:
+Outputs:
 
 ```text
 .pkc/facts.json
@@ -34,8 +38,34 @@ Expected outputs remain:
 knowledge/features/**/*.md
 ```
 
-## Countdown to Markdown with UI instructions
+## AI-testable WorkPlay knowledge
 
-**1 verification step remaining:** CI must prove build/tests/E2E and confirm the WorkPlay sample Markdown contains the route, Complete action, UI permission guard and matched backend API without retaining the old frontend-unknown warning.
+```text
+samples/WorkPlaySample/knowledge/features/workplay/complete.md
+```
 
-After that, the next major input source is Azure DevOps delivery/product history.
+The sample now grounds these answers:
+
+- open `/workplays/:id`
+- click `Complete` on `WorkPlayDetailPage`
+- UI guard: `ManageWorkPlay`
+- UI sends the Complete request to the WorkPlay backend endpoint
+- backend requires `ManageWorkPlay`
+- Completed WorkPlay cannot change status
+- status is changed and a status-changed publication-like call occurs
+
+## Countdown to AI test
+
+**0 steps remaining.**
+
+The Markdown contains backend + frontend-static knowledge and can be attached directly to another AI.
+
+## Current limitation
+
+V0.3 intentionally uses a conservative React/TypeScript static scanner for common patterns. It is not yet a full TypeScript AST engine and does not claim runtime-confirmed UI behavior.
+
+## Next target
+
+**V0.4 — Azure DevOps evidence**
+
+Add Epic/Feature/PBI, Sprint/iteration, work-item state, acceptance criteria/description, selected history/revisions, PR/commit traceability, and link delivery evidence to generated product features.
