@@ -7,7 +7,7 @@ namespace Pkc.CSharp.Tests;
 public sealed class MarkdownKnowledgeRendererTests
 {
     [Fact]
-    public async Task Render_produces_grounded_portable_markdown()
+    public async Task Render_produces_grounded_portable_workflow_markdown()
     {
         var root = Path.Combine(Path.GetTempPath(), "pkc-markdown-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -22,7 +22,8 @@ public sealed class MarkdownKnowledgeRendererTests
             var renderer = new MarkdownKnowledgeRenderer();
             var markdown = renderer.Render(knowledge);
 
-            Assert.Equal("knowledge/features/workplay/complete.md", renderer.GetRelativePath(knowledge));
+            Assert.Equal("knowledge/workflows/workplay/complete.md", renderer.GetRelativePath(knowledge));
+            Assert.Contains("type: \"workflow\"", markdown, StringComparison.Ordinal);
             Assert.Contains("ManageWorkPlay", markdown, StringComparison.Ordinal);
             Assert.Contains("workPlay.Status == WorkPlayStatus.Completed", markdown, StringComparison.Ordinal);
             Assert.Contains("Completed WorkPlay cannot change status", markdown, StringComparison.Ordinal);
