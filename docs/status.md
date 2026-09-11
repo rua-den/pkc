@@ -8,7 +8,7 @@ Last updated: 2026-09-11
 
 Implementation commit: `e6fa94a1c6e55f6019fcad463493ac07483d64f1`
 Test-fix commit: `8ace3741a61f74096287a4cd33391ebb8ab1071a`
-GitHub Actions run: `34598118760` — SUCCESS
+Frontend-adapter CI run: `34598118760` — SUCCESS
 
 Verified:
 
@@ -25,11 +25,40 @@ Verified:
 - PokeTrade Order → WorkPlay → Delivery smoke flow passes
 - PKC successfully compiles PokeTrade product knowledge after the adapter refactor
 
+## Pre-V0.5 hardening from external review — COMPLETE
+
+CI run: `34602582122` — SUCCESS
+
+Accepted high-value feedback that did not expand product scope:
+
+- README now matches the actual generated knowledge layout and identifies `docs/status.md` as current-state source of truth
+- README has explicit **what works today** vs **planned** sections
+- `Pkc.Cli` is packable as .NET tool package `RuaDen.Pkc.Tool` (`0.4.2-preview.1`)
+- CI proves the package can be installed from a local `.nupkg` and can execute `pkc scan`
+- `docs/golden-output.md` documents generated-output/golden maintenance policy
+- PokeTrade live-system regression remains green after the hardening changes
+
+Deferred intentionally:
+
+- public NuGet.org publishing / GitHub release
+- LICENSE choice
+- CONTRIBUTING and repository topics
+- new frontend adapters
+- Azure DevOps / runtime UI / incremental build
+
 ## Current commands
 
 ```bash
 pkc scan <repository-path>
 pkc build <repository-path>
+```
+
+From source, PKC can also be packed and installed locally:
+
+```bash
+dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
+dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
+./.pkc-tool/pkc build <repository-path>
 ```
 
 Outputs:
