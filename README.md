@@ -24,18 +24,36 @@ Important claims are grounded in source evidence. PKC does not silently invent U
 
 Current verified scope:
 
-- C#/.NET backend evidence via Roslyn;
+- C#/.NET evidence with Roslyn, preferring the target project's real `MSBuildWorkspace` compilation;
+- explicit C# fallback when the target project cannot be loaded;
 - behavior evidence such as endpoints, permissions, guards, throws, mutations and call relations;
-- React/TypeScript static UI adapter;
-- Angular static UI adapter;
+- Angular TypeScript structure/routes/HTTP calls through the project-local TypeScript AST when available;
+- Angular template actions through an explicit conservative template-regex fallback;
+- React/TypeScript through an explicit conservative regex fallback;
 - framework-agnostic frontend adapter boundary (`IFrontendAdapter`);
 - UI action → API call → backend endpoint linkage;
-- workflow Markdown;
-- product-feature Markdown;
-- `knowledge/index.md` entry point;
-- real-system validation with the runnable .NET 10 + Angular 22 PokeTrade sample.
+- workflow Markdown, product-feature Markdown and `knowledge/index.md`;
+- real-system validation with the runnable .NET 10 + Angular 22 PokeTrade benchmark.
 
-Current frontend adapters are deliberately static analyzers. Runtime browser confirmation is not implemented yet.
+Runtime browser confirmation is not implemented yet.
+
+## Analyzer fidelity
+
+Analyzer fidelity is part of the evidence and is not hidden behind a generic "static analysis" label.
+
+Current modes include:
+
+```text
+project-semantic                  high    C# loaded from the target .csproj through MSBuildWorkspace
+typescript-ast                    high    Angular TypeScript parsed with the target project's TypeScript runtime
+loose-roslyn-fallback             medium  C# source analyzed without the full target-project reference graph
+angular-template-regex-fallback   medium  Angular template action/visibility extraction
+regex-fallback                    low     conservative text-pattern fallback, currently including React
+```
+
+Facts carry `analysisMode` and `analysisConfidence`. When fallback evidence contributes to a workflow, generated Markdown surfaces that limitation under `Important unknowns` instead of silently upgrading it to high-confidence evidence.
+
+The PokeTrade benchmark proves these analyzer paths and generated knowledge against that benchmark. It does **not** claim that arbitrary external repositories are already robustly supported; that is the purpose of the next external real-project trial.
 
 ## Quickstart from source
 
@@ -43,11 +61,11 @@ Until a public NuGet package/release is published, PKC can be packed and install
 
 ```bash
 dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
-dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.2-preview.1
+dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen.Pkc.Tool --version 0.4.3-preview.1
 ./.pkc-tool/pkc build /path/to/your/repository
 ```
 
-For normal development inside this repository you can also run:
+For normal development inside this repository:
 
 ```bash
 dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- build <repository-path>
@@ -79,7 +97,7 @@ knowledge/
       <workflow>.md
 ```
 
-The generated Markdown is currently marked from code-observed/static evidence. Requirement intent and delivery history remain unknown until those sources are explicitly added.
+Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unknown until those sources are explicitly added.
 
 ## Real-system benchmark
 
@@ -87,14 +105,15 @@ The generated Markdown is currently marked from code-observed/static evidence. R
 
 - backend: .NET 10;
 - frontend: Angular 22;
-- business flow: Pokemon card order → insufficient stock → PurchaseStock WorkPlay → inventory replenishment → delivery → delivered order.
+- business flow: Pokémon card order → insufficient stock → PurchaseStock WorkPlay → inventory replenishment → delivery → delivered order.
 
-CI builds the backend and frontend, executes the business flow through the live API, and then runs PKC against the same source tree.
+CI builds both applications, executes representative runtime branches, runs PKC against the same source tree, and asserts analyzer provenance plus generated product knowledge. The benchmark deliberately contains TypeScript formatting/property styles that the previous regex-only Angular scanner would miss.
 
 ## Planned, not implemented yet
 
-- ASP.NET MVC / Razor Pages adapters;
-- Blazor and Vue adapters;
+- React AST-backed analysis;
+- full Angular template AST/compiler analysis;
+- ASP.NET MVC / Razor Pages, Blazor and Vue frontend adapters;
 - Azure DevOps Epic / Feature / PBI / Sprint evidence;
 - incremental compilation and PR knowledge diffs;
 - runtime UI confirmation;
