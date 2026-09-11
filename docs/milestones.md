@@ -35,43 +35,35 @@ Actions are rendered as workflow Markdown and grouped into product-level feature
 
 MVC/Razor, Blazor and Vue remain future adapters; they are not part of this milestone.
 
-### V0.4.2 — PokeTrade real-system benchmark — COMPLETE
+### V0.4.2 — PokeTrade real-system benchmark — REOPENED
 
-The `.NET 10 + Angular 22` PokeTrade application is independently runnable and its Order → WorkPlay → Delivery flow is verified in CI. PKC compiles the same source tree and CI checks generated Markdown against the live business behavior.
+The `.NET 10 + Angular 22` PokeTrade application builds, runs and has a green principal Order → WorkPlay → Delivery smoke path. PKC also compiles the same source tree and prior benchmark work fixed several real correctness bugs.
 
-Benchmark-driven fixes include:
+However, a later file-by-file review of the complete sample source showed that the benchmark had been declared complete too early.
 
-- correct guard → throw pairing
-- correct compound mutation semantics
-- removal of PO-facing object-initializer/internal-counter noise
-- conservative publication-side-effect classification
-- Angular object-shaped service method linking
-- correct Angular redirect/component route extraction
-- lifecycle-vs-discovery grouping without substring collisions
-- state-mutation fallback when semantic binding is incomplete
+Remaining benchmark blockers:
 
-Final verification: commit `659384ec4ba9e6e6bfbe5b381e9ac5ffd176752d`, CI run `34604840944` — SUCCESS.
+- business-important object construction such as `WorkPlay.QuantityToBuy = shortage + ReorderLevel` is filtered too aggressively;
+- computed domain expressions such as `Order.Total = Sum(quantity * unit price)` are not carried into knowledge;
+- collection/loop semantics in `FulfillWaitingOrders` are under-described;
+- Angular status-based button visibility is not captured as UI evidence;
+- two-hop component → service → HTTP read/refresh chains are incomplete;
+- authorization policy implementation semantics are not analyzed;
+- CI needs representative branch coverage, not only the principal happy path.
 
-### V0.4.3 — External real-project trial — CURRENT
+V0.4.2 closes only after source, live behavior and generated Markdown have been reviewed together for the whole mini application at an appropriate business-behavior level.
 
-Run the packaged PKC tool against one genuine external repository before widening the product surface.
+### V0.4.3 — External real-project trial — BLOCKED
 
-Review only the generated evidence/knowledge:
+Do not run the external real-project trial as the next engineering step until V0.4.2 is clean again.
 
-```text
-.pkc/product-features.json
-knowledge/index.md
-knowledge/features/
-knowledge/workflows/
-```
-
-Classify real-project findings as wrong claim, missing important behavior, noise, or unsupported stack/pattern. Make only compiler fixes justified by those findings.
+When unblocked, run the packaged PKC tool against one genuine external repository and classify findings as wrong claim, missing important behavior, noise, or unsupported stack/pattern.
 
 ## V0.5 — Azure DevOps evidence
 
 Ingest Epic/Feature/PBI/Sprint/history and link product/delivery evidence through PRs/commits where possible.
 
-Do not start this milestone until V0.4.3 external real-project trial is reviewed.
+Do not start this milestone until the external real-project trial has been reviewed.
 
 ## V0.6 — Incremental compilation
 
