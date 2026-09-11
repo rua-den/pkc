@@ -294,14 +294,20 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         EvidenceFact fact,
         EvidenceFact? endpoint)
     {
-        if (fact.Kind != "mutation" ||
-            !fact.Metadata.TryGetValue("stateMutationCandidate", out var stateCandidate) ||
-            stateCandidate != "true")
+        if (fact.Kind != "mutation")
         {
             return false;
         }
 
-        if (IsObjectInitializerLikeMutation(candidate, factsById, fact))
+        fact.Metadata.TryGetValue("target", out var target);
+        var semanticCandidate = fact.Metadata.TryGetValue("stateMutationCandidate", out var stateCandidate) && stateCandidate == "true";
+        var syntacticMemberCandidate = !string.IsNullOrWhiteSpace(target) && target.Contains('.', StringComparison.Ordinal);
+        if (!semanticCandidate && !syntacticMemberCandidate)
+        {
+            return false;
+        }
+
+        if (IsObjectInitializerLikeMutation(candidate, factsById, fact) || IsImplementationCounterMutation(fact))
         {
             return false;
         }
@@ -311,7 +317,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             return true;
         }
 
-        if (!fact.Metadata.TryGetValue("target", out var target) || target.Contains('.', StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(target) || target.Contains('.', StringComparison.Ordinal))
         {
             return true;
         }
@@ -323,6 +329,18 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return !parameters.Contains(value, StringComparison.Ordinal);
+    }
+
+    private static bool IsImplementationCounterMutation(EvidenceFact mutation)
+    {
+        if (!mutation.Metadata.TryGetValue("target", out var target) ||
+            !mutation.Metadata.TryGetValue("operator", out var mutationOperator))
+        {
+            return false;
+        }
+
+        return target.StartsWith("_next", StringComparison.OrdinalIgnoreCase) &&
+               mutationOperator.Contains("Increment", StringComparison.Ordinal);
     }
 
     private static bool IsObjectInitializerLikeMutation(
