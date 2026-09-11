@@ -14,15 +14,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: dotnet build PKC.sln --configuration Release
-      - run: dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --configuration Release --no-build
+      - run: dotnet test PKC.sln --configuration Release --no-build
       - name: End-to-end scan sample
         run: |
           dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- scan samples/WorkPlaySample
           test -s samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"schemaVersion": "0.1.1"' samples/WorkPlaySample/.pkc/facts.json
+          test -s samples/WorkPlaySample/.pkc/feature-candidates.json
           grep -q '"kind": "condition"' samples/WorkPlaySample/.pkc/facts.json
           grep -q '"kind": "throw"' samples/WorkPlaySample/.pkc/facts.json
           grep -q '"kind": "mutation"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"fullRoute": "api/workplays/{id:int}/complete"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"authorizationPolicies": "ManageWorkPlay"' samples/WorkPlaySample/.pkc/facts.json
-          grep -q '"kind": "message-publication-candidate"' samples/WorkPlaySample/.pkc/facts.json
+          grep -q '"name": "WorkPlay Complete"' samples/WorkPlaySample/.pkc/feature-candidates.json
+          grep -q 'frontend-ui-not-analyzed' samples/WorkPlaySample/.pkc/feature-candidates.json

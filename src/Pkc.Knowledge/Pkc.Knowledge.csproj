@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Pkc.Core/Pkc.Core.csproj" />
+  </ItemGroup>
+</Project>

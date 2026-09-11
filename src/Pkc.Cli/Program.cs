@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Pkc.CSharp;
+using Pkc.Knowledge;
 
 if (args.Length != 2 || !string.Equals(args[0], "scan", StringComparison.OrdinalIgnoreCase))
 {
@@ -18,12 +19,12 @@ if (!Directory.Exists(repositoryPath))
 try
 {
     var scanner = new CSharpRepositoryScanner();
-    var document = await scanner.ScanAsync(repositoryPath);
+    var facts = await scanner.ScanAsync(repositoryPath);
+    var candidates = new FeatureCandidateBuilder().Build(facts);
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
 
-    var outputPath = Path.Combine(outputDirectory, "facts.json");
     var options = new JsonSerializerOptions
     {
         WriteIndented = true,
@@ -31,10 +32,15 @@ try
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    await File.WriteAllTextAsync(outputPath, JsonSerializer.Serialize(document, options));
+    var factsPath = Path.Combine(outputDirectory, "facts.json");
+    await File.WriteAllTextAsync(factsPath, JsonSerializer.Serialize(facts, options));
 
-    Console.WriteLine($"PKC scan complete: {document.Facts.Count} facts, {document.Relations.Count} relations");
-    Console.WriteLine(outputPath);
+    var candidatesPath = Path.Combine(outputDirectory, "feature-candidates.json");
+    await File.WriteAllTextAsync(candidatesPath, JsonSerializer.Serialize(candidates, options));
+
+    Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} feature candidates");
+    Console.WriteLine(factsPath);
+    Console.WriteLine(candidatesPath);
     return 0;
 }
 catch (Exception exception)

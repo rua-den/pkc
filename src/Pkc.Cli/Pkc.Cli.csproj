@@ -6,5 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="../Pkc.Core/Pkc.Core.csproj" />
     <ProjectReference Include="../Pkc.CSharp/Pkc.CSharp.csproj" />
+    <ProjectReference Include="../Pkc.Knowledge/Pkc.Knowledge.csproj" />
   </ItemGroup>
 </Project>
