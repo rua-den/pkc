@@ -1,47 +1,36 @@
 # PKC — Product Knowledge Compiler
 
-PKC compiles implementation evidence from a software system into portable, AI-readable product knowledge.
+PKC compiles source-code evidence into portable product knowledge that a Product Owner can attach to any capable AI.
 
-The target user is a Product Owner who should be able to attach the generated knowledge pack to any capable AI and ask questions such as:
+## Current prototype
 
-> How do I change the status of a WorkPlay? What should I be careful about?
-
-PKC is intentionally designed as a compiler pipeline, not as a chatbot and not as a repository-wide prompt pack.
+The current C# prototype uses Roslyn to build deterministic source evidence and then groups endpoint-centered evidence into compact feature candidates.
 
 ```text
-Source code
-   ↓
-Deterministic analyzers
-   ↓
-Evidence / facts
-   ↓
-Feature & workflow synthesis
-   ↓
-Knowledge model
-   ↓
-Portable Markdown
+C# source
+  ↓
+Roslyn evidence extraction
+  ↓
+.pkc/facts.json
+  ↓
+feature candidate grouping
+  ↓
+.pkc/feature-candidates.json
 ```
 
-## V0.1
-
-The first milestone is deliberately small:
+Run:
 
 ```bash
-pkc scan <repository-path>
+dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- scan <repository-path>
 ```
 
-It scans C# source using Roslyn and writes deterministic implementation facts to:
+Current output:
 
 ```text
-.pkc/facts.json
+<repository-path>/.pkc/facts.json
+<repository-path>/.pkc/feature-candidates.json
 ```
 
-V0.1 does **not** use an LLM yet. It proves the evidence layer first.
+The next milestone turns grounded feature candidates into the first portable Markdown knowledge file for AI testing.
 
-## Planned inputs
-
-- Backend/source code — behavior, validation, state changes, permissions, integrations and side effects.
-- Frontend/UI — screens, user actions, routes, conditional UI and API usage.
-- Azure DevOps — Epics, Features, PBIs, Sprints, delivery history and intent.
-
-See `docs/vision.md`, `docs/architecture.md` and `docs/milestones.md`.
+See `docs/vision.md`, `docs/architecture.md`, `docs/status.md`, and `docs/handoff.md` for the project direction and current checkpoint.
