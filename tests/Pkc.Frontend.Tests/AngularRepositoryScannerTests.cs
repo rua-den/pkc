@@ -33,7 +33,7 @@ public sealed class AngularRepositoryScannerTests
 
             var document = await new FrontendScanner().ScanAsync(root);
 
-            Assert.Equal("0.4.1-frontend", document.SchemaVersion);
+            Assert.Equal("0.4.3-frontend", document.SchemaVersion);
             Assert.Contains(document.Facts, fact => fact.Kind == "ui-screen" && fact.Name == "WorkPlaysComponent");
             Assert.Contains(document.Facts, fact => fact.Kind == "ui-route" && fact.Metadata["path"] == "/workplays");
 
@@ -49,6 +49,8 @@ public sealed class AngularRepositoryScannerTests
                 fact.Container == "startWorkPlay");
 
             Assert.Equal("angular-static", action.Metadata["framework"]);
+            Assert.Equal("regex-fallback", action.Metadata["analysisMode"]);
+            Assert.Equal("low", action.Metadata["analysisConfidence"]);
             Assert.NotEqual(action.Source.Path, apiCall.Source.Path);
             Assert.Contains(document.Relations, relation =>
                 relation.FromFactId == action.Id &&
