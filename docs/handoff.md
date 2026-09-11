@@ -49,15 +49,9 @@ CANONICAL KNOWLEDGE MODEL
 DETERMINISTIC MARKDOWN RENDERER
 ```
 
-## Current verified state
+## Verified baseline before V0.3
 
-The first backend-only Markdown proof is complete and green.
-
-Verified product-knowledge checkpoint:
-
-- implementation/golden commit: `049dccd4374ccf2441e77d016ae3a093a84a3b3a`
-- GitHub Actions run: `34582626084`
-- result: build, tests, E2E knowledge generation and golden Markdown diff all pass
+V0.2 is green and already produces backend-only Markdown with exact evidence.
 
 Commands:
 
@@ -66,49 +60,54 @@ pkc scan <repository-path>
 pkc build <repository-path>
 ```
 
-`scan` emits:
+Outputs:
 
 ```text
 .pkc/facts.json
 .pkc/feature-candidates.json
-```
-
-`build` additionally emits:
-
-```text
 knowledge/features/**/*.md
 ```
 
-Concrete sample:
+## Active slice: V0.3 frontend static evidence
 
-```text
-samples/WorkPlaySample/knowledge/features/workplay/complete.md
+The implementation adds a separate `Pkc.Frontend` analyzer for React/TypeScript-style source and keeps frontend extraction deterministic.
+
+Current target facts:
+
+- `ui-screen`
+- `ui-route`
+- `ui-action`
+- `ui-api-call`
+
+Initial patterns cover:
+
+- React function components
+- React Router `<Route ...>`
+- `<button>` / `<Button>` actions with direct handlers
+- common permission guards: `hasPermission`, `can`, `canAccess`
+- `fetch(...)` and common client `.get/.post/.put/.patch/.delete(...)` calls
+
+Frontend evidence is only attached to a backend feature when HTTP method + normalized API route match the backend endpoint. This is intentionally conservative to avoid assigning unrelated UI to a feature.
+
+When matched, feature coverage becomes:
+
+```yaml
+coverage:
+  - backend-code
+  - frontend-static
 ```
 
-The sample Markdown is `authority: code-observed` and includes the WorkPlay Complete endpoint, `ManageWorkPlay` permission, the Completed guard/exception, Status mutation, publication-like side effect, backend flow and exact source evidence.
+and generated Markdown gains:
 
-Endpoint setup noise such as `Id = id` and discard assignments are deliberately excluded from product-level knowledge while raw facts remain preserved for traceability.
+- `How to do it in the UI`
+- `UI to backend`
+- UI permission evidence
+- UI source evidence
 
-It explicitly says that frontend/UI and Azure DevOps have not yet been analyzed.
+The old `frontend-ui-not-analyzed` unknown is removed only when a matching frontend flow is found. Azure DevOps remains unknown until the next major input slice.
 
-## Important implementation detail
+## Countdown
 
-The first knowledge synthesizer is deterministic and grounded. This was intentional: prove the portable Markdown contract before spending tokens or coupling PKC to an LLM vendor.
+After V0.3 CI is green, countdown to Markdown with grounded UI instructions is **0**.
 
-`IKnowledgeSynthesizer` exists so a later model-backed synthesizer can infer richer business meaning from compact evidence rather than raw source.
-
-## AI-test checkpoint
-
-Countdown is now **0**. Attach the sample Markdown to an AI and ask:
-
-> How do I change WorkPlay status? What should I be careful about?
-
-Expected behavior today: the AI should explain the backend Complete action and caveats, while admitting that the UI path and delivery history are unknown.
-
-## Next engineering target
-
-Frontend static evidence.
-
-Extract supported frontend routes, pages/components, actions/buttons, permission conditions and API calls. Then connect those facts to backend feature candidates so the knowledge can answer the user-facing “how do I do it?” part.
-
-Azure DevOps comes after the UI proof, then incremental compilation/change impact.
+Next major engineering target after that is Azure DevOps evidence: Feature/PBI/Sprint/history and delivery traceability.
