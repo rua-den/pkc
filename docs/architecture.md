@@ -24,9 +24,60 @@ PORTABLE PRODUCT KNOWLEDGE
 
 Direct source-to-Markdown generation makes traceability, incremental rebuilds, testing and hallucination control difficult. PKC therefore keeps a machine-oriented evidence layer separate from human/AI-oriented knowledge.
 
+## Analyzer fidelity is evidence
+
+PKC does not treat every extracted fact as equally reliable. Analyzer mode and confidence travel with evidence.
+
+Current modes:
+
+```text
+project-semantic                  high
+  C# loaded through the target project's MSBuildWorkspace compilation.
+
+typescript-ast                    high
+  Angular TypeScript structure parsed with the target project's TypeScript runtime.
+
+loose-roslyn-fallback             medium
+  C# Roslyn analysis without the target project's complete reference graph.
+
+angular-template-regex-fallback   medium
+  Conservative Angular template action/visibility extraction.
+
+regex-fallback                    low
+  Conservative text-pattern extraction, currently including React.
+```
+
+Rules:
+
+1. Prefer the strongest available deterministic analyzer.
+2. Fallback is allowed only when its provenance is explicit.
+3. Downstream grouping/synthesis must not silently upgrade fallback evidence.
+4. When fallback contributes materially to a workflow, generated knowledge surfaces a caveat under `Important unknowns`.
+5. “Verified” means verified against an acceptance fixture/benchmark, not universal robustness across arbitrary repositories.
+
 ## Backend evidence
 
-C# source is analyzed with Roslyn and normalized into `Pkc.Core` facts and relations. Downstream feature/workflow code consumes the evidence model, not Roslyn syntax directly.
+C# extraction remains Roslyn-based and normalized into `Pkc.Core` facts and relations.
+
+The preferred semantic path is:
+
+```text
+.csproj
+  ↓
+MSBuildWorkspace
+  ↓
+target framework / project / package references
+  ↓
+Roslyn Compilation + SemanticModel
+  ↓
+project-semantic evidence
+```
+
+This path is used to enrich symbols and semantic call relations and to prove framework symbols such as ASP.NET Core controller base types and HTTP attributes.
+
+If the target project cannot be loaded or a source file cannot be mapped to its project compilation, PKC retains conservative loose Roslyn evidence and tags it `loose-roslyn-fallback` rather than pretending the full target semantic context was available.
+
+Existing syntax facts remain useful raw evidence; project-semantic enrichment adds stronger symbol context rather than replacing the whole extraction layer.
 
 ## Frontend adapter boundary
 
@@ -66,23 +117,33 @@ Current common relations include:
 - action `triggers-api`
 - API call `calls-endpoint` after backend matching
 
-Framework identity such as `react-static` or `angular-static` is metadata for provenance/debugging. Knowledge synthesis must not require it to understand the workflow.
+### Angular
 
-The generic linker currently uses a conservative rule: an action handler is linked to an API call when there is exactly one same-framework API-call method with the same normalized handler name. Ambiguous matches are left unlinked rather than guessed.
+Angular TypeScript structure currently prefers the project-local TypeScript compiler AST for components, routes, method structure and HTTP call expressions.
+
+Angular template action/visibility extraction is still conservative fallback logic and is explicitly tagged `angular-template-regex-fallback`. This is an intentional current boundary, not hidden AST coverage.
+
+If TypeScript/Node AST execution is unavailable, Angular can fall back to the legacy text analyzer with `regex-fallback` provenance.
+
+### React
+
+React currently uses the existing conservative text/regex adapter and is tagged `regex-fallback` / low confidence. React AST support is future work.
+
+Framework identity such as `react-static` or `angular-static` remains metadata for provenance/debugging. Knowledge synthesis consumes canonical facts and relations rather than branching on framework identity.
 
 ## Boundaries
 
 ### Deterministic layer
 
-Responsible for facts that can be proven from source syntax/semantics and their locations.
+Responsible for facts that can be proven from source syntax/semantics and their locations. It must preserve analyzer provenance and confidence.
 
 ### Inference layer
 
-Responsible for grouping evidence into product concepts such as features, workflows and business explanations. It consumes canonical evidence, not framework-specific source constructs.
+Responsible for grouping evidence into product concepts such as features, workflows and business explanations. It consumes canonical evidence, not framework-specific source constructs, and must respect evidence fidelity.
 
 ### Presentation layer
 
-Renders the canonical knowledge model into portable Markdown/YAML. Markdown is output, not the internal source of truth for compilation.
+Renders the canonical knowledge model into portable Markdown/YAML. Markdown is output, not the internal source of truth for compilation. Fallback caveats are presentation-relevant because an AI/PO should know when a workflow contains lower-confidence evidence.
 
 ## Non-goal
 
