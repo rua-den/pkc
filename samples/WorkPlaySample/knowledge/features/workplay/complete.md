@@ -6,6 +6,7 @@ authority: "code-observed"
 generated: true
 coverage:
   - backend-code
+  - frontend-static
 ---
 
 # WorkPlay Complete
@@ -14,7 +15,16 @@ coverage:
 
 ## What this file represents
 
-Code-observed backend behavior for the Complete action in WorkPlay.
+Observed UI and backend behavior for the Complete action in WorkPlay.
+
+## How to do it in the UI
+
+- Open route `/workplays/:id`.
+- Click `Complete` on `WorkPlayDetailPage`; UI guard: `ManageWorkPlay`.
+
+## UI to backend
+
+- UI sends `POST /api/workplays/${id}/complete`.
 
 ## Backend entry point
 
@@ -23,6 +33,7 @@ Code-observed backend behavior for the Complete action in WorkPlay.
 ## Permissions
 
 - Policy: ManageWorkPlay
+- UI visibility guard: ManageWorkPlay
 
 ## Observed business rules
 
@@ -44,15 +55,20 @@ Code-observed backend behavior for the Complete action in WorkPlay.
 
 ## Important unknowns
 
-- Frontend/UI entry point and user interaction path have not been analyzed yet.
 - Azure DevOps delivery history and product intent have not been analyzed yet.
 
 ## Evidence
 
+- `WorkPlayDetail.tsx:L1-L1` — UI screen/component WorkPlayDetailPage
+- `WorkPlayDetail.tsx:L3-L3` — UI API call POST /api/workplays/${id}/complete
+- `WorkPlayDetail.tsx:L7-L7` — UI action Complete
+- `WorkPlayDetail.tsx:L11-L11` — UI screen/component Routes
+- `WorkPlayDetail.tsx:L12-L12` — UI route /workplays/:id
 - `WorkPlayFeature.cs:L19-L19` — Method WorkPlaySample.WorkPlay.SetStatus
 - `WorkPlayFeature.cs:L19-L19` — Mutation: Status
 - `WorkPlayFeature.cs:L24-L33` — Method WorkPlaySample.WorkPlayService.ChangeStatus
 - `WorkPlayFeature.cs:L26-L29` — Condition: workPlay.Status == WorkPlayStatus.Completed
 - `WorkPlayFeature.cs:L28-L28` — Throws InvalidOperationException
 - `WorkPlayFeature.cs:L35-L38` — Method WorkPlaySample.WorkPlayService.PublishStatusChanged
+- `WorkPlayFeature.cs:L37-L37` — Mutation: _
 - `WorkPlayFeature.cs:L47-L54` — Endpoint WorkPlaySample.WorkPlayController.Complete

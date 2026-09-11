@@ -34,3 +34,4 @@ jobs:
           grep -q 'Click `Complete`' samples/WorkPlaySample/knowledge/features/workplay/complete.md
           grep -q 'frontend-static' samples/WorkPlaySample/knowledge/features/workplay/complete.md
           ! grep -q 'Frontend/UI entry point and user interaction path have not been analyzed yet' samples/WorkPlaySample/knowledge/features/workplay/complete.md
+          git diff --exit-code -- samples/WorkPlaySample/knowledge/features/workplay/complete.md
