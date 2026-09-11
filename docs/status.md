@@ -4,77 +4,42 @@ Last updated: 2026-09-11
 
 ## Current milestone
 
-**V0.1 baseline — C# evidence compiler: COMPLETE**
+**V0.1.1 behavior evidence — IN PROGRESS**
 
-Verified code commit: `14045bf6fc723d82c8897cc0f7db8185582c9baf`
+Implementation commit prepared: `a43c59c12330a76944272b6f011ab182813c85a9`
 
-GitHub Actions run `34573299943` passed all checks:
+This slice enriches the deterministic C# evidence layer before any LLM or Markdown generation.
 
-- `dotnet build PKC.sln --configuration Release`
-- unit tests
-- end-to-end `pkc scan samples/WorkPlaySample`
-- generated `.pkc/facts.json` contains the expected endpoint evidence
+## Target evidence in V0.1.1
 
-## What exists now
+- `if` / guard conditions
+- thrown exceptions
+- assignments and state-mutation candidates
+- semantic method-call targets when Roslyn can resolve them
+- combined controller + action routes
+- authorization policy/role metadata
+- message/event publication candidates
+- exact source file + line ranges for all evidence
 
-- `PKC.sln`
-- `Pkc.Core` — evidence model
-- `Pkc.CSharp` — Roslyn-based C# scanner
-- `Pkc.Cli` — `pkc scan <repository-path>`
-- `Pkc.CSharp.Tests`
-- `samples/WorkPlaySample`
-- GitHub Actions CI
-
-## Evidence currently extracted
-
-- class
-- interface
-- struct
-- record
-- enum and enum members
-- methods and constructors
-- properties
-- attributes
-- HTTP endpoint method + route template
-- authorization presence/details
-- syntactic method invocation relations
-- exact source file and line ranges
-
-All output is deterministic and written to:
+Output remains:
 
 ```text
 .pkc/facts.json
 ```
 
-## Deliberate V0.1 limitations
+Schema version target: `0.1.1`.
 
-Not implemented yet:
+## Path to first AI-testable Markdown
 
-- semantic symbol resolution / true call graph
-- conditions and validation rules as first-class facts
-- assignments/state mutations
-- throws/exceptions as behavior evidence
-- event publication / integrations as first-class facts
-- combined controller + action route resolution
-- frontend/UI analysis
-- Azure DevOps ingestion
-- LLM synthesis
-- Markdown product knowledge generation
-- incremental hashing/rebuild
+After V0.1.1 is green, the shortest path to the first useful Markdown test has **2 engineering steps remaining**:
 
-## Next engineering target
+1. **V0.1.2 — Feature/Workflow candidate synthesis model**
+   - deterministically group related evidence around a user-facing behavior (for example WorkPlay status change)
+   - produce a compact intermediate feature/workflow payload for an LLM
 
-Before introducing an LLM, make the evidence layer rich enough to describe behavior.
+2. **V0.2 — Knowledge synthesis + Markdown renderer**
+   - LLM turns grounded feature/workflow evidence into the canonical knowledge model
+   - deterministic renderer emits `knowledge/features/.../*.md`
+   - validate with the target PO question: “How do I change WorkPlay status? What should I be careful about?”
 
-Recommended next slice: **V0.1.1 — behavior evidence**
-
-Extract with Roslyn:
-
-1. `if`/guard conditions
-2. thrown exceptions
-3. assignments and state mutations
-4. resolved method-call targets where possible
-5. controller/action routes and authorization policies
-6. event/message publication patterns
-
-The output should remain source-grounded and deterministic.
+Frontend/UI and Azure DevOps are intentionally later; the first Markdown test should prove backend-derived product knowledge first.
