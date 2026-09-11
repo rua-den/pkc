@@ -123,11 +123,22 @@ public sealed class CSharpProjectSemanticEnricher
             ["semanticProject"] = source.ProjectPath
         };
 
+        if (!SupportsDeclaredNodeEnrichment(fact.Kind))
+        {
+            metadata["semanticNodeMatch"] = "not-applicable";
+            return fact with { Metadata = metadata };
+        }
+
         var node = await FindFactNodeAsync(fact, source, cancellationToken);
         if (node is null)
         {
+            metadata["analysisConfidence"] = "medium";
+            metadata["semanticNodeMatch"] = "failed";
+            metadata["analysisCaveat"] = "target-project-loaded-but-fact-node-match-failed";
             return fact with { Metadata = metadata };
         }
+
+        metadata["semanticNodeMatch"] = "matched";
 
         var declared = source.SemanticModel.GetDeclaredSymbol(node, cancellationToken);
         if (declared is not null)
@@ -168,6 +179,11 @@ public sealed class CSharpProjectSemanticEnricher
         return fact with { Metadata = metadata };
     }
 
+    private static bool SupportsDeclaredNodeEnrichment(string kind) => kind is
+        "endpoint" or "method" or "constructor" or
+        "class" or "interface" or "struct" or "record" or "enum" or
+        "property" or "enum-member";
+
     private static async Task<SyntaxNode?> FindFactNodeAsync(
         EvidenceFact fact,
         ProjectSemanticSource source,
@@ -197,7 +213,7 @@ public sealed class CSharpProjectSemanticEnricher
             node is BaseTypeDeclarationSyntax type && type.Identifier.ValueText == fact.Name,
         "property" => node is PropertyDeclarationSyntax property && property.Identifier.ValueText == fact.Name,
         "enum-member" => node is EnumMemberDeclarationSyntax member && member.Identifier.ValueText == fact.Name,
-        _ => true
+        _ => false
     };
 
     private static bool IsHttpMethodAttribute(INamedTypeSymbol type)
