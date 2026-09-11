@@ -9,7 +9,7 @@ public sealed partial class MarkdownKnowledgeRenderer
     {
         ArgumentNullException.ThrowIfNull(knowledge);
         var action = knowledge.Id.Split(':', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? knowledge.Title;
-        return $"knowledge/features/{Slug(knowledge.Area)}/{Slug(action)}.md";
+        return $"knowledge/workflows/{Slug(knowledge.Area)}/{Slug(action)}.md";
     }
 
     public string Render(FeatureKnowledge knowledge)
@@ -21,6 +21,7 @@ public sealed partial class MarkdownKnowledgeRenderer
         builder.AppendLine($"id: {Yaml(knowledge.Id)}");
         builder.AppendLine($"title: {Yaml(knowledge.Title)}");
         builder.AppendLine($"area: {Yaml(knowledge.Area)}");
+        builder.AppendLine("type: \"workflow\"");
         builder.AppendLine($"authority: {Yaml(knowledge.Authority)}");
         builder.AppendLine("generated: true");
         builder.AppendLine("coverage:");
@@ -32,9 +33,9 @@ public sealed partial class MarkdownKnowledgeRenderer
         builder.AppendLine();
         builder.AppendLine($"# {knowledge.Title}");
         builder.AppendLine();
-        builder.AppendLine("> This file describes behavior observed in the current implementation. It is not yet business-approved truth.");
+        builder.AppendLine("> This workflow describes behavior observed in the current implementation. It is not yet business-approved truth.");
         builder.AppendLine();
-        builder.AppendLine("## What this file represents");
+        builder.AppendLine("## What this workflow represents");
         builder.AppendLine();
         builder.AppendLine(knowledge.Summary);
         builder.AppendLine();
