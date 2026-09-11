@@ -5,7 +5,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>pkc</ToolCommandName>
     <PackageId>RuaDen.Pkc.Tool</PackageId>
-    <Version>0.4.3-preview.1</Version>
+    <Version>0.4.3-preview.2</Version>
     <Authors>rua-den</Authors>
     <Description>Product Knowledge Compiler: compile grounded implementation evidence into portable product knowledge.</Description>
     <RepositoryUrl>https://github.com/rua-den/pkc</RepositoryUrl>
