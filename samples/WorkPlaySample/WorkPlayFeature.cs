@@ -23,9 +23,14 @@ public sealed class WorkPlayService
 {
     public void ChangeStatus(WorkPlay workPlay, WorkPlayStatus targetStatus)
     {
-        if (workPlay.Status == WorkPlayStatus.Completed)
+        if (workPlay.Status == WorkPlayStatus.Completed && targetStatus != WorkPlayStatus.Active)
         {
-            throw new InvalidOperationException("Completed WorkPlay cannot change status.");
+            throw new InvalidOperationException("Completed WorkPlay can only be reopened.");
+        }
+
+        if (workPlay.Status == WorkPlayStatus.Cancelled && targetStatus == WorkPlayStatus.Completed)
+        {
+            throw new InvalidOperationException("Cancelled WorkPlay cannot be completed.");
         }
 
         workPlay.SetStatus(targetStatus);
@@ -50,6 +55,24 @@ public sealed class WorkPlayController : ControllerBase
     {
         var workPlay = new WorkPlay { Id = id };
         _service.ChangeStatus(workPlay, WorkPlayStatus.Completed);
+        return Ok();
+    }
+
+    [HttpPost("{id:int}/cancel")]
+    [Authorize(Policy = "ManageWorkPlay")]
+    public IActionResult Cancel(int id)
+    {
+        var workPlay = new WorkPlay { Id = id };
+        _service.ChangeStatus(workPlay, WorkPlayStatus.Cancelled);
+        return Ok();
+    }
+
+    [HttpPost("{id:int}/reopen")]
+    [Authorize(Policy = "ManageWorkPlay")]
+    public IActionResult Reopen(int id)
+    {
+        var workPlay = new WorkPlay { Id = id };
+        _service.ChangeStatus(workPlay, WorkPlayStatus.Active);
         return Ok();
     }
 }
