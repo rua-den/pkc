@@ -50,9 +50,13 @@ public sealed class CSharpEvidenceScanner
             .ToArray();
 
         var raw = new FactDocument("0.4.4-csharp-raw", rawFacts, rawRelations);
-        return await new CSharpProjectSemanticEnricher().EnrichAsync(
+        var normalized = await new CSharpMutationContextEnricher().EnrichAsync(
             repositoryPath,
             raw,
+            cancellationToken);
+        return await new CSharpProjectSemanticEnricher().EnrichAsync(
+            repositoryPath,
+            normalized,
             cancellationToken);
     }
 }
