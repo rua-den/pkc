@@ -8,6 +8,15 @@ public sealed class CrossStackFeatureCandidateBuilder
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
     private static readonly Regex RouteParameterRegex = new(@"\{[^}/]+\}|:[A-Za-z0-9_]+", RegexOptions.Compiled);
 
+    private static readonly HashSet<string> ScreenBehaviorKinds = new(StringComparer.Ordinal)
+    {
+        "ui-field",
+        "ui-field-option",
+        "ui-field-validation",
+        "ui-field-visibility",
+        "ui-field-enabled-state"
+    };
+
     private const string CSharpFallbackWarning =
         "Some C# evidence in this workflow was analyzed without the target project's full MSBuild reference graph. Treat semantic symbol and call resolution as lower confidence.";
 
@@ -47,6 +56,7 @@ public sealed class CrossStackFeatureCandidateBuilder
         {
             facts[apiCall.Id] = apiCall;
             AddRelation(new EvidenceRelation(apiCall.Id, "calls-endpoint", endpoint.Id, apiCall.Source), relations, relationKeys);
+            AddBindingsForApiCall(document, apiCall, facts, relations, relationKeys);
 
             var actionRelations = document.Relations
                 .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
@@ -69,19 +79,26 @@ public sealed class CrossStackFeatureCandidateBuilder
             {
                 facts[action.Id] = action;
                 AddRelation(new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source), relations, relationKeys);
+            }
 
-                var screens = FindScreensForAction(document, action).ToArray();
-                foreach (var screen in screens)
+            var screens = actions
+                .SelectMany(action => FindScreensForAction(document, action))
+                .Concat(FindScreensForApiCall(document, apiCall))
+                .DistinctBy(screen => screen.Id, StringComparer.Ordinal)
+                .ToArray();
+
+            foreach (var screen in screens)
+            {
+                facts[screen.Id] = screen;
+                AddScreenBehavior(document, screen, facts, relations, relationKeys);
+
+                foreach (var route in document.Facts.Where(fact =>
+                             fact.Kind == "ui-route" &&
+                             fact.Metadata.TryGetValue("component", out var component) &&
+                             string.Equals(component, screen.Name, StringComparison.Ordinal)))
                 {
-                    facts[screen.Id] = screen;
-                    foreach (var route in document.Facts.Where(fact =>
-                                 fact.Kind == "ui-route" &&
-                                 fact.Metadata.TryGetValue("component", out var component) &&
-                                 string.Equals(component, screen.Name, StringComparison.Ordinal)))
-                    {
-                        facts[route.Id] = route;
-                        AddRelation(new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source), relations, relationKeys);
-                    }
+                    facts[route.Id] = route;
+                    AddRelation(new EvidenceRelation(route.Id, "renders-screen", screen.Name, route.Source), relations, relationKeys);
                 }
             }
         }
@@ -100,6 +117,51 @@ public sealed class CrossStackFeatureCandidateBuilder
         };
 
         return AddAnalysisWarnings(FilterFlowNoise(enriched));
+    }
+
+    private static void AddScreenBehavior(
+        FactDocument document,
+        EvidenceFact screen,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        foreach (var behavior in document.Facts.Where(fact =>
+                     ScreenBehaviorKinds.Contains(fact.Kind) &&
+                     (string.Equals(fact.Container, screen.Name, StringComparison.Ordinal) ||
+                      fact.Metadata.TryGetValue("component", out var component) &&
+                      string.Equals(component, screen.Name, StringComparison.Ordinal))))
+        {
+            facts[behavior.Id] = behavior;
+            AddRelation(
+                new EvidenceRelation(screen.Id, "contains-ui-behavior", behavior.Id, behavior.Source),
+                relations,
+                relationKeys);
+        }
+    }
+
+    private static void AddBindingsForApiCall(
+        FactDocument document,
+        EvidenceFact apiCall,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return;
+        }
+
+        foreach (var binding in document.Facts.Where(fact =>
+                     fact.Kind == "ui-field-binding" &&
+                     string.Equals(fact.Container, apiCall.Container, StringComparison.Ordinal)))
+        {
+            facts[binding.Id] = binding;
+            AddRelation(
+                new EvidenceRelation(binding.Id, "binds-api", apiCall.Id, binding.Source),
+                relations,
+                relationKeys);
+        }
     }
 
     private static FeatureCandidate FilterFlowNoise(FeatureCandidate candidate)
@@ -159,6 +221,11 @@ public sealed class CrossStackFeatureCandidateBuilder
         return document.Facts.Where(fact =>
             fact.Kind == "ui-screen" && string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
     }
+
+    private static IEnumerable<EvidenceFact> FindScreensForApiCall(FactDocument document, EvidenceFact apiCall) =>
+        document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" &&
+            string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal));
 
     private static void AddRelation(EvidenceRelation relation, ICollection<EvidenceRelation> relations, ISet<string> keys)
     {
