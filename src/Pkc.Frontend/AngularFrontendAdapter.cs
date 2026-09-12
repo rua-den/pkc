@@ -4,8 +4,19 @@ namespace Pkc.Frontend;
 
 public sealed class AngularFrontendAdapter : IFrontendAdapter
 {
+    private static readonly HashSet<string> UiBehaviorKinds = new(StringComparer.Ordinal)
+    {
+        "ui-field",
+        "ui-field-option",
+        "ui-field-validation",
+        "ui-field-visibility",
+        "ui-field-enabled-state",
+        "ui-field-binding"
+    };
+
     private readonly AngularRepositoryScanner _regexFallback = new();
     private readonly AngularTypeScriptAstScanner _astScanner = new();
+    private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
 
     public string Id => "angular";
 
@@ -17,14 +28,16 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     {
         var astAttempt = await _astScanner.TryScanAsync(repositoryPath, cancellationToken);
         var fallbackDocument = await _regexFallback.ScanAsync(repositoryPath, cancellationToken);
+        var formBehaviorDocument = await _formBehaviorScanner.ScanAsync(repositoryPath, cancellationToken);
 
         if (astAttempt.Document is null)
         {
-            return TagDocument(
+            var fallback = TagDocument(
                 fallbackDocument,
                 "regex-fallback",
                 "low",
                 astAttempt.FailureReason ?? "typescript-ast-unavailable");
+            return Merge(fallback, formBehaviorDocument, "0.4.4-angular");
         }
 
         var astDocument = astAttempt.Document;
@@ -42,15 +55,38 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             .Where(relation => templateFactIds.Contains(relation.FromFactId))
             .ToArray();
 
-        var facts = astDocument.Facts
-            .Concat(templateFacts)
+        var templateDocument = new FactDocument(
+            "0.4.4-angular-template",
+            templateFacts,
+            templateRelations);
+
+        return Merge(astDocument, templateDocument, formBehaviorDocument, "0.4.4-angular");
+    }
+
+    private static FactDocument Merge(
+        FactDocument first,
+        FactDocument second,
+        string schemaVersion) =>
+        Merge(first, second, null, schemaVersion);
+
+    private static FactDocument Merge(
+        FactDocument first,
+        FactDocument second,
+        FactDocument? third,
+        string schemaVersion)
+    {
+        var documents = third is null ? [first, second] : new[] { first, second, third };
+
+        var facts = documents
+            .SelectMany(document => document.Facts)
+            .Where(fact => third is null || documentAllowsFact(fact))
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
             .ToArray();
 
-        var relations = astDocument.Relations
-            .Concat(templateRelations)
+        var relations = documents
+            .SelectMany(document => document.Relations)
             .GroupBy(
                 relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}",
                 StringComparer.Ordinal)
@@ -60,7 +96,12 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             .ThenBy(relation => relation.Target, StringComparer.Ordinal)
             .ToArray();
 
-        return new FactDocument("0.4.3-angular", facts, relations);
+        return new FactDocument(schemaVersion, facts, relations);
+
+        static bool documentAllowsFact(EvidenceFact fact) =>
+            fact.Kind == "ui-action" ||
+            fact.Kind is "ui-screen" or "ui-route" or "ui-api-call" ||
+            UiBehaviorKinds.Contains(fact.Kind);
     }
 
     private static FactDocument TagDocument(
