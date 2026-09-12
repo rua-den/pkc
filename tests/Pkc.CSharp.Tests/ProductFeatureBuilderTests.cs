@@ -18,7 +18,7 @@ public sealed class ProductFeatureBuilderTests
         var document = new ProductFeatureBuilder().Build(workflows);
         var feature = Assert.Single(document.Features);
 
-        Assert.Equal("0.4.0", document.SchemaVersion);
+        Assert.Equal("0.4.4", document.SchemaVersion);
         Assert.Equal("product-feature:workplay:status-management", feature.Id);
         Assert.Equal("WorkPlay Status Management", feature.Title);
         Assert.Equal("status-management", feature.Category);
