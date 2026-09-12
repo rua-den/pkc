@@ -24,6 +24,39 @@ PORTABLE PRODUCT KNOWLEDGE
 
 Direct source-to-Markdown generation makes traceability, incremental rebuilds, testing and hallucination control difficult. PKC therefore keeps a machine-oriented evidence layer separate from human/AI-oriented knowledge.
 
+## Knowledge hierarchy is part of the architecture
+
+PKC is not a source-code documentation generator. The output must preserve implementation proof while presenting product/system knowledge at the right level for an AI answering Product Owner questions.
+
+The intended hierarchy is:
+
+```text
+knowledge/index.md
+  → orientation + observed capability map + knowledge boundaries
+
+knowledge/features/**/*.md
+  → capability-level behavior, permissions, outcomes, important failures, shared rules
+
+knowledge/workflows/**/*.md
+  → operation-level behavior, validations, state changes, side effects, integrations,
+    application-oriented flow and evidence
+
+.pkc/facts.json + workflow evidence
+  → implementation detail, provenance and source traceability
+```
+
+Promotion rules:
+
+1. Raw evidence may be detailed; product knowledge should be selective.
+2. A transitive helper guard/loop/call is not automatically a product rule.
+3. Helper detail is promoted only when it materially changes externally meaningful behavior, constraints, outcomes or safety.
+4. Removing product-level noise must not delete the underlying evidence or traceability.
+5. Equivalent workflows may share product rules, but conditional/dev-only differences must remain explicit.
+6. The primary consumer is an AI. Output should support reliable retrieval and reasoning, not merely look pleasant to a human reader.
+7. Observed implementation must never be silently promoted to approved product intent.
+
+This hierarchy is an acceptance concern, not just renderer formatting. A compiler can have correct facts and still fail if `knowledge/` cannot explain the product clearly.
+
 ## Analyzer fidelity is evidence
 
 PKC does not treat every extracted fact as equally reliable. Analyzer mode, confidence and caveats travel with evidence.
@@ -94,7 +127,7 @@ Frontend frameworks are source adapters, not product-knowledge concepts.
 React ───────┐
 Angular ─────┤
 MVC/Razor ───┤  future adapters
-Blazor ──────┤  future adapters
+Blazor ──────┤
 Vue ─────────┘
       ↓
 IFrontendAdapter
@@ -155,11 +188,13 @@ Responsible for facts that can be proven from source syntax/semantics and their 
 
 ### Inference layer
 
-Responsible for grouping evidence into product concepts such as features, workflows and business explanations. It consumes canonical evidence, not framework-specific source constructs, and must respect evidence fidelity.
+Responsible for grouping evidence into product concepts such as features, workflows and business explanations. It consumes canonical evidence, not framework-specific source constructs, and must respect evidence fidelity and the knowledge hierarchy.
 
 ### Presentation layer
 
 Renders the canonical knowledge model into portable Markdown/YAML. Markdown is output, not the internal source of truth for compilation.
+
+Presentation may reduce duplication and choose what is shown at each knowledge level, but it must not invent behavior or destroy traceability.
 
 ## Non-goal
 
