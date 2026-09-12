@@ -144,7 +144,8 @@ public sealed class CrossStackValidationConsistencyTests
                 rule => rule.Contains("serviceType", StringComparison.OrdinalIgnoreCase) &&
                         rule.Contains("CSP", StringComparison.Ordinal));
 
-            var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+            var workflowRenderer = new MarkdownKnowledgeRenderer();
+            var markdown = workflowRenderer.Render(knowledge);
             Assert.Contains("UI field `serviceType` offers option `CSP`", markdown, StringComparison.Ordinal);
             Assert.Contains("UI field `serviceType` offers option `NCE`", markdown, StringComparison.Ordinal);
             Assert.Contains("UI field `msSubscriptionId` is visible when", markdown, StringComparison.Ordinal);
@@ -154,6 +155,22 @@ public sealed class CrossStackValidationConsistencyTests
                 markdown,
                 StringComparison.Ordinal);
             Assert.Contains("CSP", markdown, StringComparison.Ordinal);
+
+            var workflowPath = workflowRenderer.GetRelativePath(knowledge);
+            var bundle = new PortableKnowledgePackRenderer().RenderBundle(
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [workflowPath] = markdown
+                },
+                "validation-app");
+
+            Assert.Contains($"PKC_FILE: {workflowPath}", bundle, StringComparison.Ordinal);
+            Assert.Contains("UI field `msSubscriptionId` maps to request field `microsoftSubscriptionId`", bundle, StringComparison.Ordinal);
+            Assert.Contains(
+                "Validation consistency observed: UI field `msSubscriptionId` and backend field `MicrosoftSubscriptionId`",
+                bundle,
+                StringComparison.Ordinal);
+            Assert.Contains("CSP", bundle, StringComparison.Ordinal);
         }
         finally
         {
