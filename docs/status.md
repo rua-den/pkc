@@ -1,14 +1,12 @@
 # PKC Status
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## North star
 
 PKC is a **Product/System Knowledge Compiler**.
 
-The product is the generated portable knowledge pack that a Product Owner can give to an AI assistant to understand the system **without making that AI re-scan the source repository**.
-
-The analyzer, fact graph, candidate builder and renderer are supporting compiler stages. They are not independent success criteria.
+The product is the generated portable knowledge pack that a Product Owner can hand to an AI assistant and use for product/system questions **without making that AI rescan the source repository**.
 
 ```text
 SOURCE
@@ -25,107 +23,73 @@ CANONICAL KNOWLEDGE MODEL
   ↓
 PORTABLE AI HANDOFF
   ↓
-AI CAN EXPLAIN THE PRODUCT AT THE RIGHT ABSTRACTION LEVEL
+AI CAN EXPLAIN THE PRODUCT WITH HONEST BOUNDARIES
 ```
+
+Do not replace this with `source → LLM → Markdown`.
 
 ## Current milestone
 
-**V0.4.4 Loren Knowledge Readiness — IN PROGRESS**
+**V0.4.4 Loren Knowledge Readiness — READY FOR INDEPENDENT EXTERNAL REVIEW**
 
-V0.4.3 Analyzer Fidelity Hardening remains the last accepted packaged checkpoint:
+V0.4.3 remains the last accepted packaged checkpoint:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current development on `main` contains V0.4.4 trial fixes, portable AI handoff work and UI validation/behavior correlation. The accepted package version must not be bumped until the milestone gate passes.
+Do **not** bump the accepted package version merely because V0.4.4 development gates are green. Version advancement is an acceptance decision.
 
-Detailed execution/exit plan:
+## Current verified development checkpoint
 
-```text
-docs/real-project-trial.md
-```
-
-AI handoff contract:
+Implementation/acceptance commit before documentation-only updates:
 
 ```text
-docs/ai-handoff.md
+4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
 ```
 
-UI behavior contract:
+Verified runs:
 
 ```text
-docs/ui-behavior-contract.md
+CI #205
+  test                         PASS
+  PokeTrade real system        PASS
+
+Loren external trial #104      PASS
+Loren-main canary #86          PASS
 ```
 
-## Current benchmark roles
+Pinned Loren benchmark SHA:
 
-### PokeTrade
+```text
+e9e81651d380d7d40998f235cfdc7f119fe67af8
+```
 
-Known-answer runnable regression benchmark. Protects behavior already proven by controlled acceptance tests.
+## V0.4.4 work proven so far
 
-### Loren pinned commit
+The Loren real-project trial forced generic fixes for gaps that PokeTrade did not expose:
 
-Blocking real-project benchmark for V0.4.4. The repository is not changed to suit PKC.
-
-### Loren main
-
-Moving non-blocking canary that exposes new real-world source patterns while Loren evolves. It never silently replaces the pinned acceptance SHA.
-
-## Proven V0.4.4 gaps already found and fixed
-
-The Loren trial has exposed gaps that PokeTrade did not:
-
-- Minimal API endpoint discovery and target-project semantic enrichment;
-- product-source contamination from `tests/` and `spikes/`;
+- Minimal API discovery + target-project semantic enrichment;
+- product-source exclusion for `tests/` / `spikes/`;
 - conditional/development-only endpoint registration;
-- Minimal API condition/failure/direct response semantics;
-- multi-project `MSBuildWorkspace` loading and false fallback elimination;
-- dictionary/object-initializer assignments promoted incorrectly to domain state changes;
-- framework and primitive call noise leaking into workflow flow presentation;
-- ASP.NET authentication `SignInAsync` / `SignOutAsync` side effects not surfaced as product behavior;
-- fact-ID collision that could drop Minimal API response metadata inside extension methods.
+- Minimal API failure/direct-response semantics;
+- multi-project MSBuild semantic loading;
+- dictionary/object-initializer state-change noise;
+- framework/primitive call-flow noise;
+- ASP.NET sign-in/sign-out side effects;
+- Minimal API response fact-ID collision;
+- feature-level product-rule filtering;
+- portable AI handoff (`knowledge/`, `PKC_KNOWLEDGE.md`, `PKC_KNOWLEDGE.zip`);
+- Angular/static UI field/options/validation/visibility/enabled-state/binding evidence;
+- backend field validation evidence;
+- UI ↔ backend validation correlation;
+- high-signal product-level capability-flow promotion.
 
-The pinned Loren acceptance currently requires zero `loose-roslyn-fallback` facts for the selected production benchmark and rejects product evidence from `tests/` or `spikes/`.
+Pinned Loren still requires zero `loose-roslyn-fallback` facts for the selected production benchmark and rejects product evidence from test/spike source.
 
-## Current development work
+## UI/backend validation contract
 
-### Layered product knowledge
-
-Product feature rule promotion is being hardened so helper-level conditions/loops remain available in workflow/evidence detail without dominating capability-level pages.
-
-The first regression target is Loren `Run Operations`, where helper string-processing and collection loops must not be promoted as product rules while externally meaningful failures, responses and conditional development behavior remain visible.
-
-### Portable AI handoff
-
-`pkc build` development output now targets:
-
-```text
-knowledge/
-  AI_INSTRUCTIONS.md
-  index.md
-  features/**/*.md
-  workflows/**/*.md
-
-PKC_KNOWLEDGE.md
-PKC_KNOWLEDGE.zip
-```
-
-Contract:
-
-```text
-knowledge/         canonical structured pack
-PKC_KNOWLEDGE.md   one-file AI upload convenience
-PKC_KNOWLEDGE.zip  archive transport/storage convenience
-```
-
-The ZIP must not include source code or raw `.pkc` evidence by default. Single-file and structured-pack forms must preserve the same critical meaning.
-
-### UI validation + behavior completeness
-
-A core acceptance requirement is explicit: PKC must not stop at route/button/API knowledge when source contains meaningful form/configuration behavior.
-
-Current canonical evidence includes:
+Canonical evidence now includes:
 
 ```text
 ui-field
@@ -138,152 +102,185 @@ backend-field-validation
 ui-backend-validation
 ```
 
-The current Angular/static form layer preserves:
+Controlled classification contract:
 
 ```text
-field existence
-select/type options
-required fields
-conditional requiredness
-conditional visibility/enabled state
-field → request-field mapping when statically traceable
-```
+same requiredness + matching condition evidence
+→ consistent
 
-Backend validation evidence currently recognizes:
-
-```text
-[Required] / [RequiredAttribute]
-missing-value guards such as IsNullOrWhiteSpace / IsNullOrEmpty / null checks
-conditional requiredness when the missing-value guard is gated by another condition
-```
-
-Cross-stack validation correlation now joins UI binding + UI requiredness + backend requiredness and emits one of:
-
-```text
-consistent
-possible-mismatch
-unknown
-```
-
-The known-answer CSP fixture proves this full path:
-
-```text
-serviceType offers CSP/NCE
-serviceType is required on UI + backend
-msSubscriptionId is visible when serviceType == CSP
-msSubscriptionId is required when serviceType == CSP
-msSubscriptionId maps to microsoftSubscriptionId
-backend MicrosoftSubscriptionId is required when ServiceType == CSP
-UI/backend conditional requiredness normalizes to the same condition key
-portable knowledge reports observed consistency
-```
-
-Negative classification regressions also require:
-
-```text
 backend required + UI required not observed
 → possible-mismatch
 
 UI required + backend required not observed
 → unknown
 
-different UI/backend requiredness conditions
+different observed requiredness conditions
 → possible-mismatch
 ```
 
-The happy path is asserted through evidence → workflow knowledge → Markdown → `PKC_KNOWLEDGE.md`, so these semantics may not die inside `.pkc/facts.json`.
-
-Latest verified development checkpoint:
+The CSP regression proves the full portable path:
 
 ```text
-HEAD: 326f556517c27085ed027eecdeef7e4125c851a6
-CI #195: test PASS + PokeTrade PASS
-Loren external trial #94: PASS
-Loren-main canary #75: PASS
+serviceType offers CSP/NCE
+serviceType required on UI + backend
+msSubscriptionId visible when serviceType == CSP
+msSubscriptionId required when serviceType == CSP
+msSubscriptionId → microsoftSubscriptionId request binding
+backend MicrosoftSubscriptionId required when ServiceType == CSP
+normalized condition evidence matches
+workflow Markdown reports observed consistency
+PKC_KNOWLEDGE.md preserves the same answer
 ```
 
-This proves the controlled cross-stack validation contract and protects existing real-project benchmarks. It does **not** yet prove arbitrary real UI generalization; that remains part of the independent real-repository gate.
+Negative tests lock `possible-mismatch` and `unknown` so missing evidence cannot silently become false consistency.
 
-## Main remaining V0.4.4 risk
+## Loren blind knowledge-only comprehension
 
-The primary V0.4.4 blocker is now **knowledge-only comprehension and abstraction quality**, not whether validation evidence can technically survive the compiler.
+First blind pass found two blocking abstraction gaps:
 
-The compiler can now preserve the supported UI/backend validation behavior and classify observed agreement carefully. The next question is whether a reader given only the portable knowledge can answer the critical product questions correctly, efficiently and with honest unknowns.
+```text
+A. Run feature did not expose project → memory → agent/brain collaboration clearly enough.
+B. Action-proposal feature did not make current create-branch semantics obvious enough.
+```
 
-Therefore V0.4.4 is **not complete**.
+Source cross-check confirmed both were real product-semantic gaps.
+
+Generic fix: product feature references now carry a selective `Observed capability flow` built from grounded workflow call evidence. It prioritizes application/capability boundaries and suppresses obvious plumbing/self-helper noise.
+
+Second blind pass on the artifact produced by `4f7f75e...` used **only `PKC_KNOWLEDGE.md`** and can now recover:
+
+```text
+POST /api/run
+→ LorenRunService.RunAsync
+→ LorenProjectContextBuilder.BuildAsync
+→ LorenMemoryContextBuilder.BuildAsync
+→ IMemoryStore.ListCurrentForProjectAsync
+
+LorenRunService.RunAsync
+→ AgentLoop.RunAsync
+→ IBrain.ThinkAsync
+→ IActionGateway.ExecuteAsync
+```
+
+and for proposal approval:
+
+```text
+approve endpoint
+→ ApproveProposalAndCreateBranchAsync
+→ ICreateBranchProposalStore
+→ IProjectCatalog
+→ ActionIntentFingerprint
+→ IActionGateway.ExecuteAsync
+```
+
+Results:
+
+```text
+Loren blind knowledge-only comprehension   PASS
+Run abstraction finding A                  RESOLVED
+Action-proposal finding B                  RESOLVED
+workflow-detail noise finding C            NON-BLOCKING / preserved for traceability
+integration presentation finding D         RESOLVED via capability-flow abstraction
+```
+
+Detailed benchmark record:
+
+```text
+docs/benchmarks/2026-09-12-loren-blind-review.md
+```
+
+## Portable handoff parity
+
+Current contract:
+
+```text
+knowledge/         canonical structured knowledge pack
+PKC_KNOWLEDGE.md   one-file AI upload convenience
+PKC_KNOWLEDGE.zip  transport/archive of knowledge/ only
+```
+
+For the current pinned Loren artifact:
+
+```text
+structured Markdown files:            23
+files embedded verbatim in bundle:    23 / 23
+missing bundle markers/content:        0
+PKC_KNOWLEDGE.zip knowledge files:     23
+raw .pkc entries in handoff ZIP:       0
+source .cs/.ts entries in handoff ZIP: 0
+```
+
+**Loren handoff parity: PASS.**
+
+The CI artifact itself may contain `.pkc` diagnostic output for benchmark inspection; that is not the PO-facing `PKC_KNOWLEDGE.zip` contract.
 
 ## Knowledge hierarchy that must hold
 
 ```text
-AI instructions
-  → tell the receiving AI how to consume authority/unknowns and navigate the pack
+AI_INSTRUCTIONS
+  → tell the receiving AI how to consume authority/unknowns
 
 index
-  → orient the AI around observed capabilities and boundaries
+  → orient around observed capabilities and boundaries
 
 feature
-  → explain a product/system capability at high signal
+  → explain product/system capability at high signal
 
 workflow
-  → explain one operation with permissions, validations, failures, state, side effects and flow
+  → explain one operation with exact behavior and evidence
 
 raw evidence
-  → preserve detailed implementation proof and analyzer provenance
+  → preserve implementation proof/provenance
 ```
 
-Do not delete low-level evidence merely to reduce noise. Promote it only to the level where it is useful.
+Low-level evidence should not be deleted merely to make output cleaner, and should not dominate feature pages.
 
-## Current next steps
+## V0.4.4 acceptance position
 
-Follow `docs/real-project-trial.md` in this order:
+Current gate status:
 
 ```text
-1. keep layered knowledge + handoff + UI/backend validation gates green
-2. regenerate the pinned Loren artifact
-3. blind-review PKC_KNOWLEDGE.md first
-4. cross-check the structured knowledge/ pack
-5. reopen Loren source and compare every critical answer
-6. fix/regression-lock only proven blockers
-7. external review V0.4.4
-8. V0.4.5 independent real-repo trial, preferably with a supported real form/configuration surface
+PokeTrade known-answer regression                  PASS
+Loren evidence/workflow correctness                PASS
+Loren blind knowledge-only comprehension           PASS
+Loren handoff parity                               PASS
+UI validation/behavior known-answer benchmark      PASS
+Loren external independent review                  PENDING
 ```
 
-The blind Loren review must answer from portable knowledge alone, including at least:
+Therefore V0.4.4 is **not self-declared complete**. The next action is an independent review of the current checkpoint.
+
+If that review finds a serious blocker:
 
 ```text
-what capabilities Loren exposes
-how owner authentication works
-what the main run operation does
-how project + memory context participate
-how project list/bootstrap behaves
-how action proposal approve/cancel behaves
-what is conditional/dev-only
-important permissions/validations/failures/side effects
-what remains explicitly unknown
+classify finding
+→ fix only proven generic gap
+→ add regression
+→ rerun all current gates
+→ re-review
 ```
 
-A supported UI/form benchmark must additionally prove the pack can answer:
+If the review passes, move to **V0.4.5 second independent real-repository generalization**.
+
+## V0.4.5 — second real-repository gate
+
+The second repository must be genuine, not created/modified for PKC, and materially different from PokeTrade/Loren.
+
+Run the same process:
 
 ```text
-which fields/options exist
-which fields are required
-which requirements are conditional
-which fields are shown/hidden or enabled/disabled conditionally
-where important values are sent
-whether frontend/backend validation agree when both are observed
+build real project normally
+→ pkc build
+→ inspect fallbacks/provenance
+→ blind knowledge-only comprehension
+→ structured/single-file parity
+→ source cross-check
+→ fix only proven generic defects
+→ regression-lock
+→ independent review
 ```
 
-CI/grep success is necessary but not sufficient.
-
-## V0.4.5 — independent real-repo generalization gate
-
-Even after Loren passes, **V0.5 does not open immediately**.
-
-V0.4.5 will run the same knowledge-readiness and handoff-parity process against a second genuine repository that was not created/modified for PKC and differs materially from PokeTrade/Loren.
-
-Purpose: catch benchmark overfitting before adding another major evidence source.
-
-The second repo must be selected for realism, not because current heuristics handle it easily. If a suitable supported frontend exists, prefer a repository that also exercises real form/configuration behavior so the UI-behavior contract is tested outside synthetic fixtures.
+Prefer a supported real frontend/configuration surface if available so UI/form semantics are tested outside synthetic fixtures.
 
 ## V0.5 unlock condition
 
@@ -295,40 +292,31 @@ Loren evidence/workflow correctness                PASS
 Loren blind knowledge-only comprehension           PASS
 Loren handoff parity                               PASS
 UI validation/behavior known-answer benchmark      PASS
-Loren external review                              PASS
-second independent real-repo trial                 PASS
-second knowledge-only comprehension                PASS
-second handoff parity                              PASS
-cross-benchmark regression after all fixes         PASS
-known boundaries/unknowns documented honestly      PASS
-no repository-specific compiler exceptions         PASS
+Loren independent external review                  PENDING
+second independent real-repo trial                 PENDING
+second knowledge-only comprehension                PENDING
+second handoff parity                              PENDING
+cross-benchmark regression after all fixes         PENDING
+known boundaries/unknowns documented honestly      PASS so far
+no repository-specific compiler exceptions         PASS so far
 ```
 
-If any gate is not PASS, remain in V0.4.x.
+If any required gate is not PASS, remain in V0.4.x.
 
 ## Scope discipline
 
 Until the unlock gate passes, do not start these merely because they are attractive roadmap work:
 
 - Azure DevOps ingestion;
-- Angular TypeScript `TypeChecker` migration unless a validation/binding case proves it necessary;
+- Angular TypeScript `TypeChecker` migration unless a benchmark proves it necessary;
 - React AST rewrite unless a real benchmark requires it;
 - additional frontend frameworks;
 - browser/runtime exploration;
 - incremental compilation;
-- generalized product insight/drift analysis;
-- live MCP/connector delivery merely for convenience.
+- generalized insight/drift analysis;
+- live MCP/connector delivery for convenience alone.
 
-A new analyzer or delivery capability may enter V0.4.x only when a real knowledge review proves it is required to improve:
-
-```text
-accuracy
-completeness
-signal-to-noise
-traceability
-honest uncertainty
-portable handoff reliability
-```
+A new analyzer/delivery capability may enter V0.4.x only when a real knowledge review proves it improves accuracy, completeness, signal-to-noise, traceability, honest uncertainty, or portable handoff reliability.
 
 ## Current commands
 
