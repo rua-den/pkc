@@ -4,16 +4,6 @@ namespace Pkc.Frontend;
 
 public sealed class AngularFrontendAdapter : IFrontendAdapter
 {
-    private static readonly HashSet<string> UiBehaviorKinds = new(StringComparer.Ordinal)
-    {
-        "ui-field",
-        "ui-field-option",
-        "ui-field-validation",
-        "ui-field-visibility",
-        "ui-field-enabled-state",
-        "ui-field-binding"
-    };
-
     private readonly AngularRepositoryScanner _regexFallback = new();
     private readonly AngularTypeScriptAstScanner _astScanner = new();
     private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
@@ -37,10 +27,9 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
                 "regex-fallback",
                 "low",
                 astAttempt.FailureReason ?? "typescript-ast-unavailable");
-            return Merge(fallback, formBehaviorDocument, "0.4.4-angular");
+            return Merge([fallback, formBehaviorDocument], "0.4.4-angular");
         }
 
-        var astDocument = astAttempt.Document;
         var templateFacts = fallbackDocument.Facts
             .Where(fact => fact.Kind == "ui-action")
             .Select(fact => TagFact(
@@ -60,26 +49,17 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             templateFacts,
             templateRelations);
 
-        return Merge(astDocument, templateDocument, formBehaviorDocument, "0.4.4-angular");
+        return Merge(
+            [astAttempt.Document, templateDocument, formBehaviorDocument],
+            "0.4.4-angular");
     }
 
     private static FactDocument Merge(
-        FactDocument first,
-        FactDocument second,
-        string schemaVersion) =>
-        Merge(first, second, null, schemaVersion);
-
-    private static FactDocument Merge(
-        FactDocument first,
-        FactDocument second,
-        FactDocument? third,
+        IReadOnlyList<FactDocument> documents,
         string schemaVersion)
     {
-        var documents = third is null ? [first, second] : new[] { first, second, third };
-
         var facts = documents
             .SelectMany(document => document.Facts)
-            .Where(fact => third is null || documentAllowsFact(fact))
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
@@ -97,11 +77,6 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             .ToArray();
 
         return new FactDocument(schemaVersion, facts, relations);
-
-        static bool documentAllowsFact(EvidenceFact fact) =>
-            fact.Kind == "ui-action" ||
-            fact.Kind is "ui-screen" or "ui-route" or "ui-api-call" ||
-            UiBehaviorKinds.Contains(fact.Kind);
     }
 
     private static FactDocument TagDocument(
