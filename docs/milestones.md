@@ -55,40 +55,94 @@ Last accepted tool package:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-### V0.4.4 — External real-project knowledge trial — CURRENT
+### V0.4.4 — Loren knowledge readiness — CURRENT
 
-The purpose of this milestone is **not** to make every analyzer perfect. It is to prove that PKC's generated `knowledge/` is useful as portable product/system knowledge on a genuine repository.
+Purpose: prove that the generated `knowledge/` pack can explain a genuine product/system at the correct abstraction level without source access.
 
-Current real-project benchmark: `rua-den/loren`.
-
-Two tracks are used:
+The current benchmark is `rua-den/loren`:
 
 ```text
 pinned Loren commit → deterministic blocking acceptance
-current Loren main   → moving canary for new real-world patterns
+current Loren main   → moving non-blocking canary
 ```
 
-The trial has already proven and regression-locked fixes for Minimal API support, source-scope contamination, conditional endpoints, response semantics, multi-project semantic loading, mutation noise, flow noise and authentication side effects.
+The trial has already regression-locked fixes for Minimal API support, source-scope contamination, conditional endpoints, failure/direct response semantics, multi-project semantic loading, mutation noise, flow noise, authentication side effects and fact-ID response collisions.
 
-The remaining acceptance focus is the final product abstraction, not analyzer breadth.
+The remaining primary risk is **knowledge abstraction/comprehension**, not analyzer breadth.
+
+Required order:
+
+```text
+layered output contract
+  ↓
+product-feature signal hardening
+  ↓
+index/system orientation
+  ↓
+blind knowledge-only Loren review
+  ↓
+source comparison
+  ↓
+external review
+```
 
 V0.4.4 passes only when:
 
-1. important claims are source-grounded and confidence/provenance is honest;
+1. important claims are grounded and authority/confidence is honest;
 2. workflow Markdown preserves meaningful operation behavior and failure paths;
-3. feature/index Markdown is product-oriented rather than a dump of helper internals;
-4. a reviewer using **only `knowledge/`**, with the source repository hidden, can correctly explain the selected system's important product behavior;
-5. those knowledge-only answers are checked against source/known behavior;
-6. there are no unresolved blocker-class wrong claims, missing important behavior, comprehension-breaking noise, important unexpected fallbacks or required unsupported patterns;
-7. every external-repo compiler bug has a regression fixture or acceptance assertion.
+3. feature/index Markdown presents product capabilities instead of transitive helper internals;
+4. a reviewer with **only `knowledge/`** can correctly explain Loren's important observable behavior and unknowns;
+5. those answers match source/known behavior after the source is reopened;
+6. there are no unresolved blocker wrong claims, missing important behavior, comprehension-breaking noise, traceability gaps or important unexpected fallbacks;
+7. external review finds no unresolved blocker;
+8. every proven compiler bug is regression-locked.
 
-Do not broaden this milestone into TypeScript TypeChecker work, React AST, new frameworks, browser automation, incremental compilation or Azure DevOps unless the real-project trial proves that capability is required to pass the knowledge acceptance contract.
+Detailed execution/exit plan: `docs/real-project-trial.md`.
+
+### V0.4.5 — Independent real-repository generalization gate — LOCKED UNTIL V0.4.4 PASSES
+
+Purpose: prove PKC did not simply overfit PokeTrade + Loren before adding another major evidence source.
+
+Select a second genuine repository that:
+
+- was not authored/modified for PKC;
+- fits the currently supported C# surface;
+- has non-trivial product/system behavior;
+- differs materially from PokeTrade/Loren;
+- is not chosen merely because current heuristics handle it easily.
+
+Run the same layered-output and blind knowledge-only comprehension process.
+
+V0.4.5 passes only when:
+
+- critical product questions have no blocker false claims;
+- important behavior is answerable or explicitly unknown;
+- product-level output is high-signal;
+- evidence remains traceable;
+- fixes remain generic and do not contain repository-specific exceptions;
+- PokeTrade + Loren still pass after any new fixes;
+- independent external review has no unresolved blocker.
+
+Detailed procedure: `docs/real-project-trial.md`.
 
 ## V0.5 — Azure DevOps evidence — LOCKED
 
 Ingest Epic/Feature/PBI/Sprint/history and link product/delivery evidence through PRs/commits where possible.
 
-Do not start V0.5 until V0.4.4 passes the **knowledge-only comprehension gate**, not merely CI/analyzer assertions.
+V0.5 may start only after **both V0.4.4 and V0.4.5 pass**.
+
+The unlock decision is based on knowledge readiness, not merely analyzer/CI success:
+
+```text
+PokeTrade known-answer regression                 PASS
+Loren blind knowledge-only comprehension          PASS
+Loren external review                             PASS
+second independent real-repo comprehension        PASS
+cross-benchmark regression                        PASS
+known boundaries documented honestly              PASS
+```
+
+If any gate is not PASS, remain in V0.4.x.
 
 ## V0.6 — Incremental compilation
 
