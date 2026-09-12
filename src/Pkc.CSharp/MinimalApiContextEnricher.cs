@@ -44,7 +44,7 @@ internal sealed class MinimalApiContextEnricher
                 }
 
                 AddRegistrationContext(endpoint, registration, facts, relations, relationKeys);
-                AddHandlerResponses(endpoint, registration, facts);
+                AddHandlerResponses(endpoint, registration, facts, relations, relationKeys);
             }
         }
 
@@ -115,7 +115,9 @@ internal sealed class MinimalApiContextEnricher
     private static void AddHandlerResponses(
         EvidenceFact endpoint,
         InvocationExpressionSyntax registration,
-        IDictionary<string, EvidenceFact> facts)
+        IDictionary<string, EvidenceFact> facts,
+        List<EvidenceRelation> relations,
+        ISet<string> relationKeys)
     {
         var handler = registration.ArgumentList.Arguments
             .Skip(1)
@@ -153,6 +155,8 @@ internal sealed class MinimalApiContextEnricher
             existing.Metadata.TryGetValue("expression", out var rawExpression);
             rawExpression ??= condition.Condition.ToString();
             var response = returned.Expression.ToString();
+            var location = GetLocation(condition, endpoint.Source.Path);
+            var responseFactId = $"cs:{endpoint.Source.Path}:{location.StartLine}:condition:minimal-api-response:{endpoint.Name}";
             var metadata = new Dictionary<string, string>(existing.Metadata, StringComparer.Ordinal)
             {
                 ["conditionExpression"] = rawExpression,
@@ -160,7 +164,33 @@ internal sealed class MinimalApiContextEnricher
                 ["response"] = response,
                 ["responseKind"] = "minimal-api-return"
             };
-            facts[existing.Id] = existing with { Metadata = metadata };
+            var responseFact = new EvidenceFact(
+                responseFactId,
+                "condition",
+                "minimal-api-response",
+                endpoint.Name,
+                location,
+                [],
+                metadata);
+
+            facts[responseFactId] = responseFact;
+
+            var oldRelations = relations
+                .Where(relation =>
+                    relation.FromFactId == endpoint.Id &&
+                    relation.Kind == "contains-condition" &&
+                    relation.Target == existing.Id)
+                .ToArray();
+            foreach (var oldRelation in oldRelations)
+            {
+                relations.Remove(oldRelation);
+                relationKeys.Remove(RelationKey(oldRelation));
+            }
+
+            AddRelation(
+                new EvidenceRelation(endpoint.Id, "contains-condition", responseFactId, location),
+                relations,
+                relationKeys);
         }
     }
 
