@@ -86,7 +86,8 @@ internal sealed class MinimalApiContextEnricher
         foreach (var guard in guards)
         {
             var location = GetLocation(guard, endpoint.Source.Path);
-            var expression = guard.Condition.ToString();
+            var rawExpression = guard.Condition.ToString();
+            var expression = $"endpoint is registered only when {rawExpression}";
             var id = $"cs:{endpoint.Source.Path}:{location.StartLine}:condition:endpoint-availability:{endpoint.Name}";
             var condition = new EvidenceFact(
                 id,
@@ -98,6 +99,7 @@ internal sealed class MinimalApiContextEnricher
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["expression"] = expression,
+                    ["conditionExpression"] = rawExpression,
                     ["sourceKind"] = "endpoint-registration-condition",
                     ["endpointAvailability"] = "conditional"
                 });
@@ -148,9 +150,14 @@ internal sealed class MinimalApiContextEnricher
                 continue;
             }
 
+            existing.Metadata.TryGetValue("expression", out var rawExpression);
+            rawExpression ??= condition.Condition.ToString();
+            var response = returned.Expression.ToString();
             var metadata = new Dictionary<string, string>(existing.Metadata, StringComparer.Ordinal)
             {
-                ["response"] = returned.Expression.ToString(),
+                ["conditionExpression"] = rawExpression,
+                ["expression"] = $"{rawExpression} => return {response}",
+                ["response"] = response,
                 ["responseKind"] = "minimal-api-return"
             };
             facts[existing.Id] = existing with { Metadata = metadata };
