@@ -13,6 +13,9 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             baseline,
             cancellationToken);
+        var validation = await new CSharpValidationEvidenceScanner().ScanAsync(
+            repositoryPath,
+            cancellationToken);
         var minimalApiRaw = await new MinimalApiEndpointScanner().ScanAsync(
             repositoryPath,
             cancellationToken);
@@ -23,6 +26,7 @@ public sealed class CSharpEvidenceScanner
 
         var rawFacts = baseline.Facts
             .Concat(supplemental.Facts)
+            .Concat(validation.Facts)
             .Concat(minimalApi.Facts)
             .Where(fact => !CSharpSourceScope.IsExcludedRelativePath(fact.Source.Path))
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
@@ -36,6 +40,7 @@ public sealed class CSharpEvidenceScanner
 
         var rawRelations = baseline.Relations
             .Concat(supplemental.Relations)
+            .Concat(validation.Relations)
             .Concat(minimalApi.Relations)
             .Where(relation => !CSharpSourceScope.IsExcludedRelativePath(relation.Source.Path))
             .Where(relation => rawFactIds.Contains(relation.FromFactId))
