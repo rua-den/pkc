@@ -2,107 +2,146 @@
 
 Last updated: 2026-09-12
 
+## North star
+
+PKC is a **Product/System Knowledge Compiler**.
+
+The product is not the analyzer, the fact graph, or the Markdown renderer by themselves. The product is the generated `knowledge/` pack that a Product Owner can attach to an AI assistant and use to understand the system **without making that AI re-scan the source repository**.
+
+The compiler pipeline remains:
+
+```text
+SOURCE
+  ↓
+DETERMINISTIC ANALYZERS / ADAPTERS
+  ↓
+EVIDENCE / FACT MODEL
+  ↓
+FEATURE / WORKFLOW DISCOVERY
+  ↓
+KNOWLEDGE SYNTHESIS
+  ↓
+CANONICAL KNOWLEDGE MODEL
+  ↓
+PORTABLE MARKDOWN
+  ↓
+PO / AI CAN UNDERSTAND THE PRODUCT
+```
+
+Analyzer fidelity is necessary for trustworthy knowledge, but it is a means rather than the final acceptance target.
+
 ## Current milestone
 
-**V0.4.3 Analyzer Fidelity Hardening — COMPLETE, post-review fixes included**
+**V0.4.4 External real-project trial — IN PROGRESS**
 
-Verified implementation/acceptance commit: `5c457111d072ad5f7b93bf3cff49d27960ac79fb`
+V0.4.3 Analyzer Fidelity Hardening remains the last completed release checkpoint (`0.4.3-preview.2`).
 
-Verified GitHub Actions run: `34630303904` (#95)
+The real-project trial uses `rua-den/loren` in two forms:
 
-Both jobs are green:
+- a pinned Loren commit for deterministic blocking acceptance;
+- current Loren `main` as a moving non-blocking canary for newly introduced real-world patterns.
 
-- `test`: solution build, unit/regression tests, `0.4.3-preview.2` local .NET tool pack/install, WorkPlay end-to-end knowledge build;
-- `poketrade-real-system`: .NET 10 backend build, Angular 22 frontend build, runtime branch acceptance, analyzer-fidelity contract and product-knowledge contract.
+## Proven V0.4.4 gaps already found and fixed
 
-## External-review findings closed in this checkpoint
+The Loren trial has already exposed gaps that WorkPlay/PokeTrade did not:
 
-A follow-up review confirmed the MSBuildWorkspace implementation, fallback propagation and CI path were real, then identified two fidelity-label gaps. They are now fixed.
+- Minimal API endpoint discovery and target-project semantic enrichment;
+- product-source contamination from `tests/` and `spikes/`;
+- conditional endpoint registration such as the development-only run endpoint;
+- Minimal API condition → response semantics;
+- direct/success Minimal API response semantics;
+- multi-project `MSBuildWorkspace` loading that previously caused false loose-Roslyn fallback in referenced projects;
+- dictionary/object-initializer assignments being promoted incorrectly to domain state changes;
+- framework and primitive call noise leaking into workflow flow presentation;
+- ASP.NET authentication `SignInAsync` / `SignOutAsync` side effects not being surfaced as product behavior;
+- fact-ID collision that could drop Minimal API response metadata for endpoints declared inside extension methods.
 
-### C# project loaded vs. declaration actually matched
+The current Loren acceptance requires zero `loose-roslyn-fallback` facts for the pinned production benchmark and rejects product evidence from `tests/` or `spikes/`.
 
-`project-semantic` no longer implies that declaration-node matching always succeeded.
+PokeTrade remains green as the known-answer behavioral regression system while Loren is the real-repository trial.
 
-For declaration-like facts PKC now records:
+## Important finding from full Loren output review
 
-```text
-semanticNodeMatch: matched | failed
-```
+The analyzer/evidence layer is no longer the main blocker discovered by the current artifact review.
 
-If the target project loads but PKC cannot match the original fact back to the corresponding syntax node:
+The generated knowledge is substantially correct and traceable, but some **product-level Markdown is still too implementation-oriented**. In particular, `Run Operations` currently promotes many helper-level conditions and loops into the product-feature summary and duplicates most of them across `/api/run` and `/internal/dev/run`.
 
-```text
-analysisMode: project-semantic
-analysisConfidence: medium
-semanticNodeMatch: failed
-analysisCaveat: target-project-loaded-but-fact-node-match-failed
-```
+That is valid implementation evidence, but it is the wrong abstraction level for a Product Owner or an AI answering product questions.
 
-A regression test intentionally supplies a mismatched fact location and locks this behavior. Non-declaration evidence uses `semanticNodeMatch: not-applicable`.
+Therefore V0.4.4 is **not complete** yet.
 
-### Angular TypeScript is syntactic AST, not type-checked semantics
+## V0.4.4 acceptance contract
 
-The Angular scanner uses the target repo's local TypeScript parser with `ts.createSourceFile`. It does **not** yet create a TypeScript `Program` or use a `TypeChecker`.
+V0.4.4 passes only when all of the following are true.
 
-The provenance label is therefore now:
+### 1. Evidence correctness
 
-```text
-analysisMode: typescript-ast-syntactic
-typescriptSemanticContext: syntax-only-no-type-checker
-```
+Important generated claims must remain grounded in source evidence and provenance/confidence must not overclaim analyzer fidelity.
 
-Confidence is split by evidence kind:
+### 2. Workflow correctness
 
-```text
-ui-screen / ui-route   high
-ui-api-call            medium
-```
+A workflow file must preserve the important behavior of one user/system operation:
 
-`ui-api-call` additionally carries:
+- entry point / UI path when known;
+- permission;
+- meaningful validation and failure paths;
+- meaningful state changes;
+- side effects/integrations;
+- relevant backend flow;
+- source evidence and explicit unknowns.
 
-```text
-httpReceiverResolution: syntactic-unverified
-analysisCaveat: http-method-name-and-url-shape-detected-without-receiver-type-checking
-```
+### 3. Product-level signal
 
-This avoids claiming that `.get/.post/.put/.patch/.delete` receiver types are proven to be Angular `HttpClient` when they are currently matched syntactically.
+Feature files and `knowledge/index.md` must summarize the product rather than copy implementation internals.
 
-### Angular AST runtime precondition
+Helper-level string processing, collection loops, plumbing calls and duplicate rules may remain in evidence/workflow detail when useful for traceability, but must not dominate product-feature summaries.
 
-The syntactic AST path currently requires:
+### 4. Blind knowledge comprehension
 
-- `node` available on `PATH`;
-- a target-repository local `node_modules/typescript/lib/typescript.js`, normally after the repository dependency-install step (`npm install`, `npm ci`, `pnpm install`, etc.).
+A reviewer must be able to hide the source repository, use only generated `knowledge/`, and answer the important product questions correctly.
 
-If unavailable, Angular explicitly falls back to `regex-fallback` / `low` with a recorded reason such as `local-typescript-runtime-not-found` or `node-unavailable: ...`.
-
-## Acceptance evidence
-
-Run #95 asserts all of the following against real generated `.pkc/facts.json`:
+For the Loren trial this includes at least:
 
 ```text
-project-semantic
-semanticContext = target-project
-semanticNodeMatch = matched
-semanticBaseType = Microsoft.AspNetCore.Mvc.ControllerBase
-endpointAttributeResolution = semantic
-typescript-ast-syntactic
-typescriptSemanticContext = syntax-only-no-type-checker
-ui-api-call confidence = medium
-httpReceiverResolution = syntactic-unverified
-ui-screen/ui-route confidence = high
-angular-template-regex-fallback
+What is this system's observable product surface?
+How does owner authentication work?
+What does the main run operation do?
+How are projects listed/bootstraped and what can fail?
+What are action proposals and how are approve/cancel handled?
+Which endpoints/flows are conditional or development-only?
+What important failure paths exist?
+What is still unknown because the evidence source has not been compiled yet?
 ```
 
-and rejects a full Angular `regex-fallback` path for PokeTrade.
+The answers are then checked against source/known behavior. A CI grep passing is not sufficient by itself.
 
-The packaged CLI also scans WorkPlay through `project-semantic` and verifies at least one declaration `semanticNodeMatch=matched`.
+### 5. No blocker-class review findings
 
-## What “verified” means
+No unresolved:
 
-“Verified” means verified against the current WorkPlay and PokeTrade acceptance systems. It does **not** mean PKC has already proven robustness across arbitrary real-world repository styles.
+```text
+wrong claim
+missing important behavior
+product-level noise that prevents comprehension
+unexpected fallback affecting important behavior
+unsupported pattern required by the selected real-repository trial
+```
 
-That remains the next milestone.
+Every compiler bug proven by the external trial receives a regression test or acceptance assertion.
+
+## Scope discipline
+
+Until the V0.4.4 knowledge-comprehension gate passes, do **not** start work merely because these capabilities are attractive:
+
+- Azure DevOps ingestion;
+- Angular TypeScript `TypeChecker`;
+- React AST rewrite;
+- additional frontend frameworks;
+- browser/runtime exploration;
+- incremental compilation;
+- generalized product insight/drift analysis.
+
+They become work only if the current real-project acceptance proves one is the next blocker, or after the current milestone is accepted according to the roadmap.
 
 ## Current commands
 
@@ -111,13 +150,13 @@ pkc scan <repository-path>
 pkc build <repository-path>
 ```
 
-Current local tool package version:
+Last accepted packaged tool version:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Outputs:
+Current development output remains:
 
 ```text
 .pkc/facts.json
@@ -128,34 +167,15 @@ knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
 
-## Known boundaries — explicit, not hidden
+## Next engineering focus
 
-- Angular TypeScript is syntactic-AST-backed, but `ui-api-call` receiver types are not type-checked yet.
-- Angular template actions remain a regex/template fallback.
-- The Angular AST path depends on Node.js and the target repo's installed local TypeScript runtime.
-- React remains regex fallback; React AST is not part of V0.4.3.
-- Other frontend frameworks are not implemented yet.
-- Azure DevOps intent/history is not compiled yet.
-- runtime browser/UI exploration is not implemented yet.
-- product intent is separate from code-observed implementation.
-- project load can still fail on unusual/build-environment-dependent C# repositories; this surfaces as explicit fallback provenance.
-- declaration node matching can fail even after a project loads; this now surfaces as `semanticNodeMatch=failed` and reduced confidence.
-- minimal API endpoints such as `/health` remain outside the current MVC endpoint path.
+Improve **knowledge synthesis/presentation only where the Loren output proves it is needed**:
 
-## Next target
+1. keep detailed evidence/workflow traceability;
+2. prevent helper-level implementation conditions and loops from dominating product-feature summaries;
+3. collapse duplicate product rules shared by equivalent production/dev workflows where doing so does not lose important distinctions;
+4. re-run the blind `knowledge/`-only comprehension review;
+5. compare those answers with Loren source/known behavior;
+6. fix only proven remaining gaps.
 
-**V0.4.4 — external real-project trial.**
-
-Run the packaged V0.4.3 tool against one genuine repository and classify findings as:
-
-```text
-wrong claim
-missing important behavior
-noise
-unsupported stack/pattern
-unexpected fallback
-```
-
-Fix only gaps proven by the external repository and add a regression fixture for each fix.
-
-Do not start V0.5 Azure DevOps yet.
+**V0.5 remains locked.**
