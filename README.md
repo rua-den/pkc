@@ -2,6 +2,10 @@
 
 PKC turns implementation evidence into portable product knowledge that a Product Owner can attach to ChatGPT, Claude, Gemini, Copilot or another capable AI.
 
+The core success condition is not “the scanner found many facts”. It is:
+
+> Can an AI receive only the generated `knowledge/` pack and explain the product/system accurately, at the right abstraction level, without re-reading the source repository?
+
 PKC follows an evidence-first compiler model:
 
 ```text
@@ -20,20 +24,41 @@ portable Markdown
 
 Important claims are grounded in source evidence. PKC does not silently invent UI behavior, delivery history or requirements that were not analyzed.
 
+## Knowledge hierarchy
+
+PKC preserves detailed evidence while presenting product knowledge in layers:
+
+```text
+knowledge/index.md
+  → orient the AI around observed capabilities and boundaries
+
+knowledge/features/**/*.md
+  → capability-level rules, permissions, outcomes and important failures
+
+knowledge/workflows/**/*.md
+  → operation-level behavior, validations, state changes, side effects, flow and evidence
+
+.pkc/facts.json
+  → detailed implementation evidence and analyzer provenance
+```
+
+A transitive helper guard/loop is not automatically a product rule. Detail should be promoted only when it materially affects observable behavior, constraints, outcomes or safety.
+
 ## What works today
 
-Current verified scope:
+Current verified/development scope includes:
 
 - C#/.NET evidence with Roslyn, preferring the target project's real `MSBuildWorkspace` compilation;
-- explicit C# fallback when the target project cannot be loaded;
-- behavior evidence such as endpoints, permissions, guards, throws, mutations and call relations;
+- explicit C# fallback when target-project semantic context is unavailable;
+- MVC-style and Minimal API backend evidence, including permissions, guards, throws, direct/failure responses, mutations and call relations;
 - Angular TypeScript structure/routes/HTTP-call shapes through the project-local TypeScript syntactic AST when available;
 - Angular template actions through an explicit conservative template-regex fallback;
 - React/TypeScript through an explicit conservative regex fallback;
 - framework-agnostic frontend adapter boundary (`IFrontendAdapter`);
 - UI action → API call → backend endpoint linkage;
 - workflow Markdown, product-feature Markdown and `knowledge/index.md`;
-- real-system validation with the runnable .NET 10 + Angular 22 PokeTrade benchmark.
+- PokeTrade known-answer runnable regression;
+- Loren pinned real-project acceptance plus Loren-main moving canary during V0.4.4.
 
 Runtime browser confirmation is not implemented yet.
 
@@ -46,8 +71,7 @@ Current modes include:
 ```text
 project-semantic                  high/medium
   C# target-project MSBuildWorkspace context. Declaration node matches are high confidence;
-  if the project loads but the original fact cannot be matched back to a syntax node, the fact is
-  explicitly marked semanticNodeMatch=failed and confidence is reduced to medium.
+  project-loaded-but-node-match-failed evidence is reduced to medium.
 
 typescript-ast-syntactic          high/medium
   Angular uses the target repo's local TypeScript parser via ts.createSourceFile.
@@ -71,24 +95,26 @@ typescriptSemanticContext: syntax-only-no-type-checker
 httpReceiverResolution: syntactic-unverified
 ```
 
-This is intentional: a property-access call named `.get/.post/.put/.patch/.delete` can be detected syntactically, but PKC does not currently prove that its receiver is Angular `HttpClient`.
-
 ### Angular AST runtime precondition
 
 The higher-fidelity Angular TypeScript path currently requires:
 
 1. `node` available on `PATH`;
-2. a project-local `node_modules/typescript/lib/typescript.js` in or above the Angular project directory, normally produced by `npm install`, `npm ci`, `pnpm install`, or the repository's equivalent dependency-install step.
+2. a project-local `node_modules/typescript/lib/typescript.js`, normally produced by the repository dependency-install step.
 
-If those prerequisites are unavailable, PKC does not hide the downgrade: the Angular adapter falls back to `regex-fallback` / `low` and records the fallback reason.
-
-Facts carry `analysisMode` and `analysisConfidence`. When fallback evidence contributes to a workflow, generated Markdown surfaces that limitation under `Important unknowns` instead of silently upgrading it to high-confidence evidence.
-
-The PokeTrade benchmark proves these analyzer paths and generated knowledge against that benchmark. It does **not** claim that arbitrary external repositories are already robustly supported; that is the purpose of the next external real-project trial.
+If unavailable, PKC records an explicit fallback rather than hiding the downgrade.
 
 ## Quickstart from source
 
-Until a public NuGet package/release is published, PKC can be packed and installed locally as a .NET tool:
+The last accepted packaged checkpoint remains:
+
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.2
+```
+
+Current `main` contains V0.4.4 development fixes that have not yet passed the full knowledge-readiness exit gate.
+
+Until a public package/release is published, PKC can be packed and installed locally:
 
 ```bash
 dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
@@ -96,13 +122,13 @@ dotnet tool install --tool-path ./.pkc-tool --add-source ./artifacts/tool RuaDen
 ./.pkc-tool/pkc build /path/to/your/repository
 ```
 
-For normal development inside this repository:
+For development from source:
 
 ```bash
 dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj -- build <repository-path>
 ```
 
-Use `scan` when you only want machine evidence/candidates:
+Use `scan` when only machine evidence/candidates are needed:
 
 ```bash
 pkc scan <repository-path>
@@ -128,17 +154,31 @@ knowledge/
       <workflow>.md
 ```
 
-Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unknown until those sources are explicitly added.
+Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unknown until those evidence sources are explicitly added.
 
-## Real-system benchmark
+## Validation strategy
 
-`samples/PokeTradeSystem` is an independently runnable benchmark:
+PKC deliberately uses multiple benchmark roles:
 
-- backend: .NET 10;
-- frontend: Angular 22;
-- business flow: Pokémon card order → insufficient stock → PurchaseStock WorkPlay → inventory replenishment → delivery → delivered order.
+```text
+PokeTrade
+→ known-answer runnable regression
 
-CI builds both applications, executes representative runtime branches, runs PKC against the same source tree, and asserts analyzer provenance plus generated product knowledge. The benchmark deliberately contains TypeScript formatting/property styles that the previous regex-only Angular scanner would miss.
+Loren pinned commit
+→ V0.4.4 blocking real-project knowledge-readiness benchmark
+
+Loren main
+→ moving non-blocking canary
+
+second independent real repository
+→ V0.4.5 anti-overfit/generalization gate
+```
+
+A CI/grep suite is necessary but does not by itself prove knowledge readiness. V0.4.4 includes a blind review where the source is hidden and a reviewer must answer fixed product/system questions using only generated `knowledge/`.
+
+V0.5 Azure DevOps remains locked until both the Loren gate and the second independent real-repository gate pass.
+
+Detailed exit plan: `docs/real-project-trial.md`.
 
 ## Planned, not implemented yet
 
@@ -152,11 +192,11 @@ CI builds both applications, executes representative runtime branches, runs PKC 
 - product gap/drift analysis;
 - optional LLM-assisted synthesis where deterministic grouping is insufficient.
 
-Framework expansion must happen through adapters; the knowledge compiler core should remain framework-agnostic.
+These are roadmap items, not automatic V0.4 work. A new analyzer capability enters V0.4.x only when a real knowledge review proves it is required for accuracy, completeness, signal-to-noise, traceability or honest uncertainty.
 
 ## Project status
 
-`docs/status.md` is the source of truth for the current verified milestone. `docs/milestones.md` describes the roadmap.
+`docs/status.md` is the current source of truth. `docs/real-project-trial.md` is the V0.4 exit plan and `docs/milestones.md` defines the roadmap gates.
 
 See also:
 
@@ -165,4 +205,5 @@ See also:
 - `docs/status.md`
 - `docs/handoff.md`
 - `docs/milestones.md`
+- `docs/real-project-trial.md`
 - `docs/golden-output.md`
