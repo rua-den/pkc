@@ -48,7 +48,7 @@ try
 
     if (command == "build")
     {
-        var synthesizer = new GroundedKnowledgeSynthesizer();
+        var synthesizer = new EvidenceAwareKnowledgeSynthesizer();
         var workflowRenderer = new MarkdownKnowledgeRenderer();
         var workflows = new List<FeatureKnowledge>();
 
@@ -114,5 +114,5 @@ static FactDocument Merge(params FactDocument[] documents)
         .ThenBy(relation => relation.Target, StringComparer.Ordinal)
         .ToArray();
 
-    return new FactDocument("0.4.3", facts, relations);
+    return new FactDocument("0.4.4", facts, relations);
 }
