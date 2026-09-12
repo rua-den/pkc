@@ -2,11 +2,17 @@
 
 Use this file when continuing PKC in another chat/session or external review.
 
-## Product idea
+## Product idea — do not drift from this
 
 PKC means **Product/System Knowledge Compiler**.
 
-The target user is a Product Owner. A PO should be able to take PKC's generated `knowledge/` folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product without making that AI re-read or grep the source repository.
+The target user is a Product Owner. A PO should be able to take PKC's generated `knowledge/` folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product **without making that AI re-read or grep the source repository**.
+
+The analyzer/fact graph exists to make that knowledge trustworthy. Analyzer sophistication is not the final product by itself.
+
+The final acceptance question is:
+
+> If the source repository is hidden and an AI receives only `knowledge/`, can it explain the product accurately, at the right abstraction level, with important unknowns and evidence boundaries preserved?
 
 ## Non-negotiable compiler architecture
 
@@ -26,167 +32,130 @@ KNOWLEDGE SYNTHESIS
 CANONICAL KNOWLEDGE MODEL
   ↓
 DETERMINISTIC MARKDOWN RENDERER
+  ↓
+PORTABLE PRODUCT KNOWLEDGE
 ```
 
-## Current verified state
+## Current milestone
 
-**V0.4.3 Analyzer Fidelity Hardening is COMPLETE, including follow-up review fixes.**
+**V0.4.4 External real-project knowledge trial — IN PROGRESS.**
 
-Verified acceptance commit:
-
-```text
-5c457111d072ad5f7b93bf3cff49d27960ac79fb
-```
-
-Verified CI run:
-
-```text
-34630303904  (#95)
-```
-
-Both `test` and `poketrade-real-system` are green.
-
-Tool package version:
+V0.4.3 Analyzer Fidelity Hardening remains the last completed packaged checkpoint:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-## C# analyzer fidelity
+Do not call V0.4.4 complete merely because analyzers/CI are green.
 
-Preferred path:
+## Real-project trial
 
-```text
-.csproj
-  ↓
-MSBuildWorkspace
-  ↓
-target project compilation/references
-  ↓
-Roslyn SemanticModel
-  ↓
-analysisMode = project-semantic
-```
+Current real repository: `rua-den/loren`.
 
-Declaration facts now distinguish project load from actual node matching:
+Use two benchmark modes:
 
 ```text
-semanticNodeMatch = matched   → confidence high
-semanticNodeMatch = failed    → confidence medium + analysisCaveat
+Pinned Loren commit
+→ deterministic blocking regression/acceptance
+
+Loren main
+→ moving canary
+→ catches new repository patterns as Loren evolves
+→ must not silently replace the pinned acceptance SHA
 ```
 
-If project loading/source mapping fails, PKC keeps conservative loose Roslyn evidence:
+PokeTrade remains the known-answer runnable regression system.
+
+## Proven external-trial fixes so far
+
+The Loren trial has already forced fixes for:
+
+- Minimal API endpoint discovery + target-project semantic enrichment;
+- exclusion of `tests/` and `spikes/` from product evidence;
+- conditional endpoint availability;
+- Minimal API condition/exception/direct response semantics;
+- multi-project MSBuild semantic loading;
+- dictionary/object-initializer mutation noise;
+- framework/primitive call-flow presentation noise;
+- ASP.NET sign-in/sign-out product side effects;
+- Minimal API response metadata collision when endpoints are declared inside methods/extensions.
+
+Pinned Loren currently verifies that important production evidence does not fall back to loose Roslyn analysis.
+
+## What the latest output review says
+
+The main remaining issue is **knowledge abstraction**, not missing parser breadth.
+
+Example: Loren `Run Operations` currently promotes helper-level conditions and loops such as string truncation, candidate matching and character normalization into the product-feature summary, and repeats many rules across `/api/run` and `/internal/dev/run`.
+
+Those details may be legitimate evidence/workflow detail. They should not dominate the product-level feature file a PO/AI reads first.
+
+Therefore the next work must focus on knowledge synthesis/presentation using proven Loren output problems.
+
+## V0.4.4 acceptance gate
+
+### Evidence layer
+
+- important claims grounded in source;
+- provenance/confidence honest;
+- no silent unsupported fallback for benchmark-critical behavior.
+
+### Workflow layer
+
+Each workflow should expose meaningful:
+
+- entry point / UI path when known;
+- permission;
+- validation/failure paths;
+- state changes;
+- side effects/integrations;
+- application-oriented flow;
+- source evidence;
+- unknowns.
+
+### Product layer
+
+`knowledge/index.md` and feature files must let a PO/AI understand product capabilities quickly.
+
+Do not dump every helper guard/loop into product-level rules simply because it was observed in the transitive call graph.
+
+### Blind comprehension review
+
+Hide Loren source and give the reviewer only generated `knowledge/`.
+
+The knowledge pack must let the reviewer answer, at minimum:
 
 ```text
-analysisMode = loose-roslyn-fallback
-analysisConfidence = medium
-semanticContext = runtime-platform-assemblies-only
-analysisFallbackReason = ...
+What observable product/system surface exists?
+How does owner authentication work?
+What does the main run operation do?
+How are projects listed and bootstrapped?
+How are action proposals approved/cancelled?
+Which behavior is conditional/development-only?
+What important failure paths exist?
+What remains unknown because its evidence source has not been compiled?
 ```
 
-## Frontend analyzer fidelity
+Then compare those answers against source/known behavior.
 
-Frontend technology remains outside compiler core and emits canonical `ui-*` evidence.
+A green grep/test suite is necessary but **not sufficient**.
 
-### Angular TypeScript
+## Scope rule — very important
 
-Current TypeScript analysis is **syntactic AST**, not TypeChecker-backed semantic analysis:
+A new analyzer capability is allowed into V0.4.4 only when the real-project knowledge review proves it is needed to improve one of:
 
 ```text
-analysisMode = typescript-ast-syntactic
-typescriptSemanticContext = syntax-only-no-type-checker
+accuracy
+completeness
+signal-to-noise
+traceability
+honest uncertainty
 ```
 
-Confidence:
+Do not start TypeScript TypeChecker work, React AST, MVC/Blazor/Vue expansion, browser exploration, incremental compilation or Azure DevOps merely because they are unfinished roadmap items.
 
-```text
-ui-screen / ui-route = high
-ui-api-call          = medium
-```
+## V0.5 gate
 
-`ui-api-call` carries:
+**V0.5 Azure DevOps is locked.**
 
-```text
-httpReceiverResolution = syntactic-unverified
-analysisCaveat = http-method-name-and-url-shape-detected-without-receiver-type-checking
-```
-
-Do not describe Angular HTTP evidence as type-resolved yet. The Node helper currently uses `ts.createSourceFile`, not `ts.createProgram()` + `TypeChecker`.
-
-Angular AST runtime preconditions:
-
-```text
-node on PATH
-+ target repo dependencies installed
-+ local node_modules/typescript/lib/typescript.js available
-```
-
-When unavailable, Angular falls back to `regex-fallback` / low with an explicit fallback reason.
-
-### Angular templates
-
-Template action/visibility extraction remains:
-
-```text
-analysisMode = angular-template-regex-fallback
-analysisConfidence = medium
-```
-
-### React
-
-React remains:
-
-```text
-analysisMode = regex-fallback
-analysisConfidence = low
-```
-
-## CI fidelity acceptance
-
-PokeTrade CI deliberately exercises the AST path after `npm install` and asserts:
-
-```text
-project-semantic
-semanticNodeMatch = matched
-semanticBaseType = Microsoft.AspNetCore.Mvc.ControllerBase
-semantic HTTP attribute resolution
-typescript-ast-syntactic
-syntax-only-no-type-checker
-ui-screen/ui-route high confidence
-ui-api-call medium confidence
-httpReceiverResolution = syntactic-unverified
-angular-template-regex-fallback
-no full Angular regex-fallback
-```
-
-A dedicated C# regression test also forces a declaration StartLine mismatch and verifies `semanticNodeMatch=failed` + confidence downgrade.
-
-## Important interpretation of “verified”
-
-WorkPlay and PokeTrade prove the current acceptance contracts. They do **not** prove arbitrary real-world repositories are already robustly supported.
-
-## Current commands
-
-```bash
-pkc scan <repository-path>
-pkc build <repository-path>
-```
-
-Main outputs:
-
-```text
-.pkc/facts.json
-.pkc/feature-candidates.json
-.pkc/product-features.json
-knowledge/index.md
-knowledge/features/**/*.md
-knowledge/workflows/**/*.md
-```
-
-## Next engineering target — keep narrow
-
-**V0.4.4 external real-project trial.**
-
-Do not add speculative capability first. Run the current compiler against a genuine repository, inspect analyzer modes/fallbacks, review generated knowledge against source + known behavior, then classify findings as wrong claim, missing important behavior, noise, unsupported stack/pattern or unexpected fallback.
-
-Fix only proven gaps and add a regression fixture for each fix. Do not start V0.5 Azure DevOps, TypeScript TypeChecker work, React AST, MVC/Blazor/Vue adapters, Playwright, or incremental architecture unless the external trial proves they are the next blocker.
+Open it only after V0.4.4 passes the knowledge-only comprehension review with no blocker-class findings.
