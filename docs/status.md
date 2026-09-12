@@ -6,9 +6,9 @@ Last updated: 2026-09-12
 
 PKC is a **Product/System Knowledge Compiler**.
 
-The product is not the analyzer, the fact graph, or the Markdown renderer by themselves. The product is the generated `knowledge/` pack that a Product Owner can attach to an AI assistant and use to understand the system **without making that AI re-scan the source repository**.
+The product is the generated portable `knowledge/` pack that a Product Owner can give to an AI assistant to understand the system **without making that AI re-scan the source repository**.
 
-The compiler pipeline remains:
+The analyzer, fact graph, candidate builder and renderer are supporting compiler stages. They are not independent success criteria.
 
 ```text
 SOURCE
@@ -25,123 +25,165 @@ CANONICAL KNOWLEDGE MODEL
   ↓
 PORTABLE MARKDOWN
   ↓
-PO / AI CAN UNDERSTAND THE PRODUCT
+AI CAN EXPLAIN THE PRODUCT AT THE RIGHT ABSTRACTION LEVEL
 ```
-
-Analyzer fidelity is necessary for trustworthy knowledge, but it is a means rather than the final acceptance target.
 
 ## Current milestone
 
-**V0.4.4 External real-project trial — IN PROGRESS**
+**V0.4.4 Loren Knowledge Readiness — IN PROGRESS**
 
-V0.4.3 Analyzer Fidelity Hardening remains the last completed release checkpoint (`0.4.3-preview.2`).
+V0.4.3 Analyzer Fidelity Hardening remains the last accepted packaged checkpoint:
 
-The real-project trial uses `rua-den/loren` in two forms:
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.2
+```
 
-- a pinned Loren commit for deterministic blocking acceptance;
-- current Loren `main` as a moving non-blocking canary for newly introduced real-world patterns.
+Current development on `main` contains V0.4.4 trial fixes, but the accepted package version must not be bumped until the milestone gate passes.
+
+Detailed execution/exit plan:
+
+```text
+docs/real-project-trial.md
+```
+
+## Current benchmark roles
+
+### PokeTrade
+
+Known-answer runnable regression benchmark. Protects behavior already proven by controlled acceptance tests.
+
+### Loren pinned commit
+
+Blocking real-project benchmark for V0.4.4. The repository is not changed to suit PKC.
+
+### Loren main
+
+Moving non-blocking canary that exposes new real-world source patterns while Loren evolves. It never silently replaces the pinned acceptance SHA.
 
 ## Proven V0.4.4 gaps already found and fixed
 
-The Loren trial has already exposed gaps that WorkPlay/PokeTrade did not:
+The Loren trial has exposed gaps that PokeTrade did not:
 
 - Minimal API endpoint discovery and target-project semantic enrichment;
 - product-source contamination from `tests/` and `spikes/`;
-- conditional endpoint registration such as the development-only run endpoint;
-- Minimal API condition → response semantics;
-- direct/success Minimal API response semantics;
-- multi-project `MSBuildWorkspace` loading that previously caused false loose-Roslyn fallback in referenced projects;
-- dictionary/object-initializer assignments being promoted incorrectly to domain state changes;
+- conditional/development-only endpoint registration;
+- Minimal API condition/failure/direct response semantics;
+- multi-project `MSBuildWorkspace` loading and false fallback elimination;
+- dictionary/object-initializer assignments promoted incorrectly to domain state changes;
 - framework and primitive call noise leaking into workflow flow presentation;
-- ASP.NET authentication `SignInAsync` / `SignOutAsync` side effects not being surfaced as product behavior;
-- fact-ID collision that could drop Minimal API response metadata for endpoints declared inside extension methods.
+- ASP.NET authentication `SignInAsync` / `SignOutAsync` side effects not surfaced as product behavior;
+- fact-ID collision that could drop Minimal API response metadata inside extension methods.
 
-The current Loren acceptance requires zero `loose-roslyn-fallback` facts for the pinned production benchmark and rejects product evidence from `tests/` or `spikes/`.
+The pinned Loren acceptance currently requires zero `loose-roslyn-fallback` facts for the selected production benchmark and rejects product evidence from `tests/` or `spikes/`.
 
-PokeTrade remains green as the known-answer behavioral regression system while Loren is the real-repository trial.
+## Main remaining V0.4.4 risk
 
-## Important finding from full Loren output review
+The main blocker discovered by full artifact review is now **knowledge abstraction/comprehension**, not analyzer breadth.
 
-The analyzer/evidence layer is no longer the main blocker discovered by the current artifact review.
+The generated knowledge is substantially correct and traceable, but product-level output such as `Run Operations` still promotes too many transitive helper conditions/loops and duplicates shared behavior across production/dev entry points.
 
-The generated knowledge is substantially correct and traceable, but some **product-level Markdown is still too implementation-oriented**. In particular, `Run Operations` currently promotes many helper-level conditions and loops into the product-feature summary and duplicates most of them across `/api/run` and `/internal/dev/run`.
+This is valid implementation evidence at the wrong knowledge layer.
 
-That is valid implementation evidence, but it is the wrong abstraction level for a Product Owner or an AI answering product questions.
+Therefore V0.4.4 is **not complete**.
 
-Therefore V0.4.4 is **not complete** yet.
-
-## V0.4.4 acceptance contract
-
-V0.4.4 passes only when all of the following are true.
-
-### 1. Evidence correctness
-
-Important generated claims must remain grounded in source evidence and provenance/confidence must not overclaim analyzer fidelity.
-
-### 2. Workflow correctness
-
-A workflow file must preserve the important behavior of one user/system operation:
-
-- entry point / UI path when known;
-- permission;
-- meaningful validation and failure paths;
-- meaningful state changes;
-- side effects/integrations;
-- relevant backend flow;
-- source evidence and explicit unknowns.
-
-### 3. Product-level signal
-
-Feature files and `knowledge/index.md` must summarize the product rather than copy implementation internals.
-
-Helper-level string processing, collection loops, plumbing calls and duplicate rules may remain in evidence/workflow detail when useful for traceability, but must not dominate product-feature summaries.
-
-### 4. Blind knowledge comprehension
-
-A reviewer must be able to hide the source repository, use only generated `knowledge/`, and answer the important product questions correctly.
-
-For the Loren trial this includes at least:
+## Knowledge hierarchy that must hold
 
 ```text
-What is this system's observable product surface?
-How does owner authentication work?
-What does the main run operation do?
-How are projects listed/bootstraped and what can fail?
-What are action proposals and how are approve/cancel handled?
-Which endpoints/flows are conditional or development-only?
-What important failure paths exist?
-What is still unknown because the evidence source has not been compiled yet?
+index
+  → orient the AI around observed capabilities and boundaries
+
+feature
+  → explain a product/system capability at high signal
+
+workflow
+  → explain one operation with permissions, validations, failures, state, side effects and flow
+
+raw evidence
+  → preserve detailed implementation proof and analyzer provenance
 ```
 
-The answers are then checked against source/known behavior. A CI grep passing is not sufficient by itself.
+Do not delete low-level evidence merely to reduce noise. Promote it only to the level where it is useful.
 
-### 5. No blocker-class review findings
+## Current next steps
 
-No unresolved:
+Follow `docs/real-project-trial.md` in this order:
 
 ```text
-wrong claim
-missing important behavior
-product-level noise that prevents comprehension
-unexpected fallback affecting important behavior
-unsupported pattern required by the selected real-repository trial
+1. enforce layered knowledge abstraction
+2. harden product-feature signal using Loren output
+3. improve index/system orientation without inventing intent
+4. regenerate pinned Loren artifact
+5. perform blind knowledge-only comprehension review
+6. reopen Loren source and compare every critical answer
+7. fix/regression-lock only proven blockers
+8. external review V0.4.4
 ```
 
-Every compiler bug proven by the external trial receives a regression test or acceptance assertion.
+The blind review must answer from `knowledge/` alone, including at least:
+
+```text
+what capabilities Loren exposes
+how owner authentication works
+what the main run operation does
+how project + memory context participate
+how project list/bootstrap behaves
+how action proposal approve/cancel behaves
+what is conditional/dev-only
+important permissions/validations/failures/side effects
+what remains explicitly unknown
+```
+
+CI/grep success is necessary but not sufficient.
+
+## V0.4.5 — independent real-repo generalization gate
+
+Even after Loren passes, **V0.5 does not open immediately**.
+
+V0.4.5 will run the same knowledge-readiness process against a second genuine repository that was not created/modified for PKC and differs materially from PokeTrade/Loren.
+
+Purpose: catch benchmark overfitting before adding another major evidence source.
+
+The second repo must be selected for realism, not because current heuristics handle it easily.
+
+## V0.5 unlock condition
+
+**V0.5 Azure DevOps remains locked until all are PASS:**
+
+```text
+PokeTrade known-answer regression                  PASS
+Loren evidence/workflow correctness                PASS
+Loren blind knowledge-only comprehension           PASS
+Loren external review                              PASS
+second independent real-repo trial                 PASS
+second knowledge-only comprehension                PASS
+cross-benchmark regression after all fixes         PASS
+known boundaries/unknowns documented honestly      PASS
+no repository-specific compiler exceptions         PASS
+```
+
+If any gate is not PASS, remain in V0.4.x.
 
 ## Scope discipline
 
-Until the V0.4.4 knowledge-comprehension gate passes, do **not** start work merely because these capabilities are attractive:
+Until the unlock gate passes, do not start these merely because they are attractive roadmap work:
 
 - Azure DevOps ingestion;
-- Angular TypeScript `TypeChecker`;
+- Angular TypeScript `TypeChecker` migration;
 - React AST rewrite;
 - additional frontend frameworks;
 - browser/runtime exploration;
 - incremental compilation;
 - generalized product insight/drift analysis.
 
-They become work only if the current real-project acceptance proves one is the next blocker, or after the current milestone is accepted according to the roadmap.
+A new analyzer capability may enter V0.4.x only when a real knowledge review proves it is required to improve:
+
+```text
+accuracy
+completeness
+signal-to-noise
+traceability
+honest uncertainty
+```
 
 ## Current commands
 
@@ -150,13 +192,7 @@ pkc scan <repository-path>
 pkc build <repository-path>
 ```
 
-Last accepted packaged tool version:
-
-```text
-RuaDen.Pkc.Tool 0.4.3-preview.2
-```
-
-Current development output remains:
+Current development output:
 
 ```text
 .pkc/facts.json
@@ -166,16 +202,3 @@ knowledge/index.md
 knowledge/features/**/*.md
 knowledge/workflows/**/*.md
 ```
-
-## Next engineering focus
-
-Improve **knowledge synthesis/presentation only where the Loren output proves it is needed**:
-
-1. keep detailed evidence/workflow traceability;
-2. prevent helper-level implementation conditions and loops from dominating product-feature summaries;
-3. collapse duplicate product rules shared by equivalent production/dev workflows where doing so does not lose important distinctions;
-4. re-run the blind `knowledge/`-only comprehension review;
-5. compare those answers with Loren source/known behavior;
-6. fix only proven remaining gaps.
-
-**V0.5 remains locked.**
