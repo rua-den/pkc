@@ -52,6 +52,12 @@ AI handoff contract:
 docs/ai-handoff.md
 ```
 
+UI behavior contract:
+
+```text
+docs/ui-behavior-contract.md
+```
+
 ## Current benchmark roles
 
 ### PokeTrade
@@ -115,11 +121,37 @@ PKC_KNOWLEDGE.zip  archive transport/storage convenience
 
 The ZIP must not include source code or raw `.pkc` evidence by default. Single-file and structured-pack forms must preserve the same critical meaning.
 
+### UI validation + behavior completeness
+
+A new core acceptance requirement is now explicit: PKC must not stop at route/button/API knowledge when the source contains meaningful form/configuration behavior.
+
+Before V0.5, supported UI evidence must prove that important statically observable behavior can survive into portable knowledge, including at least:
+
+```text
+field existence
+select/type options
+required fields
+conditional requiredness
+conditional visibility or enabled/disabled state
+permission/state-driven UI behavior
+field → request/API mapping when traceable
+frontend/backend validation comparison when both sides are observed
+```
+
+Example target question:
+
+```text
+For a CSP service, is Microsoft Subscription Id required on the UI,
+under what condition, where is it sent, and does backend validation agree?
+```
+
+If source contains this answer but `PKC_KNOWLEDGE.md` cannot answer it without reopening source, code-derived product knowledge is incomplete.
+
 ## Main remaining V0.4.4 risk
 
-The main blocker discovered by full artifact review is **knowledge abstraction/comprehension**, not analyzer breadth.
+The main blockers are now **knowledge abstraction/comprehension and UI behavior completeness**, not analyzer breadth for its own sake.
 
-The generated knowledge is substantially correct and traceable, but product-level output still needs to become high-signal enough that an AI can answer product questions without wading through transitive helper mechanics.
+The generated knowledge is substantially correct and traceable, but product-level output still needs to become high-signal enough that an AI can answer product questions without wading through transitive helper mechanics, and supported UI analysis must preserve important validation/configuration behavior rather than only navigation/action/API structure.
 
 Therefore V0.4.4 is **not complete**.
 
@@ -153,12 +185,14 @@ Follow `docs/real-project-trial.md` in this order:
 2. validate portable AI handoff artifacts
 3. harden product-feature signal using Loren output
 4. improve index/system orientation without inventing intent
-5. regenerate pinned Loren artifact
-6. blind-review PKC_KNOWLEDGE.md first
-7. cross-check the structured knowledge/ pack
-8. reopen Loren source and compare every critical answer
-9. fix/regression-lock only proven blockers
-10. external review V0.4.4
+5. add canonical UI field/validation/conditional-behavior evidence
+6. add a form/configuration regression fixture with frontend + backend validation
+7. regenerate pinned Loren artifact
+8. blind-review PKC_KNOWLEDGE.md first
+9. cross-check the structured knowledge/ pack
+10. reopen source and compare every critical answer
+11. fix/regression-lock only proven blockers
+12. external review V0.4.4
 ```
 
 The blind review must answer from portable knowledge alone, including at least:
@@ -175,6 +209,17 @@ important permissions/validations/failures/side effects
 what remains explicitly unknown
 ```
 
+A supported UI/form benchmark must additionally prove the pack can answer:
+
+```text
+which fields/options exist
+which fields are required
+which requirements are conditional
+which fields are shown/hidden or enabled/disabled conditionally
+where important values are sent
+whether frontend/backend validation agree when both are observed
+```
+
 CI/grep success is necessary but not sufficient.
 
 ## V0.4.5 — independent real-repo generalization gate
@@ -185,7 +230,7 @@ V0.4.5 will run the same knowledge-readiness and handoff-parity process against 
 
 Purpose: catch benchmark overfitting before adding another major evidence source.
 
-The second repo must be selected for realism, not because current heuristics handle it easily.
+The second repo must be selected for realism, not because current heuristics handle it easily. If a suitable supported frontend exists, prefer a repository that also exercises real form/configuration behavior so the UI-behavior contract is tested outside synthetic fixtures.
 
 ## V0.5 unlock condition
 
@@ -196,6 +241,7 @@ PokeTrade known-answer regression                  PASS
 Loren evidence/workflow correctness                PASS
 Loren blind knowledge-only comprehension           PASS
 Loren handoff parity                               PASS
+UI validation/behavior knowledge benchmark         PASS
 Loren external review                              PASS
 second independent real-repo trial                 PASS
 second knowledge-only comprehension                PASS
@@ -212,8 +258,8 @@ If any gate is not PASS, remain in V0.4.x.
 Until the unlock gate passes, do not start these merely because they are attractive roadmap work:
 
 - Azure DevOps ingestion;
-- Angular TypeScript `TypeChecker` migration;
-- React AST rewrite;
+- Angular TypeScript `TypeChecker` migration unless a validation/binding case proves it necessary;
+- React AST rewrite unless a real benchmark requires it;
 - additional frontend frameworks;
 - browser/runtime exploration;
 - incremental compilation;
