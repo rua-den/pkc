@@ -27,6 +27,7 @@ try
     var frontendFacts = await new FrontendScanner().ScanAsync(repositoryPath);
     var facts = Merge(csharpFacts, frontendFacts);
     var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
+    candidates = new ValidationConsistencyCandidateEnricher().Enrich(candidates, facts);
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
