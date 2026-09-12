@@ -10,6 +10,16 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
     private const string AspNetSignOut =
         "Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.SignOutAsync";
 
+    private static readonly HashSet<string> UiBehaviorKinds = new(StringComparer.Ordinal)
+    {
+        "ui-field",
+        "ui-field-option",
+        "ui-field-validation",
+        "ui-field-visibility",
+        "ui-field-enabled-state",
+        "ui-field-binding"
+    };
+
     private readonly GroundedKnowledgeSynthesizer _inner = new();
 
     public async ValueTask<FeatureKnowledge> SynthesizeAsync(
@@ -20,9 +30,13 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         var responseFacts = candidate.Facts
             .Where(fact => fact.Kind == "endpoint-response")
             .ToArray();
+        var uiBehaviorFacts = candidate.Facts
+            .Where(fact => UiBehaviorKinds.Contains(fact.Kind))
+            .ToArray();
 
         var rules = knowledge.Rules
             .Concat(responseFacts.Select(DescribeResponseRule))
+            .Concat(uiBehaviorFacts.Select(DescribeUiBehaviorRule))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var sideEffects = knowledge.SideEffects
@@ -34,6 +48,11 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
                 fact.Id,
                 fact.Kind,
                 $"Endpoint response: {DescribeResponseRule(fact)}",
+                fact.Source)))
+            .Concat(uiBehaviorFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeUiBehaviorRule(fact),
                 fact.Source)))
             .GroupBy(item => item.FactId, StringComparer.Ordinal)
             .Select(group => group.First())
@@ -64,6 +83,69 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return "Endpoint response observed, but its expression was not captured.";
+    }
+
+    private static string DescribeUiBehaviorRule(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("field", out var field);
+        var fieldName = field ?? fact.Name;
+
+        if (fact.Kind == "ui-field")
+        {
+            fact.Metadata.TryGetValue("element", out var element);
+            var elementText = string.IsNullOrWhiteSpace(element)
+                ? string.Empty
+                : $" as `{element}`";
+            return $"UI exposes field `{fieldName}`{elementText}.";
+        }
+
+        if (fact.Kind == "ui-field-option")
+        {
+            fact.Metadata.TryGetValue("value", out var value);
+            fact.Metadata.TryGetValue("label", out var label);
+            var optionValue = value ?? fact.Name;
+            return string.IsNullOrWhiteSpace(label) || string.Equals(label, optionValue, StringComparison.Ordinal)
+                ? $"UI field `{fieldName}` offers option `{optionValue}`."
+                : $"UI field `{fieldName}` offers option `{optionValue}` labeled `{label}`.";
+        }
+
+        if (fact.Kind == "ui-field-validation")
+        {
+            fact.Metadata.TryGetValue("behavior", out var behavior);
+            fact.Metadata.TryGetValue("condition", out var condition);
+            var validation = behavior ?? "validation";
+            return string.IsNullOrWhiteSpace(condition)
+                ? $"UI field `{fieldName}` is `{validation}`."
+                : $"UI field `{fieldName}` is `{validation}` when `{condition}`.";
+        }
+
+        if (fact.Kind == "ui-field-visibility")
+        {
+            fact.Metadata.TryGetValue("condition", out var condition);
+            return string.IsNullOrWhiteSpace(condition)
+                ? $"UI field `{fieldName}` has observed visibility behavior."
+                : $"UI field `{fieldName}` is visible when `{condition}`.";
+        }
+
+        if (fact.Kind == "ui-field-enabled-state")
+        {
+            fact.Metadata.TryGetValue("behavior", out var behavior);
+            fact.Metadata.TryGetValue("condition", out var condition);
+            var state = behavior ?? "state-controlled";
+            return string.IsNullOrWhiteSpace(condition)
+                ? $"UI field `{fieldName}` is `{state}`."
+                : $"UI field `{fieldName}` is `{state}` when `{condition}`.";
+        }
+
+        if (fact.Kind == "ui-field-binding")
+        {
+            fact.Metadata.TryGetValue("requestField", out var requestField);
+            return string.IsNullOrWhiteSpace(requestField)
+                ? $"UI field `{fieldName}` participates in request binding."
+                : $"UI field `{fieldName}` maps to request field `{requestField}`.";
+        }
+
+        return $"{fact.Kind}: {fact.Name}";
     }
 
     private static IEnumerable<string> BuildSemanticSideEffects(FeatureCandidate candidate)
