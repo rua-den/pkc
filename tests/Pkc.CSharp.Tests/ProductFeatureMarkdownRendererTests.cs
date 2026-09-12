@@ -106,5 +106,6 @@ public sealed class ProductFeatureMarkdownRendererTests
             [],
             stateChanges ?? [],
             sideEffects ?? [],
+            [],
             []);
 }
