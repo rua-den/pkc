@@ -74,13 +74,13 @@ public sealed class CSharpProjectSemanticEnricher
                 continue;
             }
 
-            var method = await FindMethodAsync(fact, source, cancellationToken);
-            if (method is null)
+            var scope = await FindCallableScopeAsync(fact, source, cancellationToken);
+            if (scope is null)
             {
                 continue;
             }
 
-            foreach (var invocation in method.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            foreach (var invocation in scope.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
                 var symbolInfo = source.SemanticModel.GetSymbolInfo(invocation, cancellationToken);
                 var methodSymbol = symbolInfo.Symbol as IMethodSymbol ??
@@ -99,7 +99,7 @@ public sealed class CSharpProjectSemanticEnricher
         }
 
         return new FactDocument(
-            "0.4.3-csharp",
+            "0.4.4-csharp",
             facts.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             relations
                 .GroupBy(RelationKey, StringComparer.Ordinal)
@@ -123,7 +123,7 @@ public sealed class CSharpProjectSemanticEnricher
             ["semanticProject"] = source.ProjectPath
         };
 
-        if (!SupportsDeclaredNodeEnrichment(fact.Kind))
+        if (!SupportsSemanticNodeEnrichment(fact))
         {
             metadata["semanticNodeMatch"] = "not-applicable";
             return fact with { Metadata = metadata };
@@ -139,6 +139,27 @@ public sealed class CSharpProjectSemanticEnricher
         }
 
         metadata["semanticNodeMatch"] = "matched";
+
+        if (IsMinimalApiEndpoint(fact) && node is InvocationExpressionSyntax endpointRegistration)
+        {
+            var symbolInfo = source.SemanticModel.GetSymbolInfo(endpointRegistration, cancellationToken);
+            var methodSymbol = symbolInfo.Symbol as IMethodSymbol ??
+                               symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+            if (methodSymbol is null)
+            {
+                metadata["analysisConfidence"] = "medium";
+                metadata["endpointRegistrationResolution"] = "unresolved";
+                metadata["analysisCaveat"] = "minimal-api-registration-symbol-unresolved";
+                return fact with { Metadata = metadata };
+            }
+
+            metadata["semanticSymbol"] = methodSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+            metadata["endpointRegistrationResolution"] = "semantic";
+            metadata["endpointRegistrationSymbol"] = methodSymbol.OriginalDefinition
+                .ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+            return fact with { Metadata = metadata };
+        }
 
         var declared = source.SemanticModel.GetDeclaredSymbol(node, cancellationToken);
         if (declared is not null)
@@ -179,10 +200,16 @@ public sealed class CSharpProjectSemanticEnricher
         return fact with { Metadata = metadata };
     }
 
-    private static bool SupportsDeclaredNodeEnrichment(string kind) => kind is
-        "endpoint" or "method" or "constructor" or
-        "class" or "interface" or "struct" or "record" or "enum" or
-        "property" or "enum-member";
+    private static bool SupportsSemanticNodeEnrichment(EvidenceFact fact) =>
+        IsMinimalApiEndpoint(fact) || fact.Kind is
+            "endpoint" or "method" or "constructor" or
+            "class" or "interface" or "struct" or "record" or "enum" or
+            "property" or "enum-member";
+
+    private static bool IsMinimalApiEndpoint(EvidenceFact fact) =>
+        fact.Kind == "endpoint" &&
+        fact.Metadata.TryGetValue("endpointStyle", out var style) &&
+        string.Equals(style, "minimal-api", StringComparison.Ordinal);
 
     private static async Task<SyntaxNode?> FindFactNodeAsync(
         EvidenceFact fact,
@@ -194,26 +221,70 @@ public sealed class CSharpProjectSemanticEnricher
             StartLine(node) == fact.Source.StartLine && MatchesFact(node, fact));
     }
 
-    private static async Task<BaseMethodDeclarationSyntax?> FindMethodAsync(
+    private static async Task<SyntaxNode?> FindCallableScopeAsync(
         EvidenceFact fact,
         ProjectSemanticSource source,
         CancellationToken cancellationToken)
     {
         var node = await FindFactNodeAsync(fact, source, cancellationToken);
-        return node as BaseMethodDeclarationSyntax;
+        if (node is BaseMethodDeclarationSyntax method)
+        {
+            return method;
+        }
+
+        if (IsMinimalApiEndpoint(fact) && node is InvocationExpressionSyntax registration)
+        {
+            return registration.ArgumentList.Arguments
+                .Skip(1)
+                .Select(argument => argument.Expression)
+                .OfType<AnonymousFunctionExpressionSyntax>()
+                .FirstOrDefault();
+        }
+
+        return null;
     }
 
-    private static bool MatchesFact(SyntaxNode node, EvidenceFact fact) => fact.Kind switch
+    private static bool MatchesFact(SyntaxNode node, EvidenceFact fact)
     {
-        "endpoint" or "method" => node is MethodDeclarationSyntax method &&
-                                    method.Identifier.ValueText == fact.Name,
-        "constructor" => node is ConstructorDeclarationSyntax constructor &&
-                           constructor.Identifier.ValueText == fact.Name,
-        "class" or "interface" or "struct" or "record" or "enum" =>
-            node is BaseTypeDeclarationSyntax type && type.Identifier.ValueText == fact.Name,
-        "property" => node is PropertyDeclarationSyntax property && property.Identifier.ValueText == fact.Name,
-        "enum-member" => node is EnumMemberDeclarationSyntax member && member.Identifier.ValueText == fact.Name,
-        _ => false
+        if (IsMinimalApiEndpoint(fact))
+        {
+            if (node is not InvocationExpressionSyntax invocation ||
+                !fact.Metadata.TryGetValue("mapMethod", out var mapMethod) ||
+                !string.Equals(GetInvocationName(invocation.Expression), mapMethod, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!fact.Metadata.TryGetValue("fullRoute", out var fullRoute) ||
+                invocation.ArgumentList.Arguments.Count == 0)
+            {
+                return true;
+            }
+
+            return invocation.ArgumentList.Arguments[0].Expression is LiteralExpressionSyntax literal &&
+                   string.Equals(literal.Token.ValueText, fullRoute, StringComparison.Ordinal);
+        }
+
+        return fact.Kind switch
+        {
+            "endpoint" or "method" => node is MethodDeclarationSyntax method &&
+                                        method.Identifier.ValueText == fact.Name,
+            "constructor" => node is ConstructorDeclarationSyntax constructor &&
+                               constructor.Identifier.ValueText == fact.Name,
+            "class" or "interface" or "struct" or "record" or "enum" =>
+                node is BaseTypeDeclarationSyntax type && type.Identifier.ValueText == fact.Name,
+            "property" => node is PropertyDeclarationSyntax property && property.Identifier.ValueText == fact.Name,
+            "enum-member" => node is EnumMemberDeclarationSyntax member && member.Identifier.ValueText == fact.Name,
+            _ => false
+        };
+    }
+
+    private static string GetInvocationName(ExpressionSyntax expression) => expression switch
+    {
+        IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+        MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+        MemberBindingExpressionSyntax binding => binding.Name.Identifier.ValueText,
+        _ => expression.ToString().Split('.').LastOrDefault() ?? expression.ToString()
     };
 
     private static bool IsHttpMethodAttribute(INamedTypeSymbol type)
