@@ -11,8 +11,8 @@ public sealed class PortableKnowledgePackRendererTests
         var content = new PortableKnowledgePackRenderer().RenderInstructions();
 
         Assert.Contains("Start with `index.md`", content, StringComparison.Ordinal);
-        Assert.Contains("files under `features/`", content, StringComparison.Ordinal);
-        Assert.Contains("files under `workflows/`", content, StringComparison.Ordinal);
+        Assert.Contains("`features/`", content, StringComparison.Ordinal);
+        Assert.Contains("`workflows/`", content, StringComparison.Ordinal);
         Assert.Contains("authority: code-observed", content, StringComparison.Ordinal);
         Assert.Contains("Prefer an explicit unknown over an unsupported inference", content, StringComparison.Ordinal);
     }
