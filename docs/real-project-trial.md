@@ -37,6 +37,9 @@ PKC must preserve detail without forcing every consumer to read implementation i
 The intended hierarchy is:
 
 ```text
+knowledge/AI_INSTRUCTIONS.md
+  → vendor-neutral instructions for how an AI should consume the pack
+
 knowledge/index.md
   → orientation, observed system surface, capability map, boundaries/unknowns
 
@@ -51,6 +54,13 @@ knowledge/workflows/**/*.md
   → detailed implementation traceability and analyzer provenance
 ```
 
+Portable handoff artifacts:
+
+```text
+PKC_KNOWLEDGE.md   → single-file convenience bundle for AI upload
+PKC_KNOWLEDGE.zip  → archive transport of the canonical knowledge/ pack
+```
+
 Rules for abstraction:
 
 1. **Do not delete evidence to make Markdown pretty.** Move detail to the correct layer.
@@ -58,6 +68,9 @@ Rules for abstraction:
 3. **Feature pages summarize capabilities; workflow pages explain operations; evidence preserves proof.**
 4. **Observed implementation is not business intent.** Keep `code-observed`, unknowns and future delivery/product evidence distinct.
 5. **The primary consumer is an AI.** Markdown should be structured for reliable retrieval and reasoning, not optimized only for human prose aesthetics.
+6. **Transport must not change meaning.** The structured folder and single-file bundle must preserve the same authority, unknowns and product behavior.
+
+Detailed AI handoff contract: `docs/ai-handoff.md`.
 
 ## Benchmark roles
 
@@ -97,6 +110,7 @@ unsupported required pattern
 unexpected fallback
 traceability gap
 uncertainty/authority overclaim
+handoff/packaging mismatch
 ```
 
 Priority order:
@@ -106,6 +120,7 @@ wrong claim
   > missing important behavior
   > authority/confidence overclaim
   > traceability gap
+  > handoff/packaging mismatch
   > comprehension-breaking noise
   > unsupported pattern with low product impact
 ```
@@ -146,9 +161,9 @@ Before adding analyzer capability, make the knowledge layers obey the contract a
 Required result:
 
 ```text
-index       = orient the AI
-feature     = explain capability
-workflow    = explain operation
+index        = orient the AI
+feature      = explain capability
+workflow     = explain operation
 raw evidence = prove detail
 ```
 
@@ -205,19 +220,48 @@ conditional development behavior
 
 Do not invent a journey that evidence does not support. The goal is orientation, not speculative product design.
 
+## Step 3.5 — Portable AI handoff parity
+
+The acceptance artifact must match how a Product Owner will actually give PKC knowledge to an AI.
+
+Generate and validate:
+
+```text
+knowledge/AI_INSTRUCTIONS.md
+knowledge/...
+PKC_KNOWLEDGE.md
+PKC_KNOWLEDGE.zip
+```
+
+Rules:
+
+- `knowledge/` remains canonical;
+- `PKC_KNOWLEDGE.md` must embed every canonical knowledge file with explicit file boundaries;
+- the bundle must place AI instructions/index before feature/workflow detail;
+- the single-file bundle must preserve the same authority, unknowns and important behavior as the structured pack;
+- `PKC_KNOWLEDGE.zip` must contain only portable knowledge by default, not source code or `.pkc/facts.json`;
+- ZIP parsing is not required for an AI consumer; it is a transport/storage convenience.
+
+Acceptance:
+
+- the same fixed product questions can be answered from `PKC_KNOWLEDGE.md` and from the structured `knowledge/` pack without semantic disagreement;
+- a packaging difference that changes or hides a critical answer is a blocker.
+
 ## Step 4 — Blind knowledge-only comprehension review
 
 This is the primary V0.4.4 acceptance gate.
 
 Procedure:
 
-1. Generate a fresh pinned Loren `knowledge/` artifact.
+1. Generate a fresh pinned Loren artifact.
 2. Hide the Loren source repository and `.pkc` raw files from the reviewer for the first pass.
-3. Give the reviewer only `knowledge/`.
-4. Ask the fixed benchmark questions below.
-5. Record answers before reopening source.
-6. Compare each answer against Loren source/known behavior.
-7. Classify every mismatch using the finding taxonomy.
+3. First give the reviewer only `PKC_KNOWLEDGE.md` to exercise the simplest PO handoff path.
+4. Ask the fixed benchmark questions below and record the answers.
+5. Give the reviewer the structured `knowledge/` pack and repeat/check any answer that requires deeper navigation.
+6. Record any semantic disagreement between the bundle and structured pack as a packaging blocker.
+7. Reopen Loren source/known behavior only after the knowledge-only answers are recorded.
+8. Compare every critical answer against source/known behavior.
+9. Classify every mismatch using the finding taxonomy.
 
 Required questions:
 
@@ -243,7 +287,7 @@ Pass/fail rubric:
 
 ### Coverage
 
-- every critical question is answerable from `knowledge/` or explicitly answered as unknown;
+- every critical question is answerable from the portable knowledge artifact or explicitly answered as unknown;
 - an important known behavior may not disappear merely because it was filtered as noise.
 
 ### Abstraction
@@ -261,6 +305,11 @@ Pass/fail rubric:
 - missing frontend/runtime/delivery/product-intent evidence remains explicit;
 - the pack prefers unknown over invention.
 
+### Handoff parity
+
+- `PKC_KNOWLEDGE.md` and the canonical `knowledge/` pack must not disagree on a critical answer;
+- archive transport must preserve the canonical files intact.
+
 A green CI/grep suite is necessary but **cannot pass this gate by itself**.
 
 ## Step 5 — External review of V0.4.4
@@ -275,6 +324,7 @@ missing product behavior
 bad abstraction
 lost traceability
 authority/confidence overclaim
+handoff mismatch
 benchmark gaming / repository-specific hardcoding
 ```
 
@@ -306,10 +356,11 @@ Pin the reviewed commit.
 2. Run PKC without changing the target repo to help the compiler.
 3. Review analyzer fallback/provenance only to detect knowledge risk.
 4. Review `knowledge/` using the same layered-output contract.
-5. Perform a blind knowledge-only comprehension review with questions adapted to that product.
-6. Reopen source and compare answers.
-7. Fix only proven generic gaps and add regression coverage.
-8. Re-run PokeTrade + Loren + the independent repo after each blocker fix.
+5. Validate single-file vs structured-pack handoff parity.
+6. Perform a blind knowledge-only comprehension review with questions adapted to that product.
+7. Reopen source and compare answers.
+8. Fix only proven generic gaps and add regression coverage.
+9. Re-run PokeTrade + Loren + the independent repo after each blocker fix.
 
 ## V0.4.5 pass condition
 
@@ -317,6 +368,7 @@ Pin the reviewed commit.
 - important behavior is answerable or explicitly unknown;
 - product-level pages are high-signal;
 - evidence remains traceable;
+- portable handoff forms preserve the same critical knowledge;
 - no benchmark-specific hardcoding;
 - existing PokeTrade and Loren acceptance remain green;
 - independent external review finds no unresolved blocker.
@@ -331,9 +383,11 @@ Pin the reviewed commit.
 PokeTrade known-answer regression                   PASS
 Loren pinned evidence/workflow correctness          PASS
 Loren blind knowledge-only comprehension            PASS
+Loren single-file/structured handoff parity          PASS
 Loren external review with no blocker                PASS
 Second independent real-repo trial                  PASS
 Second blind knowledge-only comprehension           PASS
+Second handoff parity                                PASS
 Cross-benchmark regression after fixes              PASS
 Known boundaries/unknowns documented honestly       PASS
 No repository-specific compiler exceptions          PASS
@@ -353,7 +407,8 @@ Do not start these merely because they are on the roadmap:
 - runtime browser exploration;
 - incremental compilation;
 - Azure DevOps ingestion;
-- generalized product insight/drift analysis.
+- generalized product insight/drift analysis;
+- live MCP/connector delivery merely for convenience.
 
 They are allowed only when a real acceptance finding proves one is required, or after the V0.5 unlock gate is satisfied.
 
@@ -362,6 +417,7 @@ They are allowed only when a real acceptance finding proves one is required, or 
 ```text
 V0.4.4 Step 1
 → enforce layered knowledge abstraction
+→ validate portable AI handoff output
 → regenerate pinned Loren artifact
 → inspect feature/index output
 → V0.4.4 Step 4 blind knowledge-only review
