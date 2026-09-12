@@ -100,6 +100,10 @@ public sealed partial class ProductFeatureMarkdownRenderer
         builder.AppendLine("- Respect `Important unknowns`; do not invent missing UI, delivery, or business context.");
         builder.AppendLine("- Source evidence in workflow files exists for traceability; do not require the source repository for ordinary PO questions.");
         builder.AppendLine();
+
+        AppendObservedSurface(builder, document);
+        AppendConditionalSurface(builder, document);
+
         builder.AppendLine("## Product features");
         builder.AppendLine();
 
@@ -120,6 +124,73 @@ public sealed partial class ProductFeatureMarkdownRenderer
         builder.AppendLine("PKC currently compiles backend C# and conservative static frontend evidence. Azure DevOps history, runtime UI confirmation, and business approval are separate future evidence sources unless explicitly present in feature files.");
 
         return builder.ToString();
+    }
+
+    private static void AppendObservedSurface(StringBuilder builder, ProductFeatureDocument document)
+    {
+        builder.AppendLine("## Observed capability surface");
+        builder.AppendLine();
+        builder.AppendLine("This is an implementation-observed orientation map. It groups discovered operations by capability area without inventing product intent or an unsupported user journey.");
+        builder.AppendLine();
+
+        if (document.Features.Count == 0)
+        {
+            builder.AppendLine("- No grounded capability surface was discovered.");
+            builder.AppendLine();
+            return;
+        }
+
+        foreach (var areaGroup in document.Features
+                     .GroupBy(feature => feature.Area, StringComparer.Ordinal)
+                     .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            var workflows = areaGroup.SelectMany(feature => feature.Workflows).ToArray();
+            var entries = workflows
+                .SelectMany(workflow => workflow.EntryPoints)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(entry => entry, StringComparer.Ordinal)
+                .ToArray();
+            var permissions = workflows
+                .SelectMany(workflow => workflow.Permissions)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            builder.Append($"- **{areaGroup.Key}** — {workflows.Length} observed {(workflows.Length == 1 ? "workflow" : "workflows")}");
+            if (entries.Length > 0)
+            {
+                builder.Append($"; entry points: {string.Join(", ", entries.Select(entry => $"`{entry}`"))}");
+            }
+            if (permissions.Length > 0)
+            {
+                builder.Append("; authorization/permission evidence present");
+            }
+            builder.AppendLine(".");
+        }
+
+        builder.AppendLine();
+    }
+
+    private static void AppendConditionalSurface(StringBuilder builder, ProductFeatureDocument document)
+    {
+        var conditionalRules = document.Features
+            .SelectMany(feature => feature.Rules
+                .Where(rule => rule.Contains("endpoint is registered only when", StringComparison.Ordinal))
+                .Select(rule => (Feature: feature, Rule: rule)))
+            .ToArray();
+
+        if (conditionalRules.Length == 0)
+        {
+            return;
+        }
+
+        builder.AppendLine("## Conditional or environment-dependent surface");
+        builder.AppendLine();
+        foreach (var item in conditionalRules)
+        {
+            var path = $"features/{Slug(item.Feature.Area)}/{item.Feature.Category}.md";
+            builder.AppendLine($"- [{item.Feature.Title}]({path}): {item.Rule}");
+        }
+        builder.AppendLine();
     }
 
     private static void AppendListSection(StringBuilder builder, string title, IReadOnlyList<string> items)
