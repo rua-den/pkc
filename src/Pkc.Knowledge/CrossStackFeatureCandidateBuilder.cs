@@ -113,6 +113,9 @@ public sealed class CrossStackFeatureCandidateBuilder
 
     private static bool IsFlowNoiseTarget(string target) =>
         target.StartsWith("System.", StringComparison.Ordinal) ||
+        target.StartsWith("string.", StringComparison.Ordinal) ||
+        target.StartsWith("char.", StringComparison.Ordinal) ||
+        target.StartsWith("object.", StringComparison.Ordinal) ||
         target.StartsWith("Microsoft.AspNetCore.Http.Results.", StringComparison.Ordinal) ||
         target.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal);
 
