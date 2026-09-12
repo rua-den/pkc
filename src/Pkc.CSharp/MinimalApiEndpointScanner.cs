@@ -77,13 +77,17 @@ internal sealed class MinimalApiEndpointScanner
                 continue;
             }
 
+            var handler = invocation.ArgumentList.Arguments[1].Expression;
             var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["endpointStyle"] = "minimal-api",
                 ["mapMethod"] = mapMethod,
                 ["httpMethod"] = httpMethod,
                 ["routeTemplate"] = route,
-                ["fullRoute"] = route
+                ["fullRoute"] = route,
+                ["handlerExpression"] = handler is AnonymousFunctionExpressionSyntax
+                    ? "anonymous-function"
+                    : handler.ToString()
             };
 
             if (HasFluentCall(invocation, "RequireAuthorization"))
@@ -104,11 +108,6 @@ internal sealed class MinimalApiEndpointScanner
                 InferArea(route),
                 metadata);
             facts.Add(endpoint);
-
-            var handler = invocation.ArgumentList.Arguments[1].Expression;
-            metadata["handlerExpression"] = handler is AnonymousFunctionExpressionSyntax
-                ? "anonymous-function"
-                : handler.ToString();
 
             if (handler is AnonymousFunctionExpressionSyntax anonymousHandler)
             {
@@ -275,7 +274,7 @@ internal sealed class MinimalApiEndpointScanner
 
         var area = segments.FirstOrDefault() ?? "Root";
         return string.Concat(area
-            .Split('-', '_', StringSplitOptions.RemoveEmptyEntries)
+            .Split(['-', '_'], StringSplitOptions.RemoveEmptyEntries)
             .Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
     }
 
