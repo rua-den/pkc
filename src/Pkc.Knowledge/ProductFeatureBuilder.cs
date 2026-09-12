@@ -63,10 +63,7 @@ public sealed partial class ProductFeatureBuilder
 
         var coverage = workflows.SelectMany(item => item.Coverage).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
         var permissions = workflows.SelectMany(item => item.Permissions).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
-        var rules = workflows
-            .SelectMany(workflow => workflow.Rules.Select(rule => $"{ActionName(workflow)}: {rule}"))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+        var rules = BuildProductRules(workflows);
         var unknowns = workflows.SelectMany(item => item.Unknowns).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
 
         var summary = $"Observed product feature synthesized from {workflows.Length} {Pluralize("workflow", workflows.Length)} in the {group.Key.Area} area.";
@@ -83,6 +80,50 @@ public sealed partial class ProductFeatureBuilder
             permissions,
             rules,
             unknowns);
+    }
+
+    private static IReadOnlyList<string> BuildProductRules(IReadOnlyList<FeatureKnowledge> workflows)
+    {
+        var occurrences = workflows
+            .SelectMany(workflow => workflow.Rules
+                .Where(IsProductImpactingRule)
+                .Select(rule => new RuleOccurrence(ActionName(workflow), rule)))
+            .ToArray();
+
+        return occurrences
+            .GroupBy(item => item.Rule, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var actions = group.Select(item => item.Action).Distinct(StringComparer.Ordinal).ToArray();
+                return actions.Length > 1
+                    ? group.Key
+                    : $"{actions[0]}: {group.Key}";
+            })
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static bool IsProductImpactingRule(string rule)
+    {
+        if (string.IsNullOrWhiteSpace(rule) ||
+            rule.StartsWith("Iterates `", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!rule.StartsWith("Condition observed:", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return rule.Contains("=> return ", StringComparison.Ordinal) ||
+               rule.Contains("endpoint is registered only when", StringComparison.Ordinal) ||
+               rule.Contains(".Status", StringComparison.OrdinalIgnoreCase) ||
+               rule.Contains(" status ", StringComparison.OrdinalIgnoreCase) ||
+               rule.Contains("IsFinal", StringComparison.Ordinal) ||
+               rule.Contains("IsCompleted", StringComparison.Ordinal) ||
+               rule.Contains("IsCancelled", StringComparison.Ordinal) ||
+               rule.Contains("IsCanceled", StringComparison.Ordinal);
     }
 
     private static string Classify(FeatureKnowledge workflow)
@@ -120,6 +161,7 @@ public sealed partial class ProductFeatureBuilder
     }
 
     private sealed record FeatureKey(string Area, string Category);
+    private sealed record RuleOccurrence(string Action, string Rule);
 
     private sealed class FeatureKeyComparer : IEqualityComparer<FeatureKey>
     {
