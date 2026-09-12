@@ -2,19 +2,7 @@
 
 ## Purpose
 
-This records the first-pass answers produced **without opening the Loren source repository or `.pkc` raw evidence**.
-
-The reviewer received only the generated single-file handoff:
-
-```text
-PKC_KNOWLEDGE.md
-```
-
-PKC compiler commit used for the artifact:
-
-```text
-326f556517c27085ed027eecdeef7e4125c851a6
-```
+This benchmark records whether an AI can understand Loren from PKC's portable knowledge **without opening the Loren source repository or `.pkc` raw evidence**.
 
 Pinned Loren benchmark commit:
 
@@ -22,181 +10,45 @@ Pinned Loren benchmark commit:
 e9e81651d380d7d40998f235cfdc7f119fe67af8
 ```
 
-The answers below are intentionally frozen before source cross-check. Any correction required after reopening source is a benchmark finding, not an edit to the blind answer.
+The review is intentionally staged:
 
-## Blind answers
+```text
+PKC_KNOWLEDGE.md only
+→ freeze answers/findings
+→ reopen source and classify gaps
+→ fix only proven generic compiler gaps
+→ regenerate
+→ blind-read again
+→ verify structured-pack parity
+```
 
-### 1. What observable capabilities does Loren expose?
+## First blind pass
 
-Observed capability areas in the pack:
+PKC compiler commit used for the original artifact:
 
-- owner authentication: login, logout and authenticated session status;
-- project discovery/listing and project bootstrap;
-- assistant/agent run execution;
-- action-proposal approval and cancellation;
-- login-page/root/session/health HTTP surfaces;
-- a conditional development-only run endpoint.
+```text
+326f556517c27085ed027eecdeef7e4125c851a6
+```
 
-The pack does not establish approved product intent or delivery history; these are code-observed capabilities only.
+### What the first pass could answer
 
-**Blind confidence: high.**
+The knowledge-only reader could correctly identify:
 
-### 2. How does owner authentication work?
+- owner authentication and session behavior;
+- project list/bootstrap behavior;
+- the authorized `/api/run` surface and the conditional `/internal/dev/run` surface;
+- action-proposal approve/cancel status behavior;
+- important failure mappings and unknown boundaries.
 
-`POST /auth/login` checks whether owner authentication is configured. If not configured it returns a 503 problem and specifically points to `LOREN_OWNER_PASSWORD`. An invalid password returns unauthorized. A successful login signs in the current HTTP context through ASP.NET authentication and returns `authenticated = true`.
+The main run flow and proposal meaning were technically recoverable, but only by reading detailed backend-flow method names.
 
-`POST /auth/logout` requires authorization, signs out the current HTTP context and returns `authenticated = false`.
+### First-pass blockers
 
-`GET /api/session` requires authorization and reports an authenticated owner as `Owner`.
-
-`GET /login` redirects an already-authenticated user to `/`; otherwise it returns the login HTML.
-
-**Blind confidence: high.**
-
-### 3. What does the main run operation do at a product/system level?
-
-`POST /api/run` is an authorized assistant/agent execution entry point. It rejects an empty message and requires an owner identity. The compiled workflow indicates that a run:
-
-1. builds project context;
-2. incorporates available memory context;
-3. creates brain context from the user request;
-4. runs an agent loop that calls the brain;
-5. stops on final brain output or processes an action request;
-6. executes actions through `IActionGateway`;
-7. enforces a maximum action count;
-8. can collect action proposal IDs during the run;
-9. returns the run result.
-
-Unknown explicit project aliases produce not-found behavior; argument errors map to bad request.
-
-A second `POST /internal/dev/run` surface exists only when `developmentRunEndpointEnabled` is true.
-
-**Blind confidence: medium-high.**
-
-Reason confidence is not high: the feature-level `Run Operations` page does not explicitly summarize project/memory/agent stages; those stages have to be reconstructed from workflow backend-flow and evidence names.
-
-### 4. How are project context and memory involved in a run?
-
-The run workflow shows `LorenProjectContextBuilder.BuildAsync` being called by `LorenRunService.RunAsync`.
-
-The project-context builder can:
-
-- find a project by explicit alias;
-- infer a project from the user message by listing known projects and matching project/repository cues;
-- reject an explicitly supplied unknown alias;
-- prepare conversation/history context;
-- call `LorenMemoryContextBuilder.BuildAsync`.
-
-The memory-context builder calls `IMemoryStore.ListCurrentForProjectAsync`, selects a bounded set of memory records, builds system context and contributes that context to the run.
-
-The project builder then contributes project context and memory system context before the agent loop executes.
-
-**Blind confidence: medium.**
-
-This answer is available from the pack, but mostly by interpreting detailed backend-flow method names and conditions rather than a direct product-level explanation.
-
-### 5. How are projects listed and bootstrapped, and what can fail?
-
-`GET /api/projects` requires authorization and returns the project catalog/list.
-
-`POST /api/projects/bootstrap` also requires authorization. The underlying bootstrap service checks for an existing alias and refuses to rebind an alias that already exists. It creates project/repository IDs and saves the new catalog entry.
-
-Observed HTTP outcomes include:
-
-- successful bootstrap → OK;
-- argument error → bad request;
-- existing/rebinding conflict represented by `InvalidOperationException` → conflict.
-
-**Blind confidence: high.**
-
-### 6. What are action proposals and what happens when they are approved or cancelled?
-
-The pack strongly suggests that the currently observed proposal type is a GitHub create-branch proposal.
-
-Approve flow:
-
-- requires authorization and owner identity;
-- validates the proposal identifier;
-- loads the proposal;
-- verifies proposal owner identity;
-- verifies the current project/repository still matches the proposal repository locator;
-- recomputes a create-branch action-intent fingerprint and verifies it still matches the proposal;
-- requires the proposal-store approval decision to be approved;
-- executes the resulting action through `IActionGateway.ExecuteAsync`;
-- maps unknown / owner mismatch / approved / other statuses to not-found / forbid / OK / conflict.
-
-Cancel flow:
-
-- requires authorization and owner identity;
-- calls `ICreateBranchProposalStore.CancelAsync`;
-- maps unknown / owner mismatch / cancelled / other statuses to not-found / forbid / OK / conflict.
-
-**Blind confidence: medium-high.**
-
-Reason confidence is not high: the feature is named generically `ActionProposals Status Management`, but the actual proposal purpose has to be inferred from implementation names such as `CreateBranchProposal`, `GitHubActions.CreateBranch` and `ApproveProposalAndCreateBranchAsync`. The pack does not provide a concise product-level definition of an action proposal.
-
-### 7. Which behavior is conditional or development-only?
-
-`POST /internal/dev/run` is registered only when `developmentRunEndpointEnabled` is true.
-
-The pack explicitly calls this out in both the index and Run feature.
-
-**Blind confidence: high.**
-
-### 8. What important permissions, validations and failure paths exist?
-
-Important observed examples:
-
-- protected project/run/proposal/session/logout routes require authorization;
-- run requires a non-empty message and owner identity;
-- an explicitly supplied unknown project alias can produce not found;
-- argument errors in run/bootstrap become bad request;
-- bootstrap refuses an existing alias/rebinding attempt and maps it to conflict;
-- login returns 503 when owner auth is not configured and unauthorized for an invalid password;
-- action proposal approve/cancel protect owner identity and map proposal/result status to not-found, forbid, OK or conflict;
-- the agent loop fails if the brain returns neither final output nor an action request;
-- the agent loop enforces a configured maximum action count.
-
-**Blind confidence: high for the listed behavior.**
-
-### 9. What important side effects or integrations are visible?
-
-Explicit side effects visible at product level include ASP.NET sign-in and sign-out.
-
-The deeper workflow flow also shows integrations with:
-
-- the project catalog;
-- the memory store;
-- the brain (`IBrain.ThinkAsync`);
-- the action gateway (`IActionGateway.ExecuteAsync`);
-- the create-branch proposal store;
-- an audit sink;
-- GitHub/create-branch-oriented action intent/proposal logic.
-
-**Blind confidence: medium.**
-
-The pack exposes these integrations mostly through backend-flow method names. Several workflow `Side effects` sections still say no grounded information even though the flow makes externally meaningful integration calls visible.
-
-### 10. What does PKC explicitly not know yet?
-
-The pack repeatedly states that it does not yet have:
-
-- Azure DevOps delivery history or product intent;
-- frontend/UI interaction paths for these Loren workflows;
-- runtime UI confirmation;
-- business approval/intent beyond the observed code.
-
-It explicitly instructs the reader not to promote `code-observed` behavior into approved business truth.
-
-**Blind confidence: high.**
-
-## Blind-pass findings before reopening source
-
-### Finding A — Run product abstraction is still too implicit
+#### Finding A — Run product abstraction was too implicit
 
 Classification: `missing important behavior` / `comprehension-breaking noise`.
 
-The pack contains enough raw workflow evidence to reconstruct the run pipeline, but `Run Operations` does not directly explain the important stages:
+The pack contained enough detail to reconstruct:
 
 ```text
 request
@@ -207,26 +59,170 @@ request
 → result
 ```
 
-A PO-level question about how a run works should not require interpreting dozens of implementation method names.
+but `Run Operations` did not expose that application-level collaboration directly.
 
-### Finding B — Action proposal purpose is under-explained
+#### Finding B — Action proposal purpose was under-explained
 
 Classification: `missing important behavior`.
 
-The pack gives detailed approve/cancel mechanics but does not give a concise product/system definition of the proposal being acted upon. The current reader has to infer create-branch semantics from class/method names.
+Approve/cancel mechanics were detailed, but a reader had to infer that the currently observed proposal is a GitHub create-branch proposal from names such as `CreateBranchProposal`, `GitHubActions.CreateBranch`, and `ApproveProposalAndCreateBranchAsync`.
 
-### Finding C — Workflow detail remains noisy below the feature layer
+#### Finding C — Workflow detail remained noisy
 
-Classification: `comprehension-breaking noise` (non-blocking until source cross-check decides impact).
+Classification: `comprehension-breaking noise`, non-blocking at feature-first navigation level.
 
-The Run workflow still contains helper mechanics such as string truncation, character normalization and collection iteration. Feature-level filtering improved significantly, but a detailed reader can still hit implementation noise before the important application flow.
+Detailed workflow files still include implementation mechanics that are useful for traceability but not suitable for product-level orientation.
 
-### Finding D — Integration/side-effect presentation is incomplete
+#### Finding D — Integration presentation was incomplete
 
 Classification: `missing important behavior` candidate.
 
-The run and action-proposal workflows expose important calls to project catalog, memory store, brain, action gateway, proposal store and audit sink in `Backend flow`, while `Side effects` may remain empty. The source cross-check must determine which of these should be promoted as grounded integrations/side effects rather than left as raw call graph.
+Important application collaborations such as project catalog, memory store, brain, action gateway, proposal store and audit sink were visible only in detailed backend flow.
 
-## Next step
+## Source cross-check after the first pass
 
-Reopen the pinned Loren source only after this file is committed, compare every answer/finding against implementation, and classify any correction needed as a V0.4.4 benchmark finding.
+The pinned Loren source confirmed that Findings A and B were real product-semantic gaps rather than wording preferences:
+
+- `LorenRunService.RunAsync` prepares project context, invokes the project-context builder, participates in proposal collection, invokes the agent loop and returns run/audit/proposal results;
+- `LorenProjectContextBuilder.BuildAsync` resolves/infer projects and calls `LorenMemoryContextBuilder.BuildAsync` when project context exists;
+- `LorenMemoryContextBuilder.BuildAsync` loads current project memories, filters/bounds them, and produces system context;
+- the currently observed action-proposal approval path is specifically create-branch oriented and revalidates canonical target/fingerprint before execution through `IActionGateway`;
+- cancel records the cancellation without executing the GitHub change.
+
+The fix therefore had to be generic application-flow promotion, not Loren-specific prose.
+
+## Generic fix
+
+PKC now promotes a selective **Observed capability flow** from workflow call evidence into product feature pages.
+
+The promotion deliberately:
+
+- keeps endpoint → application-service edges;
+- keeps cross-component/capability-boundary collaboration;
+- prioritizes service/gateway/store/brain/loop/catalog/builder boundaries;
+- preserves important interface calls such as `IBrain`, `IActionGateway`, `IMemoryStore`, `IProjectCatalog`;
+- removes obvious plumbing such as `ToString`, `Parse`, `TryParse`, `New`, `Append`, equality/hash helpers and same-owner helper calls;
+- caps feature-level flow so the full call graph remains in workflow detail instead of flooding the feature page.
+
+Regression coverage is in:
+
+```text
+tests/Pkc.CSharp.Tests/ProductFeatureCapabilityFlowTests.cs
+```
+
+## Second blind pass
+
+PKC compiler commit:
+
+```text
+4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
+```
+
+Pinned Loren workflow:
+
+```text
+loren-external-trial #104 — PASS
+```
+
+The second pass again read **only `PKC_KNOWLEDGE.md`** before consulting source.
+
+### Run comprehension — PASS
+
+From the feature-level `Run Operations` page alone, the reader can now identify this grounded application flow:
+
+```text
+POST /api/run
+→ LorenRunService.RunAsync
+→ LorenProjectContextBuilder.BuildAsync
+→ LorenMemoryContextBuilder.BuildAsync
+→ IMemoryStore.ListCurrentForProjectAsync
+
+LorenRunService.RunAsync
+→ AgentLoop.RunAsync
+→ IBrain.ThinkAsync
+→ IActionGateway.ExecuteAsync
+```
+
+The same feature also exposes project-catalog resolution/inference, proposal collection/store participation, audit collection, the message/owner validation paths, agent-loop limits, and the conditional development endpoint.
+
+The reader no longer needs to descend into the workflow evidence section merely to discover that project + memory context feed the agent run.
+
+**Blind result: PASS.**
+
+### Action-proposal comprehension — PASS
+
+The feature-level `ActionProposals Status Management` page now exposes:
+
+```text
+approve endpoint
+→ ApproveProposalAndCreateBranchAsync
+→ ICreateBranchProposalStore.GetAsync / ApproveAsync
+→ IProjectCatalog.GetAsync
+→ ActionIntentFingerprint.Compute
+→ IActionGateway.ExecuteAsync
+
+cancel endpoint
+→ CancelProposalAsync
+→ ICreateBranchProposalStore.CancelAsync
+```
+
+This is enough for a source-blind reader to identify the currently observed proposal as a create-branch proposal, understand that approval revalidates canonical project/intent state before execution, and distinguish cancellation from execution.
+
+**Blind result: PASS.**
+
+### Finding C reassessment
+
+Detailed workflows still contain low-level implementation evidence. This remains acceptable because:
+
+- the receiving AI is instructed to start from index → feature;
+- feature pages now expose the high-signal application collaboration;
+- workflow detail remains available for exact traceability and failure semantics;
+- removing the detailed evidence would reduce auditability.
+
+**Result: non-blocking boundary, keep as-is unless a future blind review proves comprehension harm.**
+
+### Finding D reassessment
+
+Not every cross-component call should be labeled a side effect. The new `Observed capability flow` is a more accurate place for project catalog, memory store, brain, action gateway and proposal-store collaborations.
+
+Explicit side effects such as authentication sign-in/sign-out remain in the side-effect section; application collaborations remain in capability flow.
+
+**Result: resolved by better abstraction, not by broad side-effect promotion.**
+
+## Structured-pack / single-file parity
+
+The artifact generated by commit `4f7f75e...` contains 23 Markdown files under `knowledge/`.
+
+Parity verification result:
+
+```text
+23 / 23 structured Markdown files are embedded verbatim in PKC_KNOWLEDGE.md
+missing markers: 0
+missing content: 0
+```
+
+The generated `PKC_KNOWLEDGE.zip` contains exactly the same 23 `knowledge/*.md` files and contains no raw `.pkc` data or source files (`.cs`, `.ts`).
+
+**Handoff parity result: PASS.**
+
+## Current V0.4.4 acceptance position
+
+At commit:
+
+```text
+4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
+```
+
+verified gates are:
+
+```text
+core/unit/tool                               PASS
+PokeTrade known-answer regression            PASS
+Loren pinned real-project compile            PASS
+Loren-main canary                            PASS
+UI/backend validation known-answer contract  PASS
+Loren blind knowledge-only comprehension     PASS
+Loren structured/single-file handoff parity  PASS
+```
+
+V0.4.4 is **ready for independent external review**, but is not self-declared complete. The next acceptance action is reviewer assessment of this checkpoint. Only after that review passes should work move to the V0.4.5 second independent real-repository generalization gate.
