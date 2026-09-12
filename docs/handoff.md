@@ -74,7 +74,7 @@ Example target question:
 
 This is a core V0.4 knowledge-completeness requirement, not optional frontend polish.
 
-Canonical evidence should evolve toward framework-neutral kinds such as:
+Canonical evidence now includes the first implementation phase for:
 
 ```text
 ui-field
@@ -135,7 +135,7 @@ V0.4.3 remains the last accepted packaged checkpoint:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current `main` contains V0.4.4 trial and portable-handoff development. Do not bump the accepted package version merely because current CI is green.
+Current `main` contains V0.4.4 trial, portable-handoff development and the first UI form/validation behavior layer. Do not bump the accepted package version merely because current CI is green.
 
 Primary execution plan:
 
@@ -176,64 +176,93 @@ The real-project trial has already forced generic fixes for:
 
 Pinned Loren also requires zero `loose-roslyn-fallback` facts for the selected production benchmark.
 
-## Current knowledge-readiness work
+## Latest UI behavior checkpoint
 
-The main remaining blockers are **knowledge abstraction/comprehension and UI validation/behavior completeness**, not parser breadth for its own sake.
+Phase 1 of the UI behavior contract is now implemented with explicit medium-confidence provenance rather than being overstated as full semantic analysis.
 
-The latest layered-output change keeps full workflow/evidence detail while reducing helper-level rules promoted into product features. On the first Loren artifact after this change, `Run Operations` dropped from roughly 66 product rules to 10 while each Run workflow retained its full detailed rule set.
+Current supported Angular/static observations include:
 
-Now PKC also needs to prove that important form/configuration behavior survives into portable knowledge when supported frontend source contains it.
+```text
+field existence
+select/radio options
+required validation
+conditional required validation
+conditional visibility
+disabled/enabled condition evidence
+field → request-field binding for supported static expressions
+```
+
+Regression fixture shape:
+
+```text
+serviceType offers CSP/NCE
+serviceType required
+msSubscriptionId visible when serviceType == CSP
+msSubscriptionId required when serviceType == CSP
+msSubscriptionId → microsoftSubscriptionId request binding
+```
+
+Knowledge-level regression also requires those observations to survive into `FeatureKnowledge`, not merely raw facts.
+
+Validated development checkpoint:
+
+```text
+HEAD: 7f462b2e82b7a0df85b4e8171f5fec376aaf742f
+CI #177: test PASS + PokeTrade PASS
+Loren external trial #76: PASS
+Loren-main canary #56: PASS
+```
+
+This checkpoint does **not** close the UI behavior gate. The next proof must connect frontend field/request evidence with backend validation strongly enough for portable knowledge to distinguish:
+
+```text
+UI requires + backend requires
+→ consistent observed validation
+
+UI requirement not observed + backend requires
+→ possible validation mismatch
+
+mapping/requirement cannot be proven
+→ explicit unknown
+```
+
+Do not automatically call an observed difference a bug.
 
 ## Exact next steps
 
 Do these in order. Do not skip ahead because another roadmap item looks attractive.
 
-### Step 1 — Finish layered knowledge + handoff integrity
+### Step 1 — Keep layered knowledge + handoff integrity green
 
-Ensure synthesis/presentation obeys:
+Preserve:
 
 ```text
 index → feature → workflow → evidence
 ```
 
-Verify bundle/structured-pack parity and source-label/authority boundaries.
+and keep single-file/structured-pack parity.
 
-### Step 2 — UI behavior evidence
+### Step 2 — UI/backend validation linkage
 
-Implement canonical evidence for the minimum supported form semantics needed by `docs/ui-behavior-contract.md`:
+Connect supported `ui-field-binding` / request evidence to backend request/property/validation evidence only when the mapping is deterministic enough to support the claim.
 
-```text
-field
-option/type
-required validation
-conditional required validation
-conditional visibility/enabled state
-field → request/API mapping when provable
-```
+Do not link by similar names alone.
 
-Do not hardcode CSP, Loren, PokeTrade or repository-specific names.
+### Step 3 — End-to-end validation consistency benchmark
 
-### Step 3 — UI/backend validation benchmark
-
-Add a regression target containing at least:
+Add a fixture containing both frontend and C# backend behavior so portable knowledge can answer:
 
 ```text
-a selectable type
-an always-required field
-a conditionally-required field
-a conditionally-visible or enabled field
-field → request/API mapping
-matching backend validation for at least one field
+which field is required on UI?
+under what condition?
+which request field receives it?
+does backend require/validate the same value?
+is there an observed mismatch or is backend status unknown?
 ```
-
-Portable knowledge must answer those rules without source access.
 
 ### Step 4 — Loren feature + index signal
 
-- keep product-impacting auth, input validation, project/context behavior, agent-loop outcomes, action limits/proposals, failures and dev-only availability;
-- keep helper string/collection mechanics below feature level unless they affect product behavior;
-- dedupe shared rules without hiding production/dev differences;
-- make `knowledge/index.md` orient the AI using grounded capability/entry/permission/conditional evidence without inventing a user journey.
+Keep product-level output high-signal while full detail remains below it.
 
 ### Step 5 — Blind comprehension
 
@@ -241,11 +270,9 @@ Hide source and `.pkc` raw files.
 
 First give the reviewer only `PKC_KNOWLEDGE.md` and record answers to the fixed Loren questions plus the UI/form validation questions in `docs/ui-behavior-contract.md`.
 
-Then provide the structured `knowledge/` pack and check whether deeper navigation changes any critical answer. Any semantic mismatch between handoff forms is a blocker.
+Then provide the structured `knowledge/` pack and check handoff parity. Only afterwards reopen source.
 
-Only after answers are recorded should source be reopened.
-
-### Step 6 — Compare and fix
+### Step 6 — Compare, fix, external review
 
 Classify mismatches as:
 
@@ -260,21 +287,13 @@ uncertainty/authority overclaim
 handoff/packaging mismatch
 ```
 
-Fix only proven generic gaps and regression-lock every compiler bug.
+Fix only proven generic gaps and regression-lock every compiler bug. Then send V0.4.4 to an independent reviewer.
 
-### Step 7 — External review V0.4.4
+### Step 7 — V0.4.5 second real repo
 
-A separate reviewer checks the compiler + artifact + blind answers for blockers and benchmark gaming.
+After V0.4.4 passes, run the same layered-output, handoff-parity and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren.
 
-V0.4.4 does not close until blockers are fixed.
-
-### Step 8 — V0.4.5 second real repo
-
-After V0.4.4 passes, run the same layered-output, handoff-parity and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
-
-Prefer a supported real UI/configuration surface if available so the new UI contract is tested outside synthetic fixtures.
-
-This is required before V0.5.
+Prefer a supported real UI/configuration surface if available so the UI contract is tested outside synthetic fixtures.
 
 ## V0.5 unlock gate
 
