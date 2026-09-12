@@ -134,9 +134,9 @@ Use `scan` when only machine evidence/candidates are needed:
 pkc scan <repository-path>
 ```
 
-## Output
+## Output and AI handoff
 
-`pkc build <repository-path>` produces:
+`pkc build <repository-path>` keeps the structured knowledge pack and also produces portable handoff artifacts:
 
 ```text
 .pkc/
@@ -145,6 +145,7 @@ pkc scan <repository-path>
   product-features.json
 
 knowledge/
+  AI_INSTRUCTIONS.md
   index.md
   features/
     <area>/
@@ -152,9 +153,32 @@ knowledge/
   workflows/
     <area>/
       <workflow>.md
+
+PKC_KNOWLEDGE.md
+PKC_KNOWLEDGE.zip
 ```
 
+Recommended usage:
+
+```text
+single-file AI upload
+→ upload PKC_KNOWLEDGE.md
+
+AI/workspace that supports multiple files
+→ provide the knowledge/ pack
+→ AI starts from AI_INSTRUCTIONS.md then index.md
+
+archive-capable destination or storage/sharing
+→ use PKC_KNOWLEDGE.zip
+```
+
+The ZIP is a transport convenience, not a required AI interface. Archive support varies by destination. `PKC_KNOWLEDGE.md` exists so a PO can use a one-file handoff without understanding PKC's internal folder layout.
+
+The ZIP contains only the portable `knowledge/` files by default; it does not include source code or raw `.pkc/facts.json`.
+
 Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unknown until those evidence sources are explicitly added.
+
+Detailed handoff contract: `docs/ai-handoff.md`.
 
 ## Validation strategy
 
@@ -190,7 +214,8 @@ Detailed exit plan: `docs/real-project-trial.md`.
 - incremental compilation and PR knowledge diffs;
 - runtime UI confirmation;
 - product gap/drift analysis;
-- optional LLM-assisted synthesis where deterministic grouping is insufficient.
+- optional LLM-assisted synthesis where deterministic grouping is insufficient;
+- optional live delivery adapters such as MCP/connector/workspace synchronization after the portable knowledge contract is proven.
 
 These are roadmap items, not automatic V0.4 work. A new analyzer capability enters V0.4.x only when a real knowledge review proves it is required for accuracy, completeness, signal-to-noise, traceability or honest uncertainty.
 
@@ -206,4 +231,5 @@ See also:
 - `docs/handoff.md`
 - `docs/milestones.md`
 - `docs/real-project-trial.md`
+- `docs/ai-handoff.md`
 - `docs/golden-output.md`
