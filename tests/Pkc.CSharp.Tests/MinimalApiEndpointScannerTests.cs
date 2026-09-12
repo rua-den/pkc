@@ -7,7 +7,7 @@ namespace Pkc.CSharp.Tests;
 public sealed class MinimalApiEndpointScannerTests
 {
     [Fact]
-    public async Task Scan_extracts_minimal_api_route_auth_guard_and_semantic_handler_call()
+    public async Task Scan_extracts_minimal_api_route_auth_guard_response_availability_and_semantic_handler_call()
     {
         var root = Path.Combine(Path.GetTempPath(), "pkc-minimal-api-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -32,19 +32,23 @@ public sealed class MinimalApiEndpointScannerTests
                 builder.Services.AddSingleton<RunService>();
                 WebApplication app = builder.Build();
 
-                app.MapPost(
-                        "/api/run",
-                        async (RunRequest request, RunService service) =>
-                        {
-                            if (string.IsNullOrWhiteSpace(request.Message))
+                bool enableRunEndpoint = true;
+                if (enableRunEndpoint)
+                {
+                    app.MapPost(
+                            "/api/run",
+                            async (RunRequest request, RunService service) =>
                             {
-                                return Results.BadRequest(new { error = "message is required" });
-                            }
+                                if (string.IsNullOrWhiteSpace(request.Message))
+                                {
+                                    return Results.BadRequest(new { error = "message is required" });
+                                }
 
-                            string result = await service.RunAsync(request.Message);
-                            return Results.Ok(new { result });
-                        })
-                    .RequireAuthorization();
+                                string result = await service.RunAsync(request.Message);
+                                return Results.Ok(new { result });
+                            })
+                        .RequireAuthorization();
+                }
 
                 public sealed record RunRequest(string Message);
 
@@ -64,6 +68,7 @@ public sealed class MinimalApiEndpointScannerTests
             Assert.Equal("POST", endpoint.Metadata["httpMethod"]);
             Assert.Equal("Run", endpoint.Container);
             Assert.Equal("RequireAuthorization", endpoint.Metadata["authorization"]);
+            Assert.Equal("enableRunEndpoint", endpoint.Metadata["availabilityCondition"]);
             Assert.Equal("project-semantic", endpoint.Metadata["analysisMode"]);
             Assert.Equal("high", endpoint.Metadata["analysisConfidence"]);
             Assert.Equal("matched", endpoint.Metadata["semanticNodeMatch"]);
@@ -72,8 +77,20 @@ public sealed class MinimalApiEndpointScannerTests
             Assert.Contains(document.Facts, fact =>
                 fact.Kind == "condition" &&
                 fact.Container == endpoint.Name &&
+                fact.Metadata.TryGetValue("sourceKind", out var sourceKind) &&
+                sourceKind == "endpoint-registration-condition" &&
                 fact.Metadata.TryGetValue("expression", out var expression) &&
-                expression.Contains("string.IsNullOrWhiteSpace(request.Message)", StringComparison.Ordinal));
+                expression == "endpoint is registered only when enableRunEndpoint");
+
+            Assert.Contains(document.Facts, fact =>
+                fact.Kind == "condition" &&
+                fact.Container == endpoint.Name &&
+                fact.Metadata.TryGetValue("conditionExpression", out var conditionExpression) &&
+                conditionExpression.Contains("string.IsNullOrWhiteSpace(request.Message)", StringComparison.Ordinal) &&
+                fact.Metadata.TryGetValue("response", out var response) &&
+                response.Contains("Results.BadRequest", StringComparison.Ordinal) &&
+                fact.Metadata.TryGetValue("expression", out var expression) &&
+                expression.Contains("=> return Results.BadRequest", StringComparison.Ordinal));
 
             Assert.Contains(document.Relations, relation =>
                 relation.FromFactId == endpoint.Id &&
@@ -82,7 +99,14 @@ public sealed class MinimalApiEndpointScannerTests
 
             var candidate = Assert.Single(new FeatureCandidateBuilder().Build(document).Candidates);
             Assert.Equal(endpoint.Id, candidate.SeedFactId);
-            Assert.Contains(candidate.Facts, fact => fact.Kind == "condition");
+            Assert.Contains(candidate.Facts, fact =>
+                fact.Kind == "condition" &&
+                fact.Metadata.TryGetValue("sourceKind", out var sourceKind) &&
+                sourceKind == "endpoint-registration-condition");
+            Assert.Contains(candidate.Facts, fact =>
+                fact.Kind == "condition" &&
+                fact.Metadata.TryGetValue("response", out var response) &&
+                response.Contains("Results.BadRequest", StringComparison.Ordinal));
             Assert.Contains(candidate.Relations, relation =>
                 relation.Kind == "invokes" &&
                 relation.Target.EndsWith("RunService.RunAsync", StringComparison.Ordinal));
