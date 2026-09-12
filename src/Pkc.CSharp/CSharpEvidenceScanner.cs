@@ -13,8 +13,12 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             baseline,
             cancellationToken);
-        var minimalApi = await new MinimalApiEndpointScanner().ScanAsync(
+        var minimalApiRaw = await new MinimalApiEndpointScanner().ScanAsync(
             repositoryPath,
+            cancellationToken);
+        var minimalApi = await new MinimalApiContextEnricher().EnrichAsync(
+            repositoryPath,
+            minimalApiRaw,
             cancellationToken);
 
         var rawFacts = baseline.Facts
