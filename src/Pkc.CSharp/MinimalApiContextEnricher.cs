@@ -45,6 +45,7 @@ internal sealed class MinimalApiContextEnricher
 
                 AddRegistrationContext(endpoint, registration, facts, relations, relationKeys);
                 AddHandlerResponses(endpoint, registration, facts, relations, relationKeys);
+                AddDirectHandlerResponses(endpoint, registration, facts, relations, relationKeys);
             }
         }
 
@@ -119,11 +120,7 @@ internal sealed class MinimalApiContextEnricher
         List<EvidenceRelation> relations,
         ISet<string> relationKeys)
     {
-        var handler = registration.ArgumentList.Arguments
-            .Skip(1)
-            .Select(argument => argument.Expression)
-            .OfType<AnonymousFunctionExpressionSyntax>()
-            .FirstOrDefault();
+        var handler = GetAnonymousHandler(registration);
         if (handler is null)
         {
             return;
@@ -193,6 +190,123 @@ internal sealed class MinimalApiContextEnricher
                 relationKeys);
         }
     }
+
+    private static void AddDirectHandlerResponses(
+        EvidenceFact endpoint,
+        InvocationExpressionSyntax registration,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        var handler = GetAnonymousHandler(registration);
+        if (handler is null)
+        {
+            return;
+        }
+
+        if (handler.Body is ConditionalExpressionSyntax conditional)
+        {
+            var location = GetLocation(conditional, endpoint.Source.Path);
+            AddEndpointResponse(
+                endpoint,
+                location,
+                facts,
+                relations,
+                relationKeys,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["sourceKind"] = "minimal-api-conditional-response",
+                    ["conditionExpression"] = conditional.Condition.ToString(),
+                    ["whenTrue"] = conditional.WhenTrue.ToString(),
+                    ["whenFalse"] = conditional.WhenFalse.ToString()
+                });
+            return;
+        }
+
+        if (handler.Body is ExpressionSyntax expression)
+        {
+            var location = GetLocation(expression, endpoint.Source.Path);
+            AddEndpointResponse(
+                endpoint,
+                location,
+                facts,
+                relations,
+                relationKeys,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["sourceKind"] = "minimal-api-expression-response",
+                    ["response"] = expression.ToString()
+                });
+            return;
+        }
+
+        if (handler.Body is not BlockSyntax block)
+        {
+            return;
+        }
+
+        foreach (var returned in block.DescendantNodes().OfType<ReturnStatementSyntax>()
+                     .Where(statement => statement.Expression is not null)
+                     .Where(statement => IsDirectSuccessReturn(statement, block)))
+        {
+            var location = GetLocation(returned, endpoint.Source.Path);
+            AddEndpointResponse(
+                endpoint,
+                location,
+                facts,
+                relations,
+                relationKeys,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["sourceKind"] = "minimal-api-success-response",
+                    ["response"] = returned.Expression!.ToString()
+                });
+        }
+    }
+
+    private static bool IsDirectSuccessReturn(ReturnStatementSyntax statement, BlockSyntax handlerBlock)
+    {
+        for (SyntaxNode? current = statement.Parent; current is not null && current != handlerBlock; current = current.Parent)
+        {
+            if (current is IfStatementSyntax or CatchClauseSyntax or SwitchExpressionSyntax or SwitchStatementSyntax)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static void AddEndpointResponse(
+        EvidenceFact endpoint,
+        SourceLocation location,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys,
+        IReadOnlyDictionary<string, string> metadata)
+    {
+        var id = $"cs:{endpoint.Source.Path}:{location.StartLine}:endpoint-response:{endpoint.Name}";
+        var response = new EvidenceFact(
+            id,
+            "endpoint-response",
+            "response",
+            endpoint.Name,
+            location,
+            [],
+            metadata);
+        facts[id] = response;
+        AddRelation(
+            new EvidenceRelation(endpoint.Id, "returns-response", id, location),
+            relations,
+            relationKeys);
+    }
+
+    private static AnonymousFunctionExpressionSyntax? GetAnonymousHandler(InvocationExpressionSyntax registration) =>
+        registration.ArgumentList.Arguments
+            .Skip(1)
+            .Select(argument => argument.Expression)
+            .OfType<AnonymousFunctionExpressionSyntax>()
+            .FirstOrDefault();
 
     private static InvocationExpressionSyntax? FindRegistration(SyntaxNode root, EvidenceFact endpoint)
     {
