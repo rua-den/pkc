@@ -8,19 +8,27 @@ public sealed class PortableKnowledgePackRenderer
     public const string BundleFileName = "PKC_KNOWLEDGE.md";
     public const string ArchiveFileName = "PKC_KNOWLEDGE.zip";
 
-    public string RenderInstructions()
+    public string RenderInstructions(string? sourceRepositoryLabel = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine("---");
         builder.AppendLine("id: \"pkc:ai-instructions\"");
         builder.AppendLine("title: \"How to use this PKC knowledge pack\"");
         builder.AppendLine("type: \"ai-instructions\"");
+        if (!string.IsNullOrWhiteSpace(sourceRepositoryLabel))
+        {
+            builder.AppendLine($"source_repository_label: {Yaml(sourceRepositoryLabel)}");
+        }
         builder.AppendLine("generated: true");
         builder.AppendLine("---");
         builder.AppendLine();
         builder.AppendLine("# How to use this PKC knowledge pack");
         builder.AppendLine();
         builder.AppendLine("This pack contains portable product/system knowledge compiled from grounded evidence.");
+        if (!string.IsNullOrWhiteSpace(sourceRepositoryLabel))
+        {
+            builder.AppendLine($"The source repository label is `{sourceRepositoryLabel}`. Treat this as a source identifier, not as proof of an approved product name.");
+        }
         builder.AppendLine();
         builder.AppendLine("## Reading order");
         builder.AppendLine();
@@ -43,25 +51,35 @@ public sealed class PortableKnowledgePackRenderer
         return builder.ToString();
     }
 
-    public string RenderBundle(IReadOnlyDictionary<string, string> canonicalFiles)
+    public string RenderBundle(
+        IReadOnlyDictionary<string, string> canonicalFiles,
+        string? sourceRepositoryLabel = null)
     {
         ArgumentNullException.ThrowIfNull(canonicalFiles);
 
         var requiredInstructions = canonicalFiles.TryGetValue(InstructionsRelativePath, out var instructions)
             ? instructions
-            : RenderInstructions();
+            : RenderInstructions(sourceRepositoryLabel);
 
         var builder = new StringBuilder();
         builder.AppendLine("---");
         builder.AppendLine("id: \"pkc:portable-knowledge-bundle\"");
         builder.AppendLine("title: \"PKC Portable Knowledge Bundle\"");
         builder.AppendLine("type: \"knowledge-bundle\"");
+        if (!string.IsNullOrWhiteSpace(sourceRepositoryLabel))
+        {
+            builder.AppendLine($"source_repository_label: {Yaml(sourceRepositoryLabel)}");
+        }
         builder.AppendLine("generated: true");
         builder.AppendLine("---");
         builder.AppendLine();
         builder.AppendLine("# PKC Portable Knowledge Bundle");
         builder.AppendLine();
         builder.AppendLine("This single-file transport contains the canonical `knowledge/` pack. File boundaries are preserved below so an AI can reason from the same hierarchy as the multi-file form.");
+        if (!string.IsNullOrWhiteSpace(sourceRepositoryLabel))
+        {
+            builder.AppendLine($"Source repository label: `{sourceRepositoryLabel}` (identifier only; not proof of an approved product name).");
+        }
         builder.AppendLine();
 
         AppendEmbeddedFile(builder, InstructionsRelativePath, requiredInstructions);
@@ -103,4 +121,7 @@ public sealed class PortableKnowledgePackRenderer
         builder.AppendLine(content.TrimEnd());
         builder.AppendLine();
     }
+
+    private static string Yaml(string value) =>
+        $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
 }
