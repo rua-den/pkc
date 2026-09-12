@@ -69,8 +69,10 @@ Rules for abstraction:
 4. **Observed implementation is not business intent.** Keep `code-observed`, unknowns and future delivery/product evidence distinct.
 5. **The primary consumer is an AI.** Markdown should be structured for reliable retrieval and reasoning, not optimized only for human prose aesthetics.
 6. **Transport must not change meaning.** The structured folder and single-file bundle must preserve the same authority, unknowns and product behavior.
+7. **UI behavior is product knowledge.** When the source statically expresses validation/configuration behavior, route/button/API extraction alone is not sufficient.
 
 Detailed AI handoff contract: `docs/ai-handoff.md`.
+Detailed UI behavior contract: `docs/ui-behavior-contract.md`.
 
 ## Benchmark roles
 
@@ -150,11 +152,9 @@ The Loren trial has already exposed and regression-locked fixes for:
 - response metadata collision for endpoints declared inside extension methods;
 - explicit zero-fallback acceptance for the pinned production benchmark.
 
-Current artifact review shows the main remaining risk is **knowledge abstraction and comprehension**, especially the Run capability: valid helper-level conditions and loops are still promoted too aggressively into product-level rules.
+Current artifact review shows the main remaining risks are **knowledge abstraction/comprehension and UI behavior completeness**. The compiler must not only produce accurate backend/workflow facts; it must preserve product-relevant configuration/validation behavior when that behavior is present in supported UI source.
 
 ## Step 1 — Freeze the output hierarchy
-
-**Status: CURRENT/NEXT IMPLEMENTATION STEP.**
 
 Before adding analyzer capability, make the knowledge layers obey the contract above.
 
@@ -247,23 +247,59 @@ Acceptance:
 - the same fixed product questions can be answered from `PKC_KNOWLEDGE.md` and from the structured `knowledge/` pack without semantic disagreement;
 - a packaging difference that changes or hides a critical answer is a blocker.
 
+## Step 3.75 — UI validation and configuration behavior
+
+This is a required code-derived knowledge gate before V0.5.
+
+PKC must prove, on a supported Angular/form benchmark, that portable knowledge preserves important statically observable UI behavior instead of stopping at navigation/action/API structure.
+
+At minimum the benchmark must contain:
+
+```text
+a selectable type/option
+an always-required field
+a conditionally-required field
+a conditionally-visible or enabled field
+field → request/API mapping
+backend validation for at least one corresponding value
+```
+
+Target questions must be answerable from portable knowledge without source access:
+
+```text
+What fields/options exist?
+Which fields are required?
+Which requirement is conditional, and on what condition?
+Which field is shown/hidden or enabled/disabled conditionally?
+Where is the important field sent in the request/API?
+Does backend validation agree with the UI requirement when both are observed?
+```
+
+Example acceptance question:
+
+> For a CSP service, is Microsoft Subscription Id required on the UI, under what condition, where is it sent, and does backend validation agree?
+
+Do not hardcode CSP or repository-specific names. Implement canonical evidence such as `ui-field`, `ui-field-option`, `ui-field-validation`, `ui-field-visibility`, `ui-field-enabled-state` and `ui-field-binding` as needed.
+
+A custom validator whose meaning cannot be proven should remain an explicit validator reference/unknown rather than being paraphrased into invented business semantics.
+
 ## Step 4 — Blind knowledge-only comprehension review
 
 This is the primary V0.4.4 acceptance gate.
 
 Procedure:
 
-1. Generate a fresh pinned Loren artifact.
-2. Hide the Loren source repository and `.pkc` raw files from the reviewer for the first pass.
+1. Generate a fresh pinned Loren artifact and the UI-behavior regression artifact.
+2. Hide source repositories and `.pkc` raw files from the reviewer for the first pass.
 3. First give the reviewer only `PKC_KNOWLEDGE.md` to exercise the simplest PO handoff path.
 4. Ask the fixed benchmark questions below and record the answers.
 5. Give the reviewer the structured `knowledge/` pack and repeat/check any answer that requires deeper navigation.
 6. Record any semantic disagreement between the bundle and structured pack as a packaging blocker.
-7. Reopen Loren source/known behavior only after the knowledge-only answers are recorded.
+7. Reopen source/known behavior only after the knowledge-only answers are recorded.
 8. Compare every critical answer against source/known behavior.
 9. Classify every mismatch using the finding taxonomy.
 
-Required questions:
+Required Loren questions:
 
 ```text
 1. What observable product/system capabilities does Loren expose?
@@ -278,6 +314,8 @@ Required questions:
 10. What does PKC explicitly not know yet because that evidence source has not been compiled?
 ```
 
+Required UI/form questions are the ones defined in Step 3.75 and `docs/ui-behavior-contract.md`.
+
 Pass/fail rubric:
 
 ### Accuracy
@@ -288,7 +326,8 @@ Pass/fail rubric:
 ### Coverage
 
 - every critical question is answerable from the portable knowledge artifact or explicitly answered as unknown;
-- an important known behavior may not disappear merely because it was filtered as noise.
+- an important known behavior may not disappear merely because it was filtered as noise;
+- statically observable UI validation/configuration behavior required by the UI contract may not disappear merely because route/action/API linkage is already present.
 
 ### Abstraction
 
@@ -321,6 +360,7 @@ The reviewer should attempt to find:
 ```text
 wrong claims
 missing product behavior
+missing UI validation/configuration behavior
 bad abstraction
 lost traceability
 authority/confidence overclaim
@@ -344,7 +384,7 @@ Choose one genuine repository that:
 - fits at least the currently supported C# backend surface;
 - contains non-trivial product/system behavior;
 - differs materially from PokeTrade and Loren in code organization/patterns;
-- preferably includes a supported Angular or React frontend if a suitable repo is available, but frontend presence is not mandatory if it would force stack expansion.
+- preferably includes a supported Angular or React frontend if a suitable repo is available, especially if it can exercise real form/configuration behavior without forcing unrelated framework expansion.
 
 Do not pick a repository because it is easy for the current heuristics.
 
@@ -358,9 +398,10 @@ Pin the reviewed commit.
 4. Review `knowledge/` using the same layered-output contract.
 5. Validate single-file vs structured-pack handoff parity.
 6. Perform a blind knowledge-only comprehension review with questions adapted to that product.
-7. Reopen source and compare answers.
-8. Fix only proven generic gaps and add regression coverage.
-9. Re-run PokeTrade + Loren + the independent repo after each blocker fix.
+7. If the repository has a supported UI form/configuration surface, include the UI behavior questions from `docs/ui-behavior-contract.md`.
+8. Reopen source and compare answers.
+9. Fix only proven generic gaps and add regression coverage.
+10. Re-run PokeTrade + Loren + the independent repo after each blocker fix.
 
 ## V0.4.5 pass condition
 
@@ -369,6 +410,7 @@ Pin the reviewed commit.
 - product-level pages are high-signal;
 - evidence remains traceable;
 - portable handoff forms preserve the same critical knowledge;
+- supported UI validation/configuration behavior is preserved when present;
 - no benchmark-specific hardcoding;
 - existing PokeTrade and Loren acceptance remain green;
 - independent external review finds no unresolved blocker.
@@ -384,6 +426,7 @@ PokeTrade known-answer regression                   PASS
 Loren pinned evidence/workflow correctness          PASS
 Loren blind knowledge-only comprehension            PASS
 Loren single-file/structured handoff parity          PASS
+UI validation/behavior knowledge benchmark          PASS
 Loren external review with no blocker                PASS
 Second independent real-repo trial                  PASS
 Second blind knowledge-only comprehension           PASS
@@ -401,8 +444,8 @@ If any item is not PASS, stay in V0.4.x.
 
 Do not start these merely because they are on the roadmap:
 
-- Angular TypeScript `TypeChecker` migration;
-- React AST rewrite;
+- Angular TypeScript `TypeChecker` migration unless a proven validation/binding gap requires it;
+- React AST rewrite unless a real benchmark requires it;
 - MVC/Razor/Blazor/Vue expansion;
 - runtime browser exploration;
 - incremental compilation;
@@ -415,12 +458,12 @@ They are allowed only when a real acceptance finding proves one is required, or 
 ## Current next action
 
 ```text
-V0.4.4 Step 1
-→ enforce layered knowledge abstraction
-→ validate portable AI handoff output
-→ regenerate pinned Loren artifact
-→ inspect feature/index output
-→ V0.4.4 Step 4 blind knowledge-only review
+V0.4.4
+→ finish layered knowledge + handoff checks
+→ implement canonical UI field/validation/conditional behavior evidence
+→ add frontend/backend validation regression fixture
+→ regenerate artifacts
+→ run blind knowledge-only review
 ```
 
 Do not bump the accepted tool version until the milestone acceptance gate passes.
