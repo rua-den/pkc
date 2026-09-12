@@ -10,7 +10,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex EqualityRegex = new(
-        @"(?<left>[A-Za-z_$][A-Za-z0-9_$.]*)\s*(?:===|==)\s*(?<right>'[^']*'|\"[^\"]*\"|[A-Za-z_$][A-Za-z0-9_$.]*)",
+        @"(?<left>[A-Za-z_$][A-Za-z0-9_$.]*)\s*(?:===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$.]*)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public FeatureCandidateDocument Enrich(
