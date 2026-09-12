@@ -39,6 +39,10 @@ jobs:
           FACTS=external/loren/.pkc/facts.json
           CANDIDATES=external/loren/.pkc/feature-candidates.json
           INDEX=external/loren/knowledge/index.md
+          AI_INSTRUCTIONS=external/loren/knowledge/AI_INSTRUCTIONS.md
+          BUNDLE=external/loren/PKC_KNOWLEDGE.md
+          ARCHIVE=external/loren/PKC_KNOWLEDGE.zip
+          RUN_FEATURE=external/loren/knowledge/features/run/operations.md
           RUN=external/loren/knowledge/workflows/run/post-api-run.md
           DEV_RUN=external/loren/knowledge/workflows/run/post-internal-dev-run.md
           APPROVE=external/loren/knowledge/workflows/actionproposals/post-api-action-proposals-proposalid-approve.md
@@ -51,6 +55,10 @@ jobs:
           test -s "$CANDIDATES"
           test -s external/loren/.pkc/product-features.json
           test -s "$INDEX"
+          test -s "$AI_INSTRUCTIONS"
+          test -s "$BUNDLE"
+          test -s "$ARCHIVE"
+          test -s "$RUN_FEATURE"
           test -s "$RUN"
           test -s "$DEV_RUN"
           test -s "$APPROVE"
@@ -58,6 +66,18 @@ jobs:
           test -s "$LOGOUT"
           test -s "$LOGIN_PAGE"
           test -s "$SESSION"
+
+          # Portable AI handoff must preserve the canonical knowledge pack without leaking raw/source material.
+          grep -Fq 'Start with `index.md`' "$AI_INSTRUCTIONS"
+          grep -Fq 'PKC_FILE: knowledge/AI_INSTRUCTIONS.md' "$BUNDLE"
+          grep -Fq 'PKC_FILE: knowledge/index.md' "$BUNDLE"
+          grep -Fq 'PKC_FILE: knowledge/features/run/operations.md' "$BUNDLE"
+          grep -Fq 'PKC_FILE: knowledge/workflows/run/post-api-run.md' "$BUNDLE"
+          unzip -Z1 "$ARCHIVE" | grep -Fxq 'knowledge/AI_INSTRUCTIONS.md'
+          unzip -Z1 "$ARCHIVE" | grep -Fxq 'knowledge/index.md'
+          unzip -Z1 "$ARCHIVE" | grep -Fxq 'knowledge/features/run/operations.md'
+          ! unzip -Z1 "$ARCHIVE" | grep -Eq '(^|/)\.pkc/'
+          ! unzip -Z1 "$ARCHIVE" | grep -Eq '(^|/)src/'
 
           # External-repo acceptance: Loren is Minimal-API-first. PKC must not silently miss its web product surface.
           jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | length >= 8' "$FACTS" >/dev/null
@@ -99,6 +119,17 @@ jobs:
           grep -R -Fq 'Results.NotFound(new { error = exception.Message })' external/loren/knowledge/workflows
           grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
 
+          # Product feature pages must stay high-signal while workflow detail remains complete.
+          ! grep -Fq 'maximumCharacters <= 0' "$RUN_FEATURE"
+          ! grep -Fq 'Iterates `candidates`' "$RUN_FEATURE"
+          ! grep -Fq 'char.IsLetterOrDigit' "$RUN_FEATURE"
+          grep -Fq 'message is required' "$RUN_FEATURE"
+          grep -Fq 'AgentLoopLimitException' "$RUN_FEATURE"
+          grep -Fq 'developmentRunEndpointEnabled' "$RUN_FEATURE"
+          test "$(grep -Fc 'message is required' "$RUN_FEATURE")" -eq 1
+          grep -Fq 'maximumCharacters <= 0' "$RUN"
+          grep -Fq 'Iterates `candidates`' "$RUN"
+
           # Request/payload construction is trace evidence, not a domain state transition.
           ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.BranchTargetKey]`' "$APPROVE"
           ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.SourceShaTargetKey]`' "$APPROVE"
@@ -129,3 +160,5 @@ jobs:
           path: |
             external/loren/.pkc
             external/loren/knowledge
+            external/loren/PKC_KNOWLEDGE.md
+            external/loren/PKC_KNOWLEDGE.zip
