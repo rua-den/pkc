@@ -33,10 +33,18 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         var uiBehaviorFacts = candidate.Facts
             .Where(fact => UiBehaviorKinds.Contains(fact.Kind))
             .ToArray();
+        var backendValidationFacts = candidate.Facts
+            .Where(fact => fact.Kind == "backend-field-validation")
+            .ToArray();
+        var consistencyFacts = candidate.Facts
+            .Where(fact => fact.Kind == "ui-backend-validation")
+            .ToArray();
 
         var rules = knowledge.Rules
             .Concat(responseFacts.Select(DescribeResponseRule))
             .Concat(uiBehaviorFacts.Select(DescribeUiBehaviorRule))
+            .Concat(backendValidationFacts.Select(DescribeBackendValidationRule))
+            .Concat(consistencyFacts.Select(DescribeValidationConsistencyRule))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var sideEffects = knowledge.SideEffects
@@ -53,6 +61,16 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
                 fact.Id,
                 fact.Kind,
                 DescribeUiBehaviorRule(fact),
+                fact.Source)))
+            .Concat(backendValidationFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeBackendValidationRule(fact),
+                fact.Source)))
+            .Concat(consistencyFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeValidationConsistencyRule(fact),
                 fact.Source)))
             .GroupBy(item => item.FactId, StringComparer.Ordinal)
             .Select(group => group.First())
@@ -146,6 +164,48 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return $"{fact.Kind}: {fact.Name}";
+    }
+
+    private static string DescribeBackendValidationRule(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("field", out var field);
+        fact.Metadata.TryGetValue("behavior", out var behavior);
+        fact.Metadata.TryGetValue("condition", out var condition);
+        var fieldName = field ?? fact.Name;
+        var validation = behavior ?? "validation";
+
+        return string.IsNullOrWhiteSpace(condition)
+            ? $"Backend field `{fieldName}` is `{validation}`."
+            : $"Backend field `{fieldName}` is `{validation}` when `{condition}`.";
+    }
+
+    private static string DescribeValidationConsistencyRule(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("uiField", out var uiField);
+        fact.Metadata.TryGetValue("backendField", out var backendField);
+        fact.Metadata.TryGetValue("status", out var status);
+        fact.Metadata.TryGetValue("uiCondition", out var uiCondition);
+        fact.Metadata.TryGetValue("backendCondition", out var backendCondition);
+
+        var ui = uiField ?? fact.Name;
+        var backend = backendField ?? fact.Metadata.GetValueOrDefault("requestField") ?? fact.Name;
+
+        if (string.Equals(status, "consistent", StringComparison.Ordinal))
+        {
+            if (!string.IsNullOrWhiteSpace(uiCondition) || !string.IsNullOrWhiteSpace(backendCondition))
+            {
+                return $"Validation consistency observed: UI field `{ui}` and backend field `{backend}` are both `required` under matching condition evidence (UI: `{uiCondition ?? "unconditional"}`; backend: `{backendCondition ?? "unconditional"}`).";
+            }
+
+            return $"Validation consistency observed: UI field `{ui}` and backend field `{backend}` are both `required`.";
+        }
+
+        if (string.Equals(status, "possible-mismatch", StringComparison.Ordinal))
+        {
+            return $"Possible UI/backend validation mismatch for `{ui}` → `{backend}` (UI condition: `{uiCondition ?? "required not observed"}`; backend condition: `{backendCondition ?? "required not observed"}`).";
+        }
+
+        return $"UI/backend validation comparison for `{ui}` → `{backend}` remains unknown because requiredness was not observed on both sides.";
     }
 
     private static IEnumerable<string> BuildSemanticSideEffects(FeatureCandidate candidate)
