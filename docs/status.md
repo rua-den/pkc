@@ -38,7 +38,7 @@ V0.4.3 Analyzer Fidelity Hardening remains the last accepted packaged checkpoint
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current development on `main` contains V0.4.4 trial fixes and new AI-handoff work, but the accepted package version must not be bumped until the milestone gate passes.
+Current development on `main` contains V0.4.4 trial fixes, portable AI handoff work and the first UI validation/behavior evidence layer. The accepted package version must not be bumped until the milestone gate passes.
 
 Detailed execution/exit plan:
 
@@ -123,35 +123,58 @@ The ZIP must not include source code or raw `.pkc` evidence by default. Single-f
 
 ### UI validation + behavior completeness
 
-A new core acceptance requirement is now explicit: PKC must not stop at route/button/API knowledge when the source contains meaningful form/configuration behavior.
+A core acceptance requirement is now explicit: PKC must not stop at route/button/API knowledge when the source contains meaningful form/configuration behavior.
 
-Before V0.5, supported UI evidence must prove that important statically observable behavior can survive into portable knowledge, including at least:
+Target canonical evidence includes:
+
+```text
+ui-field
+ui-field-option
+ui-field-validation
+ui-field-visibility
+ui-field-enabled-state
+ui-field-binding
+```
+
+The first implementation phase is now regression-locked for Angular/static form behavior with explicit medium-confidence fallback provenance. It currently preserves:
 
 ```text
 field existence
 select/type options
 required fields
 conditional requiredness
-conditional visibility or enabled/disabled state
-permission/state-driven UI behavior
-field → request/API mapping when traceable
-frontend/backend validation comparison when both sides are observed
+conditional visibility/enabled state
+field → request-field mapping when statically traceable
 ```
 
-Example target question:
+The regression fixture deliberately exercises the product question shape:
 
 ```text
-For a CSP service, is Microsoft Subscription Id required on the UI,
-under what condition, where is it sent, and does backend validation agree?
+serviceType offers CSP/NCE
+serviceType is required
+msSubscriptionId is visible when serviceType == CSP
+msSubscriptionId is required when serviceType == CSP
+msSubscriptionId maps to microsoftSubscriptionId in the request
 ```
 
-If source contains this answer but `PKC_KNOWLEDGE.md` cannot answer it without reopening source, code-derived product knowledge is incomplete.
+Knowledge synthesis is also regression-tested so these facts must survive into workflow/product knowledge rather than dying in `.pkc/facts.json`.
+
+Development checkpoint:
+
+```text
+HEAD: 7f462b2e82b7a0df85b4e8171f5fec376aaf742f
+CI #177: test PASS + PokeTrade PASS
+Loren external trial #76: PASS
+Loren-main canary #56: PASS
+```
+
+This is **phase 1 only**. It does not yet satisfy the full UI behavior gate because frontend/backend validation consistency still needs to be proven end-to-end in the same portable knowledge flow.
 
 ## Main remaining V0.4.4 risk
 
-The main blockers are now **knowledge abstraction/comprehension and UI behavior completeness**, not analyzer breadth for its own sake.
+The main blockers are now **knowledge abstraction/comprehension and UI/backend behavior completeness**, not analyzer breadth for its own sake.
 
-The generated knowledge is substantially correct and traceable, but product-level output still needs to become high-signal enough that an AI can answer product questions without wading through transitive helper mechanics, and supported UI analysis must preserve important validation/configuration behavior rather than only navigation/action/API structure.
+The generated knowledge is substantially correct and traceable, and the first UI behavior layer can preserve form validation/conditional behavior. The next required proof is that portable knowledge can connect UI field behavior to the corresponding backend request/validation strongly enough to answer whether both layers agree, disagree, or remain unknown.
 
 Therefore V0.4.4 is **not complete**.
 
@@ -181,18 +204,16 @@ Do not delete low-level evidence merely to reduce noise. Promote it only to the 
 Follow `docs/real-project-trial.md` in this order:
 
 ```text
-1. enforce layered knowledge abstraction
-2. validate portable AI handoff artifacts
-3. harden product-feature signal using Loren output
-4. improve index/system orientation without inventing intent
-5. add canonical UI field/validation/conditional-behavior evidence
-6. add a form/configuration regression fixture with frontend + backend validation
-7. regenerate pinned Loren artifact
-8. blind-review PKC_KNOWLEDGE.md first
-9. cross-check the structured knowledge/ pack
-10. reopen source and compare every critical answer
-11. fix/regression-lock only proven blockers
-12. external review V0.4.4
+1. keep layered knowledge + handoff gates green
+2. connect canonical UI field binding to backend request/property evidence when provable
+3. add frontend + backend validation consistency regression
+4. make portable knowledge distinguish consistent / possible mismatch / unknown validation
+5. regenerate pinned Loren artifact
+6. blind-review PKC_KNOWLEDGE.md first
+7. cross-check the structured knowledge/ pack
+8. reopen source and compare every critical answer
+9. fix/regression-lock only proven blockers
+10. external review V0.4.4
 ```
 
 The blind review must answer from portable knowledge alone, including at least:
