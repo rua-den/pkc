@@ -21,6 +21,17 @@ public sealed partial class ProductFeatureBuilder
         "get", "list", "search", "find", "view", "detail", "export", "report"
     ];
 
+    private static readonly HashSet<string> LowSignalFlowMethods = new(StringComparer.Ordinal)
+    {
+        "ToString",
+        "Parse",
+        "TryParse",
+        "New",
+        "Append",
+        "GetHashCode",
+        "Equals"
+    };
+
     public ProductFeatureDocument Build(IReadOnlyList<FeatureKnowledge> workflows)
     {
         ArgumentNullException.ThrowIfNull(workflows);
@@ -32,7 +43,7 @@ public sealed partial class ProductFeatureBuilder
             .Select(BuildFeature)
             .ToArray();
 
-        return new ProductFeatureDocument("0.4.0", groups);
+        return new ProductFeatureDocument("0.4.4", groups);
     }
 
     private static ProductFeature BuildFeature(IGrouping<FeatureKey, FeatureKnowledge> group)
@@ -59,6 +70,7 @@ public sealed partial class ProductFeatureBuilder
             workflow.Rules,
             workflow.StateChanges,
             workflow.SideEffects,
+            BuildProductFlow(workflow.Flow),
             workflow.Unknowns)).ToArray();
 
         var coverage = workflows.SelectMany(item => item.Coverage).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToArray();
@@ -101,6 +113,107 @@ public sealed partial class ProductFeatureBuilder
             })
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static IReadOnlyList<string> BuildProductFlow(IReadOnlyList<string> flow)
+    {
+        return flow
+            .Select(ParseFlow)
+            .Where(item => item is not null)
+            .Cast<FlowEdge>()
+            .Where(IsProductFlowEdge)
+            .OrderByDescending(FlowScore)
+            .ThenBy(item => item.Source, StringComparer.Ordinal)
+            .ThenBy(item => item.Target, StringComparer.Ordinal)
+            .Take(16)
+            .Select(item => $"{item.Source} → {item.Target}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static FlowEdge? ParseFlow(string value)
+    {
+        var separator = value.IndexOf(" → ", StringComparison.Ordinal);
+        if (separator <= 0 || separator + 3 >= value.Length)
+        {
+            return null;
+        }
+
+        return new FlowEdge(value[..separator].Trim(), value[(separator + 3)..].Trim());
+    }
+
+    private static bool IsProductFlowEdge(FlowEdge edge)
+    {
+        var targetMethod = MethodName(edge.Target);
+        if (LowSignalFlowMethods.Contains(targetMethod))
+        {
+            return false;
+        }
+
+        var sourceOwner = SymbolOwner(edge.Source);
+        var targetOwner = SymbolOwner(edge.Target);
+        if (!string.IsNullOrWhiteSpace(sourceOwner) &&
+            string.Equals(sourceOwner, targetOwner, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static int FlowScore(FlowEdge edge)
+    {
+        var score = 0;
+        if (LooksLikeEntryPoint(edge.Source)) score += 100;
+        if (LooksLikeCapabilityBoundary(edge.Target)) score += 40;
+        if (edge.Target.Contains("IAction", StringComparison.Ordinal) ||
+            edge.Target.Contains("IBrain", StringComparison.Ordinal) ||
+            edge.Target.Contains("IMemory", StringComparison.Ordinal) ||
+            edge.Target.Contains("IProject", StringComparison.Ordinal))
+        {
+            score += 10;
+        }
+        return score;
+    }
+
+    private static bool LooksLikeEntryPoint(string value) =>
+        value.Contains(".GET /", StringComparison.Ordinal) ||
+        value.Contains(".POST /", StringComparison.Ordinal) ||
+        value.Contains(".PUT /", StringComparison.Ordinal) ||
+        value.Contains(".PATCH /", StringComparison.Ordinal) ||
+        value.Contains(".DELETE /", StringComparison.Ordinal);
+
+    private static bool LooksLikeCapabilityBoundary(string value)
+    {
+        var owner = SymbolOwner(value);
+        var typeName = owner.Split('.').LastOrDefault() ?? owner;
+        return typeName.EndsWith("Service", StringComparison.Ordinal) ||
+               typeName.EndsWith("Gateway", StringComparison.Ordinal) ||
+               typeName.EndsWith("Store", StringComparison.Ordinal) ||
+               typeName.EndsWith("Brain", StringComparison.Ordinal) ||
+               typeName.EndsWith("Loop", StringComparison.Ordinal) ||
+               typeName.EndsWith("Catalog", StringComparison.Ordinal) ||
+               typeName.EndsWith("Builder", StringComparison.Ordinal) ||
+               typeName.EndsWith("Collector", StringComparison.Ordinal);
+    }
+
+    private static string SymbolOwner(string value)
+    {
+        if (LooksLikeEntryPoint(value))
+        {
+            return value;
+        }
+
+        var lastDot = value.LastIndexOf('.');
+        return lastDot > 0 ? value[..lastDot] : value;
+    }
+
+    private static string MethodName(string value)
+    {
+        var lastDot = value.LastIndexOf('.');
+        return lastDot >= 0 && lastDot + 1 < value.Length
+            ? value[(lastDot + 1)..]
+            : value;
     }
 
     private static bool IsProductImpactingRule(string rule)
@@ -162,6 +275,7 @@ public sealed partial class ProductFeatureBuilder
 
     private sealed record FeatureKey(string Area, string Category);
     private sealed record RuleOccurrence(string Action, string Rule);
+    private sealed record FlowEdge(string Source, string Target);
 
     private sealed class FeatureKeyComparer : IEqualityComparer<FeatureKey>
     {
