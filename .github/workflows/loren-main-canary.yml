@@ -1,0 +1,55 @@
+name: loren-main-canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+jobs:
+  loren-main-canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PKC
+        uses: actions/checkout@v4
+
+      - name: Checkout current Loren main
+        uses: actions/checkout@v4
+        with:
+          repository: rua-den/loren
+          ref: main
+          path: external/loren-main
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build PKC
+        run: dotnet build PKC.sln --configuration Release
+
+      - name: Build current Loren Web
+        working-directory: external/loren-main
+        run: dotnet build src/Loren.Web/Loren.Web.csproj --configuration Release
+
+      - name: Compile current Loren knowledge
+        run: |
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build external/loren-main
+          test -s external/loren-main/.pkc/facts.json
+          test -s external/loren-main/.pkc/product-features.json
+          test -s external/loren-main/knowledge/index.md
+
+          echo "Loren SHA: $(git -C external/loren-main rev-parse HEAD)"
+          echo "Fallback facts: $(jq '[.facts[] | select(.metadata.analysisMode? == "loose-roslyn-fallback")] | length' external/loren-main/.pkc/facts.json)"
+          echo "Minimal API endpoints: $(jq '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle? == "minimal-api")] | length' external/loren-main/.pkc/facts.json)"
+
+      - name: Upload moving Loren output
+        uses: actions/upload-artifact@v4
+        with:
+          name: loren-main-canary-output
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 3
+          path: |
+            external/loren-main/.pkc
+            external/loren-main/knowledge
