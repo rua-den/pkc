@@ -6,13 +6,13 @@ Use this file when continuing PKC in another chat/session or external review.
 
 PKC means **Product/System Knowledge Compiler**.
 
-The target user is a Product Owner. A PO should be able to take PKC's generated `knowledge/` folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product **without making that AI re-read or grep the source repository**.
+The target user is a Product Owner. A PO should be able to take PKC's generated portable knowledge and give it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product **without making that AI re-read or grep the source repository**.
 
 The analyzer/fact graph exists to make that knowledge trustworthy. Analyzer sophistication is not the final product.
 
 The final acceptance question is:
 
-> If the source repository is hidden and an AI receives only `knowledge/`, can it explain the product accurately, at the right abstraction level, while preserving important unknowns and evidence boundaries?
+> If the source repository is hidden and an AI receives only the generated portable knowledge, can it explain the product accurately, at the right abstraction level, while preserving important unknowns and evidence boundaries?
 
 ## Non-negotiable compiler architecture
 
@@ -31,18 +31,19 @@ KNOWLEDGE SYNTHESIS
   ↓
 CANONICAL KNOWLEDGE MODEL
   ↓
-DETERMINISTIC MARKDOWN RENDERER
+DETERMINISTIC PORTABLE RENDERING
   ↓
-PORTABLE PRODUCT KNOWLEDGE
+AI-CONSUMABLE PRODUCT KNOWLEDGE
 ```
 
 ## Knowledge hierarchy — also non-negotiable
 
 ```text
-index       = orient the AI
-feature     = explain a capability
-workflow    = explain an operation
-raw evidence = prove implementation detail
+AI_INSTRUCTIONS = tell the receiving AI how to consume the pack
+index            = orient the AI
+feature          = explain a capability
+workflow         = explain an operation
+raw evidence     = prove implementation detail
 ```
 
 Do not delete raw evidence to make output cleaner. Do not promote every helper guard/loop/call into product-level knowledge either.
@@ -50,6 +51,44 @@ Do not delete raw evidence to make output cleaner. Do not promote every helper g
 A detail belongs at product level only when it materially changes externally meaningful behavior, constraints, outcomes or safety.
 
 The primary consumer is an AI, so optimize for reliable retrieval/reasoning and traceability rather than Markdown aesthetics alone.
+
+## Portable AI handoff contract
+
+Current development output from `pkc build` includes:
+
+```text
+knowledge/
+  AI_INSTRUCTIONS.md
+  index.md
+  features/**/*.md
+  workflows/**/*.md
+
+PKC_KNOWLEDGE.md
+PKC_KNOWLEDGE.zip
+```
+
+Roles:
+
+```text
+knowledge/
+→ canonical structured portable knowledge
+
+PKC_KNOWLEDGE.md
+→ single-file convenience bundle for the simplest PO → AI handoff
+
+PKC_KNOWLEDGE.zip
+→ archive/storage/share transport of knowledge/ only
+```
+
+PO-facing default for small/medium packs should be: upload `PKC_KNOWLEDGE.md` and ask the question.
+
+If the AI/workspace supports multiple-file knowledge/indexing, provide the `knowledge/` files and let the AI start from `AI_INSTRUCTIONS.md` then `index.md`.
+
+Do not require ZIP extraction or ZIP parsing as the primary interface. Archive support differs by destination. The ZIP must not contain source code or raw `.pkc` evidence by default.
+
+Detailed contract: `docs/ai-handoff.md`.
+
+Live MCP/connector/workspace synchronization is a future delivery adapter, not a V0.4 requirement. Prove the portable knowledge first.
 
 ## Current milestone
 
@@ -61,7 +100,7 @@ V0.4.3 remains the last accepted packaged checkpoint:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current `main` contains V0.4.4 trial fixes. Do not bump the accepted package version merely because current CI is green.
+Current `main` contains V0.4.4 trial and portable-handoff development. Do not bump the accepted package version merely because current CI is green.
 
 Primary execution plan:
 
@@ -102,13 +141,13 @@ The real-project trial has already forced generic fixes for:
 
 Pinned Loren also requires zero `loose-roslyn-fallback` facts for the selected production benchmark.
 
-## Latest output review
+## Current knowledge-readiness work
 
 The main remaining blocker is **knowledge abstraction/comprehension**, not parser breadth.
 
-The generated Loren pack is substantially correct and traceable, but `Run Operations` still promotes too many transitive helper conditions/loops into the feature-level rules and duplicates shared behavior across `/api/run` and `/internal/dev/run`.
+The latest layered-output change keeps full workflow/evidence detail while reducing helper-level rules promoted into product features. On the first Loren artifact after this change, `Run Operations` dropped from roughly 66 product rules to 10 while each Run workflow retained its full detailed rule set.
 
-Those details may remain in workflow/evidence. They should not dominate the product capability a PO/AI reads first.
+The next focus is index/system orientation and then the blind handoff/comprehension gate.
 
 ## Exact next steps
 
@@ -124,23 +163,31 @@ index → feature → workflow → evidence
 
 Preserve all proof while promoting only product-impacting behavior upward.
 
-### Step 2 — Loren feature signal
+### Step 2 — Portable handoff integrity
 
-Use the observed Loren artifact to harden feature-level output, especially Run:
+Verify:
 
-- retain auth, input validation, project/context behavior, agent-loop outcomes, action limits/proposals, failures and dev-only availability;
+- `AI_INSTRUCTIONS.md` is generic and vendor-neutral;
+- `PKC_KNOWLEDGE.md` embeds the complete canonical pack with explicit file boundaries;
+- ZIP contains only canonical `knowledge/` files;
+- bundle and structured pack preserve the same critical meaning.
+
+### Step 3 — Loren feature + index signal
+
+- keep product-impacting auth, input validation, project/context behavior, agent-loop outcomes, action limits/proposals, failures and dev-only availability;
 - keep helper string/collection mechanics below feature level unless they affect product behavior;
-- dedupe shared rules without hiding production/dev differences.
-
-### Step 3 — Index/system orientation
-
-Make `knowledge/index.md` useful for an AI to identify observed capabilities and choose the correct feature/workflow without inventing product intent.
+- dedupe shared rules without hiding production/dev differences;
+- make `knowledge/index.md` orient the AI using grounded capability/entry/permission/conditional evidence without inventing a user journey.
 
 ### Step 4 — Blind Loren comprehension
 
-Hide Loren source and `.pkc` raw files. Give a reviewer only generated `knowledge/` and ask the fixed questions in `docs/real-project-trial.md`.
+Hide Loren source and `.pkc` raw files.
 
-Record answers first; reopen source only afterwards.
+First give the reviewer only `PKC_KNOWLEDGE.md` and record answers to the fixed questions in `docs/real-project-trial.md`.
+
+Then provide the structured `knowledge/` pack and check whether deeper navigation changes any critical answer. Any semantic mismatch between handoff forms is a blocker.
+
+Only after answers are recorded should the Loren source be reopened.
 
 ### Step 5 — Compare and fix
 
@@ -154,6 +201,7 @@ unsupported required pattern
 unexpected fallback
 traceability gap
 uncertainty/authority overclaim
+handoff/packaging mismatch
 ```
 
 Fix only proven generic gaps and regression-lock every compiler bug.
@@ -166,7 +214,7 @@ V0.4.4 does not close until blockers are fixed.
 
 ### Step 7 — V0.4.5 second real repo
 
-After Loren passes, run the same layered-output and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
+After Loren passes, run the same layered-output, handoff-parity and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
 
 This is required before V0.5.
 
@@ -180,9 +228,11 @@ Open it only after all of these are PASS:
 PokeTrade known-answer regression                  PASS
 Loren evidence/workflow correctness                PASS
 Loren blind knowledge-only comprehension           PASS
+Loren handoff parity                               PASS
 Loren external review                              PASS
 second independent real-repo trial                 PASS
 second blind knowledge-only comprehension          PASS
+second handoff parity                              PASS
 cross-benchmark regression after all fixes         PASS
 known boundaries/unknowns documented honestly      PASS
 no repository-specific compiler exceptions         PASS
@@ -192,7 +242,7 @@ If any item is not PASS, remain in V0.4.x.
 
 ## Scope rule — very important
 
-A new analyzer capability is allowed into V0.4.x only when a real knowledge review proves it is needed to improve one of:
+A new analyzer or delivery capability is allowed into V0.4.x only when a real knowledge review proves it is needed to improve one of:
 
 ```text
 accuracy
@@ -200,6 +250,7 @@ completeness
 signal-to-noise
 traceability
 honest uncertainty
+portable handoff reliability
 ```
 
-Do not start TypeScript TypeChecker work, React AST, MVC/Razor/Blazor/Vue expansion, browser exploration, incremental compilation or Azure DevOps merely because those items are unfinished.
+Do not start TypeScript TypeChecker work, React AST, MVC/Razor/Blazor/Vue expansion, browser exploration, incremental compilation, Azure DevOps or live MCP/connector delivery merely because those items are unfinished.
