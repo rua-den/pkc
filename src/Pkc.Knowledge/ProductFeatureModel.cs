@@ -28,4 +28,5 @@ public sealed record ProductWorkflowReference(
     IReadOnlyList<string> Rules,
     IReadOnlyList<string> StateChanges,
     IReadOnlyList<string> SideEffects,
+    IReadOnlyList<string> Flow,
     IReadOnlyList<string> Unknowns);
