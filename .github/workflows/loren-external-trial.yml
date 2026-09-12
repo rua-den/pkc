@@ -44,6 +44,8 @@ jobs:
           APPROVE=external/loren/knowledge/workflows/actionproposals/post-api-action-proposals-proposalid-approve.md
           LOGIN=external/loren/knowledge/workflows/auth/post-auth-login.md
           LOGOUT=external/loren/knowledge/workflows/auth/post-auth-logout.md
+          LOGIN_PAGE=external/loren/knowledge/workflows/login/get-login.md
+          SESSION=external/loren/knowledge/workflows/session/get-api-session.md
 
           test -s "$FACTS"
           test -s "$CANDIDATES"
@@ -54,6 +56,8 @@ jobs:
           test -s "$APPROVE"
           test -s "$LOGIN"
           test -s "$LOGOUT"
+          test -s "$LOGIN_PAGE"
+          test -s "$SESSION"
 
           # External-repo acceptance: Loren is Minimal-API-first. PKC must not silently miss its web product surface.
           jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | length >= 8' "$FACTS" >/dev/null
@@ -80,9 +84,17 @@ jobs:
           jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/internal/dev/run" and .metadata.availabilityCondition == "developmentRunEndpointEnabled")' "$FACTS" >/dev/null
           grep -Fq 'endpoint is registered only when developmentRunEndpointEnabled' "$DEV_RUN"
 
-          # Minimal API response semantics must survive into PO-readable knowledge.
+          # Minimal API error and direct-response semantics must survive into PO-readable knowledge.
           grep -Fq 'string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest' "$RUN"
           grep -Fq 'string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest' "$DEV_RUN"
+          grep -Fq '!authenticator.IsConfigured => return Results.Problem' "$LOGIN"
+          grep -Fq '!authenticator.Verify(request.Password) => return Results.Unauthorized()' "$LOGIN"
+          grep -Fq 'Returns `Results.Ok(new { authenticated = true })`.' "$LOGIN"
+          grep -Fq 'Returns `Results.Ok(new { authenticated = false })`.' "$LOGOUT"
+          grep -Fq 'Returns `Results.Ok(new { authenticated = true, owner = "Owner" })`.' "$SESSION"
+          grep -Fq 'context.User.Identity?.IsAuthenticated == true' "$LOGIN_PAGE"
+          grep -Fq 'Results.Redirect("/")' "$LOGIN_PAGE"
+          grep -Fq 'Results.Content(OwnerPages.Login, "text/html; charset=utf-8")' "$LOGIN_PAGE"
           grep -R -Fq 'UnknownProjectAliasException' external/loren/knowledge/workflows
           grep -R -Fq 'Results.NotFound(new { error = exception.Message })' external/loren/knowledge/workflows
           grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
