@@ -52,6 +52,41 @@ A detail belongs at product level only when it materially changes externally mea
 
 The primary consumer is an AI, so optimize for reliable retrieval/reasoning and traceability rather than Markdown aesthetics alone.
 
+## UI behavior is part of product knowledge
+
+Do not interpret “frontend evidence” as only route/button/API linkage.
+
+When supported source contains configuration/validation behavior, PKC must preserve enough information for questions such as:
+
+```text
+what fields/options exist?
+which fields are required?
+when is a field conditionally required?
+when is a field shown/hidden or enabled/disabled?
+what permission/state controls it?
+where is the field sent in the request/API?
+does backend validation agree when both sides are observed?
+```
+
+Example target question:
+
+> For a CSP service, is Microsoft Subscription Id required on the UI, under what condition, where is it sent, and does backend validation agree?
+
+This is a core V0.4 knowledge-completeness requirement, not optional frontend polish.
+
+Canonical evidence should evolve toward framework-neutral kinds such as:
+
+```text
+ui-field
+ui-field-option
+ui-field-validation
+ui-field-visibility
+ui-field-enabled-state
+ui-field-binding
+```
+
+Detailed contract: `docs/ui-behavior-contract.md`.
+
 ## Portable AI handoff contract
 
 Current development output from `pkc build` includes:
@@ -143,17 +178,17 @@ Pinned Loren also requires zero `loose-roslyn-fallback` facts for the selected p
 
 ## Current knowledge-readiness work
 
-The main remaining blocker is **knowledge abstraction/comprehension**, not parser breadth.
+The main remaining blockers are **knowledge abstraction/comprehension and UI validation/behavior completeness**, not parser breadth for its own sake.
 
 The latest layered-output change keeps full workflow/evidence detail while reducing helper-level rules promoted into product features. On the first Loren artifact after this change, `Run Operations` dropped from roughly 66 product rules to 10 while each Run workflow retained its full detailed rule set.
 
-The next focus is index/system orientation and then the blind handoff/comprehension gate.
+Now PKC also needs to prove that important form/configuration behavior survives into portable knowledge when supported frontend source contains it.
 
 ## Exact next steps
 
 Do these in order. Do not skip ahead because another roadmap item looks attractive.
 
-### Step 1 — Layered knowledge abstraction
+### Step 1 — Finish layered knowledge + handoff integrity
 
 Ensure synthesis/presentation obeys:
 
@@ -161,35 +196,56 @@ Ensure synthesis/presentation obeys:
 index → feature → workflow → evidence
 ```
 
-Preserve all proof while promoting only product-impacting behavior upward.
+Verify bundle/structured-pack parity and source-label/authority boundaries.
 
-### Step 2 — Portable handoff integrity
+### Step 2 — UI behavior evidence
 
-Verify:
+Implement canonical evidence for the minimum supported form semantics needed by `docs/ui-behavior-contract.md`:
 
-- `AI_INSTRUCTIONS.md` is generic and vendor-neutral;
-- `PKC_KNOWLEDGE.md` embeds the complete canonical pack with explicit file boundaries;
-- ZIP contains only canonical `knowledge/` files;
-- bundle and structured pack preserve the same critical meaning.
+```text
+field
+option/type
+required validation
+conditional required validation
+conditional visibility/enabled state
+field → request/API mapping when provable
+```
 
-### Step 3 — Loren feature + index signal
+Do not hardcode CSP, Loren, PokeTrade or repository-specific names.
+
+### Step 3 — UI/backend validation benchmark
+
+Add a regression target containing at least:
+
+```text
+a selectable type
+an always-required field
+a conditionally-required field
+a conditionally-visible or enabled field
+field → request/API mapping
+matching backend validation for at least one field
+```
+
+Portable knowledge must answer those rules without source access.
+
+### Step 4 — Loren feature + index signal
 
 - keep product-impacting auth, input validation, project/context behavior, agent-loop outcomes, action limits/proposals, failures and dev-only availability;
 - keep helper string/collection mechanics below feature level unless they affect product behavior;
 - dedupe shared rules without hiding production/dev differences;
 - make `knowledge/index.md` orient the AI using grounded capability/entry/permission/conditional evidence without inventing a user journey.
 
-### Step 4 — Blind Loren comprehension
+### Step 5 — Blind comprehension
 
-Hide Loren source and `.pkc` raw files.
+Hide source and `.pkc` raw files.
 
-First give the reviewer only `PKC_KNOWLEDGE.md` and record answers to the fixed questions in `docs/real-project-trial.md`.
+First give the reviewer only `PKC_KNOWLEDGE.md` and record answers to the fixed Loren questions plus the UI/form validation questions in `docs/ui-behavior-contract.md`.
 
 Then provide the structured `knowledge/` pack and check whether deeper navigation changes any critical answer. Any semantic mismatch between handoff forms is a blocker.
 
-Only after answers are recorded should the Loren source be reopened.
+Only after answers are recorded should source be reopened.
 
-### Step 5 — Compare and fix
+### Step 6 — Compare and fix
 
 Classify mismatches as:
 
@@ -206,15 +262,17 @@ handoff/packaging mismatch
 
 Fix only proven generic gaps and regression-lock every compiler bug.
 
-### Step 6 — External review V0.4.4
+### Step 7 — External review V0.4.4
 
 A separate reviewer checks the compiler + artifact + blind answers for blockers and benchmark gaming.
 
 V0.4.4 does not close until blockers are fixed.
 
-### Step 7 — V0.4.5 second real repo
+### Step 8 — V0.4.5 second real repo
 
-After Loren passes, run the same layered-output, handoff-parity and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
+After V0.4.4 passes, run the same layered-output, handoff-parity and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
+
+Prefer a supported real UI/configuration surface if available so the new UI contract is tested outside synthetic fixtures.
 
 This is required before V0.5.
 
@@ -229,6 +287,7 @@ PokeTrade known-answer regression                  PASS
 Loren evidence/workflow correctness                PASS
 Loren blind knowledge-only comprehension           PASS
 Loren handoff parity                               PASS
+UI validation/behavior knowledge benchmark         PASS
 Loren external review                              PASS
 second independent real-repo trial                 PASS
 second blind knowledge-only comprehension          PASS
@@ -253,4 +312,4 @@ honest uncertainty
 portable handoff reliability
 ```
 
-Do not start TypeScript TypeChecker work, React AST, MVC/Razor/Blazor/Vue expansion, browser exploration, incremental compilation, Azure DevOps or live MCP/connector delivery merely because those items are unfinished.
+Do not start TypeScript TypeChecker work, React AST, MVC/Razor/Blazor/Vue expansion, browser exploration, incremental compilation, Azure DevOps or live MCP/connector delivery merely because those items are unfinished. If a concrete UI-validation/binding benchmark proves TypeChecker or another capability is necessary, then that evidence can justify the work.
