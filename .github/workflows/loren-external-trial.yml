@@ -1,0 +1,70 @@
+name: loren-external-trial
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  loren-real-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PKC
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Loren benchmark
+        uses: actions/checkout@v4
+        with:
+          repository: rua-den/loren
+          ref: e9e81651d380d7d40998f235cfdc7f119fe67af8
+          path: external/loren
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build PKC
+        run: dotnet build PKC.sln --configuration Release
+
+      - name: Build Loren Web from the pinned real repository
+        working-directory: external/loren
+        run: dotnet build src/Loren.Web/Loren.Web.csproj --configuration Release
+
+      - name: Compile Loren product knowledge with PKC
+        run: |
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build external/loren
+
+          FACTS=external/loren/.pkc/facts.json
+          CANDIDATES=external/loren/.pkc/feature-candidates.json
+          INDEX=external/loren/knowledge/index.md
+
+          test -s "$FACTS"
+          test -s "$CANDIDATES"
+          test -s external/loren/.pkc/product-features.json
+          test -s "$INDEX"
+
+          # External-repo acceptance: Loren is Minimal-API-first. PKC must not silently miss its web product surface.
+          jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | length >= 8' "$FACTS" >/dev/null
+          jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | all(.[]; .metadata.analysisMode == "project-semantic" and .metadata.semanticNodeMatch == "matched" and .metadata.endpointRegistrationResolution == "semantic")' "$FACTS" >/dev/null
+
+          jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/run" and .metadata.httpMethod == "POST" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
+          jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/projects" and .metadata.httpMethod == "GET" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
+          jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/auth/login" and .metadata.httpMethod == "POST")' "$FACTS" >/dev/null
+          jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/session" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
+
+          # Handler semantics and multi-project call graph must survive real target-project semantic analysis.
+          jq -e '.facts[] | select(.kind == "condition" and .container == "POST /api/run" and (.metadata.expression | contains("string.IsNullOrWhiteSpace(request.Message)")))' "$FACTS" >/dev/null
+          jq -e '.relations[] | select(.kind == "invokes" and (.target | endswith("LorenRunService.RunAsync")))' "$FACTS" >/dev/null
+          jq -e '.relations[] | select(.kind == "invokes" and (.target | endswith("LorenProjectContextBuilder.ListProjectsAsync")))' "$FACTS" >/dev/null
+
+          # Error-response semantics from Minimal API handlers must be carried into workflow knowledge.
+          grep -R -Fq 'UnknownProjectAliasException' external/loren/knowledge/workflows
+          grep -R -Fq 'Results.NotFound(new { error = exception.Message })' external/loren/knowledge/workflows
+          grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
+
+          # The generated index should expose the real external repository areas, not only sample-era controller concepts.
+          grep -Fq 'Projects' "$INDEX"
+          grep -Fq 'Run' "$INDEX"
+          grep -Fq 'Auth' "$INDEX"
