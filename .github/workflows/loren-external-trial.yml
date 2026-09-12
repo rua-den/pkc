@@ -39,11 +39,17 @@ jobs:
           FACTS=external/loren/.pkc/facts.json
           CANDIDATES=external/loren/.pkc/feature-candidates.json
           INDEX=external/loren/knowledge/index.md
+          RUN=external/loren/knowledge/workflows/run/post-api-run.md
+          DEV_RUN=external/loren/knowledge/workflows/run/post-internal-dev-run.md
+          APPROVE=external/loren/knowledge/workflows/actionproposals/post-api-action-proposals-proposalid-approve.md
 
           test -s "$FACTS"
           test -s "$CANDIDATES"
           test -s external/loren/.pkc/product-features.json
           test -s "$INDEX"
+          test -s "$RUN"
+          test -s "$DEV_RUN"
+          test -s "$APPROVE"
 
           # External-repo acceptance: Loren is Minimal-API-first. PKC must not silently miss its web product surface.
           jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | length >= 8' "$FACTS" >/dev/null
@@ -61,14 +67,30 @@ jobs:
           ! grep -Fq 'Brain Discovery' "$INDEX"
 
           # Handler semantics and multi-project call graph must survive real target-project semantic analysis.
-          jq -e '.facts[] | select(.kind == "condition" and .container == "POST /api/run" and (.metadata.expression | contains("string.IsNullOrWhiteSpace(request.Message)")))' "$FACTS" >/dev/null
+          jq -e '.facts[] | select(.kind == "condition" and .container == "POST /api/run" and (.metadata.conditionExpression // "" | contains("string.IsNullOrWhiteSpace(request.Message)")) and (.metadata.response // "" | contains("Results.BadRequest")))' "$FACTS" >/dev/null
           jq -e '.relations[] | select(.kind == "invokes" and (.target | endswith("LorenRunService.RunAsync")))' "$FACTS" >/dev/null
           jq -e '.relations[] | select(.kind == "invokes" and (.target | endswith("LorenProjectContextBuilder.ListProjectsAsync")))' "$FACTS" >/dev/null
 
-          # Error-response semantics from Minimal API handlers must be carried into workflow knowledge.
+          # Conditional endpoint registration must stay visible instead of being promoted to unconditional product surface.
+          jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/internal/dev/run" and .metadata.availabilityCondition == "developmentRunEndpointEnabled")' "$FACTS" >/dev/null
+          grep -Fq 'endpoint is registered only when developmentRunEndpointEnabled' "$DEV_RUN"
+
+          # Minimal API response semantics must survive into PO-readable knowledge.
+          grep -Fq 'string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest' "$RUN"
+          grep -Fq 'string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest' "$DEV_RUN"
           grep -R -Fq 'UnknownProjectAliasException' external/loren/knowledge/workflows
           grep -R -Fq 'Results.NotFound(new { error = exception.Message })' external/loren/knowledge/workflows
           grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
+
+          # Request/payload construction is trace evidence, not a domain state transition.
+          ! grep -Fq 'State changes' /dev/null
+          ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.BranchTargetKey]`' "$APPROVE"
+          ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.SourceShaTargetKey]`' "$APPROVE"
+
+          # Workflow flow should remain application-oriented; raw semantic relations still retain full evidence.
+          ! grep -Fq 'System.Linq.Enumerable' "$RUN"
+          ! grep -Fq 'Microsoft.AspNetCore.Http.Results.' "$RUN"
+          grep -Fq 'Loren.Web.LorenRunService.RunAsync' "$RUN"
 
           # The generated index should expose the real external repository areas, not sample/spike concepts.
           grep -Fq 'Projects' "$INDEX"
