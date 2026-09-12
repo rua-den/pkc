@@ -42,6 +42,8 @@ jobs:
           RUN=external/loren/knowledge/workflows/run/post-api-run.md
           DEV_RUN=external/loren/knowledge/workflows/run/post-internal-dev-run.md
           APPROVE=external/loren/knowledge/workflows/actionproposals/post-api-action-proposals-proposalid-approve.md
+          LOGIN=external/loren/knowledge/workflows/auth/post-auth-login.md
+          LOGOUT=external/loren/knowledge/workflows/auth/post-auth-logout.md
 
           test -s "$FACTS"
           test -s "$CANDIDATES"
@@ -50,10 +52,13 @@ jobs:
           test -s "$RUN"
           test -s "$DEV_RUN"
           test -s "$APPROVE"
+          test -s "$LOGIN"
+          test -s "$LOGOUT"
 
           # External-repo acceptance: Loren is Minimal-API-first. PKC must not silently miss its web product surface.
           jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | length >= 8' "$FACTS" >/dev/null
           jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.endpointStyle == "minimal-api")] | all(.[]; .metadata.analysisMode == "project-semantic" and .metadata.semanticNodeMatch == "matched" and .metadata.endpointRegistrationResolution == "semantic")' "$FACTS" >/dev/null
+          jq -e '[.facts[] | select(.metadata.analysisMode? == "loose-roslyn-fallback")] | length == 0' "$FACTS" >/dev/null
 
           jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/run" and .metadata.httpMethod == "POST" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
           jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/projects" and .metadata.httpMethod == "GET" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
@@ -83,14 +88,19 @@ jobs:
           grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
 
           # Request/payload construction is trace evidence, not a domain state transition.
-          ! grep -Fq 'State changes' /dev/null
           ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.BranchTargetKey]`' "$APPROVE"
           ! grep -Fq 'Sets `[GitHubCreateBranchActionExecutor.SourceShaTargetKey]`' "$APPROVE"
 
           # Workflow flow should remain application-oriented; raw semantic relations still retain full evidence.
           ! grep -Fq 'System.Linq.Enumerable' "$RUN"
           ! grep -Fq 'Microsoft.AspNetCore.Http.Results.' "$RUN"
+          ! grep -Fq '→ string.' "$RUN"
+          ! grep -Fq '→ char.' "$RUN"
           grep -Fq 'Loren.Web.LorenRunService.RunAsync' "$RUN"
+
+          # Semantic framework effects must be surfaced as product behavior, not hidden only in call flow.
+          grep -Fq 'Signs in the current HTTP context using ASP.NET authentication.' "$LOGIN"
+          grep -Fq 'Signs out the current HTTP context using ASP.NET authentication.' "$LOGOUT"
 
           # The generated index should expose the real external repository areas, not sample/spike concepts.
           grep -Fq 'Projects' "$INDEX"
