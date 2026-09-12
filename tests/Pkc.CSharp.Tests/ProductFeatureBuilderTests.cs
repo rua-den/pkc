@@ -44,11 +44,51 @@ public sealed class ProductFeatureBuilderTests
         Assert.Contains(document.Features, feature => feature.Category == "discovery");
     }
 
-    private static FeatureKnowledge Workflow(string id, string title) =>
+    [Fact]
+    public void Build_promotes_product_impacting_rules_and_keeps_helper_noise_in_workflow_detail()
+    {
+        var workflows = new[]
+        {
+            Workflow(
+                "feature:run:post-api-run",
+                "Run POST /api/run",
+                [
+                    "Condition observed: `maximumCharacters <= 0`.",
+                    "Iterates `candidates` as `candidate`.",
+                    "Condition observed: `string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest(new { error = \"message is required\" })`.",
+                    "When `actionCount > _options.MaxActions`, the implementation throws `AgentLoopLimitException`."
+                ]),
+            Workflow(
+                "feature:run:post-internal-dev-run",
+                "Run POST /internal/dev/run",
+                [
+                    "Condition observed: `maximumCharacters <= 0`.",
+                    "Iterates `candidates` as `candidate`.",
+                    "Condition observed: `string.IsNullOrWhiteSpace(request.Message) => return Results.BadRequest(new { error = \"message is required\" })`.",
+                    "Condition observed: `endpoint is registered only when developmentRunEndpointEnabled`."
+                ])
+        };
+
+        var feature = Assert.Single(new ProductFeatureBuilder().Build(workflows).Features);
+
+        Assert.DoesNotContain(feature.Rules, rule => rule.Contains("maximumCharacters", StringComparison.Ordinal));
+        Assert.DoesNotContain(feature.Rules, rule => rule.Contains("Iterates `candidates`", StringComparison.Ordinal));
+        Assert.Single(feature.Rules, rule => rule.Contains("message is required", StringComparison.Ordinal));
+        Assert.Contains(feature.Rules, rule => rule.Contains("AgentLoopLimitException", StringComparison.Ordinal));
+        Assert.Contains(feature.Rules, rule => rule.Contains("developmentRunEndpointEnabled", StringComparison.Ordinal));
+
+        Assert.All(feature.Workflows, workflow =>
+            Assert.Contains(workflow.Rules, rule => rule.Contains("maximumCharacters", StringComparison.Ordinal)));
+    }
+
+    private static FeatureKnowledge Workflow(
+        string id,
+        string title,
+        IReadOnlyList<string>? rules = null) =>
         new(
             id,
             title,
-            "WorkPlay",
+            title.StartsWith("Run ", StringComparison.Ordinal) ? "Run" : "WorkPlay",
             "code-observed",
             ["backend-code", "frontend-static"],
             "Observed workflow.",
@@ -56,7 +96,7 @@ public sealed class ProductFeatureBuilderTests
             ["UI sends POST request."],
             ["POST /api/workplays/{id}"],
             ["Policy: ManageWorkPlay"],
-            [],
+            rules ?? [],
             [],
             [],
             [],
