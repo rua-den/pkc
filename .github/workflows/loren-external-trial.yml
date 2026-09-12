@@ -54,6 +54,12 @@ jobs:
           jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/auth/login" and .metadata.httpMethod == "POST")' "$FACTS" >/dev/null
           jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/api/session" and .metadata.authorization == "RequireAuthorization")' "$FACTS" >/dev/null
 
+          # Product evidence must not be polluted by repo tests or historical spikes.
+          ! jq -e '.facts[] | select(.source.path | startswith("tests/") or startswith("spikes/"))' "$FACTS" >/dev/null
+          ! jq -e '.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/brain")' "$FACTS" >/dev/null
+          jq -e '[.facts[] | select(.kind == "endpoint" and .metadata.fullRoute == "/health")] | length == 1' "$FACTS" >/dev/null
+          ! grep -Fq 'Brain Discovery' "$INDEX"
+
           # Handler semantics and multi-project call graph must survive real target-project semantic analysis.
           jq -e '.facts[] | select(.kind == "condition" and .container == "POST /api/run" and (.metadata.expression | contains("string.IsNullOrWhiteSpace(request.Message)")))' "$FACTS" >/dev/null
           jq -e '.relations[] | select(.kind == "invokes" and (.target | endswith("LorenRunService.RunAsync")))' "$FACTS" >/dev/null
@@ -64,7 +70,7 @@ jobs:
           grep -R -Fq 'Results.NotFound(new { error = exception.Message })' external/loren/knowledge/workflows
           grep -R -Fq 'RequireAuthorization' external/loren/knowledge/workflows
 
-          # The generated index should expose the real external repository areas, not only sample-era controller concepts.
+          # The generated index should expose the real external repository areas, not sample/spike concepts.
           grep -Fq 'Projects' "$INDEX"
           grep -Fq 'Run' "$INDEX"
           grep -Fq 'Auth' "$INDEX"
@@ -74,6 +80,7 @@ jobs:
         with:
           name: loren-pkc-output
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
           path: |
             external/loren/.pkc
