@@ -38,7 +38,7 @@ V0.4.3 Analyzer Fidelity Hardening remains the last accepted packaged checkpoint
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current development on `main` contains V0.4.4 trial fixes, portable AI handoff work and the first UI validation/behavior evidence layer. The accepted package version must not be bumped until the milestone gate passes.
+Current development on `main` contains V0.4.4 trial fixes, portable AI handoff work and UI validation/behavior correlation. The accepted package version must not be bumped until the milestone gate passes.
 
 Detailed execution/exit plan:
 
@@ -123,9 +123,9 @@ The ZIP must not include source code or raw `.pkc` evidence by default. Single-f
 
 ### UI validation + behavior completeness
 
-A core acceptance requirement is now explicit: PKC must not stop at route/button/API knowledge when the source contains meaningful form/configuration behavior.
+A core acceptance requirement is explicit: PKC must not stop at route/button/API knowledge when source contains meaningful form/configuration behavior.
 
-Target canonical evidence includes:
+Current canonical evidence includes:
 
 ```text
 ui-field
@@ -134,9 +134,11 @@ ui-field-validation
 ui-field-visibility
 ui-field-enabled-state
 ui-field-binding
+backend-field-validation
+ui-backend-validation
 ```
 
-The first implementation phase is now regression-locked for Angular/static form behavior with explicit medium-confidence fallback provenance. It currently preserves:
+The current Angular/static form layer preserves:
 
 ```text
 field existence
@@ -147,34 +149,66 @@ conditional visibility/enabled state
 field → request-field mapping when statically traceable
 ```
 
-The regression fixture deliberately exercises the product question shape:
+Backend validation evidence currently recognizes:
+
+```text
+[Required] / [RequiredAttribute]
+missing-value guards such as IsNullOrWhiteSpace / IsNullOrEmpty / null checks
+conditional requiredness when the missing-value guard is gated by another condition
+```
+
+Cross-stack validation correlation now joins UI binding + UI requiredness + backend requiredness and emits one of:
+
+```text
+consistent
+possible-mismatch
+unknown
+```
+
+The known-answer CSP fixture proves this full path:
 
 ```text
 serviceType offers CSP/NCE
-serviceType is required
+serviceType is required on UI + backend
 msSubscriptionId is visible when serviceType == CSP
 msSubscriptionId is required when serviceType == CSP
-msSubscriptionId maps to microsoftSubscriptionId in the request
+msSubscriptionId maps to microsoftSubscriptionId
+backend MicrosoftSubscriptionId is required when ServiceType == CSP
+UI/backend conditional requiredness normalizes to the same condition key
+portable knowledge reports observed consistency
 ```
 
-Knowledge synthesis is also regression-tested so these facts must survive into workflow/product knowledge rather than dying in `.pkc/facts.json`.
-
-Development checkpoint:
+Negative classification regressions also require:
 
 ```text
-HEAD: 7f462b2e82b7a0df85b4e8171f5fec376aaf742f
-CI #177: test PASS + PokeTrade PASS
-Loren external trial #76: PASS
-Loren-main canary #56: PASS
+backend required + UI required not observed
+→ possible-mismatch
+
+UI required + backend required not observed
+→ unknown
+
+different UI/backend requiredness conditions
+→ possible-mismatch
 ```
 
-This is **phase 1 only**. It does not yet satisfy the full UI behavior gate because frontend/backend validation consistency still needs to be proven end-to-end in the same portable knowledge flow.
+The happy path is asserted through evidence → workflow knowledge → Markdown → `PKC_KNOWLEDGE.md`, so these semantics may not die inside `.pkc/facts.json`.
+
+Latest verified development checkpoint:
+
+```text
+HEAD: 326f556517c27085ed027eecdeef7e4125c851a6
+CI #195: test PASS + PokeTrade PASS
+Loren external trial #94: PASS
+Loren-main canary #75: PASS
+```
+
+This proves the controlled cross-stack validation contract and protects existing real-project benchmarks. It does **not** yet prove arbitrary real UI generalization; that remains part of the independent real-repository gate.
 
 ## Main remaining V0.4.4 risk
 
-The main blockers are now **knowledge abstraction/comprehension and UI/backend behavior completeness**, not analyzer breadth for its own sake.
+The primary V0.4.4 blocker is now **knowledge-only comprehension and abstraction quality**, not whether validation evidence can technically survive the compiler.
 
-The generated knowledge is substantially correct and traceable, and the first UI behavior layer can preserve form validation/conditional behavior. The next required proof is that portable knowledge can connect UI field behavior to the corresponding backend request/validation strongly enough to answer whether both layers agree, disagree, or remain unknown.
+The compiler can now preserve the supported UI/backend validation behavior and classify observed agreement carefully. The next question is whether a reader given only the portable knowledge can answer the critical product questions correctly, efficiently and with honest unknowns.
 
 Therefore V0.4.4 is **not complete**.
 
@@ -204,19 +238,17 @@ Do not delete low-level evidence merely to reduce noise. Promote it only to the 
 Follow `docs/real-project-trial.md` in this order:
 
 ```text
-1. keep layered knowledge + handoff gates green
-2. connect canonical UI field binding to backend request/property evidence when provable
-3. add frontend + backend validation consistency regression
-4. make portable knowledge distinguish consistent / possible mismatch / unknown validation
-5. regenerate pinned Loren artifact
-6. blind-review PKC_KNOWLEDGE.md first
-7. cross-check the structured knowledge/ pack
-8. reopen source and compare every critical answer
-9. fix/regression-lock only proven blockers
-10. external review V0.4.4
+1. keep layered knowledge + handoff + UI/backend validation gates green
+2. regenerate the pinned Loren artifact
+3. blind-review PKC_KNOWLEDGE.md first
+4. cross-check the structured knowledge/ pack
+5. reopen Loren source and compare every critical answer
+6. fix/regression-lock only proven blockers
+7. external review V0.4.4
+8. V0.4.5 independent real-repo trial, preferably with a supported real form/configuration surface
 ```
 
-The blind review must answer from portable knowledge alone, including at least:
+The blind Loren review must answer from portable knowledge alone, including at least:
 
 ```text
 what capabilities Loren exposes
@@ -262,7 +294,7 @@ PokeTrade known-answer regression                  PASS
 Loren evidence/workflow correctness                PASS
 Loren blind knowledge-only comprehension           PASS
 Loren handoff parity                               PASS
-UI validation/behavior knowledge benchmark         PASS
+UI validation/behavior known-answer benchmark      PASS
 Loren external review                              PASS
 second independent real-repo trial                 PASS
 second knowledge-only comprehension                PASS
