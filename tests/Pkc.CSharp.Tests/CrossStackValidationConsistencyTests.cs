@@ -143,6 +143,17 @@ public sealed class CrossStackValidationConsistencyTests
                 knowledge.Rules,
                 rule => rule.Contains("serviceType", StringComparison.OrdinalIgnoreCase) &&
                         rule.Contains("CSP", StringComparison.Ordinal));
+
+            var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+            Assert.Contains("UI field `serviceType` offers option `CSP`", markdown, StringComparison.Ordinal);
+            Assert.Contains("UI field `serviceType` offers option `NCE`", markdown, StringComparison.Ordinal);
+            Assert.Contains("UI field `msSubscriptionId` is visible when", markdown, StringComparison.Ordinal);
+            Assert.Contains("UI field `msSubscriptionId` maps to request field `microsoftSubscriptionId`", markdown, StringComparison.Ordinal);
+            Assert.Contains(
+                "Validation consistency observed: UI field `msSubscriptionId` and backend field `MicrosoftSubscriptionId`",
+                markdown,
+                StringComparison.Ordinal);
+            Assert.Contains("CSP", markdown, StringComparison.Ordinal);
         }
         finally
         {
