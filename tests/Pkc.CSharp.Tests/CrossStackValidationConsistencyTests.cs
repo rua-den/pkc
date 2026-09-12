@@ -178,6 +178,164 @@ public sealed class CrossStackValidationConsistencyTests
         }
     }
 
+    [Fact]
+    public async Task Backend_required_without_ui_required_is_possible_mismatch()
+    {
+        var (candidates, document) = BuildClassificationScenario(
+            uiValidation: null,
+            backendValidation: Validation("backend", "backend-field-validation", "microsoftSubscriptionId", method: "Create"));
+
+        var candidate = Assert.Single(new ValidationConsistencyCandidateEnricher().Enrich(candidates, document).Candidates);
+        var comparison = Assert.Single(candidate.Facts, fact => fact.Kind == "ui-backend-validation");
+
+        Assert.Equal("possible-mismatch", comparison.Metadata["status"]);
+        Assert.Equal("backend-required-ui-required-not-observed", comparison.Metadata["reason"]);
+
+        var knowledge = await new EvidenceAwareKnowledgeSynthesizer().SynthesizeAsync(candidate);
+        Assert.Contains(knowledge.Rules, rule => rule.Contains("Possible UI/backend validation mismatch", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Ui_required_without_backend_required_is_unknown()
+    {
+        var (candidates, document) = BuildClassificationScenario(
+            uiValidation: Validation("ui", "ui-field-validation", "msSubscriptionId", component: "ServiceComponent"),
+            backendValidation: null);
+
+        var candidate = Assert.Single(new ValidationConsistencyCandidateEnricher().Enrich(candidates, document).Candidates);
+        var comparison = Assert.Single(candidate.Facts, fact => fact.Kind == "ui-backend-validation");
+
+        Assert.Equal("unknown", comparison.Metadata["status"]);
+        Assert.Equal("ui-required-backend-required-not-observed", comparison.Metadata["reason"]);
+
+        var knowledge = await new EvidenceAwareKnowledgeSynthesizer().SynthesizeAsync(candidate);
+        Assert.Contains(knowledge.Rules, rule => rule.Contains("remains unknown", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Different_required_conditions_are_possible_mismatch()
+    {
+        var (candidates, document) = BuildClassificationScenario(
+            uiValidation: Validation(
+                "ui",
+                "ui-field-validation",
+                "msSubscriptionId",
+                component: "ServiceComponent",
+                condition: "serviceType === 'CSP'"),
+            backendValidation: Validation(
+                "backend",
+                "backend-field-validation",
+                "microsoftSubscriptionId",
+                method: "Create",
+                condition: "request.ServiceType == ServiceType.NCE"));
+
+        var candidate = Assert.Single(new ValidationConsistencyCandidateEnricher().Enrich(candidates, document).Candidates);
+        var comparison = Assert.Single(candidate.Facts, fact => fact.Kind == "ui-backend-validation");
+
+        Assert.Equal("possible-mismatch", comparison.Metadata["status"]);
+        Assert.Equal("requiredness-condition-differs", comparison.Metadata["reason"]);
+
+        var knowledge = await new EvidenceAwareKnowledgeSynthesizer().SynthesizeAsync(candidate);
+        var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+        Assert.Contains("Possible UI/backend validation mismatch", markdown, StringComparison.Ordinal);
+        Assert.Contains("CSP", markdown, StringComparison.Ordinal);
+        Assert.Contains("NCE", markdown, StringComparison.Ordinal);
+    }
+
+    private static (FeatureCandidateDocument Candidates, FactDocument Document) BuildClassificationScenario(
+        EvidenceFact? uiValidation,
+        EvidenceFact? backendValidation)
+    {
+        var endpoint = new EvidenceFact(
+            "endpoint",
+            "endpoint",
+            "Create",
+            "ServicesController",
+            new SourceLocation("ServicesController.cs", 1, 1),
+            [],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["httpMethod"] = "POST",
+                ["fullRoute"] = "/api/services",
+                ["parameters"] = "CreateServiceRequest request"
+            });
+
+        var binding = new EvidenceFact(
+            "binding",
+            "ui-field-binding",
+            "msSubscriptionId->microsoftSubscriptionId",
+            "submit",
+            new SourceLocation("service.component.ts", 10, 10),
+            [],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["field"] = "msSubscriptionId",
+                ["requestField"] = "microsoftSubscriptionId",
+                ["component"] = "ServiceComponent"
+            });
+
+        var candidate = new FeatureCandidate(
+            "feature:services:create",
+            "Services Create",
+            "Services",
+            endpoint.Id,
+            ["backend-code", "frontend-static"],
+            [],
+            [endpoint, binding],
+            []);
+
+        var facts = new List<EvidenceFact> { endpoint, binding };
+        if (uiValidation is not null)
+        {
+            facts.Add(uiValidation);
+        }
+        if (backendValidation is not null)
+        {
+            facts.Add(backendValidation);
+        }
+
+        return (
+            new FeatureCandidateDocument("test", [candidate]),
+            new FactDocument("test", facts, []));
+    }
+
+    private static EvidenceFact Validation(
+        string id,
+        string kind,
+        string field,
+        string? component = null,
+        string? method = null,
+        string? condition = null)
+    {
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["field"] = field,
+            ["behavior"] = "required"
+        };
+
+        if (!string.IsNullOrWhiteSpace(component))
+        {
+            metadata["component"] = component;
+        }
+        if (!string.IsNullOrWhiteSpace(method))
+        {
+            metadata["method"] = method;
+        }
+        if (!string.IsNullOrWhiteSpace(condition))
+        {
+            metadata["condition"] = condition;
+        }
+
+        return new EvidenceFact(
+            id,
+            kind,
+            field,
+            component ?? method,
+            new SourceLocation(kind == "ui-field-validation" ? "service.component.ts" : "ServicesController.cs", 20, 20),
+            [],
+            metadata);
+    }
+
     private static FactDocument Merge(params FactDocument[] documents)
     {
         var facts = documents
