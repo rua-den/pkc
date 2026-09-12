@@ -18,12 +18,12 @@ public sealed class CrossStackFeatureCandidateBuilder
     {
         ArgumentNullException.ThrowIfNull(document);
         var baseline = new FeatureCandidateBuilder().Build(document);
-        return new FeatureCandidateDocument("0.4.3", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+        return new FeatureCandidateDocument("0.4.4", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
     }
 
     private static FeatureCandidate Enrich(FeatureCandidate candidate, FactDocument document)
     {
-        candidate = AddAnalysisWarnings(candidate);
+        candidate = AddAnalysisWarnings(FilterFlowNoise(candidate));
 
         var endpoint = document.Facts.FirstOrDefault(fact => fact.Id == candidate.SeedFactId);
         if (endpoint is null ||
@@ -99,8 +99,22 @@ public sealed class CrossStackFeatureCandidateBuilder
                 .ToArray()
         };
 
-        return AddAnalysisWarnings(enriched);
+        return AddAnalysisWarnings(FilterFlowNoise(enriched));
     }
+
+    private static FeatureCandidate FilterFlowNoise(FeatureCandidate candidate)
+    {
+        var relations = candidate.Relations
+            .Where(relation => relation.Kind != "invokes" || !IsFlowNoiseTarget(relation.Target))
+            .ToArray();
+
+        return candidate with { Relations = relations };
+    }
+
+    private static bool IsFlowNoiseTarget(string target) =>
+        target.StartsWith("System.", StringComparison.Ordinal) ||
+        target.StartsWith("Microsoft.AspNetCore.Http.Results.", StringComparison.Ordinal) ||
+        target.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal);
 
     private static FeatureCandidate AddAnalysisWarnings(FeatureCandidate candidate)
     {
