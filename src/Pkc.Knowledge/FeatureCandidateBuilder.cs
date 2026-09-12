@@ -14,7 +14,8 @@ public sealed partial class FeatureCandidateBuilder
         "mutates",
         "constructs",
         "contains-loop",
-        "handles-exception"
+        "handles-exception",
+        "returns-response"
     };
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
@@ -41,7 +42,7 @@ public sealed partial class FeatureCandidateBuilder
             .Select(endpoint => BuildCandidate(endpoint, document, factsById, relationsBySource, callableByTarget))
             .ToArray();
 
-        return new FeatureCandidateDocument("0.4.2", candidates);
+        return new FeatureCandidateDocument("0.4.4", candidates);
     }
 
     private static FeatureCandidate BuildCandidate(
@@ -258,13 +259,12 @@ public sealed partial class FeatureCandidateBuilder
         if (actions.Length == 0)
         {
             var sameFileFacts = document.Facts.Where(fact =>
-                string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal)).ToArray();
+                fact.Kind == "ui-action" &&
+                string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal));
 
             actions = sameFileFacts
-                .Where(fact => fact.Kind == "ui-action")
-                .Where(fact =>
-                    !fact.Metadata.TryGetValue("handler", out var handler) ||
-                    string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
+                .Where(action => action.Metadata.TryGetValue("handler", out var handler) &&
+                                 string.Equals(handler, apiCall.Container, StringComparison.Ordinal))
                 .ToArray();
         }
 
@@ -275,8 +275,7 @@ public sealed partial class FeatureCandidateBuilder
                 new EvidenceRelation(action.Id, "triggers-api", apiCall.Id, action.Source),
                 includedRelations,
                 seenRelations);
-
-            AddScreenAndRoutes(document, action.Container, action.Source.Path, includedFacts, includedRelations, seenRelations);
+            AddScreenEvidence(action, document, includedFacts, includedRelations, seenRelations);
         }
     }
 
@@ -287,43 +286,35 @@ public sealed partial class FeatureCandidateBuilder
         ICollection<EvidenceRelation> includedRelations,
         ISet<string> seenRelations)
     {
-        var screenRelations = document.Relations
+        var loadRelations = document.Relations
             .Where(relation => relation.Kind == "loads-api" && relation.Target == apiCall.Id)
             .ToArray();
 
-        foreach (var relation in screenRelations)
+        foreach (var loadRelation in loadRelations)
         {
-            var screen = document.Facts.FirstOrDefault(fact =>
-                fact.Id == relation.FromFactId && fact.Kind == "ui-screen");
-
-            if (screen is null)
+            var source = document.Facts.FirstOrDefault(fact => fact.Id == loadRelation.FromFactId);
+            if (source is null)
             {
                 continue;
             }
 
-            includedFacts[screen.Id] = screen;
-            AddRelation(relation, includedRelations, seenRelations);
-            AddScreenAndRoutes(document, screen.Name, screen.Source.Path, includedFacts, includedRelations, seenRelations);
+            includedFacts[source.Id] = source;
+            AddRelation(loadRelation, includedRelations, seenRelations);
+            AddScreenEvidence(source, document, includedFacts, includedRelations, seenRelations);
         }
     }
 
-    private static void AddScreenAndRoutes(
+    private static void AddScreenEvidence(
+        EvidenceFact source,
         FactDocument document,
-        string? screenName,
-        string sourcePath,
         IDictionary<string, EvidenceFact> includedFacts,
         ICollection<EvidenceRelation> includedRelations,
         ISet<string> seenRelations)
     {
-        var screens = !string.IsNullOrWhiteSpace(screenName)
-            ? document.Facts.Where(fact =>
-                fact.Kind == "ui-screen" &&
-                string.Equals(fact.Name, screenName, StringComparison.Ordinal)).ToArray()
-            : document.Facts.Where(fact =>
-                fact.Kind == "ui-screen" &&
-                string.Equals(fact.Source.Path, sourcePath, StringComparison.Ordinal)).ToArray();
-
-        foreach (var screen in screens)
+        foreach (var screen in document.Facts.Where(fact =>
+                     fact.Kind == "ui-screen" &&
+                     (string.Equals(fact.Name, source.Container, StringComparison.Ordinal) ||
+                      string.Equals(fact.Source.Path, source.Source.Path, StringComparison.Ordinal))))
         {
             includedFacts[screen.Id] = screen;
 
@@ -341,22 +332,6 @@ public sealed partial class FeatureCandidateBuilder
         }
     }
 
-    private static string NormalizeRouteKey(string value)
-    {
-        var route = value.Split('?', '#')[0].Trim();
-        route = TemplateParameterRegex.Replace(route, "{param}");
-        route = RouteParameterRegex.Replace(route, "{param}");
-        if (!route.StartsWith('/'))
-        {
-            route = "/" + route;
-        }
-
-        return route.TrimEnd('/').ToLowerInvariant();
-    }
-
-    private static bool IsCallable(EvidenceFact fact) =>
-        fact.Kind is "method" or "endpoint" or "constructor";
-
     private static void AddRelation(
         EvidenceRelation relation,
         ICollection<EvidenceRelation> relations,
@@ -369,19 +344,20 @@ public sealed partial class FeatureCandidateBuilder
         }
     }
 
+    private static bool IsCallable(EvidenceFact fact) =>
+        fact.Kind is "method" or "endpoint" or "constructor";
+
     private static string InferArea(string? container)
     {
-        var typeName = string.IsNullOrWhiteSpace(container)
-            ? "Unknown"
-            : container.Split('.').Last();
-
-        return typeName.EndsWith("Controller", StringComparison.Ordinal)
-            ? typeName[..^"Controller".Length]
-            : typeName;
+        if (string.IsNullOrWhiteSpace(container)) return "Unknown";
+        var value = container.Split('.').Last();
+        return value.EndsWith("Controller", StringComparison.Ordinal)
+            ? value[..^"Controller".Length]
+            : value;
     }
 
     private static string SplitWords(string value) =>
-        PascalBoundaryRegex().Replace(value, "$1 $2");
+        Regex.Replace(value, "([a-z0-9])([A-Z])", "$1 $2");
 
     private static string Slug(string value)
     {
@@ -389,8 +365,14 @@ public sealed partial class FeatureCandidateBuilder
         return slug.Length == 0 ? "unknown" : slug;
     }
 
-    [GeneratedRegex("([a-z0-9])([A-Z])")]
-    private static partial Regex PascalBoundaryRegex();
+    private static string NormalizeRouteKey(string value)
+    {
+        var route = value.Split('?', '#')[0].Trim();
+        route = TemplateParameterRegex.Replace(route, "{param}");
+        route = RouteParameterRegex.Replace(route, "{param}");
+        if (!route.StartsWith('/')) route = "/" + route;
+        return route.TrimEnd('/').ToLowerInvariant();
+    }
 
     [GeneratedRegex("[^a-z0-9]+")]
     private static partial Regex NonSlugRegex();
