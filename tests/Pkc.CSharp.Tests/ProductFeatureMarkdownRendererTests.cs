@@ -39,6 +39,36 @@ public sealed class ProductFeatureMarkdownRendererTests
         Assert.Contains("without inventing product intent or an unsupported user journey", markdown, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Render_promotes_grounded_state_changes_and_side_effects_without_losing_workflow_identity()
+    {
+        var feature = Feature(
+            "Auth",
+            "operations",
+            "Auth Operations",
+            [
+                Workflow(
+                    "feature:auth:post-auth-login",
+                    "Auth POST /auth/login",
+                    ["POST /auth/login"],
+                    [],
+                    sideEffects: ["Signs in the current HTTP context using ASP.NET authentication."]),
+                Workflow(
+                    "feature:auth:post-auth-logout",
+                    "Auth POST /auth/logout",
+                    ["POST /auth/logout"],
+                    ["Authorization required: RequireAuthorization"],
+                    sideEffects: ["Signs out the current HTTP context using ASP.NET authentication."])
+            ],
+            []);
+
+        var markdown = new ProductFeatureMarkdownRenderer().Render(feature);
+
+        Assert.Contains("## Observed side effects", markdown, StringComparison.Ordinal);
+        Assert.Contains("POST /auth/login: Signs in the current HTTP context using ASP.NET authentication.", markdown, StringComparison.Ordinal);
+        Assert.Contains("POST /auth/logout: Signs out the current HTTP context using ASP.NET authentication.", markdown, StringComparison.Ordinal);
+    }
+
     private static ProductFeature Feature(
         string area,
         string category,
@@ -62,7 +92,9 @@ public sealed class ProductFeatureMarkdownRendererTests
         string id,
         string title,
         IReadOnlyList<string> entryPoints,
-        IReadOnlyList<string> permissions) =>
+        IReadOnlyList<string> permissions,
+        IReadOnlyList<string>? stateChanges = null,
+        IReadOnlyList<string>? sideEffects = null) =>
         new(
             id,
             title,
@@ -72,7 +104,7 @@ public sealed class ProductFeatureMarkdownRendererTests
             entryPoints,
             permissions,
             [],
-            [],
-            [],
+            stateChanges ?? [],
+            sideEffects ?? [],
             []);
 }
