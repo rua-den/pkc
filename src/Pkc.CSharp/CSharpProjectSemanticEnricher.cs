@@ -9,8 +9,6 @@ namespace Pkc.CSharp;
 public sealed class CSharpProjectSemanticEnricher
 {
     private static readonly object RegistrationGate = new();
-    private static readonly HashSet<string> ExcludedDirectoryNames =
-        new(StringComparer.OrdinalIgnoreCase) { ".git", ".pkc", "bin", "obj" };
 
     public async Task<FactDocument> EnrichAsync(
         string repositoryPath,
@@ -47,9 +45,10 @@ public sealed class CSharpProjectSemanticEnricher
                     ["semanticContext"] = "runtime-platform-assemblies-only"
                 };
 
-                if (!string.IsNullOrWhiteSpace(load.FallbackReason))
+                var fallbackReason = FindFallbackReason(fullPath, load);
+                if (!string.IsNullOrWhiteSpace(fallbackReason))
                 {
-                    metadata["analysisFallbackReason"] = load.FallbackReason;
+                    metadata["analysisFallbackReason"] = fallbackReason;
                 }
 
                 facts.Add(fact with { Metadata = metadata });
@@ -309,7 +308,7 @@ public sealed class CSharpProjectSemanticEnricher
         CancellationToken cancellationToken)
     {
         var projectFiles = Directory.EnumerateFiles(rootPath, "*.csproj", SearchOption.AllDirectories)
-            .Where(path => !IsExcluded(rootPath, path))
+            .Where(path => !CSharpSourceScope.IsExcluded(rootPath, path))
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -317,6 +316,7 @@ public sealed class CSharpProjectSemanticEnricher
         {
             return new ProjectSemanticLoadResult(
                 new Dictionary<string, ProjectSemanticSource>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 "no-csproj-found");
         }
 
@@ -324,51 +324,62 @@ public sealed class CSharpProjectSemanticEnricher
         {
             EnsureMsBuildRegistered();
 
-            using var workspace = MSBuildWorkspace.Create();
-            var diagnostics = new List<string>();
-            workspace.WorkspaceFailed += (_, args) => diagnostics.Add(args.Diagnostic.Message);
-
             var models = new Dictionary<string, ProjectSemanticSource>(StringComparer.OrdinalIgnoreCase);
+            var projectFailures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var diagnostics = new List<string>();
 
             foreach (var projectFile in projectFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var projectPath = NormalizePath(Path.GetRelativePath(rootPath, projectFile));
+                var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(projectFile)) ?? rootPath;
+                var projectDiagnostics = new List<string>();
 
-                Project project;
                 try
                 {
-                    project = await workspace.OpenProjectAsync(projectFile, cancellationToken: cancellationToken);
+                    using var workspace = MSBuildWorkspace.Create();
+                    workspace.WorkspaceFailed += (_, args) => projectDiagnostics.Add(args.Diagnostic.Message);
+
+                    var project = await workspace.OpenProjectAsync(projectFile, cancellationToken: cancellationToken);
+                    var compilation = await project.GetCompilationAsync(cancellationToken);
+                    if (compilation is null)
+                    {
+                        projectFailures[projectDirectory] = $"{projectPath}: compilation unavailable";
+                        continue;
+                    }
+
+                    foreach (var tree in compilation.SyntaxTrees)
+                    {
+                        if (string.IsNullOrWhiteSpace(tree.FilePath))
+                        {
+                            continue;
+                        }
+
+                        var fullPath = Path.GetFullPath(tree.FilePath);
+                        if (!File.Exists(fullPath) || !IsUnderRoot(rootPath, fullPath) ||
+                            CSharpSourceScope.IsExcluded(rootPath, fullPath))
+                        {
+                            continue;
+                        }
+
+                        models.TryAdd(
+                            fullPath,
+                            new ProjectSemanticSource(
+                                tree,
+                                compilation.GetSemanticModel(tree, ignoreAccessibility: true),
+                                projectPath));
+                    }
+
+                    if (projectDiagnostics.Count > 0)
+                    {
+                        diagnostics.AddRange(projectDiagnostics.Select(message => $"{projectPath}: {message}"));
+                    }
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
-                    diagnostics.Add($"{Path.GetFileName(projectFile)}: {exception.Message}");
-                    continue;
-                }
-
-                var compilation = await project.GetCompilationAsync(cancellationToken);
-                if (compilation is null)
-                {
-                    diagnostics.Add($"{Path.GetFileName(projectFile)}: compilation unavailable");
-                    continue;
-                }
-
-                var projectPath = NormalizePath(Path.GetRelativePath(rootPath, projectFile));
-                foreach (var tree in compilation.SyntaxTrees)
-                {
-                    if (string.IsNullOrWhiteSpace(tree.FilePath))
-                    {
-                        continue;
-                    }
-
-                    var fullPath = Path.GetFullPath(tree.FilePath);
-                    if (!File.Exists(fullPath) || !IsUnderRoot(rootPath, fullPath))
-                    {
-                        continue;
-                    }
-
-                    models.TryAdd(
-                        fullPath,
-                        new ProjectSemanticSource(tree, compilation.GetSemanticModel(tree, ignoreAccessibility: true), projectPath));
+                    var reason = $"{projectPath}: {exception.Message}";
+                    projectFailures[projectDirectory] = reason;
+                    diagnostics.Add(reason);
                 }
             }
 
@@ -376,14 +387,36 @@ public sealed class CSharpProjectSemanticEnricher
                 ? diagnostics.FirstOrDefault() ?? "msbuild-project-load-produced-no-source-models"
                 : null;
 
-            return new ProjectSemanticLoadResult(models, fallbackReason);
+            return new ProjectSemanticLoadResult(models, projectFailures, fallbackReason);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return new ProjectSemanticLoadResult(
                 new Dictionary<string, ProjectSemanticSource>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 $"msbuild-workspace-unavailable: {exception.Message}");
         }
+    }
+
+    private static string? FindFallbackReason(string fullPath, ProjectSemanticLoadResult load)
+    {
+        if (!string.IsNullOrWhiteSpace(load.FallbackReason))
+        {
+            return load.FallbackReason;
+        }
+
+        var directory = Path.GetDirectoryName(fullPath);
+        while (!string.IsNullOrWhiteSpace(directory))
+        {
+            if (load.ProjectFailures.TryGetValue(directory, out var reason))
+            {
+                return reason;
+            }
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return "source-not-present-in-loaded-project-compilation";
     }
 
     private static void EnsureMsBuildRegistered()
@@ -418,13 +451,6 @@ public sealed class CSharpProjectSemanticEnricher
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}";
 
-    private static bool IsExcluded(string rootPath, string path)
-    {
-        var relative = Path.GetRelativePath(rootPath, path);
-        return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => ExcludedDirectoryNames.Contains(segment));
-    }
-
     private static bool IsUnderRoot(string rootPath, string path)
     {
         var relative = Path.GetRelativePath(rootPath, path);
@@ -442,5 +468,6 @@ public sealed class CSharpProjectSemanticEnricher
 
     private sealed record ProjectSemanticLoadResult(
         IReadOnlyDictionary<string, ProjectSemanticSource> Models,
+        IReadOnlyDictionary<string, string> ProjectFailures,
         string? FallbackReason);
 }
