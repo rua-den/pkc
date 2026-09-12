@@ -93,15 +93,16 @@ try
         canonicalKnowledgeFiles[indexRelativePath] = indexContent;
         Console.WriteLine(indexPath);
 
+        var sourceRepositoryLabel = new DirectoryInfo(repositoryPath).Name;
         var packRenderer = new PortableKnowledgePackRenderer();
-        var instructionsContent = packRenderer.RenderInstructions();
+        var instructionsContent = packRenderer.RenderInstructions(sourceRepositoryLabel);
         var instructionsPath = Resolve(repositoryPath, PortableKnowledgePackRenderer.InstructionsRelativePath);
         await File.WriteAllTextAsync(instructionsPath, instructionsContent);
         canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] = instructionsContent;
         Console.WriteLine(instructionsPath);
 
         var bundlePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.BundleFileName);
-        await File.WriteAllTextAsync(bundlePath, packRenderer.RenderBundle(canonicalKnowledgeFiles));
+        await File.WriteAllTextAsync(bundlePath, packRenderer.RenderBundle(canonicalKnowledgeFiles, sourceRepositoryLabel));
         Console.WriteLine(bundlePath);
 
         var archivePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.ArchiveFileName);
