@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Pkc.Core;
@@ -51,14 +53,18 @@ try
         var synthesizer = new EvidenceAwareKnowledgeSynthesizer();
         var workflowRenderer = new MarkdownKnowledgeRenderer();
         var workflows = new List<FeatureKnowledge>();
+        var canonicalKnowledgeFiles = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var candidate in candidates.Candidates)
         {
             var workflow = await synthesizer.SynthesizeAsync(candidate);
             workflows.Add(workflow);
-            var outputPath = Resolve(repositoryPath, workflowRenderer.GetRelativePath(workflow));
+            var relativePath = workflowRenderer.GetRelativePath(workflow);
+            var content = workflowRenderer.Render(workflow);
+            var outputPath = Resolve(repositoryPath, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, workflowRenderer.Render(workflow));
+            await File.WriteAllTextAsync(outputPath, content);
+            canonicalKnowledgeFiles[relativePath] = content;
             Console.WriteLine(outputPath);
         }
 
@@ -70,17 +76,39 @@ try
         var featureRenderer = new ProductFeatureMarkdownRenderer();
         foreach (var feature in productFeatures.Features)
         {
-            var outputPath = Resolve(repositoryPath, featureRenderer.GetRelativePath(feature));
+            var relativePath = featureRenderer.GetRelativePath(feature);
+            var content = featureRenderer.Render(feature);
+            var outputPath = Resolve(repositoryPath, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, featureRenderer.Render(feature));
+            await File.WriteAllTextAsync(outputPath, content);
+            canonicalKnowledgeFiles[relativePath] = content;
             Console.WriteLine(outputPath);
         }
 
-        var indexPath = Resolve(repositoryPath, "knowledge/index.md");
+        const string indexRelativePath = "knowledge/index.md";
+        var indexContent = featureRenderer.RenderIndex(productFeatures);
+        var indexPath = Resolve(repositoryPath, indexRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
-        await File.WriteAllTextAsync(indexPath, featureRenderer.RenderIndex(productFeatures));
+        await File.WriteAllTextAsync(indexPath, indexContent);
+        canonicalKnowledgeFiles[indexRelativePath] = indexContent;
         Console.WriteLine(indexPath);
-        Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, 1 knowledge index generated");
+
+        var packRenderer = new PortableKnowledgePackRenderer();
+        var instructionsContent = packRenderer.RenderInstructions();
+        var instructionsPath = Resolve(repositoryPath, PortableKnowledgePackRenderer.InstructionsRelativePath);
+        await File.WriteAllTextAsync(instructionsPath, instructionsContent);
+        canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] = instructionsContent;
+        Console.WriteLine(instructionsPath);
+
+        var bundlePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.BundleFileName);
+        await File.WriteAllTextAsync(bundlePath, packRenderer.RenderBundle(canonicalKnowledgeFiles));
+        Console.WriteLine(bundlePath);
+
+        var archivePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.ArchiveFileName);
+        WriteKnowledgeArchive(archivePath, canonicalKnowledgeFiles);
+        Console.WriteLine(archivePath);
+
+        Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
     }
 
     return 0;
@@ -93,6 +121,23 @@ catch (Exception exception)
 
 static string Resolve(string repositoryPath, string relativePath) =>
     Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+static void WriteKnowledgeArchive(string archivePath, IReadOnlyDictionary<string, string> canonicalFiles)
+{
+    if (File.Exists(archivePath))
+    {
+        File.Delete(archivePath);
+    }
+
+    using var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create);
+    foreach (var pair in canonicalFiles.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+    {
+        var entry = archive.CreateEntry(pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
+        using var stream = entry.Open();
+        using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        writer.Write(pair.Value);
+    }
+}
 
 static FactDocument Merge(params FactDocument[] documents)
 {
