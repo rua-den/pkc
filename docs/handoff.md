@@ -8,11 +8,11 @@ PKC means **Product/System Knowledge Compiler**.
 
 The target user is a Product Owner. A PO should be able to take PKC's generated `knowledge/` folder and attach it to any capable AI — ChatGPT, Claude, Gemini, Copilot, etc. — then ask questions about the product **without making that AI re-read or grep the source repository**.
 
-The analyzer/fact graph exists to make that knowledge trustworthy. Analyzer sophistication is not the final product by itself.
+The analyzer/fact graph exists to make that knowledge trustworthy. Analyzer sophistication is not the final product.
 
 The final acceptance question is:
 
-> If the source repository is hidden and an AI receives only `knowledge/`, can it explain the product accurately, at the right abstraction level, with important unknowns and evidence boundaries preserved?
+> If the source repository is hidden and an AI receives only `knowledge/`, can it explain the product accurately, at the right abstraction level, while preserving important unknowns and evidence boundaries?
 
 ## Non-negotiable compiler architecture
 
@@ -36,113 +36,163 @@ DETERMINISTIC MARKDOWN RENDERER
 PORTABLE PRODUCT KNOWLEDGE
 ```
 
+## Knowledge hierarchy — also non-negotiable
+
+```text
+index       = orient the AI
+feature     = explain a capability
+workflow    = explain an operation
+raw evidence = prove implementation detail
+```
+
+Do not delete raw evidence to make output cleaner. Do not promote every helper guard/loop/call into product-level knowledge either.
+
+A detail belongs at product level only when it materially changes externally meaningful behavior, constraints, outcomes or safety.
+
+The primary consumer is an AI, so optimize for reliable retrieval/reasoning and traceability rather than Markdown aesthetics alone.
+
 ## Current milestone
 
-**V0.4.4 External real-project knowledge trial — IN PROGRESS.**
+**V0.4.4 Loren Knowledge Readiness — IN PROGRESS.**
 
-V0.4.3 Analyzer Fidelity Hardening remains the last completed packaged checkpoint:
+V0.4.3 remains the last accepted packaged checkpoint:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Do not call V0.4.4 complete merely because analyzers/CI are green.
+Current `main` contains V0.4.4 trial fixes. Do not bump the accepted package version merely because current CI is green.
 
-## Real-project trial
-
-Current real repository: `rua-den/loren`.
-
-Use two benchmark modes:
+Primary execution plan:
 
 ```text
-Pinned Loren commit
-→ deterministic blocking regression/acceptance
-
-Loren main
-→ moving canary
-→ catches new repository patterns as Loren evolves
-→ must not silently replace the pinned acceptance SHA
+docs/real-project-trial.md
 ```
 
-PokeTrade remains the known-answer runnable regression system.
+## Benchmark roles
 
-## Proven external-trial fixes so far
+```text
+PokeTrade
+→ known-answer runnable regression
 
-The Loren trial has already forced fixes for:
+Loren pinned commit
+→ deterministic blocking real-project acceptance for V0.4.4
 
-- Minimal API endpoint discovery + target-project semantic enrichment;
+Loren main
+→ moving non-blocking canary
+→ catches new source patterns as Loren evolves
+
+second independent real repo
+→ V0.4.5 anti-overfit/generalization gate
+```
+
+## Proven Loren fixes so far
+
+The real-project trial has already forced generic fixes for:
+
+- Minimal API discovery + target-project semantic enrichment;
 - exclusion of `tests/` and `spikes/` from product evidence;
-- conditional endpoint availability;
-- Minimal API condition/exception/direct response semantics;
+- conditional/development-only endpoint availability;
+- Minimal API failure/direct response semantics;
 - multi-project MSBuild semantic loading;
 - dictionary/object-initializer mutation noise;
 - framework/primitive call-flow presentation noise;
 - ASP.NET sign-in/sign-out product side effects;
-- Minimal API response metadata collision when endpoints are declared inside methods/extensions.
+- Minimal API response metadata collision for endpoints declared inside methods/extensions.
 
-Pinned Loren currently verifies that important production evidence does not fall back to loose Roslyn analysis.
+Pinned Loren also requires zero `loose-roslyn-fallback` facts for the selected production benchmark.
 
-## What the latest output review says
+## Latest output review
 
-The main remaining issue is **knowledge abstraction**, not missing parser breadth.
+The main remaining blocker is **knowledge abstraction/comprehension**, not parser breadth.
 
-Example: Loren `Run Operations` currently promotes helper-level conditions and loops such as string truncation, candidate matching and character normalization into the product-feature summary, and repeats many rules across `/api/run` and `/internal/dev/run`.
+The generated Loren pack is substantially correct and traceable, but `Run Operations` still promotes too many transitive helper conditions/loops into the feature-level rules and duplicates shared behavior across `/api/run` and `/internal/dev/run`.
 
-Those details may be legitimate evidence/workflow detail. They should not dominate the product-level feature file a PO/AI reads first.
+Those details may remain in workflow/evidence. They should not dominate the product capability a PO/AI reads first.
 
-Therefore the next work must focus on knowledge synthesis/presentation using proven Loren output problems.
+## Exact next steps
 
-## V0.4.4 acceptance gate
+Do these in order. Do not skip ahead because another roadmap item looks attractive.
 
-### Evidence layer
+### Step 1 — Layered knowledge abstraction
 
-- important claims grounded in source;
-- provenance/confidence honest;
-- no silent unsupported fallback for benchmark-critical behavior.
-
-### Workflow layer
-
-Each workflow should expose meaningful:
-
-- entry point / UI path when known;
-- permission;
-- validation/failure paths;
-- state changes;
-- side effects/integrations;
-- application-oriented flow;
-- source evidence;
-- unknowns.
-
-### Product layer
-
-`knowledge/index.md` and feature files must let a PO/AI understand product capabilities quickly.
-
-Do not dump every helper guard/loop into product-level rules simply because it was observed in the transitive call graph.
-
-### Blind comprehension review
-
-Hide Loren source and give the reviewer only generated `knowledge/`.
-
-The knowledge pack must let the reviewer answer, at minimum:
+Ensure synthesis/presentation obeys:
 
 ```text
-What observable product/system surface exists?
-How does owner authentication work?
-What does the main run operation do?
-How are projects listed and bootstrapped?
-How are action proposals approved/cancelled?
-Which behavior is conditional/development-only?
-What important failure paths exist?
-What remains unknown because its evidence source has not been compiled?
+index → feature → workflow → evidence
 ```
 
-Then compare those answers against source/known behavior.
+Preserve all proof while promoting only product-impacting behavior upward.
 
-A green grep/test suite is necessary but **not sufficient**.
+### Step 2 — Loren feature signal
+
+Use the observed Loren artifact to harden feature-level output, especially Run:
+
+- retain auth, input validation, project/context behavior, agent-loop outcomes, action limits/proposals, failures and dev-only availability;
+- keep helper string/collection mechanics below feature level unless they affect product behavior;
+- dedupe shared rules without hiding production/dev differences.
+
+### Step 3 — Index/system orientation
+
+Make `knowledge/index.md` useful for an AI to identify observed capabilities and choose the correct feature/workflow without inventing product intent.
+
+### Step 4 — Blind Loren comprehension
+
+Hide Loren source and `.pkc` raw files. Give a reviewer only generated `knowledge/` and ask the fixed questions in `docs/real-project-trial.md`.
+
+Record answers first; reopen source only afterwards.
+
+### Step 5 — Compare and fix
+
+Classify mismatches as:
+
+```text
+wrong claim
+missing important behavior
+comprehension-breaking noise
+unsupported required pattern
+unexpected fallback
+traceability gap
+uncertainty/authority overclaim
+```
+
+Fix only proven generic gaps and regression-lock every compiler bug.
+
+### Step 6 — External review V0.4.4
+
+A separate reviewer checks the compiler + artifact + blind answers for blockers and benchmark gaming.
+
+V0.4.4 does not close until blockers are fixed.
+
+### Step 7 — V0.4.5 second real repo
+
+After Loren passes, run the same layered-output and blind-comprehension process on a second genuine repository that differs materially from PokeTrade/Loren and was not chosen to fit current heuristics.
+
+This is required before V0.5.
+
+## V0.5 unlock gate
+
+**V0.5 Azure DevOps is locked.**
+
+Open it only after all of these are PASS:
+
+```text
+PokeTrade known-answer regression                  PASS
+Loren evidence/workflow correctness                PASS
+Loren blind knowledge-only comprehension           PASS
+Loren external review                              PASS
+second independent real-repo trial                 PASS
+second blind knowledge-only comprehension          PASS
+cross-benchmark regression after all fixes         PASS
+known boundaries/unknowns documented honestly      PASS
+no repository-specific compiler exceptions         PASS
+```
+
+If any item is not PASS, remain in V0.4.x.
 
 ## Scope rule — very important
 
-A new analyzer capability is allowed into V0.4.4 only when the real-project knowledge review proves it is needed to improve one of:
+A new analyzer capability is allowed into V0.4.x only when a real knowledge review proves it is needed to improve one of:
 
 ```text
 accuracy
@@ -152,10 +202,4 @@ traceability
 honest uncertainty
 ```
 
-Do not start TypeScript TypeChecker work, React AST, MVC/Blazor/Vue expansion, browser exploration, incremental compilation or Azure DevOps merely because they are unfinished roadmap items.
-
-## V0.5 gate
-
-**V0.5 Azure DevOps is locked.**
-
-Open it only after V0.4.4 passes the knowledge-only comprehension review with no blocker-class findings.
+Do not start TypeScript TypeChecker work, React AST, MVC/Razor/Blazor/Vue expansion, browser exploration, incremental compilation or Azure DevOps merely because those items are unfinished.
