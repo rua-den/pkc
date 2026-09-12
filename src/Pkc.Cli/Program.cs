@@ -110,6 +110,11 @@ try
         Console.WriteLine(archivePath);
 
         Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
+        Console.WriteLine();
+        Console.WriteLine("AI handoff:");
+        Console.WriteLine($"  Simplest: upload {bundlePath} to the AI, then ask product/system questions.");
+        Console.WriteLine($"  Structured: provide {Path.Combine(repositoryPath, "knowledge")} when the AI/workspace supports multiple files.");
+        Console.WriteLine($"  Archive: {archivePath} is for sharing/storage or archive-capable destinations; ZIP parsing is not required.");
     }
 
     return 0;
