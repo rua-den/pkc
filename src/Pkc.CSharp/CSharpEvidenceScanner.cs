@@ -13,9 +13,13 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             baseline,
             cancellationToken);
+        var minimalApi = await new MinimalApiEndpointScanner().ScanAsync(
+            repositoryPath,
+            cancellationToken);
 
         var rawFacts = baseline.Facts
             .Concat(supplemental.Facts)
+            .Concat(minimalApi.Facts)
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
@@ -23,6 +27,7 @@ public sealed class CSharpEvidenceScanner
 
         var rawRelations = baseline.Relations
             .Concat(supplemental.Relations)
+            .Concat(minimalApi.Relations)
             .GroupBy(
                 relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}",
                 StringComparer.Ordinal)
@@ -32,7 +37,7 @@ public sealed class CSharpEvidenceScanner
             .ThenBy(relation => relation.Target, StringComparer.Ordinal)
             .ToArray();
 
-        var raw = new FactDocument("0.4.3-csharp-raw", rawFacts, rawRelations);
+        var raw = new FactDocument("0.4.4-csharp-raw", rawFacts, rawRelations);
         return await new CSharpProjectSemanticEnricher().EnrichAsync(
             repositoryPath,
             raw,
