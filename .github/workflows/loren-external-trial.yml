@@ -68,3 +68,13 @@ jobs:
           grep -Fq 'Projects' "$INDEX"
           grep -Fq 'Run' "$INDEX"
           grep -Fq 'Auth' "$INDEX"
+
+      - name: Upload Loren PKC output for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: loren-pkc-output
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            external/loren/.pkc
+            external/loren/knowledge
