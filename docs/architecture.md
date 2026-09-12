@@ -57,6 +57,42 @@ Promotion rules:
 
 This hierarchy is an acceptance concern, not just renderer formatting. A compiler can have correct facts and still fail if `knowledge/` cannot explain the product clearly.
 
+## UI behavior is product evidence
+
+UI knowledge is not limited to routes, buttons and HTTP calls. When the source statically contains configuration/validation behavior, PKC must preserve enough evidence for an AI to answer Product Owner questions about how the UI actually behaves.
+
+Examples include:
+
+```text
+field existence
+select/radio/type options
+required / conditionally required
+visible / hidden conditions
+enabled / disabled conditions
+permission/state guarded actions
+field → form/model → request/API binding
+frontend/backend validation agreement or mismatch
+```
+
+Target framework-neutral evidence kinds include:
+
+```text
+ui-field
+ui-field-option
+ui-field-validation
+ui-field-visibility
+ui-field-enabled-state
+ui-field-binding
+```
+
+The exact schema may evolve, but framework adapters should normalize these behaviors rather than making knowledge synthesis understand Angular/React-specific syntax.
+
+Conditional UI behavior must remain conditional in the evidence. For example, `Microsoft Subscription Id is required when serviceType == CSP` must never be flattened into an unconditional required-field claim.
+
+When both frontend and backend validation are observable, downstream knowledge should be able to compare them. A mismatch is an observed consistency signal, not automatically a product bug.
+
+Detailed contract: `docs/ui-behavior-contract.md`.
+
 ## Analyzer fidelity is evidence
 
 PKC does not treat every extracted fact as equally reliable. Analyzer mode, confidence and caveats travel with evidence.
@@ -147,6 +183,8 @@ Current canonical UI fact kinds are deliberately small:
 - `ui-route`
 - `ui-action`
 - `ui-api-call`
+
+V0.4 knowledge-readiness work extends this canonical contract toward field/validation/conditional behavior as defined in `docs/ui-behavior-contract.md`.
 
 ### Angular
 
