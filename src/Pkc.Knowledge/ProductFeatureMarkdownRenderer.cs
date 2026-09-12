@@ -66,6 +66,8 @@ public sealed partial class ProductFeatureMarkdownRenderer
 
         AppendListSection(builder, "Permissions", feature.Permissions);
         AppendListSection(builder, "Observed business rules", feature.Rules);
+        AppendListSectionIfAny(builder, "Observed state changes", AggregateWorkflowItems(feature, workflow => workflow.StateChanges));
+        AppendListSectionIfAny(builder, "Observed side effects", AggregateWorkflowItems(feature, workflow => workflow.SideEffects));
         AppendListSection(builder, "Important unknowns", feature.Unknowns);
 
         builder.AppendLine("## How to use this file");
@@ -124,6 +126,36 @@ public sealed partial class ProductFeatureMarkdownRenderer
         builder.AppendLine("PKC currently compiles backend C# and conservative static frontend evidence. Azure DevOps history, runtime UI confirmation, and business approval are separate future evidence sources unless explicitly present in feature files.");
 
         return builder.ToString();
+    }
+
+    private static IReadOnlyList<string> AggregateWorkflowItems(
+        ProductFeature feature,
+        Func<ProductWorkflowReference, IReadOnlyList<string>> selector)
+    {
+        var occurrences = feature.Workflows
+            .SelectMany(workflow => selector(workflow)
+                .Select(item => new WorkflowItem(WorkflowActionName(feature, workflow), item)))
+            .ToArray();
+
+        return occurrences
+            .GroupBy(item => item.Value, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var actions = group.Select(item => item.Action).Distinct(StringComparer.Ordinal).ToArray();
+                return actions.Length > 1
+                    ? group.Key
+                    : $"{actions[0]}: {group.Key}";
+            })
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string WorkflowActionName(ProductFeature feature, ProductWorkflowReference workflow)
+    {
+        var prefix = feature.Area + " ";
+        return workflow.Title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? workflow.Title[prefix.Length..]
+            : workflow.Title;
     }
 
     private static void AppendObservedSurface(StringBuilder builder, ProductFeatureDocument document)
@@ -211,6 +243,16 @@ public sealed partial class ProductFeatureMarkdownRenderer
         builder.AppendLine();
     }
 
+    private static void AppendListSectionIfAny(StringBuilder builder, string title, IReadOnlyList<string> items)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        AppendListSection(builder, title, items);
+    }
+
     private static string Yaml(string value) =>
         $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
 
@@ -219,6 +261,8 @@ public sealed partial class ProductFeatureMarkdownRenderer
         var slug = NonSlugRegex().Replace(value.ToLowerInvariant(), "-").Trim('-');
         return slug.Length == 0 ? "unknown" : slug;
     }
+
+    private sealed record WorkflowItem(string Action, string Value);
 
     [GeneratedRegex("[^a-z0-9]+")]
     private static partial Regex NonSlugRegex();
