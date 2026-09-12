@@ -20,14 +20,22 @@ public sealed class CSharpEvidenceScanner
         var rawFacts = baseline.Facts
             .Concat(supplemental.Facts)
             .Concat(minimalApi.Facts)
+            .Where(fact => !CSharpSourceScope.IsExcludedRelativePath(fact.Source.Path))
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(fact => fact.Id, StringComparer.Ordinal)
             .ToArray();
 
+        var rawFactIds = rawFacts
+            .Select(fact => fact.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
         var rawRelations = baseline.Relations
             .Concat(supplemental.Relations)
             .Concat(minimalApi.Relations)
+            .Where(relation => !CSharpSourceScope.IsExcludedRelativePath(relation.Source.Path))
+            .Where(relation => rawFactIds.Contains(relation.FromFactId))
+            .Where(relation => !relation.Target.StartsWith("cs:", StringComparison.Ordinal) || rawFactIds.Contains(relation.Target))
             .GroupBy(
                 relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}",
                 StringComparer.Ordinal)
