@@ -15,11 +15,11 @@ internal static class CSharpSourceScope
             "spikes"
         };
 
-    public static bool IsExcluded(string rootPath, string path)
-    {
-        var relative = Path.GetRelativePath(rootPath, path);
-        return relative
-            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+    public static bool IsExcluded(string rootPath, string path) =>
+        IsExcludedRelativePath(Path.GetRelativePath(rootPath, path));
+
+    public static bool IsExcludedRelativePath(string relativePath) =>
+        relativePath
+            .Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries)
             .Any(segment => ExcludedDirectoryNames.Contains(segment));
-    }
 }
