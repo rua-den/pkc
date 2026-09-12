@@ -34,57 +34,61 @@ Actions are rendered as workflow Markdown and grouped into product-level feature
 
 ### V0.4.2 — PokeTrade real-system benchmark — COMPLETE
 
-The runnable `.NET 10 + Angular 22` PokeTrade application is the behavioral acceptance benchmark.
+The runnable `.NET 10 + Angular 22` PokeTrade application is the known-answer behavioral acceptance benchmark.
 
 Completed hardening includes full source review, branch-level live API acceptance, computed domain properties, business object construction, collection/loop semantics, permission/status guards, multi-hop frontend linkage, observed policy definitions, 400/404/409 response semantics and generated knowledge assertions.
 
 ### V0.4.3 — Analyzer fidelity hardening — COMPLETE
 
-This milestone makes analyzer fidelity explicit and strengthens the analyzer layer without changing the evidence-first knowledge architecture.
-
 Completed:
 
 - C# target-project semantic enrichment through `MSBuildWorkspace`;
-- semantic framework resolution verified for ASP.NET Core controller base types and HTTP attributes;
-- explicit `loose-roslyn-fallback` when target-project semantic context is unavailable;
-- declaration-level `semanticNodeMatch` provenance so a loaded project is not confused with a successful fact→syntax-node match;
-- node-match failure lowers confidence and carries an explicit caveat;
-- Angular TypeScript syntactic-AST primary path using the target repo's local TypeScript runtime;
-- explicit distinction between high-confidence structural `ui-screen`/`ui-route` evidence and medium-confidence syntactic `ui-api-call` evidence;
-- explicit `httpReceiverResolution=syntactic-unverified` because TypeScript `TypeChecker` resolution is not implemented yet;
-- documented Node.js + installed local TypeScript runtime prerequisites for the Angular AST path;
-- explicit `angular-template-regex-fallback` for template actions/visibility;
-- explicit React `regex-fallback` until a React AST adapter is implemented;
-- analyzer provenance locked in CI against PokeTrade.
+- explicit semantic/fallback provenance and declaration node-match confidence;
+- Angular TypeScript syntactic-AST primary path;
+- explicit confidence split for structural facts vs syntactic HTTP-call evidence;
+- explicit Angular template and React fallback provenance;
+- analyzer fidelity locked against PokeTrade.
 
-Acceptance:
-
-- commit `5c457111d072ad5f7b93bf3cff49d27960ac79fb`
-- GitHub Actions run `34630303904` (#95), both jobs green
-- packaged `0.4.3-preview.2` tool verifies project-semantic WorkPlay scanning and matched declaration provenance
-- PokeTrade verifies `project-semantic`, `typescript-ast-syntactic`, split confidence, unverified HTTP receiver provenance, semantic ASP.NET Core symbols, explicit template fallback and the existing product-knowledge contract
-
-### V0.4.4 — External real-project trial — NEXT
-
-Run the packaged V0.4.3 tool against one genuine external repository.
-
-Classify findings as:
+Last accepted tool package:
 
 ```text
-wrong claim
-missing important behavior
-noise
-unsupported stack/pattern
-unexpected fallback
+RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Fix only proven gaps and add regression fixtures. Passing WorkPlay/PokeTrade proves benchmark behavior; it is not treated as universal real-world robustness.
+### V0.4.4 — External real-project knowledge trial — CURRENT
 
-## V0.5 — Azure DevOps evidence
+The purpose of this milestone is **not** to make every analyzer perfect. It is to prove that PKC's generated `knowledge/` is useful as portable product/system knowledge on a genuine repository.
+
+Current real-project benchmark: `rua-den/loren`.
+
+Two tracks are used:
+
+```text
+pinned Loren commit → deterministic blocking acceptance
+current Loren main   → moving canary for new real-world patterns
+```
+
+The trial has already proven and regression-locked fixes for Minimal API support, source-scope contamination, conditional endpoints, response semantics, multi-project semantic loading, mutation noise, flow noise and authentication side effects.
+
+The remaining acceptance focus is the final product abstraction, not analyzer breadth.
+
+V0.4.4 passes only when:
+
+1. important claims are source-grounded and confidence/provenance is honest;
+2. workflow Markdown preserves meaningful operation behavior and failure paths;
+3. feature/index Markdown is product-oriented rather than a dump of helper internals;
+4. a reviewer using **only `knowledge/`**, with the source repository hidden, can correctly explain the selected system's important product behavior;
+5. those knowledge-only answers are checked against source/known behavior;
+6. there are no unresolved blocker-class wrong claims, missing important behavior, comprehension-breaking noise, important unexpected fallbacks or required unsupported patterns;
+7. every external-repo compiler bug has a regression fixture or acceptance assertion.
+
+Do not broaden this milestone into TypeScript TypeChecker work, React AST, new frameworks, browser automation, incremental compilation or Azure DevOps unless the real-project trial proves that capability is required to pass the knowledge acceptance contract.
+
+## V0.5 — Azure DevOps evidence — LOCKED
 
 Ingest Epic/Feature/PBI/Sprint/history and link product/delivery evidence through PRs/commits where possible.
 
-Do not start this milestone until the external real-project trial has been reviewed.
+Do not start V0.5 until V0.4.4 passes the **knowledge-only comprehension gate**, not merely CI/analyzer assertions.
 
 ## V0.6 — Incremental compilation
 
