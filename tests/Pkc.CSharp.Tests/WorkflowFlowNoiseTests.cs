@@ -7,7 +7,7 @@ namespace Pkc.CSharp.Tests;
 public sealed class WorkflowFlowNoiseTests
 {
     [Fact]
-    public void Build_keeps_application_calls_but_drops_framework_plumbing_from_workflow_relations()
+    public void Build_keeps_application_calls_but_drops_framework_and_primitive_plumbing_from_workflow_relations()
     {
         var endpoint = new EvidenceFact(
             "endpoint",
@@ -36,6 +36,8 @@ public sealed class WorkflowFlowNoiseTests
             [
                 new EvidenceRelation(endpoint.Id, "invokes", "Demo.RunService.RunAsync", endpoint.Source),
                 new EvidenceRelation(endpoint.Id, "invokes", "System.String.Trim", endpoint.Source),
+                new EvidenceRelation(endpoint.Id, "invokes", "string.IsNullOrWhiteSpace", endpoint.Source),
+                new EvidenceRelation(endpoint.Id, "invokes", "char.IsLetterOrDigit", endpoint.Source),
                 new EvidenceRelation(endpoint.Id, "invokes", "Microsoft.AspNetCore.Http.Results.Ok", endpoint.Source),
                 new EvidenceRelation(endpoint.Id, "invokes", "Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.SignInAsync", endpoint.Source)
             ]);
@@ -48,6 +50,10 @@ public sealed class WorkflowFlowNoiseTests
             relation.Kind == "invokes" && relation.Target.Contains("SignInAsync", StringComparison.Ordinal));
         Assert.DoesNotContain(candidate.Relations, relation =>
             relation.Kind == "invokes" && relation.Target.StartsWith("System.", StringComparison.Ordinal));
+        Assert.DoesNotContain(candidate.Relations, relation =>
+            relation.Kind == "invokes" && relation.Target.StartsWith("string.", StringComparison.Ordinal));
+        Assert.DoesNotContain(candidate.Relations, relation =>
+            relation.Kind == "invokes" && relation.Target.StartsWith("char.", StringComparison.Ordinal));
         Assert.DoesNotContain(candidate.Relations, relation =>
             relation.Kind == "invokes" && relation.Target.StartsWith("Microsoft.AspNetCore.Http.Results.", StringComparison.Ordinal));
     }
