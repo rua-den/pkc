@@ -66,6 +66,7 @@ public sealed partial class ProductFeatureMarkdownRenderer
 
         AppendListSection(builder, "Permissions", feature.Permissions);
         AppendListSection(builder, "Observed business rules", feature.Rules);
+        AppendListSectionIfAny(builder, "Observed capability flow", AggregateWorkflowItems(feature, workflow => workflow.Flow));
         AppendListSectionIfAny(builder, "Observed state changes", AggregateWorkflowItems(feature, workflow => workflow.StateChanges));
         AppendListSectionIfAny(builder, "Observed side effects", AggregateWorkflowItems(feature, workflow => workflow.SideEffects));
         AppendListSection(builder, "Important unknowns", feature.Unknowns);
@@ -73,6 +74,7 @@ public sealed partial class ProductFeatureMarkdownRenderer
         builder.AppendLine("## How to use this file");
         builder.AppendLine();
         builder.AppendLine("- Use this file for product-level questions about the feature.");
+        builder.AppendLine("- `Observed capability flow` is a selective application-level collaboration view; open the workflow file for the complete grounded flow and source evidence.");
         builder.AppendLine("- Open the linked workflow Markdown when a question needs exact UI steps, backend behavior, state changes, side effects, or source evidence.");
         builder.AppendLine("- Do not infer missing business intent from code-observed behavior.");
 
