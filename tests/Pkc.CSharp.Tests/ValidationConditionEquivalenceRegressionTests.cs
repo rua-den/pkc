@@ -112,6 +112,16 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         AssertConservativeMismatch(Compare(candidates, document));
     }
 
+    [Fact]
+    public void Multi_segment_member_path_case_is_not_erased()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "primary.Status === 'active'")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Primary.status == \"active\"")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
     private static void AssertConservativeMismatch(EvidenceFact comparison)
     {
         Assert.NotEqual("consistent", comparison.Metadata["status"]);
