@@ -1,0 +1,101 @@
+name: jellyfin-generalization-trial
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  jellyfin-real-project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout PKC
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Jellyfin benchmark
+        uses: actions/checkout@v4
+        with:
+          repository: jellyfin/jellyfin
+          ref: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+          path: external/jellyfin
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build PKC
+        run: dotnet build PKC.sln --configuration Release
+
+      - name: Build pinned Jellyfin source normally
+        working-directory: external/jellyfin
+        run: dotnet build Jellyfin.sln --configuration Release --verbosity minimal
+
+      - name: Compile Jellyfin product knowledge with PKC
+        run: |
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build external/jellyfin
+
+          test -s external/jellyfin/.pkc/facts.json
+          test -s external/jellyfin/.pkc/feature-candidates.json
+          test -s external/jellyfin/.pkc/product-features.json
+          test -s external/jellyfin/knowledge/AI_INSTRUCTIONS.md
+          test -s external/jellyfin/knowledge/index.md
+          test -s external/jellyfin/PKC_KNOWLEDGE.md
+          test -s external/jellyfin/PKC_KNOWLEDGE.zip
+
+      - name: Verify portable handoff parity and summarize analyzer provenance
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import zipfile
+
+          root = pathlib.Path('external/jellyfin')
+          knowledge = root / 'knowledge'
+          bundle = root / 'PKC_KNOWLEDGE.md'
+          archive = root / 'PKC_KNOWLEDGE.zip'
+          facts_path = root / '.pkc' / 'facts.json'
+
+          files = sorted(p for p in knowledge.rglob('*.md') if p.is_file())
+          assert files, 'knowledge pack contains no Markdown files'
+
+          bundle_text = bundle.read_text(encoding='utf-8')
+          for path in files:
+              rel = path.relative_to(root).as_posix()
+              text = path.read_text(encoding='utf-8')
+              assert f'PKC_FILE: {rel}' in bundle_text, f'missing bundle marker: {rel}'
+              assert text in bundle_text, f'bundle does not preserve file verbatim: {rel}'
+
+          with zipfile.ZipFile(archive) as zf:
+              names = sorted(name for name in zf.namelist() if not name.endswith('/'))
+              expected = sorted(path.relative_to(root).as_posix() for path in files)
+              assert names == expected, 'portable ZIP file set differs from canonical knowledge pack'
+              for path in files:
+                  rel = path.relative_to(root).as_posix()
+                  assert zf.read(rel) == path.read_bytes(), f'portable ZIP bytes differ: {rel}'
+              assert not any('/.pkc/' in f'/{name}' or name.startswith('.pkc/') for name in names), 'raw .pkc leaked into portable ZIP'
+              assert not any(name.startswith('src/') for name in names), 'source leaked into portable ZIP'
+
+          data = json.loads(facts_path.read_text(encoding='utf-8'))
+          facts = data.get('facts', [])
+          modes = {}
+          for fact in facts:
+              mode = (fact.get('metadata') or {}).get('analysisMode', '<none>')
+              modes[mode] = modes.get(mode, 0) + 1
+          print(f'knowledge_markdown_files={len(files)}')
+          print(f'facts={len(facts)}')
+          print('analysis_modes=' + json.dumps(modes, sort_keys=True))
+          PY
+
+      - name: Upload Jellyfin PKC output for blind review and source cross-check
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-pkc-output
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+          path: |
+            external/jellyfin/.pkc
+            external/jellyfin/knowledge
+            external/jellyfin/PKC_KNOWLEDGE.md
+            external/jellyfin/PKC_KNOWLEDGE.zip
