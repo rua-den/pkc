@@ -4,19 +4,13 @@ Use this file when continuing PKC in another chat/session.
 
 ## Product idea — do not drift from this
 
-PKC means **Product/System Knowledge Compiler**.
-
-The target user is a Product Owner. A PO should be able to give PKC's generated portable knowledge to an AI assistant and ask product/system questions **without making that AI re-read or grep the source repository**.
-
-The analyzer/fact graph exists to make that knowledge trustworthy. Analyzer sophistication is not the final product.
+PKC means **Product/System Knowledge Compiler**. The target user is a Product Owner. A PO should be able to give PKC's generated portable knowledge to an AI assistant and ask product/system questions without making that AI re-read or grep the source repository.
 
 Final acceptance question:
 
 > If the source repository is hidden and an AI receives only the generated portable knowledge, can it explain the product accurately, at the right abstraction level, while preserving important unknowns and evidence boundaries?
 
-## Non-negotiable compiler architecture
-
-Do not implement `source → LLM → Markdown` directly.
+Do not implement `source → LLM → Markdown` directly. Keep the compiler pipeline:
 
 ```text
 SOURCE
@@ -36,21 +30,112 @@ DETERMINISTIC PORTABLE RENDERING
 AI-CONSUMABLE PRODUCT KNOWLEDGE
 ```
 
-## Knowledge hierarchy
+## Current state
+
+**V0.4.4 blocker fixes are implemented and automated gates are green. Independent re-review is still required. V0.4.5 is locked.**
+
+Original external review target:
 
 ```text
-AI_INSTRUCTIONS = tell the receiving AI how to consume the pack
-index            = orient the AI
-feature          = explain a capability at high signal
-workflow         = explain one operation in grounded detail
-raw evidence     = prove implementation detail/provenance
+34f77c036206d48bbf9495ea73e5debcea9f0eb3
 ```
 
-Do not delete raw evidence merely to reduce noise. Do not promote every helper condition/call into product-level knowledge.
+Review record:
+
+```text
+docs/reviews/2026-09-13-v0.4.4-external-review.md
+```
+
+Implementation checkpoint with all four fixes:
+
+```text
+8b01d4b5ba84112f36e46b234426f754be38c8f6
+```
+
+V0.4.3 remains the last accepted package:
+
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.2
+```
+
+Do not bump that package and do not start V0.4.5 until an independent reviewer passes the resulting V0.4.4 HEAD.
+
+Pinned Loren benchmark SHA:
+
+```text
+e9e81651d380d7d40998f235cfdc7f119fe67af8
+```
+
+## External-review blockers fixed regression-first
+
+### B1 — validation-condition equivalence
+
+```text
+RED: 9dac656daf66eb0e3da7fedff65830caf4c926a5
+FIX: b0f42ce87d36427ee39fcd09c8cd69e6f11de035
+```
+
+`ValidationConsistencyCandidateEnricher` no longer treats one matching lossy condition key as proof of equivalence. It canonicalizes the complete supported equality-conjunction condition, handles reversed equality operands, compares complete requiredness-condition sets, distinguishes unconditional requiredness, and degrades unsupported/unprovable semantics to conservative mismatch/unknown behavior instead of high-confidence `consistent`.
+
+Regression coverage: compound `&&`, reversed operands, conditional/unconditional, and multiple requiredness facts.
+
+### B2 — repeated-build canonical parity
+
+```text
+RED: b343c17d4e263103b3096463584a7c7dcc8ec1b2
+FIX: b45a953c7020db283e53c7df4b66efc6edda9574
+```
+
+`pkc build` now reconciles stale PKC-owned generated Markdown before writing the current canonical pack. Ownership rule: only Markdown under `knowledge/` whose YAML frontmatter contains `generated: true` is eligible for stale deletion. Unowned user files are preserved.
+
+End-to-end test performs two builds on one temp repository and proves a removed endpoint disappears from the structured pack, `PKC_KNOWLEDGE.md`, and `PKC_KNOWLEDGE.zip`, while `knowledge/user-notes.md` survives unchanged.
+
+### B3 — capability-flow anti-overfit
+
+```text
+RED: cd29aea57aa7b201022ac1f525f176b4e564d347
+FIX: 81701f53666fdee402c8e7347a6a85af653a870f
+```
+
+Removed Loren-shaped lexical scoring. Product-flow ranking now uses generic graph structure: HTTP entry-point proximity, BFS distance, cross-component transitions, intermediate-node role, and graph convergence. Neutral fixtures use `ExecutionCoordinator`, `ContextProvider`, `ConversationRepository`, `UseCase`, plus many `HelperServiceXX` decoys.
+
+### B4 — frontend source contamination
+
+```text
+RED: e4d563478023e2bf712e41695c88eea7383b6adb
+FIX: 8b01d4b5ba84112f36e46b234426f754be38c8f6
+```
+
+Added a shared `FrontendSourceScope` enforced by `FrontendScanner` before adapter evidence is merged. It excludes conventional test/spike directories and `*.spec.*` / `*.test.*` files for both React and Angular evidence. The regression-only commit failed on both adapters; the fix makes the same 8 frontend tests pass.
+
+## Gate evidence on implementation checkpoint
+
+For `8b01d4b5ba84112f36e46b234426f754be38c8f6`:
+
+```text
+full PKC test/build gate                 PASS
+  Pkc.CSharp.Tests                       40 / 40
+  Pkc.Frontend.Tests                      8 / 8
+  build                                  0 warnings / 0 errors
+PokeTrade runnable + known-answer        PASS
+pinned Loren external trial              PASS
+Loren-main canary                        PASS
+```
+
+The test suite now includes the UI/backend validation benchmark regressions and repeated-build structured/bundle/ZIP parity regression required by the review.
+
+Every blocker has explicit pre-fix red evidence:
+
+```text
+B1 9dac656 → test FAIL
+B2 b343c17 → test FAIL
+B3 cd29aea → test FAIL
+B4 e4d5634 → test FAIL
+```
 
 ## Portable handoff contract
 
-Current `pkc build` development output:
+Current `pkc build` output:
 
 ```text
 knowledge/
@@ -58,279 +143,58 @@ knowledge/
   index.md
   features/**/*.md
   workflows/**/*.md
-
 PKC_KNOWLEDGE.md
 PKC_KNOWLEDGE.zip
 ```
 
-Roles:
+The structured pack, single-file bundle, and ZIP must agree on the current product state. Do not weaken the `generated: true` ownership boundary when changing rebuild cleanup.
+
+## Review warnings still open
+
+These were non-blocking warnings in the external review and were intentionally not broadened into unrelated V0.4.4 changes:
 
 ```text
-knowledge/
-→ canonical structured portable knowledge
-
-PKC_KNOWLEDGE.md
-→ one-file convenience handoff for PO → AI
-
-PKC_KNOWLEDGE.zip
-→ archive/transport containing knowledge/ only
+W1. Portable KnowledgeEvidence does not preserve all per-fact analyzer confidence/provenance.
+W2. Blind-review records need stronger durable reproducibility evidence: artifact hash/run id/frozen transcript/source cross-check.
 ```
 
-The structured pack, single-file bundle, and ZIP transport must not disagree on current product behavior.
+## What to do next
 
-## Current milestone
+Do **not** implement more compiler features now.
 
-**V0.4.4 Loren Knowledge Readiness — EXTERNAL REVIEW FAILED / FIX REQUIRED.**
-
-V0.4.3 remains the last accepted packaged checkpoint:
+The next action is:
 
 ```text
-RuaDen.Pkc.Tool 0.4.3-preview.2
+1. read docs/status.md
+2. read docs/handoff.md
+3. read docs/reviews/2026-09-13-v0.4.4-external-review.md
+4. independently review the new final HEAD against every blocker and warning boundary
+5. rerun/inspect blind knowledge-only checks where changed compiler semantics affect the generated artifact
+6. return PASS or concrete findings
 ```
 
-Do not bump the accepted package version.
+The implementation author must not mark V0.4.4 PASS merely because CI is green.
 
-External review inspected HEAD:
+If independent re-review returns PASS, then and only then update status/handoff to close V0.4.4 and unlock V0.4.5. If it finds a blocker, stay in V0.4.4 and fix regression-first.
 
-```text
-34f77c036206d48bbf9495ea73e5debcea9f0eb3
-```
+## Scope locks
 
-Full review record:
+Until independent V0.4.4 re-review passes, do not start:
 
-```text
-docs/reviews/2026-09-13-v0.4.4-external-review.md
-```
-
-Read that review before changing code.
-
-## Existing benchmark evidence
-
-Implementation/acceptance checkpoint before the docs-only external-review handoff:
-
-```text
-4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
-```
-
-Previously verified:
-
-```text
-CI #205
-  test                  PASS
-  PokeTrade             PASS
-
-Loren external #104     PASS
-Loren-main canary #86   PASS
-```
-
-Pinned Loren SHA:
-
-```text
-e9e81651d380d7d40998f235cfdc7f119fe67af8
-```
-
-These passes are regression evidence only. They do not override the external-review blockers.
-
-## Current blocking findings
-
-### B1 — UI/backend validation equivalence can false-positive
-
-Current normalization can collapse a compound condition to one equality and then mark UI/backend requiredness `consistent` even when the actual conditions differ.
-
-Example that must not become `consistent`:
-
-```text
-UI:      serviceType == CSP && region == US
-backend: serviceType == CSP
-```
-
-Required behavior:
-
-```text
-full supported condition equivalence proven
-→ consistent
-
-not provably equivalent
-→ possible-mismatch or unknown
-```
-
-Required regression coverage:
-
-- compound `&&` conditions;
-- reversed equality operands;
-- conditional vs unconditional requiredness;
-- multiple requiredness facts;
-- no high-confidence consistency from lossy normalization.
-
-### B2 — repeated builds can leave stale canonical knowledge
-
-`pkc build` currently writes current generated files but does not prove obsolete generated files are removed from `knowledge/` after source capabilities disappear.
-
-Required regression:
-
-```text
-build #1: endpoint/capability A exists
-→ A knowledge generated
-
-change source: remove A
-
-build #2
-→ A absent from knowledge/
-→ A absent from PKC_KNOWLEDGE.md
-→ A absent from PKC_KNOWLEDGE.zip
-```
-
-Fix must not delete unrelated user-owned files without an explicit generated-file ownership rule.
-
-### B3 — capability-flow scoring needs repo-neutral generalization
-
-Current product-flow scoring contains Loren-shaped lexical preferences such as `IBrain`, `IMemory`, `IProject`, `Brain`, `Loop`, and `Catalog`.
-
-Because ranking happens before the feature flow cap, vocabulary can determine which application edges survive.
-
-Required direction:
-
-- prefer graph/semantic role over repository vocabulary;
-- use endpoint distance, interface/cross-component boundaries, project/application boundaries, or other deterministic structural signals;
-- if lexical hints remain, make them generic;
-- add neutral regression fixtures that do not reuse Loren terminology.
-
-Example neutral names for tests:
-
-```text
-ExecutionCoordinator
-ContextProvider
-ConversationRepository
-UseCase
-Orchestrator
-```
-
-### B4 — frontend product-source contamination
-
-C# product scanning excludes conventional `test`, `tests`, and `spikes` source. Frontend scanning does not yet apply an equivalent scope consistently and can ingest test/spec source.
-
-Required direction:
-
-- create a shared/equivalent frontend product-source scope;
-- exclude conventional test/spike directories;
-- exclude conventional test files where appropriate, including `*.spec.ts` / `*.test.ts` patterns;
-- add a regression where test code calls the same production endpoint and prove it does not enter portable product knowledge.
-
-## Review warnings
-
-Not release blockers by themselves, but preserve them during fixes:
-
-```text
-W1. Portable KnowledgeEvidence does not preserve per-fact analyzer mode/confidence/caveat.
-W2. Blind-review records should become more reproducible/durable: artifact hash, run id, frozen question/answer transcript, source cross-check per question.
-```
-
-Do not accidentally worsen provenance while fixing blockers.
-
-## Required coding workflow
-
-**Do not implement another roadmap feature now.**
-
-For each blocker:
-
-```text
-1. reproduce the finding
-2. add a regression that fails before the fix
-3. implement a generic compiler fix
-4. make the regression pass
-5. run affected unit/integration tests
-6. commit the blocker independently where practical
-```
-
-Recommended order:
-
-```text
-B1 validation correctness
-→ B2 canonical rebuild/parity
-→ B3 capability-flow generalization
-→ B4 frontend source scope
-```
-
-The order may change only if implementation dependencies make another order safer. Do not combine the fixes into repository-specific special cases.
-
-## Completion gate after blocker fixes
-
-After all four blockers are resolved, run:
-
-```text
-full PKC unit/integration tests
-PokeTrade runnable + known-answer regression
-pinned Loren external trial
-Loren-main canary
-UI/backend validation benchmark
-repeated-build structured/bundle/ZIP parity
-blind knowledge-only review where compiler semantics changed
-```
-
-Then update:
-
-```text
-docs/status.md
-docs/handoff.md
-```
-
-with exact runs/commits/results and request an independent re-review of the new HEAD.
-
-Do **not** mark V0.4.4 PASS yourself solely because CI is green.
-
-## Benchmark roles
-
-```text
-PokeTrade
-→ known-answer runnable regression
-
-Loren pinned commit
-→ deterministic blocking real-project V0.4.4 benchmark
-
-Loren main
-→ moving non-blocking canary
-
-second independent real repo
-→ V0.4.5 anti-overfit/generalization gate, currently LOCKED
-```
-
-## V0.4.5 is locked
-
-Do not start the second independent real-repository milestone until the current external review is re-run and returns PASS.
-
-## V0.5 remains locked
-
-Do not start Azure DevOps ingestion until all required V0.4 gates pass, including:
-
-```text
-external re-review of V0.4.4
-second independent real-repo trial
-second blind comprehension
-second handoff parity
-cross-benchmark regression after all fixes
-```
-
-## Scope rule
-
-Do not start these merely because they are unfinished:
-
-- Azure DevOps;
-- Angular TypeScript TypeChecker migration unless a blocker proves it necessary;
-- React AST rewrite unless a blocker proves it necessary;
-- MVC/Razor/Blazor/Vue expansion;
+- second independent real-repository V0.4.5 work;
+- Azure DevOps ingestion;
+- Angular TypeChecker migration unless a blocker requires it;
+- React AST rewrite unless a blocker requires it;
+- additional frontend frameworks;
 - browser/runtime exploration;
 - incremental compilation;
-- generalized drift/insight analysis;
+- generalized insight/drift analysis;
 - live MCP/connector delivery.
 
-Only add analyzer/delivery capability when a proven blocker requires it for accuracy, completeness, signal-to-noise, traceability, honest uncertainty, or handoff reliability.
-
-## Coding-thread bootstrap
-
-A new coding thread can start with:
+## Bootstrap for the independent re-review thread
 
 ```text
-Continue PKC from current main.
-Read docs/status.md, docs/handoff.md, and docs/reviews/2026-09-13-v0.4.4-external-review.md.
-Fix the V0.4.4 external-review blockers only, regression-first, commit incrementally, rerun all current gates, and do not advance V0.4.5 until independent re-review passes.
+Review PKC V0.4.4 independently from current main HEAD.
+Read docs/status.md, docs/handoff.md, then docs/reviews/2026-09-13-v0.4.4-external-review.md.
+Verify all four original blockers against the implementation and regressions, inspect the current gate evidence, and perform knowledge-only/blind checks where compiler semantics changed. Do not accept the implementation author's conclusions without source/test evidence. Return PASS or concrete blocking findings. Do not advance V0.4.5 unless V0.4.4 passes.
 ```

@@ -4,9 +4,7 @@ Last updated: 2026-09-13
 
 ## North star
 
-PKC is a **Product/System Knowledge Compiler**.
-
-The product is the generated portable knowledge pack that a Product Owner can hand to an AI assistant and use for product/system questions **without making that AI rescan the source repository**.
+PKC is a **Product/System Knowledge Compiler**. The product is a portable, AI-readable knowledge pack that a Product Owner can hand to an AI assistant and use for product/system questions without making that AI rescan the source repository.
 
 ```text
 SOURCE
@@ -22,36 +20,21 @@ KNOWLEDGE SYNTHESIS
 CANONICAL KNOWLEDGE MODEL
   ↓
 PORTABLE AI HANDOFF
-  ↓
-AI CAN EXPLAIN THE PRODUCT WITH HONEST BOUNDARIES
 ```
 
 Do not replace this with `source → LLM → Markdown`.
 
 ## Current milestone
 
-**V0.4.4 Loren Knowledge Readiness — EXTERNAL REVIEW FAILED / FIX REQUIRED**
+**V0.4.4 Loren Knowledge Readiness — BLOCKER FIXES IMPLEMENTED / INDEPENDENT RE-REVIEW REQUIRED.**
 
-The independent review of repository HEAD:
-
-```text
-34f77c036206d48bbf9495ea73e5debcea9f0eb3
-```
-
-found four blocker classes that must be fixed before V0.4.4 can close:
+The independent external review of `34f77c036206d48bbf9495ea73e5debcea9f0eb3` found four release blockers. All four now have regression-first fixes on `main`, and the implementation checkpoint below passed all current automated gates:
 
 ```text
-1. UI/backend validation can false-positive `consistent` on lossy compound-condition normalization.
-2. repeated `pkc build` can leave stale generated files in canonical `knowledge/`.
-3. product capability-flow ranking contains Loren-shaped lexical preferences and needs a repo-neutral generalization proof.
-4. frontend source scope can ingest tests/spikes/spec files into product evidence.
+8b01d4b5ba84112f36e46b234426f754be38c8f6
 ```
 
-Detailed review:
-
-```text
-docs/reviews/2026-09-13-v0.4.4-external-review.md
-```
+V0.4.4 is **not self-certified PASS**. It remains open until an independent re-review of the resulting HEAD returns PASS.
 
 V0.4.3 remains the last accepted packaged checkpoint:
 
@@ -59,34 +42,13 @@ V0.4.3 remains the last accepted packaged checkpoint:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Do **not** bump the accepted package version. Do **not** advance to V0.4.5 until the external-review blockers are fixed, regression-locked, all current gates are rerun, and the resulting HEAD passes re-review.
+Do not bump the accepted package version and do not advance V0.4.5 while re-review is pending.
 
-## Current verified development checkpoint
-
-Implementation/acceptance commit before documentation-only updates:
+External review record:
 
 ```text
-4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
+docs/reviews/2026-09-13-v0.4.4-external-review.md
 ```
-
-External-review target that exposed the blockers:
-
-```text
-34f77c036206d48bbf9495ea73e5debcea9f0eb3
-```
-
-Verified runs before external review:
-
-```text
-CI #205
-  test                         PASS
-  PokeTrade real system        PASS
-
-Loren external trial #104      PASS
-Loren-main canary #86          PASS
-```
-
-Those green runs remain useful regression evidence, but they do not override the external-review findings.
 
 Pinned Loren benchmark SHA:
 
@@ -94,53 +56,40 @@ Pinned Loren benchmark SHA:
 e9e81651d380d7d40998f235cfdc7f119fe67af8
 ```
 
-## V0.4.4 work proven so far
+## External-review blocker closure evidence
 
-The Loren real-project trial forced generic fixes for gaps that PokeTrade did not expose:
+### B1 — validation consistency false positives
 
-- Minimal API discovery + target-project semantic enrichment;
-- backend/C# product-source exclusion for `tests/` / `spikes/`;
-- conditional/development-only endpoint registration;
-- Minimal API failure/direct-response semantics;
-- multi-project MSBuild semantic loading;
-- dictionary/object-initializer state-change noise;
-- framework/primitive call-flow noise;
-- ASP.NET sign-in/sign-out side effects;
-- Minimal API response fact-ID collision;
-- feature-level product-rule filtering;
-- portable AI handoff (`knowledge/`, `PKC_KNOWLEDGE.md`, `PKC_KNOWLEDGE.zip`);
-- Angular/static UI field/options/validation/visibility/enabled-state/binding evidence;
-- backend field validation evidence;
-- UI ↔ backend validation correlation;
-- high-signal product-level capability-flow promotion.
-
-Pinned Loren still requires zero `loose-roslyn-fallback` facts for the selected production benchmark and rejects product evidence from test/spike source for that benchmark.
-
-External review proved that these successes do **not** yet establish the corresponding generic frontend source-scope, compound-condition validation, repeated-build parity, or capability-flow generalization contracts.
-
-## External-review blockers
-
-### B1 — validation consistency false-positive risk
-
-Current condition-key normalization can discard parts of compound requiredness conditions and still classify UI/backend evidence as `consistent`.
-
-Required direction:
+Regression-first pair:
 
 ```text
-prove full supported condition equivalence
-→ consistent
-
-cannot prove equivalence
-→ possible-mismatch or unknown
+9dac656daf66eb0e3da7fedff65830caf4c926a5  test: reproduce compound validation equivalence blocker
+b0f42ce87d36427ee39fcd09c8cd69e6f11de035  fix: prove full validation condition equivalence
 ```
 
-Add regressions for compound conditions, reversed operands, mixed conditional/unconditional requiredness, and multiple validation facts.
+The comparator now requires the complete supported requiredness-condition set to be provably equivalent before returning `consistent`. Supported equality conjunctions are normalized deterministically, including reversed equality operands. Conditional/unconditional mismatches, differing multi-fact sets, and unsupported/unprovable condition semantics are conservative rather than high-confidence consistent.
 
-### B2 — stale canonical knowledge after rebuild
+Regression coverage includes:
 
-`pkc build` must reconcile generated knowledge from the current source state. A removed endpoint/capability must not leave an obsolete generated workflow/feature in `knowledge/` after a later build.
+```text
+compound && condition mismatch
+reversed equality operands
+conditional vs unconditional requiredness
+multiple requiredness facts
+```
 
-Regression must prove after a second build that obsolete knowledge disappears from:
+### B2 — stale generated knowledge after repeated build
+
+Regression-first pair:
+
+```text
+b343c17d4e263103b3096463584a7c7dcc8ec1b2  test: reproduce stale generated knowledge blocker
+b45a953c7020db283e53c7df4b66efc6edda9574  fix: reconcile owned knowledge output on rebuild
+```
+
+`pkc build` now reconciles generated Markdown owned by PKC before publishing the current canonical pack. Ownership is explicit: only Markdown under `knowledge/` whose YAML frontmatter contains `generated: true` is eligible for stale-file deletion. Unowned user files are preserved.
+
+The end-to-end regression builds the same temp repository twice, removes an endpoint between builds, and proves obsolete knowledge disappears from:
 
 ```text
 knowledge/
@@ -148,220 +97,93 @@ PKC_KNOWLEDGE.md
 PKC_KNOWLEDGE.zip
 ```
 
-without deleting unrelated user-owned files.
+while a user-created `knowledge/user-notes.md` survives unchanged.
 
-### B3 — capability-flow anti-overfit
+### B3 — Loren-shaped capability-flow ranking
 
-Capability-flow promotion must not rely on Loren-shaped names to decide which important application edges survive the feature-level cap.
-
-Prefer repository-neutral structural/semantic evidence. If lexical role hints remain, regression fixtures must use neutral vocabulary materially different from Loren.
-
-### B4 — frontend source contamination
-
-Angular/React product evidence needs an explicit product-source scope that rejects conventional test/spike source and test files where appropriate.
-
-A test/spec component calling the same production endpoint must not contaminate portable product knowledge.
-
-## Review warnings
-
-Two non-blocking but important follow-ups were also recorded:
+Regression-first pair:
 
 ```text
-portable KnowledgeEvidence loses per-fact analyzer confidence/provenance
-blind-review record should preserve stronger durable reproducibility evidence
+cd29aea57aa7b201022ac1f525f176b4e564d347  test: reproduce capability flow lexical overfit blocker
+81701f53666fdee402c8e7347a6a85af653a870f  fix: rank capability flow by graph structure
 ```
 
-These are documented in the external review and should not be allowed to silently regress.
+Repository-specific lexical preferences were removed from product-flow ranking. Ranking now uses deterministic structural signals such as HTTP entry-point proximity, graph distance, cross-component transitions, intermediate graph role, and convergence.
 
-## UI/backend validation contract
-
-Canonical evidence includes:
+Neutral anti-overfit fixtures use vocabulary materially different from Loren, including:
 
 ```text
-ui-field
-ui-field-option
-ui-field-validation
-ui-field-visibility
-ui-field-enabled-state
-ui-field-binding
-backend-field-validation
-ui-backend-validation
+ExecutionCoordinator
+ContextProvider
+ConversationRepository
+UseCase
 ```
 
-Intended classification contract remains:
+plus `HelperServiceXX` decoys to prove type-name suffixes do not decide which important path survives the feature-level cap.
+
+### B4 — frontend test/spec/spike contamination
+
+Regression-first pair:
 
 ```text
-same requiredness + proven matching condition evidence
-→ consistent
-
-backend required + UI required not observed
-→ possible-mismatch
-
-UI required + backend required not observed
-→ unknown
-
-different observed requiredness conditions
-→ possible-mismatch
+e4d563478023e2bf712e41695c88eea7383b6adb  test: reproduce frontend test source contamination blocker
+8b01d4b5ba84112f36e46b234426f754be38c8f6  fix: enforce frontend product source scope
 ```
 
-The CSP regression proves one simple matching conditional path, but external review showed that it does **not** prove safe compound-condition equivalence. Until B1 is fixed, validation consistency correctness is blocked.
+A shared frontend product-source boundary is enforced in `FrontendScanner` before adapter output is merged into product evidence. Conventional test/spike directories and `*.spec.*` / `*.test.*` files are rejected across React and Angular adapter results.
 
-## Loren blind knowledge-only comprehension
+The pre-fix regression failed on both React and Angular because facts from test/spec/spike source entered evidence. The fixed implementation passes the same tests while preserving production source.
 
-First blind pass found two blocking abstraction gaps:
+## Automated gate results on implementation checkpoint
+
+Implementation checkpoint:
 
 ```text
-A. Run feature did not expose project → memory → agent/brain collaboration clearly enough.
-B. Action-proposal feature did not make current create-branch semantics obvious enough.
+8b01d4b5ba84112f36e46b234426f754be38c8f6
 ```
 
-Source cross-check confirmed both were real product-semantic gaps.
-
-The second blind pass on the artifact produced by `4f7f75e...` used **only `PKC_KNOWLEDGE.md`** and resolved those comprehension findings for pinned Loren.
-
-Current interpretation after external review:
+Results:
 
 ```text
-Loren blind knowledge-only comprehension   PASS for the reviewed pinned artifact
-Run abstraction finding A                  RESOLVED for Loren
-Action-proposal finding B                  RESOLVED for Loren
-workflow-detail noise finding C            NON-BLOCKING / preserved for traceability
-integration presentation finding D         RESOLVED for Loren
-capability-flow generalization             BLOCKED pending B3
+full PKC test/build gate                 PASS
+  Pkc.CSharp.Tests                       40 / 40
+  Pkc.Frontend.Tests                      8 / 8
+  Release build                          0 warnings / 0 errors
+
+PokeTrade runnable + known-answer        PASS
+pinned Loren external trial              PASS
+Loren-main moving canary                 PASS
 ```
 
-Detailed internal benchmark record:
+The full test gate includes the new validation-equivalence, repeated-build parity, capability-flow generalization, and frontend product-source regressions. The WorkPlay tool-package/install/build smoke checks also pass using the accepted `0.4.3-preview.2` package version.
+
+## Regression-first proof
+
+Each blocker was reproduced before its fix:
 
 ```text
-docs/benchmarks/2026-09-12-loren-blind-review.md
+B1 regression-only commit 9dac656  → test FAIL
+B2 regression-only commit b343c17  → test FAIL
+B3 regression-only commit cd29aea  → test FAIL
+B4 regression-only commit e4d5634  → test FAIL
 ```
 
-## Portable handoff parity
+The corresponding fix commits above make those regressions pass.
 
-For the reviewed pinned Loren artifact, single-build parity was:
+## Review warnings intentionally left in scope
+
+The external review also recorded two non-blocking warnings. They remain open follow-up concerns and were not expanded into unrelated V0.4.4 work:
 
 ```text
-structured Markdown files:            23
-files embedded verbatim in bundle:    23 / 23
-missing bundle markers/content:        0
-PKC_KNOWLEDGE.zip knowledge files:     23
-raw .pkc entries in handoff ZIP:       0
-source .cs/.ts entries in handoff ZIP: 0
+W1. portable KnowledgeEvidence does not preserve all per-fact analyzer confidence/provenance
+W2. blind-review records should preserve stronger durable reproducibility evidence
 ```
 
-That single clean-build check remains PASS for the recorded artifact.
+Do not silently regress these boundaries.
 
-External review found a different contract hole: repeated builds can leave stale files in canonical `knowledge/`, so **general canonical-pack/transport parity is BLOCKED until B2 is fixed**.
+## Portable handoff contract
 
-## Knowledge hierarchy that must hold
-
-```text
-AI_INSTRUCTIONS
-  → tell the receiving AI how to consume authority/unknowns
-
-index
-  → orient around observed capabilities and boundaries
-
-feature
-  → explain product/system capability at high signal
-
-workflow
-  → explain one operation with exact behavior and evidence
-
-raw evidence
-  → preserve implementation proof/provenance
-```
-
-Low-level evidence should not be deleted merely to make output cleaner, and should not dominate feature pages.
-
-## V0.4.4 acceptance position
-
-Current gate status:
-
-```text
-PokeTrade known-answer regression                  PASS before blocker fixes
-Loren evidence/workflow correctness                PASS before blocker fixes
-Loren blind knowledge-only comprehension           PASS for pinned artifact
-Loren single-build handoff parity                   PASS for pinned artifact
-UI validation/behavior known-answer benchmark      PASS for simple fixture only
-Loren independent external review                  FAIL / FIX REQUIRED
-validation consistency general correctness          BLOCKED
-repeated-build canonical handoff parity             BLOCKED
-capability-flow repo-neutral generalization         BLOCKED
-frontend product-source scope                       BLOCKED
-```
-
-Therefore V0.4.4 is **not complete**.
-
-Exact next sequence:
-
-```text
-fix B1 generically + regression
-→ fix B2 generically + repeated-build regression
-→ fix B3 generically + neutral anti-overfit regression
-→ fix B4 generically + frontend contamination regression
-→ run full tests
-→ rerun PokeTrade
-→ rerun Loren pinned
-→ rerun Loren-main canary
-→ rerun UI validation benchmark
-→ rerun handoff/parity checks
-→ rerun blind review where semantics changed
-→ independent re-review of new HEAD
-```
-
-Do not implement unrelated roadmap work while these blockers are open.
-
-## V0.4.5 — locked
-
-The second independent real-repository gate remains the next milestone **only after V0.4.4 external re-review passes**.
-
-When unlocked, the second repository must be genuine, not created/modified for PKC, and materially different from PokeTrade/Loren.
-
-## V0.5 unlock condition
-
-**V0.5 Azure DevOps remains locked until all are PASS:**
-
-```text
-PokeTrade known-answer regression                  PASS; rerun required after fixes
-Loren evidence/workflow correctness                PASS; rerun required after fixes
-Loren blind knowledge-only comprehension           PASS; rerun required where semantics change
-Loren handoff parity                               BLOCKED by repeated-build finding
-UI validation/behavior known-answer benchmark      BLOCKED by compound-condition finding
-Loren independent external review                  FAIL / FIX REQUIRED
-second independent real-repo trial                 PENDING / LOCKED
-second knowledge-only comprehension                PENDING / LOCKED
-second handoff parity                              PENDING / LOCKED
-cross-benchmark regression after all fixes         PENDING
-known boundaries/unknowns documented honestly      PASS so far
-no repository-specific compiler exceptions         NEEDS B3 GENERALIZATION PROOF
-```
-
-If any required gate is not PASS, remain in V0.4.x.
-
-## Scope discipline
-
-Until the unlock gate passes, do not start these merely because they are attractive roadmap work:
-
-- Azure DevOps ingestion;
-- Angular TypeScript `TypeChecker` migration unless a blocker proves it necessary;
-- React AST rewrite unless a blocker proves it necessary;
-- additional frontend frameworks;
-- browser/runtime exploration;
-- incremental compilation;
-- generalized insight/drift analysis;
-- live MCP/connector delivery for convenience alone.
-
-A new analyzer/delivery capability may enter V0.4.x only when a real blocker proves it is necessary for accuracy, completeness, signal-to-noise, traceability, honest uncertainty, or portable handoff reliability.
-
-## Current commands
-
-```bash
-pkc scan <repository-path>
-pkc build <repository-path>
-```
-
-Current development output:
+Current development output remains:
 
 ```text
 .pkc/facts.json
@@ -374,3 +196,31 @@ knowledge/workflows/**/*.md
 PKC_KNOWLEDGE.md
 PKC_KNOWLEDGE.zip
 ```
+
+The structured pack, one-file bundle, and ZIP must represent the same current source state. The repeated-build regression now locks this contract against stale PKC-owned Markdown.
+
+## Acceptance position
+
+Current position after blocker fixes:
+
+```text
+B1 validation equivalence regression              PASS
+B2 repeated-build structured/bundle/ZIP parity    PASS
+B3 neutral capability-flow generalization         PASS
+B4 frontend product-source scope                  PASS
+full PKC tests                                     PASS on 8b01d4b
+PokeTrade                                          PASS on 8b01d4b
+pinned Loren                                       PASS on 8b01d4b
+Loren-main canary                                  PASS on 8b01d4b
+independent V0.4.4 re-review                       PENDING
+```
+
+Therefore V0.4.4 is **ready for independent re-review but not complete**.
+
+The next permitted action is an independent review of the new final HEAD against `docs/reviews/2026-09-13-v0.4.4-external-review.md`, including knowledge-only/blind checks where changed semantics materially affect the generated pack. The implementation author must not convert green CI into a self-issued review PASS.
+
+## V0.4.5 — locked
+
+The second independent real-repository milestone remains locked until V0.4.4 independent re-review returns PASS.
+
+Do not start Azure DevOps, another frontend rewrite/framework, browser/runtime exploration, incremental compilation, generalized drift analysis, or other roadmap work while this gate is open.
