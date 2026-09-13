@@ -22,193 +22,149 @@ Do not implement direct source-to-freeform-AI generation.
 
 ## Current state
 
-**V0.4.4 remains open. The final B1 backend-provenance gap from independent re-review 3 has been fixed regression-first and automated gates/parity are green. Independent re-review is still required. V0.4.5 is locked.**
+**V0.4.4 Loren Knowledge Readiness has PASSED independent external review and is COMPLETE.**
 
-Read in order:
+**V0.4.5 Independent Real-Repository Generalization Gate is now unlocked and is the next milestone.**
+
+V0.5 Azure DevOps remains locked until V0.4.5 also passes.
+
+Read first:
 
 ```text
 docs/status.md
-docs/handoff.md
-docs/reviews/2026-09-13-v0.4.4-external-review.md
-docs/reviews/2026-09-13-v0.4.4-external-rereview.md
-docs/reviews/2026-09-13-v0.4.4-external-rereview-2.md
-docs/reviews/2026-09-13-v0.4.4-external-rereview-3.md
+docs/milestones.md
+docs/real-project-trial.md
+docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-Latest independent review target:
+For review history, the earlier blocker records remain under `docs/reviews/2026-09-13-v0.4.4-*`.
+
+## V0.4.4 accepted checkpoint
 
 ```text
-84d70aa8d6f646ca9a0d72ea9645340c1f583fc1
+final B1 implementation: 5a5fdcb5fdf1a9fb888857791a4757382b86c774
+reviewed HEAD:            cd7c4139f0bb2d17deb883a1639fd343c1b68d67
+final verdict:            PASS
 ```
 
-B1 implementation checkpoint:
+Final accepted gate state:
 
 ```text
-5a5fdcb5fdf1a9fb888857791a4757382b86c774
+B1 validation-condition equivalence correctness   PASS
+B2 repeated-build canonical parity                 PASS
+B3 capability-flow anti-overfit                    PASS
+B4 frontend product-source scope                   PASS
+PokeTrade                                           PASS
+Loren pinned                                        PASS
+Loren-main canary                                   PASS
+portable handoff parity                             PASS
+independent external review                         PASS
 ```
 
-## Regression-first evidence
+The final B1 regression proves through real C# + frontend scanning and cross-stack correlation that missing backend validated-object provenance cannot be promoted to `consistent / high` merely because another condition root is an endpoint parameter.
 
-Red regression commit:
+The accepted backend condition proof contract is:
 
 ```text
-82c28b4a4d2b2c8e9bdcdf2bb2e902d8caedf1c1
+conditional backend equivalence requires:
+1. non-empty validation fact parameterName;
+2. exact endpoint-parameter membership;
+3. exact condition field root == parameterName.
+
+No proof → non-consistent conservative result.
 ```
 
-CI run `34762840775` reproduced the reachable scanner/correlation false positive with real C# source:
+Do not weaken this contract in later work.
+
+## Exact reviewed automation
+
+For reviewed HEAD `cd7c4139f0bb2d17deb883a1639fd343c1b68d67`:
 
 ```text
-public IActionResult Create(CreateTargetRequest request, StateTracker tracker)
-{
-    if (tracker.Status == Status.Active && this._state.TargetId == null)
-    {
-        return BadRequest();
-    }
-
-    return Ok();
-}
+CI / PokeTrade       PASS  run 34770333701
+pinned Loren trial   PASS  run 34770333766
+Loren-main canary    PASS  run 34770333731
 ```
 
-`CSharpEvidenceScanner` emitted a conditional `backend-field-validation` for `TargetId` whose condition referenced `tracker.Status` and whose `parameterName` was absent. The new regression observed the old correlation result as `consistent`, proving the blocker was reachable end-to-end.
-
-Red run summary:
+CI contained:
 
 ```text
-build:          PASS, 0 warnings / 0 errors
-frontend tests:  8 / 8 PASS
-C# tests:       53 PASS / 1 FAIL
-failing test:   BackendValidationProvenanceRegressionTests.Missing_validated_parameter_provenance_cannot_be_proven_by_another_endpoint_parameter
-old result:     consistent
-```
-
-## Fix contract
-
-Fix commit:
-
-```text
-5a5fdcb5fdf1a9fb888857791a4757382b86c774
-```
-
-For a conditional backend validation to participate in proven cross-stack equivalence, all three proofs are mandatory:
-
-```text
-1. validated-object parameterName is present and non-empty;
-2. parameterName exactly matches an endpoint parameter;
-3. condition field root exactly matches parameterName.
-```
-
-No fallback to “any endpoint parameter root” remains. Missing or contradictory provenance makes requiredness-condition equivalence unproven, so the comparison cannot emit `consistent / high`.
-
-Existing positive synthetic conditional-validation fixtures now carry realistic `parameterName: "request"` provenance where they model normal supported request guards.
-
-## B1 behavior that must remain protected
-
-```text
-- full condition-set comparison
-- signed numeric semantics
-- decimal semantics
-- quoted punctuation
-- meaningful member-path structure and case
-- strict frontend === proof
-- known Angular binding-form root proof
-- exact-case backend endpoint roots
-- rejection of unrelated endpoint parameters
-- rejection of generic cross-stack path/path coincidence
-- known positive request/enum equivalence
-- known positive bound-Angular form equivalence
-- missing backend parameterName is unproven
-```
-
-B2 repeated-build canonical parity, B3 capability-flow anti-overfit, and B4 frontend product-source scope remain PASS and were not reopened.
-
-## Verified implementation gates
-
-```text
-full PKC CI / PokeTrade  PASS  run 34769999278
-pinned Loren external   PASS  run 34769999298
-Loren-main canary       PASS  run 34769999304
-```
-
-CI details:
-
-```text
-build:          PASS, 0 warnings / 0 errors
+build:          0 warnings / 0 errors
 C# tests:       54 / 54 PASS
 frontend tests:  8 / 8 PASS
-tool install:   PASS
 WorkPlay build: PASS
 PokeTrade:      PASS
 ```
 
-Pinned Loren implementation-checkpoint artifact:
+Pinned Loren portable output was independently rechecked:
 
 ```text
-artifact id:       10322215429
-artifact digest:   sha256:c615a129f96992ed3662ff2368a1dbc8bfa639d4fbc86034c7b102b773ce99de
-structured files:  23
-bundle parity:      23 / 23, marker + verbatim content
-portable ZIP:       23 / 23, exact file set + byte parity
-source/raw leak:     0
-bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
-inner ZIP sha256:   1fc740bafef0411e9702fe4da2a4b8c2e5b9903ba252e07036d97315322e9258
+structured Markdown: 23
+bundle parity:        23 / 23 verbatim
+portable ZIP:         exact same 23 files + byte parity
+source/raw leak:      0
 ```
 
-## Documentation-checkpoint verification
+## Next milestone — V0.4.5
 
-The completed status/handoff candidate at:
+Purpose: prove PKC did not overfit PokeTrade + Loren before adding another major evidence source.
+
+Select a **second genuine repository** that:
+
+- was not authored or modified for PKC;
+- fits the currently supported C# surface;
+- has non-trivial product/system behavior;
+- differs materially from PokeTrade/Loren;
+- is not chosen merely because current heuristics handle it easily.
+
+Then run the same acceptance discipline described in `docs/real-project-trial.md`:
 
 ```text
-7575c08c220dc629fb8d9e774d767abe55e41f08
+pin benchmark commit
+→ compile layered knowledge output
+→ inspect analyzer/fallback provenance
+→ knowledge-only blind review
+→ freeze answers
+→ source cross-check
+→ classify concrete gaps
+→ fix compiler generically, regression-first if needed
+→ rerun PokeTrade + Loren + new benchmark
+→ independent external review
 ```
 
-was independently rerun through the same automated surfaces:
+V0.4.5 passes only when:
+
+- critical product questions have no blocker false claims;
+- important behavior is answerable or explicitly unknown;
+- product-level output is high-signal;
+- evidence remains traceable;
+- fixes are generic, with no repository-specific exceptions;
+- PokeTrade + Loren remain green after any fixes;
+- independent external review has no unresolved blocker.
+
+## Scope locks
+
+Do not start V0.5 Azure DevOps ingestion until V0.4.5 independently passes.
+
+Also avoid unrelated roadmap expansion while V0.4.5 is being used as the anti-overfit/generalization gate.
+
+Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns and should be tracked, but they do not reopen V0.4.4.
+
+## Bootstrap prompt for the next coding thread
 
 ```text
-full PKC CI / PokeTrade  PASS  run 34770176435
-pinned Loren external   PASS  run 34770176432
-Loren-main canary       PASS  run 34770176450
-```
+Continue PKC from current main HEAD.
 
-Pinned artifact from that documentation checkpoint:
+Read in order:
+1. docs/status.md
+2. docs/handoff.md
+3. docs/milestones.md
+4. docs/real-project-trial.md
+5. docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 
-```text
-artifact id:       10321428088
-artifact digest:   sha256:6466b3a1074da738f78179b120c86c1f3f04e6fc6c273326056c772956293097
-structured files:  23
-bundle parity:      23 / 23
-portable ZIP:       23 / 23, exact set + byte parity
-source/raw leak:     0
-bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
-inner ZIP sha256:   fddadb366929d9868f6bca5f7419a07056fb05e4ddc1570241d595860265de28
-```
+V0.4.4 has passed independent external review. Begin only V0.4.5: the independent real-repository generalization gate.
 
-## Independent re-review target
+Select and pin a second genuine repository according to the milestone criteria, run the same layered-output + blind knowledge-only + source-cross-check process, keep all fixes generic and regression-first, and rerun PokeTrade + Loren after any compiler change.
 
-Do not declare V0.4.4 complete from this coding thread. An independent reviewer should inspect current `main` and specifically verify:
-
-```text
-- the real scanner regression remains reachable and now classifies conservatively;
-- missing/blank parameterName can never prove conditional backend equivalence;
-- parameterName must exactly belong to the endpoint parameters;
-- condition root must exactly equal parameterName;
-- prior positive request/enum and bound-Angular equivalence still works;
-- prior typed-operand, member-path and condition-set protections remain intact;
-- full CI, PokeTrade, pinned Loren, Loren-main canary and portable handoff parity remain green.
-```
-
-Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns and are outside this B1-only scope.
-
-## Next action
-
-Request independent B1 re-review on current `main`.
-
-Do **not** start V0.4.5 or Azure DevOps work until independent review returns PASS.
-
-## Bootstrap prompt for independent review thread
-
-```text
-Review current PKC main HEAD as the final V0.4.4 B1 candidate.
-Read docs/status.md, docs/handoff.md, and docs/reviews/2026-09-13-v0.4.4-external-rereview-3.md.
-Independently verify the backend validated-object provenance fix: conditional backend equivalence requires a non-empty parameterName, exact endpoint-parameter membership, and exact condition-root match to parameterName; missing provenance must never become consistent/high.
-Re-run or inspect the real scanner+correlation regression and all current gates/parity. Do not advance V0.4.5 unless B1 passes independently.
+Do not start V0.5 Azure DevOps until V0.4.5 independently passes.
 ```
