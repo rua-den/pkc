@@ -12,7 +12,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex EqualityRegex = new(
-        @"^\s*(?<left>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*(?:===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*$",
+        @"^\s*(?<left>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*(?<operator>===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex PathRegex = new(
@@ -69,6 +69,7 @@ public sealed class ValidationConsistencyCandidateEnricher
             }
 
             binding.Metadata.TryGetValue("component", out var component);
+            binding.Metadata.TryGetValue("form", out var uiForm);
             var uiRequired = document.Facts
                 .Where(fact => fact.Kind == "ui-field-validation")
                 .Where(fact => fact.Metadata.TryGetValue("field", out var field) &&
@@ -102,7 +103,11 @@ public sealed class ValidationConsistencyCandidateEnricher
                 continue;
             }
 
-            var comparison = Compare(uiRequired, backendRequired, requestParameterNames);
+            var comparison = Compare(
+                uiRequired,
+                backendRequired,
+                requestParameterNames,
+                uiForm);
             var comparisonFact = CreateComparisonFact(
                 binding,
                 endpoint,
@@ -132,7 +137,8 @@ public sealed class ValidationConsistencyCandidateEnricher
     private static ValidationComparison Compare(
         IReadOnlyList<EvidenceFact> uiRequired,
         IReadOnlyList<EvidenceFact> backendRequired,
-        ISet<string> requestParameterNames)
+        ISet<string> requestParameterNames,
+        string? uiForm)
     {
         if (backendRequired.Count > 0 && uiRequired.Count == 0)
         {
@@ -155,11 +161,13 @@ public sealed class ValidationConsistencyCandidateEnricher
         var uiConditions = BuildRequirednessConditionSet(
             uiRequired,
             isBackend: false,
-            requestParameterNames);
+            requestParameterNames,
+            uiForm);
         var backendConditions = BuildRequirednessConditionSet(
             backendRequired,
             isBackend: true,
-            requestParameterNames);
+            requestParameterNames,
+            uiForm: null);
 
         if (!uiConditions.IsProven || !backendConditions.IsProven)
         {
@@ -191,7 +199,8 @@ public sealed class ValidationConsistencyCandidateEnricher
     private static RequirednessConditionSet BuildRequirednessConditionSet(
         IReadOnlyList<EvidenceFact> facts,
         bool isBackend,
-        ISet<string> requestParameterNames)
+        ISet<string> requestParameterNames,
+        string? uiForm)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
 
@@ -215,6 +224,7 @@ public sealed class ValidationConsistencyCandidateEnricher
                     condition,
                     isBackend,
                     requestParameterNames,
+                    uiForm,
                     out var key))
             {
                 return new RequirednessConditionSet(false, keys);
@@ -231,6 +241,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         string condition,
         bool isBackend,
         ISet<string> requestParameterNames,
+        string? uiForm,
         out string key)
     {
         key = string.Empty;
@@ -256,6 +267,7 @@ public sealed class ValidationConsistencyCandidateEnricher
             var term = StripOuterParentheses(rawTerm.Trim());
             var match = EqualityRegex.Match(term);
             if (!match.Success ||
+                !IsSupportedEqualityOperator(match.Groups["operator"].Value, isBackend) ||
                 !TryParseOperand(match.Groups["left"].Value, out var left) ||
                 !TryParseOperand(match.Groups["right"].Value, out var right) ||
                 !TryCanonicalizeEquality(
@@ -264,6 +276,7 @@ public sealed class ValidationConsistencyCandidateEnricher
                     right,
                     isBackend,
                     requestParameterNames,
+                    uiForm,
                     out var canonicalTerm))
             {
                 return false;
@@ -276,6 +289,11 @@ public sealed class ValidationConsistencyCandidateEnricher
         key = string.Join("&&", canonicalTerms.Distinct(StringComparer.Ordinal));
         return key.Length > 0;
     }
+
+    private static bool IsSupportedEqualityOperator(string equalityOperator, bool isBackend) =>
+        isBackend
+            ? string.Equals(equalityOperator, "==", StringComparison.Ordinal)
+            : string.Equals(equalityOperator, "===", StringComparison.Ordinal);
 
     private static bool TryParseOperand(string value, out ConditionOperand operand)
     {
@@ -329,6 +347,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         ConditionOperand right,
         bool isBackend,
         ISet<string> requestParameterNames,
+        string? uiForm,
         out string term)
     {
         if (TryCanonicalizeFieldValue(
@@ -337,6 +356,7 @@ public sealed class ValidationConsistencyCandidateEnricher
                 right,
                 isBackend,
                 requestParameterNames,
+                uiForm,
                 out term) ||
             TryCanonicalizeFieldValue(
                 fact,
@@ -344,9 +364,17 @@ public sealed class ValidationConsistencyCandidateEnricher
                 left,
                 isBackend,
                 requestParameterNames,
+                uiForm,
                 out term))
         {
             return true;
+        }
+
+        if (left.Kind == ConditionOperandKind.Path ||
+            right.Kind == ConditionOperandKind.Path)
+        {
+            term = string.Empty;
+            return false;
         }
 
         var leftKey = SerializeOperand(left);
@@ -363,6 +391,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         ConditionOperand valueOperand,
         bool isBackend,
         ISet<string> requestParameterNames,
+        string? uiForm,
         out string term)
     {
         term = string.Empty;
@@ -372,6 +401,7 @@ public sealed class ValidationConsistencyCandidateEnricher
                 fieldOperand,
                 isBackend,
                 requestParameterNames,
+                uiForm,
                 out var fieldPath,
                 out var fieldTerminal))
         {
@@ -410,6 +440,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         ConditionOperand operand,
         bool isBackend,
         ISet<string> requestParameterNames,
+        string? uiForm,
         out string fieldPath,
         out string fieldTerminal)
     {
@@ -435,12 +466,16 @@ public sealed class ValidationConsistencyCandidateEnricher
                 segments.RemoveAt(0);
             }
 
-            if (segments.Count == 3 &&
+            if (!string.IsNullOrWhiteSpace(uiForm) &&
+                segments.Count == 3 &&
+                string.Equals(segments[0], uiForm, StringComparison.Ordinal) &&
                 string.Equals(segments[1], "value", StringComparison.Ordinal))
             {
                 segments = [segments[2]];
             }
-            else if (segments.Count == 4 &&
+            else if (!string.IsNullOrWhiteSpace(uiForm) &&
+                     segments.Count == 4 &&
+                     string.Equals(segments[0], uiForm, StringComparison.Ordinal) &&
                      string.Equals(segments[1], "controls", StringComparison.Ordinal) &&
                      string.Equals(segments[3], "value", StringComparison.Ordinal))
             {
@@ -571,7 +606,7 @@ public sealed class ValidationConsistencyCandidateEnricher
 
     private static HashSet<string> ParseParameterNames(EvidenceFact endpoint)
     {
-        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new HashSet<string>(StringComparer.Ordinal);
         if (!endpoint.Metadata.TryGetValue("parameters", out var parameters))
         {
             return result;
