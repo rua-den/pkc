@@ -179,6 +179,16 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         AssertConservativeMismatch(Compare(candidates, document));
     }
 
+    [Fact]
+    public void Unbound_identifier_equality_is_not_proven_across_stacks()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "left === right")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "left == right")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
     private static void AssertConservativeMismatch(EvidenceFact comparison)
     {
         Assert.NotEqual("consistent", comparison.Metadata["status"]);
