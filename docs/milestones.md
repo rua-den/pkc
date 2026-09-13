@@ -55,51 +55,43 @@ Last accepted tool package:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-### V0.4.4 — Loren knowledge readiness — CURRENT
+### V0.4.4 — Loren knowledge readiness — COMPLETE / EXTERNAL REVIEW PASS
 
 Purpose: prove that the generated `knowledge/` pack can explain a genuine product/system at the correct abstraction level without source access.
 
-The current benchmark is `rua-den/loren`:
+Benchmark roles:
 
 ```text
 pinned Loren commit → deterministic blocking acceptance
 current Loren main   → moving non-blocking canary
 ```
 
-The trial has already regression-locked fixes for Minimal API support, source-scope contamination, conditional endpoints, failure/direct response semantics, multi-project semantic loading, mutation noise, flow noise, authentication side effects and fact-ID response collisions.
+Completed hardening includes Minimal API support, source-scope contamination, conditional endpoints, failure/direct response semantics, multi-project semantic loading, mutation noise, flow noise, authentication side effects, fact-ID response collisions, canonical handoff reconciliation, repository-neutral capability-flow ranking, frontend product-source filtering and conservative cross-stack validation-condition equivalence.
 
-The remaining primary risk is **knowledge abstraction/comprehension**, not analyzer breadth.
+V0.4.4 passed the layered-output + blind knowledge-only + source comparison + external-review gate on 2026-09-14.
 
-Required order:
+Final independent review:
 
 ```text
-layered output contract
-  ↓
-product-feature signal hardening
-  ↓
-index/system orientation
-  ↓
-blind knowledge-only Loren review
-  ↓
-source comparison
-  ↓
-external review
+docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-V0.4.4 passes only when:
+Accepted review state:
 
-1. important claims are grounded and authority/confidence is honest;
-2. workflow Markdown preserves meaningful operation behavior and failure paths;
-3. feature/index Markdown presents product capabilities instead of transitive helper internals;
-4. a reviewer with **only `knowledge/`** can correctly explain Loren's important observable behavior and unknowns;
-5. those answers match source/known behavior after the source is reopened;
-6. there are no unresolved blocker wrong claims, missing important behavior, comprehension-breaking noise, traceability gaps or important unexpected fallbacks;
-7. external review finds no unresolved blocker;
-8. every proven compiler bug is regression-locked.
+```text
+PokeTrade known-answer regression                 PASS
+Loren blind knowledge-only comprehension          PASS
+Loren pinned external trial                       PASS
+Loren-main canary                                 PASS
+portable handoff parity                           PASS
+independent external review                       PASS
+```
+
+The accepted validation-equivalence contract is conservative: if cross-stack condition semantics or validated-object provenance cannot be deterministically proven, PKC must not emit `consistent / high`.
 
 Detailed execution/exit plan: `docs/real-project-trial.md`.
 
-### V0.4.5 — Independent real-repository generalization gate — LOCKED UNTIL V0.4.4 PASSES
+### V0.4.5 — Independent real-repository generalization gate — CURRENT
 
 Purpose: prove PKC did not simply overfit PokeTrade + Loren before adding another major evidence source.
 
