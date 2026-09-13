@@ -45,7 +45,7 @@ public sealed class CSharpInheritedControllerRouteRegressionTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "Controllers.cs"), source);
-            return await new CSharpRepositoryScanner().ScanAsync(root);
+            return await new CSharpEvidenceScanner().ScanAsync(root);
         }
         finally
         {

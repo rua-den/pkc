@@ -8,7 +8,8 @@ public sealed class CSharpEvidenceScanner
         string repositoryPath,
         CancellationToken cancellationToken = default)
     {
-        var baseline = await new CSharpRepositoryScanner().ScanAsync(repositoryPath, cancellationToken);
+        var baselineRaw = await new CSharpRepositoryScanner().ScanAsync(repositoryPath, cancellationToken);
+        var baseline = new CSharpMvcControllerRouteEnricher().Enrich(baselineRaw);
         var supplemental = await new CSharpSupplementalScanner().ScanAsync(
             repositoryPath,
             baseline,
