@@ -117,17 +117,29 @@ public sealed partial class ProductFeatureBuilder
 
     private static IReadOnlyList<string> BuildProductFlow(IReadOnlyList<string> flow)
     {
-        return flow
+        var edges = flow
             .Select(ParseFlow)
             .Where(item => item is not null)
             .Cast<FlowEdge>()
             .Where(IsProductFlowEdge)
-            .OrderByDescending(FlowScore)
+            .Distinct()
+            .ToArray();
+
+        var distances = EntryPointDistances(edges);
+        var outgoing = edges
+            .GroupBy(edge => edge.Source, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var incoming = edges
+            .GroupBy(edge => edge.Target, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+
+        return edges
+            .OrderByDescending(edge => FlowScore(edge, distances, outgoing, incoming))
+            .ThenBy(edge => distances.GetValueOrDefault(edge.Source, int.MaxValue))
             .ThenBy(item => item.Source, StringComparer.Ordinal)
             .ThenBy(item => item.Target, StringComparer.Ordinal)
             .Take(16)
             .Select(item => $"{item.Source} → {item.Target}")
-            .Distinct(StringComparer.Ordinal)
             .ToArray();
     }
 
@@ -161,19 +173,103 @@ public sealed partial class ProductFeatureBuilder
         return true;
     }
 
-    private static int FlowScore(FlowEdge edge)
+    private static IReadOnlyDictionary<string, int> EntryPointDistances(IReadOnlyList<FlowEdge> edges)
+    {
+        var adjacency = edges
+            .GroupBy(edge => edge.Source, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(edge => edge.Target).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+        var distances = new Dictionary<string, int>(StringComparer.Ordinal);
+        var queue = new Queue<string>();
+
+        foreach (var source in edges.Select(edge => edge.Source)
+                     .Where(LooksLikeEntryPoint)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            distances[source] = 0;
+            queue.Enqueue(source);
+        }
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!adjacency.TryGetValue(current, out var targets))
+            {
+                continue;
+            }
+
+            foreach (var target in targets)
+            {
+                var distance = distances[current] + 1;
+                if (distances.TryGetValue(target, out var existing) && existing <= distance)
+                {
+                    continue;
+                }
+
+                distances[target] = distance;
+                queue.Enqueue(target);
+            }
+        }
+
+        return distances;
+    }
+
+    private static int FlowScore(
+        FlowEdge edge,
+        IReadOnlyDictionary<string, int> distances,
+        IReadOnlyDictionary<string, int> outgoing,
+        IReadOnlyDictionary<string, int> incoming)
     {
         var score = 0;
-        if (LooksLikeEntryPoint(edge.Source)) score += 100;
-        if (LooksLikeCapabilityBoundary(edge.Target)) score += 40;
-        if (edge.Target.Contains("IAction", StringComparison.Ordinal) ||
-            edge.Target.Contains("IBrain", StringComparison.Ordinal) ||
-            edge.Target.Contains("IMemory", StringComparison.Ordinal) ||
-            edge.Target.Contains("IProject", StringComparison.Ordinal))
+        if (LooksLikeEntryPoint(edge.Source))
         {
-            score += 10;
+            score += 200;
         }
+
+        if (distances.TryGetValue(edge.Source, out var distance))
+        {
+            score += Math.Max(0, 100 - (distance * 20));
+        }
+
+        if (CrossesComponentBoundary(edge))
+        {
+            score += 40;
+        }
+
+        if (outgoing.ContainsKey(edge.Target))
+        {
+            score += 15;
+        }
+
+        if (incoming.GetValueOrDefault(edge.Target) > 1)
+        {
+            score += 5;
+        }
+
         return score;
+    }
+
+    private static bool CrossesComponentBoundary(FlowEdge edge)
+    {
+        var source = ComponentKey(edge.Source);
+        var target = ComponentKey(edge.Target);
+        return !string.IsNullOrWhiteSpace(source) &&
+               !string.IsNullOrWhiteSpace(target) &&
+               !string.Equals(source, target, StringComparison.Ordinal);
+    }
+
+    private static string ComponentKey(string value)
+    {
+        if (LooksLikeEntryPoint(value))
+        {
+            return value.Split('.', 2)[0];
+        }
+
+        var owner = SymbolOwner(value);
+        var separator = owner.IndexOf('.');
+        return separator > 0 ? owner[..separator] : owner;
     }
 
     private static bool LooksLikeEntryPoint(string value) =>
@@ -182,20 +278,6 @@ public sealed partial class ProductFeatureBuilder
         value.Contains(".PUT /", StringComparison.Ordinal) ||
         value.Contains(".PATCH /", StringComparison.Ordinal) ||
         value.Contains(".DELETE /", StringComparison.Ordinal);
-
-    private static bool LooksLikeCapabilityBoundary(string value)
-    {
-        var owner = SymbolOwner(value);
-        var typeName = owner.Split('.').LastOrDefault() ?? owner;
-        return typeName.EndsWith("Service", StringComparison.Ordinal) ||
-               typeName.EndsWith("Gateway", StringComparison.Ordinal) ||
-               typeName.EndsWith("Store", StringComparison.Ordinal) ||
-               typeName.EndsWith("Brain", StringComparison.Ordinal) ||
-               typeName.EndsWith("Loop", StringComparison.Ordinal) ||
-               typeName.EndsWith("Catalog", StringComparison.Ordinal) ||
-               typeName.EndsWith("Builder", StringComparison.Ordinal) ||
-               typeName.EndsWith("Collector", StringComparison.Ordinal);
-    }
 
     private static string SymbolOwner(string value)
     {
