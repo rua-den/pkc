@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Use this file when continuing PKC in another chat/session or when handing the current checkpoint to an independent reviewer.
+Use this file when continuing PKC in another chat/session.
 
 ## Product idea — do not drift from this
 
@@ -76,11 +76,11 @@ PKC_KNOWLEDGE.zip
 → archive/transport containing knowledge/ only
 ```
 
-Do not make ZIP extraction the primary interface. For small/medium packs, the default PO flow is to upload `PKC_KNOWLEDGE.md`.
+The structured pack, single-file bundle, and ZIP transport must not disagree on current product behavior.
 
 ## Current milestone
 
-**V0.4.4 Loren Knowledge Readiness — READY FOR INDEPENDENT EXTERNAL REVIEW.**
+**V0.4.4 Loren Knowledge Readiness — EXTERNAL REVIEW FAILED / FIX REQUIRED.**
 
 V0.4.3 remains the last accepted packaged checkpoint:
 
@@ -88,15 +88,31 @@ V0.4.3 remains the last accepted packaged checkpoint:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Do not bump the accepted package version yet.
+Do not bump the accepted package version.
 
-Implementation/acceptance commit before docs-only updates:
+External review inspected HEAD:
+
+```text
+34f77c036206d48bbf9495ea73e5debcea9f0eb3
+```
+
+Full review record:
+
+```text
+docs/reviews/2026-09-13-v0.4.4-external-review.md
+```
+
+Read that review before changing code.
+
+## Existing benchmark evidence
+
+Implementation/acceptance checkpoint before the docs-only external-review handoff:
 
 ```text
 4f7f75e76a1f158a880e8f2d1d64ea0bea0d36e7
 ```
 
-Verified runs:
+Previously verified:
 
 ```text
 CI #205
@@ -113,6 +129,155 @@ Pinned Loren SHA:
 e9e81651d380d7d40998f235cfdc7f119fe67af8
 ```
 
+These passes are regression evidence only. They do not override the external-review blockers.
+
+## Current blocking findings
+
+### B1 — UI/backend validation equivalence can false-positive
+
+Current normalization can collapse a compound condition to one equality and then mark UI/backend requiredness `consistent` even when the actual conditions differ.
+
+Example that must not become `consistent`:
+
+```text
+UI:      serviceType == CSP && region == US
+backend: serviceType == CSP
+```
+
+Required behavior:
+
+```text
+full supported condition equivalence proven
+→ consistent
+
+not provably equivalent
+→ possible-mismatch or unknown
+```
+
+Required regression coverage:
+
+- compound `&&` conditions;
+- reversed equality operands;
+- conditional vs unconditional requiredness;
+- multiple requiredness facts;
+- no high-confidence consistency from lossy normalization.
+
+### B2 — repeated builds can leave stale canonical knowledge
+
+`pkc build` currently writes current generated files but does not prove obsolete generated files are removed from `knowledge/` after source capabilities disappear.
+
+Required regression:
+
+```text
+build #1: endpoint/capability A exists
+→ A knowledge generated
+
+change source: remove A
+
+build #2
+→ A absent from knowledge/
+→ A absent from PKC_KNOWLEDGE.md
+→ A absent from PKC_KNOWLEDGE.zip
+```
+
+Fix must not delete unrelated user-owned files without an explicit generated-file ownership rule.
+
+### B3 — capability-flow scoring needs repo-neutral generalization
+
+Current product-flow scoring contains Loren-shaped lexical preferences such as `IBrain`, `IMemory`, `IProject`, `Brain`, `Loop`, and `Catalog`.
+
+Because ranking happens before the feature flow cap, vocabulary can determine which application edges survive.
+
+Required direction:
+
+- prefer graph/semantic role over repository vocabulary;
+- use endpoint distance, interface/cross-component boundaries, project/application boundaries, or other deterministic structural signals;
+- if lexical hints remain, make them generic;
+- add neutral regression fixtures that do not reuse Loren terminology.
+
+Example neutral names for tests:
+
+```text
+ExecutionCoordinator
+ContextProvider
+ConversationRepository
+UseCase
+Orchestrator
+```
+
+### B4 — frontend product-source contamination
+
+C# product scanning excludes conventional `test`, `tests`, and `spikes` source. Frontend scanning does not yet apply an equivalent scope consistently and can ingest test/spec source.
+
+Required direction:
+
+- create a shared/equivalent frontend product-source scope;
+- exclude conventional test/spike directories;
+- exclude conventional test files where appropriate, including `*.spec.ts` / `*.test.ts` patterns;
+- add a regression where test code calls the same production endpoint and prove it does not enter portable product knowledge.
+
+## Review warnings
+
+Not release blockers by themselves, but preserve them during fixes:
+
+```text
+W1. Portable KnowledgeEvidence does not preserve per-fact analyzer mode/confidence/caveat.
+W2. Blind-review records should become more reproducible/durable: artifact hash, run id, frozen question/answer transcript, source cross-check per question.
+```
+
+Do not accidentally worsen provenance while fixing blockers.
+
+## Required coding workflow
+
+**Do not implement another roadmap feature now.**
+
+For each blocker:
+
+```text
+1. reproduce the finding
+2. add a regression that fails before the fix
+3. implement a generic compiler fix
+4. make the regression pass
+5. run affected unit/integration tests
+6. commit the blocker independently where practical
+```
+
+Recommended order:
+
+```text
+B1 validation correctness
+→ B2 canonical rebuild/parity
+→ B3 capability-flow generalization
+→ B4 frontend source scope
+```
+
+The order may change only if implementation dependencies make another order safer. Do not combine the fixes into repository-specific special cases.
+
+## Completion gate after blocker fixes
+
+After all four blockers are resolved, run:
+
+```text
+full PKC unit/integration tests
+PokeTrade runnable + known-answer regression
+pinned Loren external trial
+Loren-main canary
+UI/backend validation benchmark
+repeated-build structured/bundle/ZIP parity
+blind knowledge-only review where compiler semantics changed
+```
+
+Then update:
+
+```text
+docs/status.md
+docs/handoff.md
+```
+
+with exact runs/commits/results and request an independent re-review of the new HEAD.
+
+Do **not** mark V0.4.4 PASS yourself solely because CI is green.
+
 ## Benchmark roles
 
 ```text
@@ -126,202 +291,46 @@ Loren main
 → moving non-blocking canary
 
 second independent real repo
-→ V0.4.5 anti-overfit/generalization gate
+→ V0.4.5 anti-overfit/generalization gate, currently LOCKED
 ```
 
-## Important proven V0.4.4 fixes
+## V0.4.5 is locked
 
-The Loren trial has already forced generic fixes for:
-
-- Minimal API endpoint discovery + semantic enrichment;
-- test/spike source contamination;
-- conditional/dev-only endpoint registration;
-- Minimal API failures/direct responses;
-- multi-project MSBuild loading;
-- false state-change noise from dictionary/object initializers;
-- framework/primitive call-flow noise;
-- ASP.NET sign-in/sign-out side effects;
-- Minimal API response fact-ID collision;
-- layered product-rule promotion;
-- portable AI handoff;
-- high-signal product capability flow.
-
-UI/backend work also now covers:
-
-```text
-ui-field
-ui-field-option
-ui-field-validation
-ui-field-visibility
-ui-field-enabled-state
-ui-field-binding
-backend-field-validation
-ui-backend-validation
-```
-
-and conservative classification:
-
-```text
-consistent
-possible-mismatch
-unknown
-```
-
-## Loren blind-review result
-
-The first knowledge-only pass found two serious comprehension gaps:
-
-```text
-A. Run feature did not expose project → memory → agent/brain flow clearly enough.
-B. Action proposal purpose was only inferable from deep implementation names.
-```
-
-Source cross-check confirmed both were real gaps.
-
-PKC now promotes selective `Observed capability flow` to product feature pages while filtering plumbing/self-helper noise.
-
-Second blind pass used **only `PKC_KNOWLEDGE.md`** from commit `4f7f75e...` and can now recover the important Run path:
-
-```text
-POST /api/run
-→ LorenRunService.RunAsync
-→ LorenProjectContextBuilder.BuildAsync
-→ LorenMemoryContextBuilder.BuildAsync
-→ IMemoryStore.ListCurrentForProjectAsync
-
-LorenRunService.RunAsync
-→ AgentLoop.RunAsync
-→ IBrain.ThinkAsync
-→ IActionGateway.ExecuteAsync
-```
-
-and proposal approval:
-
-```text
-approve endpoint
-→ ApproveProposalAndCreateBranchAsync
-→ ICreateBranchProposalStore
-→ IProjectCatalog
-→ ActionIntentFingerprint
-→ IActionGateway.ExecuteAsync
-```
-
-Current assessment:
-
-```text
-blind knowledge-only comprehension   PASS
-Run abstraction gap                  RESOLVED
-proposal-purpose gap                 RESOLVED
-workflow low-level detail            NON-BLOCKING; preserve for traceability
-integration presentation             RESOLVED via capability-flow abstraction
-```
-
-Full record:
-
-```text
-docs/benchmarks/2026-09-12-loren-blind-review.md
-```
-
-## Handoff parity result
-
-For the pinned Loren artifact generated from `4f7f75e...`:
-
-```text
-knowledge Markdown files                 23
-embedded verbatim in PKC_KNOWLEDGE.md    23 / 23
-missing markers/content                  0
-PKC_KNOWLEDGE.zip knowledge files        23
-raw .pkc entries in handoff ZIP          0
-source .cs/.ts entries in handoff ZIP    0
-```
-
-The workflow artifact used by CI may contain raw `.pkc` diagnostics for benchmark review; the PO-facing `PKC_KNOWLEDGE.zip` must not.
-
-## Exact next action
-
-**Do not implement another roadmap feature now.**
-
-The current checkpoint should go to an independent reviewer.
-
-Reviewer should inspect at least:
-
-```text
-1. compiler architecture / no source→LLM shortcut
-2. provenance and fallback honesty
-3. PokeTrade regression integrity
-4. pinned Loren knowledge correctness
-5. Run capability abstraction
-6. action-proposal semantics
-7. UI/backend validation classification
-8. single-file vs structured-pack parity
-9. whether any claims overstate observed code
-10. whether any repo-specific exception was introduced
-```
-
-If reviewer finds a serious blocker:
-
-```text
-classify finding
-→ fix only generic proven gap
-→ add regression
-→ rerun PokeTrade + Loren pinned + Loren-main + blind/parity checks
-→ review again
-```
-
-If reviewer passes V0.4.4, move to **V0.4.5 second independent real-repository trial**.
-
-## V0.4.5 requirements
-
-The second repository must be genuine and materially different from PokeTrade/Loren. Do not choose it because current heuristics make it easy.
-
-Run the same acceptance process:
-
-```text
-normal project build
-→ pkc build
-→ inspect provenance/fallbacks
-→ blind knowledge-only review
-→ structured/single-file parity
-→ source cross-check
-→ fix only generic defects
-→ regression-lock
-→ independent review
-```
-
-Prefer a supported real frontend/configuration surface if one exists so UI validation/form behavior is exercised outside synthetic fixtures.
+Do not start the second independent real-repository milestone until the current external review is re-run and returns PASS.
 
 ## V0.5 remains locked
 
-Do not start Azure DevOps ingestion until all are PASS:
+Do not start Azure DevOps ingestion until all required V0.4 gates pass, including:
 
 ```text
-PokeTrade known-answer regression                  PASS
-Loren evidence/workflow correctness                PASS
-Loren blind knowledge-only comprehension           PASS
-Loren handoff parity                               PASS
-UI validation/behavior known-answer benchmark      PASS
-Loren independent external review                  PENDING
-second independent real-repo trial                 PENDING
-second blind comprehension                         PENDING
-second handoff parity                              PENDING
-cross-benchmark regression after all fixes         PENDING
-known boundaries/unknowns documented honestly      PASS so far
-no repository-specific compiler exceptions         PASS so far
+external re-review of V0.4.4
+second independent real-repo trial
+second blind comprehension
+second handoff parity
+cross-benchmark regression after all fixes
 ```
-
-If any gate is not PASS, remain in V0.4.x.
 
 ## Scope rule
 
 Do not start these merely because they are unfinished:
 
 - Azure DevOps;
-- Angular TypeScript TypeChecker migration;
-- React AST rewrite;
+- Angular TypeScript TypeChecker migration unless a blocker proves it necessary;
+- React AST rewrite unless a blocker proves it necessary;
 - MVC/Razor/Blazor/Vue expansion;
 - browser/runtime exploration;
 - incremental compilation;
 - generalized drift/insight analysis;
 - live MCP/connector delivery.
 
-Only add one of them if a real benchmark/reviewer proves it is necessary for accuracy, completeness, signal-to-noise, traceability, honest uncertainty or handoff reliability.
+Only add analyzer/delivery capability when a proven blocker requires it for accuracy, completeness, signal-to-noise, traceability, honest uncertainty, or handoff reliability.
+
+## Coding-thread bootstrap
+
+A new coding thread can start with:
+
+```text
+Continue PKC from current main.
+Read docs/status.md, docs/handoff.md, and docs/reviews/2026-09-13-v0.4.4-external-review.md.
+Fix the V0.4.4 external-review blockers only, regression-first, commit incrementally, rerun all current gates, and do not advance V0.4.5 until independent re-review passes.
+```
