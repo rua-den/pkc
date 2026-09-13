@@ -22,7 +22,7 @@ Do not implement direct source-to-freeform-AI generation.
 
 ## Current state
 
-**V0.4.4 remains open. The final B1 backend-provenance gap from independent re-review 3 has been fixed regression-first and all automated gates on the implementation checkpoint are green. Independent re-review is still required. V0.4.5 is locked.**
+**V0.4.4 remains open. The final B1 backend-provenance gap from independent re-review 3 has been fixed regression-first and automated gates/parity are green. Independent re-review is still required. V0.4.5 is locked.**
 
 Read in order:
 
@@ -41,7 +41,7 @@ Latest independent review target:
 84d70aa8d6f646ca9a0d72ea9645340c1f583fc1
 ```
 
-Current B1 implementation checkpoint:
+B1 implementation checkpoint:
 
 ```text
 5a5fdcb5fdf1a9fb888857791a4757382b86c774
@@ -69,7 +69,7 @@ public IActionResult Create(CreateTargetRequest request, StateTracker tracker)
 }
 ```
 
-`CSharpEvidenceScanner` emitted a conditional `backend-field-validation` for `TargetId` whose condition referenced `tracker.Status` and whose `parameterName` was absent. The new regression then observed the old correlation result as `consistent`, proving the blocker was reachable end-to-end.
+`CSharpEvidenceScanner` emitted a conditional `backend-field-validation` for `TargetId` whose condition referenced `tracker.Status` and whose `parameterName` was absent. The new regression observed the old correlation result as `consistent`, proving the blocker was reachable end-to-end.
 
 Red run summary:
 
@@ -89,7 +89,7 @@ Fix commit:
 5a5fdcb5fdf1a9fb888857791a4757382b86c774
 ```
 
-For a conditional backend validation to participate in proven cross-stack equivalence, all three proofs are now mandatory:
+For a conditional backend validation to participate in proven cross-stack equivalence, all three proofs are mandatory:
 
 ```text
 1. validated-object parameterName is present and non-empty;
@@ -97,13 +97,11 @@ For a conditional backend validation to participate in proven cross-stack equiva
 3. condition field root exactly matches parameterName.
 ```
 
-No fallback to “any endpoint parameter root” remains. Missing or contradictory provenance causes requiredness-condition equivalence to be unproven, so the comparison cannot emit `consistent / high`.
+No fallback to “any endpoint parameter root” remains. Missing or contradictory provenance makes requiredness-condition equivalence unproven, so the comparison cannot emit `consistent / high`.
 
 Existing positive synthetic conditional-validation fixtures now carry realistic `parameterName: "request"` provenance where they model normal supported request guards.
 
 ## B1 behavior that must remain protected
-
-The candidate preserves the previously hardened behavior:
 
 ```text
 - full condition-set comparison
@@ -118,12 +116,12 @@ The candidate preserves the previously hardened behavior:
 - rejection of generic cross-stack path/path coincidence
 - known positive request/enum equivalence
 - known positive bound-Angular form equivalence
-- missing backend parameterName is now unproven
+- missing backend parameterName is unproven
 ```
 
 B2 repeated-build canonical parity, B3 capability-flow anti-overfit, and B4 frontend product-source scope remain PASS and were not reopened.
 
-## Verified gates on implementation checkpoint
+## Verified implementation gates
 
 ```text
 full PKC CI / PokeTrade  PASS  run 34769999278
@@ -142,7 +140,7 @@ WorkPlay build: PASS
 PokeTrade:      PASS
 ```
 
-Pinned Loren artifact:
+Pinned Loren implementation-checkpoint artifact:
 
 ```text
 artifact id:       10322215429
@@ -155,9 +153,38 @@ bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc1
 inner ZIP sha256:   1fc740bafef0411e9702fe4da2a4b8c2e5b9903ba252e07036d97315322e9258
 ```
 
+## Documentation-checkpoint verification
+
+The completed status/handoff candidate at:
+
+```text
+7575c08c220dc629fb8d9e774d767abe55e41f08
+```
+
+was independently rerun through the same automated surfaces:
+
+```text
+full PKC CI / PokeTrade  PASS  run 34770176435
+pinned Loren external   PASS  run 34770176432
+Loren-main canary       PASS  run 34770176450
+```
+
+Pinned artifact from that documentation checkpoint:
+
+```text
+artifact id:       10321428088
+artifact digest:   sha256:6466b3a1074da738f78179b120c86c1f3f04e6fc6c273326056c772956293097
+structured files:  23
+bundle parity:      23 / 23
+portable ZIP:       23 / 23, exact set + byte parity
+source/raw leak:     0
+bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
+inner ZIP sha256:   fddadb366929d9868f6bca5f7419a07056fb05e4ddc1570241d595860265de28
+```
+
 ## Independent re-review target
 
-Do not declare V0.4.4 complete from this coding thread. An independent reviewer should inspect the current `main` candidate and specifically verify:
+Do not declare V0.4.4 complete from this coding thread. An independent reviewer should inspect current `main` and specifically verify:
 
 ```text
 - the real scanner regression remains reachable and now classifies conservatively;
@@ -173,7 +200,7 @@ Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evide
 
 ## Next action
 
-Rerun all current automated gates on the final documentation HEAD and recheck pinned Loren handoff parity. Then request independent B1 re-review.
+Request independent B1 re-review on current `main`.
 
 Do **not** start V0.4.5 or Azure DevOps work until independent review returns PASS.
 
