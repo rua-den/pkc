@@ -103,9 +103,38 @@ bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc1
 inner ZIP sha256:   1fc740bafef0411e9702fe4da2a4b8c2e5b9903ba252e07036d97315322e9258
 ```
 
+## Documentation-checkpoint verification
+
+The first completed status/handoff candidate was also rerun on exact repository HEAD:
+
+```text
+7575c08c220dc629fb8d9e774d767abe55e41f08
+```
+
+with all current gates green:
+
+```text
+full PKC CI / PokeTrade  PASS  run 34770176435
+pinned Loren external   PASS  run 34770176432
+Loren-main canary       PASS  run 34770176450
+```
+
+Pinned Loren parity on that documentation checkpoint:
+
+```text
+artifact id:       10321428088
+artifact digest:   sha256:6466b3a1074da738f78179b120c86c1f3f04e6fc6c273326056c772956293097
+structured files:  23
+bundle parity:      23 / 23
+portable ZIP:       23 / 23, exact set + byte parity
+source/raw leak:     0
+bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
+inner ZIP sha256:   fddadb366929d9868f6bca5f7419a07056fb05e4ddc1570241d595860265de28
+```
+
 ## Exact next action
 
-Keep V0.4.4 open. Rerun the current automated gates on the final documentation HEAD, verify pinned Loren handoff parity again, then request independent B1 re-review focused on the backend validated-object provenance contract.
+Keep V0.4.4 open and request independent B1 re-review focused on the backend validated-object provenance contract. The coding thread must not declare V0.4.4 PASS on its own.
 
 Do **not** advance V0.4.5 until that independent review returns PASS.
 
