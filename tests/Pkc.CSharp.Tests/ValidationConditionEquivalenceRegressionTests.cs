@@ -62,6 +62,52 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         Assert.Equal("requiredness-condition-differs", comparison.Metadata["reason"]);
     }
 
+    [Fact]
+    public void Signed_numeric_literals_remain_semantically_distinct()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "retryCount === -1")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.RetryCount == 1")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Decimal_literals_remain_semantically_distinct()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "threshold === 1.2")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Threshold == 12")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Quoted_punctuation_remains_semantically_significant()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "code === 'A-B'")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Code == \"AB\"")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Distinct_member_paths_do_not_collapse_to_the_same_terminal_member()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "primary.status === 'active'")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Secondary.Status == Status.Active")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    private static void AssertConservativeMismatch(EvidenceFact comparison)
+    {
+        Assert.NotEqual("consistent", comparison.Metadata["status"]);
+        Assert.NotEqual("high", comparison.Metadata["analysisConfidence"]);
+    }
+
     private static EvidenceFact Compare(FeatureCandidateDocument candidates, FactDocument document)
     {
         var candidate = Assert.Single(new ValidationConsistencyCandidateEnricher().Enrich(candidates, document).Candidates);
