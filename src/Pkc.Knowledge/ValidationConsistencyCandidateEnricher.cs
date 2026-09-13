@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Pkc.Core;
 
@@ -11,6 +13,10 @@ public sealed class ValidationConsistencyCandidateEnricher
 
     private static readonly Regex EqualityRegex = new(
         @"^\s*(?<left>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*(?:===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex PathRegex = new(
+        @"^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public FeatureCandidateDocument Enrich(
@@ -52,6 +58,7 @@ public sealed class ValidationConsistencyCandidateEnricher
             .Select(RelationKey)
             .ToHashSet(StringComparer.Ordinal);
         var requestTypes = ParseParameterTypes(endpoint);
+        var requestParameterNames = ParseParameterNames(endpoint);
 
         foreach (var binding in bindings)
         {
@@ -95,7 +102,7 @@ public sealed class ValidationConsistencyCandidateEnricher
                 continue;
             }
 
-            var comparison = Compare(uiRequired, backendRequired);
+            var comparison = Compare(uiRequired, backendRequired, requestParameterNames);
             var comparisonFact = CreateComparisonFact(
                 binding,
                 endpoint,
@@ -124,7 +131,8 @@ public sealed class ValidationConsistencyCandidateEnricher
 
     private static ValidationComparison Compare(
         IReadOnlyList<EvidenceFact> uiRequired,
-        IReadOnlyList<EvidenceFact> backendRequired)
+        IReadOnlyList<EvidenceFact> backendRequired,
+        ISet<string> requestParameterNames)
     {
         if (backendRequired.Count > 0 && uiRequired.Count == 0)
         {
@@ -144,8 +152,14 @@ public sealed class ValidationConsistencyCandidateEnricher
                 null);
         }
 
-        var uiConditions = BuildRequirednessConditionSet(uiRequired);
-        var backendConditions = BuildRequirednessConditionSet(backendRequired);
+        var uiConditions = BuildRequirednessConditionSet(
+            uiRequired,
+            isBackend: false,
+            requestParameterNames);
+        var backendConditions = BuildRequirednessConditionSet(
+            backendRequired,
+            isBackend: true,
+            requestParameterNames);
 
         if (!uiConditions.IsProven || !backendConditions.IsProven)
         {
@@ -175,7 +189,9 @@ public sealed class ValidationConsistencyCandidateEnricher
     }
 
     private static RequirednessConditionSet BuildRequirednessConditionSet(
-        IReadOnlyList<EvidenceFact> facts)
+        IReadOnlyList<EvidenceFact> facts,
+        bool isBackend,
+        ISet<string> requestParameterNames)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
 
@@ -194,7 +210,12 @@ public sealed class ValidationConsistencyCandidateEnricher
                     new HashSet<string>(StringComparer.Ordinal) { string.Empty });
             }
 
-            if (!TryCanonicalizeCondition(condition, out var key))
+            if (!TryCanonicalizeCondition(
+                    fact,
+                    condition,
+                    isBackend,
+                    requestParameterNames,
+                    out var key))
             {
                 return new RequirednessConditionSet(false, keys);
             }
@@ -205,7 +226,12 @@ public sealed class ValidationConsistencyCandidateEnricher
         return new RequirednessConditionSet(true, keys);
     }
 
-    private static bool TryCanonicalizeCondition(string condition, out string key)
+    private static bool TryCanonicalizeCondition(
+        EvidenceFact fact,
+        string condition,
+        bool isBackend,
+        ISet<string> requestParameterNames,
+        out string key)
     {
         key = string.Empty;
         var normalizedCondition = StripOuterParentheses(condition.Trim());
@@ -229,21 +255,21 @@ public sealed class ValidationConsistencyCandidateEnricher
         {
             var term = StripOuterParentheses(rawTerm.Trim());
             var match = EqualityRegex.Match(term);
-            if (!match.Success)
+            if (!match.Success ||
+                !TryParseOperand(match.Groups["left"].Value, out var left) ||
+                !TryParseOperand(match.Groups["right"].Value, out var right) ||
+                !TryCanonicalizeEquality(
+                    fact,
+                    left,
+                    right,
+                    isBackend,
+                    requestParameterNames,
+                    out var canonicalTerm))
             {
                 return false;
             }
 
-            var left = CanonicalOperand(match.Groups["left"].Value);
-            var right = CanonicalOperand(match.Groups["right"].Value);
-            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
-            {
-                return false;
-            }
-
-            canonicalTerms.Add(string.CompareOrdinal(left, right) <= 0
-                ? $"{left}={right}"
-                : $"{right}={left}");
+            canonicalTerms.Add(canonicalTerm);
         }
 
         canonicalTerms.Sort(StringComparer.Ordinal);
@@ -251,19 +277,233 @@ public sealed class ValidationConsistencyCandidateEnricher
         return key.Length > 0;
     }
 
-    private static string CanonicalOperand(string value)
+    private static bool TryParseOperand(string value, out ConditionOperand operand)
     {
         var trimmed = value.Trim();
         if ((trimmed.StartsWith('"') && trimmed.EndsWith('"')) ||
             (trimmed.StartsWith('\'') && trimmed.EndsWith('\'')))
         {
-            return NormalizeToken(trimmed[1..^1]);
+            var literal = trimmed[1..^1];
+            if (literal.Contains('\\'))
+            {
+                operand = default!;
+                return false;
+            }
+
+            operand = new ConditionOperand(
+                ConditionOperandKind.StringLiteral,
+                literal,
+                []);
+            return true;
         }
 
-        var normalized = trimmed.Replace("?.", ".", StringComparison.Ordinal);
-        var terminal = normalized.Split('.').LastOrDefault() ?? normalized;
-        return NormalizeToken(terminal);
+        if (decimal.TryParse(
+                trimmed,
+                NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture,
+                out var number))
+        {
+            operand = new ConditionOperand(
+                ConditionOperandKind.NumberLiteral,
+                number.ToString("G29", CultureInfo.InvariantCulture),
+                []);
+            return true;
+        }
+
+        if (!PathRegex.IsMatch(trimmed))
+        {
+            operand = default!;
+            return false;
+        }
+
+        operand = new ConditionOperand(
+            ConditionOperandKind.Path,
+            trimmed,
+            trimmed.Split('.'));
+        return true;
     }
+
+    private static bool TryCanonicalizeEquality(
+        EvidenceFact fact,
+        ConditionOperand left,
+        ConditionOperand right,
+        bool isBackend,
+        ISet<string> requestParameterNames,
+        out string term)
+    {
+        if (TryCanonicalizeFieldValue(
+                fact,
+                left,
+                right,
+                isBackend,
+                requestParameterNames,
+                out term) ||
+            TryCanonicalizeFieldValue(
+                fact,
+                right,
+                left,
+                isBackend,
+                requestParameterNames,
+                out term))
+        {
+            return true;
+        }
+
+        var leftKey = SerializeOperand(left);
+        var rightKey = SerializeOperand(right);
+        term = string.CompareOrdinal(leftKey, rightKey) <= 0
+            ? $"{leftKey}={rightKey}"
+            : $"{rightKey}={leftKey}";
+        return true;
+    }
+
+    private static bool TryCanonicalizeFieldValue(
+        EvidenceFact fact,
+        ConditionOperand fieldOperand,
+        ConditionOperand valueOperand,
+        bool isBackend,
+        ISet<string> requestParameterNames,
+        out string term)
+    {
+        term = string.Empty;
+        if (fieldOperand.Kind != ConditionOperandKind.Path ||
+            !TryCanonicalizeFieldPath(
+                fact,
+                fieldOperand,
+                isBackend,
+                requestParameterNames,
+                out var fieldPath,
+                out var fieldTerminal))
+        {
+            return false;
+        }
+
+        string valueKind;
+        string value;
+        switch (valueOperand.Kind)
+        {
+            case ConditionOperandKind.StringLiteral:
+                valueKind = "symbol";
+                value = valueOperand.Value;
+                break;
+            case ConditionOperandKind.NumberLiteral:
+                valueKind = "number";
+                value = valueOperand.Value;
+                break;
+            case ConditionOperandKind.Path when TryCanonicalizeEnumSymbol(
+                valueOperand,
+                fieldTerminal,
+                out var enumSymbol):
+                valueKind = "symbol";
+                value = enumSymbol;
+                break;
+            default:
+                return false;
+        }
+
+        term = $"field:{Encode(fieldPath)}=value:{valueKind}:{Encode(value)}";
+        return true;
+    }
+
+    private static bool TryCanonicalizeFieldPath(
+        EvidenceFact fact,
+        ConditionOperand operand,
+        bool isBackend,
+        ISet<string> requestParameterNames,
+        out string fieldPath,
+        out string fieldTerminal)
+    {
+        var segments = operand.Segments.ToList();
+        if (segments.Count == 0)
+        {
+            fieldPath = string.Empty;
+            fieldTerminal = string.Empty;
+            return false;
+        }
+
+        if (isBackend &&
+            segments.Count > 1 &&
+            requestParameterNames.Contains(segments[0]))
+        {
+            segments.RemoveAt(0);
+        }
+        else if (!isBackend && IsAngularFact(fact))
+        {
+            if (segments.Count > 1 &&
+                string.Equals(segments[0], "this", StringComparison.Ordinal))
+            {
+                segments.RemoveAt(0);
+            }
+
+            if (segments.Count == 3 &&
+                string.Equals(segments[1], "value", StringComparison.Ordinal))
+            {
+                segments = [segments[2]];
+            }
+            else if (segments.Count == 4 &&
+                     string.Equals(segments[1], "controls", StringComparison.Ordinal) &&
+                     string.Equals(segments[3], "value", StringComparison.Ordinal))
+            {
+                segments = [segments[2]];
+            }
+        }
+
+        if (segments.Count == 0)
+        {
+            fieldPath = string.Empty;
+            fieldTerminal = string.Empty;
+            return false;
+        }
+
+        var normalized = segments
+            .Select(segment => segment.ToLowerInvariant())
+            .ToArray();
+        fieldPath = string.Join('.', normalized);
+        fieldTerminal = normalized[^1];
+        return true;
+    }
+
+    private static bool TryCanonicalizeEnumSymbol(
+        ConditionOperand operand,
+        string fieldTerminal,
+        out string symbol)
+    {
+        symbol = string.Empty;
+        if (operand.Kind != ConditionOperandKind.Path ||
+            operand.Segments.Count != 2)
+        {
+            return false;
+        }
+
+        var typeName = operand.Segments[0];
+        var memberName = operand.Segments[1];
+        if (typeName.Length == 0 ||
+            memberName.Length == 0 ||
+            !char.IsUpper(typeName[0]) ||
+            !char.IsUpper(memberName[0]) ||
+            !string.Equals(typeName, fieldTerminal, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        symbol = memberName;
+        return true;
+    }
+
+    private static string SerializeOperand(ConditionOperand operand) => operand.Kind switch
+    {
+        ConditionOperandKind.StringLiteral => $"string:{Encode(operand.Value)}",
+        ConditionOperandKind.NumberLiteral => $"number:{Encode(operand.Value)}",
+        ConditionOperandKind.Path => $"path:{Encode(string.Join('.', operand.Segments))}",
+        _ => throw new ArgumentOutOfRangeException(nameof(operand.Kind))
+    };
+
+    private static string Encode(string value) =>
+        Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
+
+    private static bool IsAngularFact(EvidenceFact fact) =>
+        fact.Metadata.TryGetValue("framework", out var framework) &&
+        framework.StartsWith("angular", StringComparison.OrdinalIgnoreCase);
 
     private static string StripOuterParentheses(string value)
     {
@@ -329,6 +569,22 @@ public sealed class ValidationConsistencyCandidateEnricher
         return result;
     }
 
+    private static HashSet<string> ParseParameterNames(EvidenceFact endpoint)
+    {
+        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!endpoint.Metadata.TryGetValue("parameters", out var parameters))
+        {
+            return result;
+        }
+
+        foreach (Match match in ParameterRegex.Matches(parameters))
+        {
+            result.Add(match.Groups["name"].Value);
+        }
+
+        return result;
+    }
+
     private static string SimpleTypeName(string value)
     {
         var normalized = value.Trim().TrimEnd('?');
@@ -348,9 +604,6 @@ public sealed class ValidationConsistencyCandidateEnricher
     private static string? PreferredCondition(IReadOnlyList<EvidenceFact> facts) =>
         facts.Select(fact => fact.Metadata.TryGetValue("condition", out var condition) ? condition : null)
             .FirstOrDefault(condition => !string.IsNullOrWhiteSpace(condition));
-
-    private static string NormalizeToken(string value) =>
-        new(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
     private static EvidenceFact CreateComparisonFact(
         EvidenceFact binding,
@@ -410,6 +663,18 @@ public sealed class ValidationConsistencyCandidateEnricher
 
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
+
+    private enum ConditionOperandKind
+    {
+        StringLiteral,
+        NumberLiteral,
+        Path
+    }
+
+    private sealed record ConditionOperand(
+        ConditionOperandKind Kind,
+        string Value,
+        IReadOnlyList<string> Segments);
 
     private sealed record RequirednessConditionSet(
         bool IsProven,
