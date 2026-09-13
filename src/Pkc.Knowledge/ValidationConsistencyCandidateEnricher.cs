@@ -455,9 +455,9 @@ public sealed class ValidationConsistencyCandidateEnricher
             return false;
         }
 
-        var normalized = segments
-            .Select(segment => segment.ToLowerInvariant())
-            .ToArray();
+        var normalized = segments.Count == 1
+            ? [segments[0].ToLowerInvariant()]
+            : segments.ToArray();
         fieldPath = string.Join('.', normalized);
         fieldTerminal = normalized[^1];
         return true;
