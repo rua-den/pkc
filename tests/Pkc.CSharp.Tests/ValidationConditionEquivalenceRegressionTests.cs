@@ -83,6 +83,16 @@ public sealed class ValidationConditionEquivalenceRegressionTests
     }
 
     [Fact]
+    public void Decimal_structure_is_not_treated_as_member_access()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "threshold === 1.2")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Threshold == 2")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
     public void Quoted_punctuation_remains_semantically_significant()
     {
         var (candidates, document) = BuildScenario(
