@@ -33,7 +33,7 @@ public sealed class FrontendScanner
             }
 
             var document = await adapter.ScanAsync(rootPath, cancellationToken);
-            documents.Add(EnsureAnalyzerMetadata(document, adapter.Id));
+            documents.Add(EnsureAnalyzerMetadata(ApplyProductSourceScope(document), adapter.Id));
         }
 
         var merged = Merge(documents);
@@ -44,6 +44,24 @@ public sealed class FrontendScanner
     {
         yield return new ReactFrontendAdapter();
         yield return new AngularFrontendAdapter();
+    }
+
+    private static FactDocument ApplyProductSourceScope(FactDocument document)
+    {
+        var facts = document.Facts
+            .Where(fact => FrontendSourceScope.IsProductSource(fact.Source.Path))
+            .ToArray();
+        var factIds = facts.Select(fact => fact.Id).ToHashSet(StringComparer.Ordinal);
+        var relations = document.Relations
+            .Where(relation => factIds.Contains(relation.FromFactId))
+            .Where(relation => FrontendSourceScope.IsProductSource(relation.Source.Path))
+            .ToArray();
+
+        return document with
+        {
+            Facts = facts,
+            Relations = relations
+        };
     }
 
     private static FactDocument EnsureAnalyzerMetadata(FactDocument document, string adapterId)
