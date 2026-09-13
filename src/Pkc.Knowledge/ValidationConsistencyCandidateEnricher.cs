@@ -10,7 +10,7 @@ public sealed class ValidationConsistencyCandidateEnricher
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex EqualityRegex = new(
-        @"(?<left>[A-Za-z_$][A-Za-z0-9_$.]*)\s*(?:===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$.]*)",
+        @"^\s*(?<left>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*(?:===|==)\s*(?<right>'[^']*'|""[^""]*""|[A-Za-z_$][A-Za-z0-9_$?.]*|-?[0-9]+(?:\.[0-9]+)?)\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public FeatureCandidateDocument Enrich(
@@ -144,24 +144,27 @@ public sealed class ValidationConsistencyCandidateEnricher
                 null);
         }
 
-        var uiKeys = uiRequired.Select(ConditionKey).ToArray();
-        var backendKeys = backendRequired.Select(ConditionKey).ToArray();
+        var uiConditions = BuildRequirednessConditionSet(uiRequired);
+        var backendConditions = BuildRequirednessConditionSet(backendRequired);
 
-        foreach (var ui in uiKeys)
+        if (!uiConditions.IsProven || !backendConditions.IsProven)
         {
-            foreach (var backend in backendKeys)
-            {
-                if (string.Equals(ui, backend, StringComparison.Ordinal))
-                {
-                    return new ValidationComparison(
-                        "consistent",
-                        string.IsNullOrWhiteSpace(ui)
-                            ? "both-required"
-                            : "matching-conditional-requiredness",
-                        PreferredCondition(uiRequired),
-                        PreferredCondition(backendRequired));
-                }
-            }
+            return new ValidationComparison(
+                "possible-mismatch",
+                "requiredness-condition-equivalence-unproven",
+                PreferredCondition(uiRequired),
+                PreferredCondition(backendRequired));
+        }
+
+        if (uiConditions.Keys.SetEquals(backendConditions.Keys))
+        {
+            return new ValidationComparison(
+                "consistent",
+                uiConditions.Keys.Contains(string.Empty)
+                    ? "both-required"
+                    : "matching-conditional-requiredness",
+                PreferredCondition(uiRequired),
+                PreferredCondition(backendRequired));
         }
 
         return new ValidationComparison(
@@ -169,6 +172,130 @@ public sealed class ValidationConsistencyCandidateEnricher
             "requiredness-condition-differs",
             PreferredCondition(uiRequired),
             PreferredCondition(backendRequired));
+    }
+
+    private static RequirednessConditionSet BuildRequirednessConditionSet(
+        IReadOnlyList<EvidenceFact> facts)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var fact in facts)
+        {
+            if (!fact.Metadata.TryGetValue("condition", out var condition) ||
+                string.IsNullOrWhiteSpace(condition))
+            {
+                if (fact.Metadata.ContainsKey("conditionKey"))
+                {
+                    return new RequirednessConditionSet(false, keys);
+                }
+
+                return new RequirednessConditionSet(
+                    true,
+                    new HashSet<string>(StringComparer.Ordinal) { string.Empty });
+            }
+
+            if (!TryCanonicalizeCondition(condition, out var key))
+            {
+                return new RequirednessConditionSet(false, keys);
+            }
+
+            keys.Add(key);
+        }
+
+        return new RequirednessConditionSet(true, keys);
+    }
+
+    private static bool TryCanonicalizeCondition(string condition, out string key)
+    {
+        key = string.Empty;
+        var normalizedCondition = StripOuterParentheses(condition.Trim());
+        if (string.IsNullOrWhiteSpace(normalizedCondition) ||
+            normalizedCondition.Contains("||", StringComparison.Ordinal) ||
+            normalizedCondition.Contains("!=", StringComparison.Ordinal) ||
+            normalizedCondition.Contains("!==", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var terms = normalizedCondition
+            .Split("&&", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (terms.Length == 0)
+        {
+            return false;
+        }
+
+        var canonicalTerms = new List<string>(terms.Length);
+        foreach (var rawTerm in terms)
+        {
+            var term = StripOuterParentheses(rawTerm.Trim());
+            var match = EqualityRegex.Match(term);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            var left = CanonicalOperand(match.Groups["left"].Value);
+            var right = CanonicalOperand(match.Groups["right"].Value);
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            {
+                return false;
+            }
+
+            canonicalTerms.Add(string.CompareOrdinal(left, right) <= 0
+                ? $"{left}={right}"
+                : $"{right}={left}");
+        }
+
+        canonicalTerms.Sort(StringComparer.Ordinal);
+        key = string.Join("&&", canonicalTerms.Distinct(StringComparer.Ordinal));
+        return key.Length > 0;
+    }
+
+    private static string CanonicalOperand(string value)
+    {
+        var trimmed = value.Trim();
+        if ((trimmed.StartsWith('"') && trimmed.EndsWith('"')) ||
+            (trimmed.StartsWith('\'') && trimmed.EndsWith('\'')))
+        {
+            return NormalizeToken(trimmed[1..^1]);
+        }
+
+        var normalized = trimmed.Replace("?.", ".", StringComparison.Ordinal);
+        var terminal = normalized.Split('.').LastOrDefault() ?? normalized;
+        return NormalizeToken(terminal);
+    }
+
+    private static string StripOuterParentheses(string value)
+    {
+        var result = value.Trim();
+        while (result.Length >= 2 && result[0] == '(' && result[^1] == ')' && HasSingleOuterPair(result))
+        {
+            result = result[1..^1].Trim();
+        }
+
+        return result;
+    }
+
+    private static bool HasSingleOuterPair(string value)
+    {
+        var depth = 0;
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] == '(') depth++;
+            else if (value[index] == ')') depth--;
+
+            if (depth == 0 && index < value.Length - 1)
+            {
+                return false;
+            }
+
+            if (depth < 0)
+            {
+                return false;
+            }
+        }
+
+        return depth == 0;
     }
 
     private static bool BelongsToEndpoint(
@@ -221,30 +348,6 @@ public sealed class ValidationConsistencyCandidateEnricher
     private static string? PreferredCondition(IReadOnlyList<EvidenceFact> facts) =>
         facts.Select(fact => fact.Metadata.TryGetValue("condition", out var condition) ? condition : null)
             .FirstOrDefault(condition => !string.IsNullOrWhiteSpace(condition));
-
-    private static string ConditionKey(EvidenceFact fact)
-    {
-        if (fact.Metadata.TryGetValue("conditionKey", out var explicitKey))
-        {
-            return explicitKey;
-        }
-
-        if (!fact.Metadata.TryGetValue("condition", out var condition) ||
-            string.IsNullOrWhiteSpace(condition))
-        {
-            return string.Empty;
-        }
-
-        var match = EqualityRegex.Match(condition);
-        if (!match.Success)
-        {
-            return NormalizeToken(condition);
-        }
-
-        var field = match.Groups["left"].Value.Split('.').Last();
-        var value = match.Groups["right"].Value.Trim('\'', '"').Split('.').Last();
-        return $"{NormalizeToken(field)}={NormalizeToken(value)}";
-    }
 
     private static string NormalizeToken(string value) =>
         new(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
@@ -307,6 +410,10 @@ public sealed class ValidationConsistencyCandidateEnricher
 
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
+
+    private sealed record RequirednessConditionSet(
+        bool IsProven,
+        HashSet<string> Keys);
 
     private sealed record ValidationComparison(
         string Status,
