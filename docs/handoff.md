@@ -4,7 +4,7 @@ Use this file when continuing PKC in another coding/review thread.
 
 ## Product contract
 
-PKC is a Product/System Knowledge Compiler. A Product Owner should be able to hand the generated portable knowledge to an AI assistant and ask product/system questions without requiring a source-code rescan.
+PKC is a Product/System Knowledge Compiler. A Product Owner should be able to hand generated portable knowledge to an AI assistant and ask product/system questions without requiring a source-code rescan.
 
 Keep the compiler architecture deterministic:
 
@@ -22,7 +22,7 @@ Do not implement direct source-to-freeform-AI generation.
 
 ## Current state
 
-**V0.4.4 remains open. One blocker remains after independent re-review. V0.4.5 is locked.**
+**V0.4.4 remains open, but the remaining B1 implementation blocker has a regression-first fix candidate. Independent re-review is required. V0.4.5 is locked.**
 
 Read in order:
 
@@ -39,106 +39,105 @@ Review lineage:
 original review HEAD:      34f77c036206d48bbf9495ea73e5debcea9f0eb3
 all-four-fix checkpoint:   8b01d4b5ba84112f36e46b234426f754be38c8f6
 first re-review HEAD:       e022dbf581846c4699b724df063cd68b47dff332
+B1 implementation HEAD:    9bdb0da9e635c5591edecb730054de590ff50be5
 ```
 
-## Re-review disposition
+B2 repeated-build parity, B3 capability-flow anti-overfit, and B4 frontend product-source scope remain PASS from the prior independent re-review. Do not reopen them without a new regression.
+
+## B1 follow-up — regression-first evidence
+
+Regression commits:
 
 ```text
-B1 validation consistency semantics                 BLOCK
-B2 repeated-build canonical parity                 PASS
-B3 capability-flow anti-overfit                    PASS
-B4 frontend product-source scope                   PASS
-CI / PokeTrade / Loren pinned / Loren-main          PASS
-knowledge-only capability-flow recheck              PASS
-structured/bundle/ZIP parity                        PASS
+fb182596c6b64dd484e65e5a8c209c0bbed5f89d  test: reproduce semantic operand equivalence blocker
+3da99f9cb0e7238559cd1df710688107bcafe146  test: lock decimal operand structure
 ```
 
-Do not reopen B2/B3/B4 unless a new regression proves a problem.
-
-## Exact remaining blocker — B1
-
-`ValidationConsistencyCandidateEnricher` now compares complete supported requiredness-condition sets, but its operand canonicalization is still lossy.
-
-`CanonicalOperand()` eventually strips non-alphanumeric characters and reduces member access to the terminal token. This can collapse semantically different conditions and still emit `consistent` with high confidence.
-
-Regression cases to add before the fix:
+On `3da99f9...`, CI workflow run `34742346887` failed exactly the four intended B1 regressions before the implementation fix:
 
 ```text
-UI:      retryCount === -1
-Backend: request.RetryCount == 1
-Expected: NOT consistent
-
-UI:      threshold === 1.2
-Backend: request.Threshold == 12
-Expected: NOT consistent
-
-UI:      code === 'A-B'
-Backend: request.Code == "AB"
-Expected: NOT consistent
-
-UI:      primary.status === 'active'
-Backend: request.Secondary.Status == Status.Active
-Expected: NOT consistent merely because both paths end in `status`
+retryCount === -1        vs request.RetryCount == 1
+threshold === 1.2        vs request.Threshold == 2
+code === 'A-B'           vs request.Code == "AB"
+primary.status            vs request.Secondary.Status
 ```
 
-The fix must be generic and semantic-preserving. Cross-language convenience matching is allowed only when equivalence is explicit and deterministic. If PKC cannot prove equivalence, return `possible-mismatch` or `unknown`, never `consistent/high`.
+All four had incorrectly produced `consistent` on the old canonicalizer.
 
-Suggested implementation direction, not a required design:
+Implementation fix:
 
 ```text
-parse each equality into typed operands
-→ preserve literal value/sign/decimal/punctuation
-→ normalize identifiers/member paths without erasing meaningful path segments
-→ use explicit rules for known frontend/backend context prefixes
-→ canonicalize conjunction ordering
-→ compare complete condition sets
+9bdb0da9e635c5591edecb730054de590ff50be5  fix: preserve validation operand semantics
 ```
 
-Do not merely patch the four literal examples.
+## B1 implementation contract
 
-## Regression-first requirement
+`ValidationConsistencyCandidateEnricher` now uses typed equality operands rather than stripping punctuation and collapsing member access to the final token.
 
-Use the same discipline as the previous blocker fixes:
+The intended contract is:
 
 ```text
-1. add failing B1 regressions
-2. prove they fail on current implementation
-3. implement generic fix
-4. make regressions pass
-5. run affected tests
-6. commit incrementally
+full supported condition-set equivalence + typed operand equivalence proven
+→ consistent / high
+
+semantics differ
+→ possible-mismatch
+
+semantics cannot be proven deterministically
+→ conservative non-consistent result; never consistent/high
 ```
 
-Then run all current gates:
+Important details:
+
+- signed numeric values retain sign;
+- decimal values are parsed invariantly and are not interpreted as dotted member paths;
+- quoted string punctuation is retained;
+- meaningful member-path segments are retained;
+- endpoint request-parameter roots are stripped only when the root is an actual parsed endpoint parameter;
+- Angular form scaffolding is stripped only for recognized Angular validation facts and known forms such as `<form>.value.<field>` or `<form>.controls.<field>.value`;
+- enum/string convenience matching is narrow and deterministic, preserving known valid cases such as UI `'CSP'` versus backend `ServiceType.CSP`;
+- unsupported constructs fall back to `requiredness-condition-equivalence-unproven` instead of high-confidence consistency.
+
+Do not weaken this into a generic token sanitizer again.
+
+## Current verified gates
+
+For implementation HEAD `9bdb0da9e635c5591edecb730054de590ff50be5`:
 
 ```text
-full PKC build/tests
-PokeTrade runnable + known-answer
-pinned Loren external trial
-Loren-main canary
-handoff structured/bundle/ZIP parity
+full CI / WorkPlay          PASS  run 34742429704
+  C# tests                  45 / 45 PASS
+  frontend tests             8 / 8 PASS
+PokeTrade real system       PASS  run 34742429704
+pinned Loren external       PASS  run 34742429775
+Loren-main canary           PASS  run 34742429725
 ```
 
-After those are green, update status/handoff and request another independent review. Do not mark V0.4.4 PASS yourself.
-
-## Current verified evidence before B1 follow-up
+Pinned Loren output from run `34742429775`:
 
 ```text
-implementation checkpoint: 8b01d4b5ba84112f36e46b234426f754be38c8f6
-CI #219:                 PASS
-Loren external #118:     PASS
-Loren-main canary #101:  PASS
-Loren artifact id:       10311886470
-artifact digest:         sha256:e74aea2f657898d598d167c009966dac9dca5c4d297bb8bbdf89cfc182775b9c
-structured files:        23
-bundle parity:           23 / 23
-ZIP parity:              23 / 23
-source/raw leak:         0
+artifact id:      10313376547
+artifact digest:  sha256:bb5ec59f432deae57757c5a44e04ddb8380018ada7e09f520612ac44dca59847
+structured files: 23
+bundle parity:     23 / 23
+ZIP parity:        23 / 23
+missing content:    0
+source/raw leak:     0
 ```
+
+The artifact's `PKC_KNOWLEDGE.md` contains all 23 structured Markdown files verbatim. Its `PKC_KNOWLEDGE.zip` contains the same 23 `knowledge/` files and no `.pkc/` or source entries.
+
+## Next action
+
+Do **not** start more implementation work merely because the automated gates are green.
+
+The next action is an **independent B1 re-review of the final HEAD**. The reviewer should specifically re-run or inspect the semantic counterexamples and verify that supported positive equivalence cases still work without lossy normalization.
+
+Only if that independent review returns PASS may V0.4.4 close and V0.4.5 unlock.
 
 ## Scope locks
 
-Until B1 independently passes, do not start:
+Until independent B1 re-review passes, do not start:
 
 - V0.4.5 second real-repository work;
 - Azure DevOps ingestion;
@@ -149,10 +148,10 @@ Until B1 independently passes, do not start:
 
 Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns.
 
-## Bootstrap prompt for coding thread
+## Bootstrap prompt for independent re-review
 
 ```text
-Continue PKC from current main HEAD.
-Read docs/status.md, docs/handoff.md, docs/reviews/2026-09-13-v0.4.4-external-review.md, then docs/reviews/2026-09-13-v0.4.4-external-rereview.md.
-Fix only the remaining V0.4.4 B1 blocker, regression-first. Preserve signed numeric, decimal, quoted punctuation, and meaningful member-path semantics in condition equivalence. If equivalence cannot be proven, classify conservatively. Commit incrementally, rerun all current gates, update status/handoff, and do not advance V0.4.5 until independent re-review passes.
+Independently re-review PKC V0.4.4 B1 from current main HEAD.
+Read docs/status.md, docs/handoff.md, docs/reviews/2026-09-13-v0.4.4-external-review.md, and docs/reviews/2026-09-13-v0.4.4-external-rereview.md.
+Focus only on validation-condition equivalence safety. Verify signed numeric, decimal, quoted punctuation, meaningful member-path semantics, conservative handling of unprovable conditions, and preservation of valid cross-language equivalence. Confirm all current gates and handoff parity. Do not advance V0.4.5 unless the independent re-review passes.
 ```
