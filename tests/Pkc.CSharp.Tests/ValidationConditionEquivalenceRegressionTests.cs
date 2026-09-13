@@ -122,6 +122,63 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         AssertConservativeMismatch(Compare(candidates, document));
     }
 
+    [Fact]
+    public void Frontend_loose_equality_is_not_proven_equivalent_to_backend_equality()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "serviceType == 'CSP'")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.ServiceType == ServiceType.CSP")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Angular_value_path_is_stripped_only_for_the_bound_form()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation(
+                "ui",
+                "ui-field-validation",
+                "targetId",
+                component: "TargetComponent",
+                condition: "customer.value.status === 'Active'",
+                framework: "angular-static")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Status == Status.Active")],
+            bindingForm: "targetForm");
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Known_angular_bound_form_context_can_match_backend_field()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation(
+                "ui",
+                "ui-field-validation",
+                "targetId",
+                component: "TargetComponent",
+                condition: "targetForm.value.status === 'Active'",
+                framework: "angular-static")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "request.Status == Status.Active")],
+            bindingForm: "targetForm");
+
+        var comparison = Compare(candidates, document);
+
+        Assert.Equal("consistent", comparison.Metadata["status"]);
+        Assert.Equal("high", comparison.Metadata["analysisConfidence"]);
+    }
+
+    [Fact]
+    public void Backend_request_parameter_root_is_case_sensitive()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "status === 'Active'")],
+            [Validation("backend", "backend-field-validation", "TargetId", method: "Create", condition: "Request.Status == Status.Active")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
     private static void AssertConservativeMismatch(EvidenceFact comparison)
     {
         Assert.NotEqual("consistent", comparison.Metadata["status"]);
@@ -136,7 +193,8 @@ public sealed class ValidationConditionEquivalenceRegressionTests
 
     private static (FeatureCandidateDocument Candidates, FactDocument Document) BuildScenario(
         IReadOnlyList<EvidenceFact> uiValidations,
-        IReadOnlyList<EvidenceFact> backendValidations)
+        IReadOnlyList<EvidenceFact> backendValidations,
+        string bindingForm = "targetForm")
     {
         var endpoint = new EvidenceFact(
             "endpoint",
@@ -163,7 +221,8 @@ public sealed class ValidationConditionEquivalenceRegressionTests
             {
                 ["field"] = "targetId",
                 ["requestField"] = "TargetId",
-                ["component"] = "TargetComponent"
+                ["component"] = "TargetComponent",
+                ["form"] = bindingForm
             });
 
         var candidate = new FeatureCandidate(
@@ -191,7 +250,8 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         string field,
         string? component = null,
         string? method = null,
-        string? condition = null)
+        string? condition = null,
+        string? framework = null)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -202,6 +262,7 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         if (!string.IsNullOrWhiteSpace(component)) metadata["component"] = component;
         if (!string.IsNullOrWhiteSpace(method)) metadata["method"] = method;
         if (!string.IsNullOrWhiteSpace(condition)) metadata["condition"] = condition;
+        if (!string.IsNullOrWhiteSpace(framework)) metadata["framework"] = framework;
 
         return new EvidenceFact(
             id,
