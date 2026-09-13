@@ -1,26 +1,54 @@
 # PKC Status
 
-Last updated: 2026-09-13
+Last updated: 2026-09-14
 
 ## Current milestone
 
-**V0.4.4 Loren Knowledge Readiness — FINAL B1 PROVENANCE FIX IMPLEMENTED / INDEPENDENT RE-REVIEW REQUIRED.**
+**V0.4.4 Loren Knowledge Readiness — PASS / COMPLETE.**
 
-Latest independent review:
+**V0.4.5 Independent Real-Repository Generalization Gate — UNLOCKED / NEXT.**
+
+Final independent review:
 
 ```text
-docs/reviews/2026-09-13-v0.4.4-external-rereview-3.md
+docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-That review found one remaining B1 backend-provenance gap. The gap has now been fixed regression-first, but V0.4.4 is **not** self-certified. V0.4.5 remains locked until an independent reviewer passes the current candidate.
+Reviewed implementation state:
 
-V0.4.3 remains the last accepted package:
+```text
+final B1 implementation checkpoint: 5a5fdcb5fdf1a9fb888857791a4757382b86c774
+independently reviewed HEAD:         cd7c4139f0bb2d17deb883a1639fd343c1b68d67
+```
+
+The commits after `5a5fdcb5...` and through the reviewed HEAD are documentation-only. The final external re-review found no remaining V0.4.4 acceptance blocker.
+
+Last accepted published tool package remains:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-## B1 provenance fix candidate
+V0.4.4 acceptance does not by itself imply that a new package version has been published.
+
+## Final V0.4.4 disposition
+
+```text
+B1 validation-condition equivalence correctness   PASS
+B2 repeated-build canonical parity                 PASS
+B3 capability-flow anti-overfit                    PASS
+B4 frontend product-source scope                   PASS
+PokeTrade known-answer regression                  PASS
+Loren blind knowledge-only comprehension           PASS
+Loren pinned external trial                        PASS
+Loren-main canary                                  PASS
+portable handoff parity                            PASS
+independent external review                        PASS
+```
+
+### B1 final provenance closure
+
+The last blocker was a reachable cross-stack false-positive when a conditional backend validation had no validated-object `parameterName` provenance.
 
 Regression commit:
 
@@ -28,114 +56,74 @@ Regression commit:
 82c28b4a4d2b2c8e9bdcdf2bb2e902d8caedf1c1
 ```
 
-Regression CI:
+Red CI run:
 
 ```text
-run 34762840775
-build:     PASS, 0 warnings / 0 errors
-frontend:  8 / 8 PASS
-C#:        53 PASS / 1 FAIL
-failure:   BackendValidationProvenanceRegressionTests.Missing_validated_parameter_provenance_cannot_be_proven_by_another_endpoint_parameter
-actual:    consistent
+34762840775 — FAIL as expected before fix
 ```
 
-The regression uses real C# source through `CSharpEvidenceScanner` plus frontend scanning and cross-stack correlation. It proves the reachable case where a conditional `backend-field-validation` has no `parameterName`, while its condition root (`tracker`) is merely another endpoint parameter.
-
-Fix commit:
+Final fix:
 
 ```text
 5a5fdcb5fdf1a9fb888857791a4757382b86c774
 ```
 
-For conditional backend equivalence, `TryCanonicalizeFieldPath()` now requires all of the following before stripping the backend condition root:
+Conditional backend equivalence now requires:
 
 ```text
-parameterName is present and non-empty
-AND parameterName exactly matches an endpoint parameter
-AND condition field root exactly matches parameterName
+non-empty parameterName
+AND exact endpoint-parameter membership
+AND exact condition-root == parameterName
 ```
 
-If any proof is missing, condition equivalence is unproven and the comparison cannot become `consistent / high`.
+Missing or contradictory provenance is conservative and cannot emit `consistent / high`.
 
-Positive synthetic conditional-backend fixtures were updated to carry realistic `parameterName: "request"` provenance where they are intended to model normal supported request guards.
+## Exact-HEAD verification
 
-## Current blocker disposition
+For reviewed HEAD `cd7c4139f0bb2d17deb883a1639fd343c1b68d67`:
 
 ```text
-B1 typed operand semantics                         PASS candidate
-B1 complete condition-set comparison              PASS candidate
-B1 Angular proven form root                        PASS candidate
-B1 backend validated-object provenance            FIX IMPLEMENTED / RE-REVIEW REQUIRED
-B2 repeated-build canonical parity                 PASS
-B3 capability-flow anti-overfit                    PASS
-B4 frontend product-source scope                   PASS
+CI / PokeTrade       PASS  run 34770333701
+pinned Loren trial   PASS  run 34770333766
+Loren-main canary    PASS  run 34770333731
 ```
 
-## Verified gates on fix commit `5a5fdcb5...`
+CI details:
 
 ```text
-full PKC CI / PokeTrade  PASS  run 34769999278
-pinned Loren external   PASS  run 34769999298
-Loren-main canary       PASS  run 34769999304
+build:             PASS, 0 warnings / 0 errors
+C# tests:          54 / 54 PASS
+frontend tests:     8 / 8 PASS
+tool pack/install: PASS
+WorkPlay build:    PASS
+PokeTrade:         PASS
 ```
 
-Full CI evidence:
+Pinned Loren exact-HEAD artifact:
 
 ```text
-build:          PASS, 0 warnings / 0 errors
-C# tests:       54 / 54 PASS
-frontend tests:  8 / 8 PASS
-tool install:   PASS
-WorkPlay build: PASS
-PokeTrade:      PASS
+artifact id:      10322236370
+artifact digest:  sha256:365245f600c0ad0cf43ca6a89b5fa73066e517b2c157b018a361d8e2b9b228c4
+structured files: 23
+bundle parity:     23 / 23 verbatim
+portable ZIP:      23 / 23 exact set + byte parity
+source/raw leak:    0
+bundle sha256:     2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
+inner ZIP sha256:  663415a19781d5e93a814abd71fc547c94b884b18ac5c39300a2dda55e2d59bc
 ```
 
-Pinned Loren artifact:
+## Next milestone
 
-```text
-artifact id:       10322215429
-artifact digest:   sha256:c615a129f96992ed3662ff2368a1dbc8bfa639d4fbc86034c7b102b773ce99de
-structured files:  23
-bundle parity:      23 / 23, marker + verbatim content
-portable ZIP:       23 / 23, exact file set + byte parity
-source/raw leak:     0
-bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
-inner ZIP sha256:   1fc740bafef0411e9702fe4da2a4b8c2e5b9903ba252e07036d97315322e9258
-```
+Proceed to **V0.4.5 — Independent Real-Repository Generalization Gate** according to `docs/milestones.md` and `docs/real-project-trial.md`.
 
-## Documentation-checkpoint verification
+The next benchmark must be a second genuine repository that was not authored or modified for PKC, differs materially from PokeTrade/Loren, and is not selected merely because current heuristics handle it easily.
 
-The first completed status/handoff candidate was also rerun on exact repository HEAD:
+Run the same layered-output, blind knowledge-only comprehension, source cross-check, regression discipline and independent external review process.
 
-```text
-7575c08c220dc629fb8d9e774d767abe55e41f08
-```
+## Scope lock
 
-with all current gates green:
+**V0.5 Azure DevOps evidence remains locked.**
 
-```text
-full PKC CI / PokeTrade  PASS  run 34770176435
-pinned Loren external   PASS  run 34770176432
-Loren-main canary       PASS  run 34770176450
-```
+Do not start V0.5 until both V0.4.4 and V0.4.5 pass.
 
-Pinned Loren parity on that documentation checkpoint:
-
-```text
-artifact id:       10321428088
-artifact digest:   sha256:6466b3a1074da738f78179b120c86c1f3f04e6fc6c273326056c772956293097
-structured files:  23
-bundle parity:      23 / 23
-portable ZIP:       23 / 23, exact set + byte parity
-source/raw leak:     0
-bundle sha256:      2ea7037c5c4c8954b5fa1abcb4248963ad9299a3ce53e10591e5ce492dc17186
-inner ZIP sha256:   fddadb366929d9868f6bca5f7419a07056fb05e4ddc1570241d595860265de28
-```
-
-## Exact next action
-
-Keep V0.4.4 open and request independent B1 re-review focused on the backend validated-object provenance contract. The coding thread must not declare V0.4.4 PASS on its own.
-
-Do **not** advance V0.4.5 until that independent review returns PASS.
-
-Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns and are outside this B1-only fix.
+Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns.
