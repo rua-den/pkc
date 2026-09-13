@@ -452,13 +452,28 @@ public sealed class ValidationConsistencyCandidateEnricher
             return false;
         }
 
-        if (isBackend &&
-            segments.Count > 1 &&
-            requestParameterNames.Contains(segments[0]))
+        if (isBackend)
         {
+            if (segments.Count <= 1 ||
+                !requestParameterNames.Contains(segments[0]))
+            {
+                fieldPath = string.Empty;
+                fieldTerminal = string.Empty;
+                return false;
+            }
+
+            if (fact.Metadata.TryGetValue("parameterName", out var validatedParameterName) &&
+                !string.IsNullOrWhiteSpace(validatedParameterName) &&
+                !string.Equals(segments[0], validatedParameterName, StringComparison.Ordinal))
+            {
+                fieldPath = string.Empty;
+                fieldTerminal = string.Empty;
+                return false;
+            }
+
             segments.RemoveAt(0);
         }
-        else if (!isBackend && IsAngularFact(fact))
+        else if (IsAngularFact(fact))
         {
             if (segments.Count > 1 &&
                 string.Equals(segments[0], "this", StringComparison.Ordinal))
