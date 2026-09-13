@@ -4,7 +4,15 @@ Last updated: 2026-09-13
 
 ## Current milestone
 
-**V0.4.4 Loren Knowledge Readiness — B1 FIX IMPLEMENTED / INDEPENDENT RE-REVIEW REQUIRED.**
+**V0.4.4 Loren Knowledge Readiness — ONE B1 CONTEXT-PROOF BLOCKER REMAINS.**
+
+Independent re-review of current candidate `f98f05a624fe4262615db992fbe3f9ea3bd43bce` confirms the typed-operand fix closed the previously reported numeric/string/member-path collisions, but found one remaining false-equivalence path in context stripping.
+
+Latest review:
+
+```text
+docs/reviews/2026-09-13-v0.4.4-external-rereview-2.md
+```
 
 Review lineage:
 
@@ -12,14 +20,8 @@ Review lineage:
 original review HEAD:      34f77c036206d48bbf9495ea73e5debcea9f0eb3
 all-four-fix checkpoint:   8b01d4b5ba84112f36e46b234426f754be38c8f6
 first re-review HEAD:       e022dbf581846c4699b724df063cd68b47dff332
-B1 implementation HEAD:    5fba7fd08e62e721e96e5a93bc65ab153d663f66
-```
-
-Review records:
-
-```text
-docs/reviews/2026-09-13-v0.4.4-external-review.md
-docs/reviews/2026-09-13-v0.4.4-external-rereview.md
+B1 typed-operand HEAD:      5fba7fd08e62e721e96e5a93bc65ab153d663f66
+second re-review HEAD:      f98f05a624fe4262615db992fbe3f9ea3bd43bce
 ```
 
 V0.4.3 remains the last accepted package:
@@ -28,107 +30,84 @@ V0.4.3 remains the last accepted package:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Do **not** mark V0.4.4 PASS and do **not** advance V0.4.5 until an independent re-review of the new HEAD passes.
+Do **not** mark V0.4.4 PASS and do **not** advance V0.4.5 until the remaining B1 gap is fixed and independently re-reviewed.
 
-## Re-review disposition before the B1 follow-up
+## Current blocker disposition
 
 ```text
-B1 validation consistency semantics                 BLOCK
+B1 typed operand semantics                         PASS
+B1 complete condition-set comparison              PASS
+B1 proven context stripping                        BLOCK
 B2 repeated-build canonical parity                 PASS
 B3 capability-flow anti-overfit                    PASS
 B4 frontend product-source scope                   PASS
 ```
 
-B2/B3/B4 were not reopened by this change.
+## Remaining B1 gap
 
-## B1 regression-first closure candidate
+`ValidationConsistencyCandidateEnricher` still strips path roots more broadly than PKC can prove.
 
-The re-review found that condition canonicalization could erase semantically meaningful operand structure. The follow-up was implemented regression-first.
-
-Primary red regression commits:
+Angular currently reduces:
 
 ```text
-fb182596c6b64dd484e65e5a8c209c0bbed5f89d  test: reproduce semantic operand equivalence blocker
-3da99f9cb0e7238559cd1df710688107bcafe146  test: lock decimal operand structure
+<root>.value.<field>
+<root>.controls.<field>.value
 ```
 
-The final red run before the typed-operand fix, workflow `34742346887` on `3da99f9...`, proved all four requested blocker classes still failed:
+for any Angular validation fact, without proving `<root>` is the form associated with the current binding.
+
+Therefore this can false-match:
 
 ```text
-signed numeric:       retryCount === -1 vs request.RetryCount == 1        FAIL as expected
-decimal structure:    threshold === 1.2 vs request.Threshold == 2         FAIL as expected
-quoted punctuation:   code === 'A-B' vs request.Code == "AB"              FAIL as expected
-member path:          primary.status vs request.Secondary.Status           FAIL as expected
+UI:      this.domain.value.status === 'Active'
+Backend: request.Status == Status.Active
 ```
 
-Typed-operand implementation:
+Likewise the backend currently strips a root if it matches **any** endpoint parameter name. That can false-match a guard on an unrelated context/service parameter, for example:
 
 ```text
-9bdb0da9e635c5591edecb730054de590ff50be5  fix: preserve validation operand semantics
+CreateRequest request, StateTracker tracker
+tracker.Status == Status.Active && request.TargetId == null
 ```
 
-A follow-up safety review of that implementation found one remaining lossy edge: multi-segment paths were still case-folded. That was also fixed regression-first:
+The condition on `tracker.Status` must not be treated as a request-field condition merely because `tracker` is an endpoint parameter.
+
+Required deterministic rule:
 
 ```text
-1192ac6ec56fde3367a74f6b55720feda67d0d56  test: preserve member path case semantics
-5fba7fd08e62e721e96e5a93bc65ab153d663f66  fix: preserve multi-segment path case
+Angular:
+strip form scaffolding only when the root is proven to be the relevant form root.
+
+Backend:
+strip only the proven validated/request-object root for that validation fact
+(for example its `parameterName`), not every endpoint parameter.
+
+No proof:
+preserve the path or return conservative non-consistent classification.
 ```
 
-On `1192ac6...`, workflow `34742645961` failed exactly the new regression `Multi_segment_member_path_case_is_not_erased`; the other 45 C# tests and all 8 frontend tests remained green.
+Add regression tests for both false-equivalence cases before the fix.
 
-## B1 implementation contract
+## Automated evidence on typed-operand candidate
 
-The canonicalizer now:
-
-- parses equality operands into typed string-literal, numeric-literal, and member-path forms;
-- preserves numeric sign and decimal semantics with invariant numeric parsing;
-- preserves quoted literal punctuation instead of stripping non-alphanumeric characters;
-- preserves meaningful member-path segments instead of reducing every path to its terminal token;
-- preserves case for multi-segment member paths rather than proving equality via blanket case-folding;
-- case-normalizes only single-segment field names after deterministic context stripping, preserving the known camelCase/PascalCase cross-stack convenience;
-- removes only context prefixes that are deterministically known, including the actual backend endpoint parameter root and recognized Angular form-value scaffolding;
-- keeps the existing deterministic enum/string equivalence needed for cases such as UI `'CSP'` versus backend `ServiceType.CSP`;
-- treats unsupported or unprovable operand semantics conservatively, producing a non-`consistent/high` result.
-
-The complete-condition-set comparison from the first B1 fix remains in place.
-
-## Current gate evidence
-
-For B1 implementation HEAD `5fba7fd08e62e721e96e5a93bc65ab153d663f66`:
+For `5fba7fd08e62e721e96e5a93bc65ab153d663f66`:
 
 ```text
-full CI / WorkPlay          PASS  workflow run 34742742074
-  C# tests                  46 / 46 PASS
-  frontend tests             8 / 8 PASS
-PokeTrade real system       PASS  workflow run 34742742074
-pinned Loren external       PASS  workflow run 34742742056
-Loren-main canary           PASS  workflow run 34742742039
+CI / WorkPlay + PokeTrade    PASS  run 34742742074
+pinned Loren                 PASS  run 34742742056
+Loren-main canary            PASS  run 34742742039
+C# tests                     46 / 46 PASS
+frontend tests                8 / 8 PASS
 ```
 
-Pinned Loren artifact from run `34742742056`:
+These gates remain valuable regression evidence but do not override the remaining deterministic false-equivalence path.
 
-```text
-artifact id:      10312494140
-artifact digest:  sha256:907b0d2de95933012e33992236894af229690a84666bee02433834dcfa192a06
-structured files: 23
-bundle parity:     23 / 23
-ZIP parity:        23 / 23
-missing content:    0
-source/raw leak:     0
-```
+## Exact next action
 
-`PKC_KNOWLEDGE.md` contains every structured Markdown file verbatim, and `PKC_KNOWLEDGE.zip` contains the same 23 `knowledge/` files with no `.pkc/` or source entries.
+Stay in V0.4.4 and fix **only** B1 context-root proof, regression-first.
 
-## Acceptance position
+Then rerun full tests, PokeTrade, pinned Loren, Loren-main canary and handoff parity, update status/handoff, and request final independent B1 re-review.
 
-Current implementation evidence is green, but V0.4.4 is **not self-certified PASS**.
+B2/B3/B4 remain closed unless a new regression proves otherwise.
 
-Exact next action:
-
-```text
-independent re-review B1 on current main HEAD
-→ if PASS, close V0.4.4
-→ only then unlock V0.4.5
-```
-
-Warnings W1 (per-fact portable provenance) and W2 (durable blind-review evidence) remain non-blocking and outside this B1-only coding scope.
+Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns.
