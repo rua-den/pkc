@@ -455,15 +455,9 @@ public sealed class ValidationConsistencyCandidateEnricher
         if (isBackend)
         {
             if (segments.Count <= 1 ||
-                !requestParameterNames.Contains(segments[0]))
-            {
-                fieldPath = string.Empty;
-                fieldTerminal = string.Empty;
-                return false;
-            }
-
-            if (fact.Metadata.TryGetValue("parameterName", out var validatedParameterName) &&
-                !string.IsNullOrWhiteSpace(validatedParameterName) &&
+                !fact.Metadata.TryGetValue("parameterName", out var validatedParameterName) ||
+                string.IsNullOrWhiteSpace(validatedParameterName) ||
+                !requestParameterNames.Contains(validatedParameterName) ||
                 !string.Equals(segments[0], validatedParameterName, StringComparison.Ordinal))
             {
                 fieldPath = string.Empty;

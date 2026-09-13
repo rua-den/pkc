@@ -325,6 +325,11 @@ public sealed class CrossStackValidationConsistencyTests
         {
             metadata["condition"] = condition;
         }
+        if (string.Equals(kind, "backend-field-validation", StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(condition))
+        {
+            metadata["parameterName"] = "request";
+        }
 
         return new EvidenceFact(
             id,

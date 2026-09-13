@@ -308,6 +308,12 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         if (!string.IsNullOrWhiteSpace(method)) metadata["method"] = method;
         if (!string.IsNullOrWhiteSpace(condition)) metadata["condition"] = condition;
         if (!string.IsNullOrWhiteSpace(framework)) metadata["framework"] = framework;
+        if (string.Equals(kind, "backend-field-validation", StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(condition) &&
+            string.IsNullOrWhiteSpace(parameterName))
+        {
+            parameterName = "request";
+        }
         if (!string.IsNullOrWhiteSpace(parameterName)) metadata["parameterName"] = parameterName;
 
         return new EvidenceFact(
