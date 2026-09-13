@@ -189,6 +189,39 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         AssertConservativeMismatch(Compare(candidates, document));
     }
 
+    [Fact]
+    public void Backend_unrooted_identifier_is_not_proven_as_request_field()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "status === 'Active'")],
+            [Validation(
+                "backend",
+                "backend-field-validation",
+                "TargetId",
+                method: "Create",
+                condition: "Status == Status.Active",
+                parameterName: "request")]);
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
+    [Fact]
+    public void Backend_other_endpoint_parameter_is_not_the_validated_request_context()
+    {
+        var (candidates, document) = BuildScenario(
+            [Validation("ui", "ui-field-validation", "targetId", component: "TargetComponent", condition: "status === 'Active'")],
+            [Validation(
+                "backend",
+                "backend-field-validation",
+                "TargetId",
+                method: "Create",
+                condition: "cancellationToken.Status == Status.Active",
+                parameterName: "request")],
+            endpointParameters: "CreateTargetRequest request, CancellationToken cancellationToken");
+
+        AssertConservativeMismatch(Compare(candidates, document));
+    }
+
     private static void AssertConservativeMismatch(EvidenceFact comparison)
     {
         Assert.NotEqual("consistent", comparison.Metadata["status"]);
@@ -204,7 +237,8 @@ public sealed class ValidationConditionEquivalenceRegressionTests
     private static (FeatureCandidateDocument Candidates, FactDocument Document) BuildScenario(
         IReadOnlyList<EvidenceFact> uiValidations,
         IReadOnlyList<EvidenceFact> backendValidations,
-        string bindingForm = "targetForm")
+        string bindingForm = "targetForm",
+        string endpointParameters = "CreateTargetRequest request")
     {
         var endpoint = new EvidenceFact(
             "endpoint",
@@ -217,7 +251,7 @@ public sealed class ValidationConditionEquivalenceRegressionTests
             {
                 ["httpMethod"] = "POST",
                 ["fullRoute"] = "/api/targets",
-                ["parameters"] = "CreateTargetRequest request"
+                ["parameters"] = endpointParameters
             });
 
         var binding = new EvidenceFact(
@@ -261,7 +295,8 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         string? component = null,
         string? method = null,
         string? condition = null,
-        string? framework = null)
+        string? framework = null,
+        string? parameterName = null)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -273,6 +308,7 @@ public sealed class ValidationConditionEquivalenceRegressionTests
         if (!string.IsNullOrWhiteSpace(method)) metadata["method"] = method;
         if (!string.IsNullOrWhiteSpace(condition)) metadata["condition"] = condition;
         if (!string.IsNullOrWhiteSpace(framework)) metadata["framework"] = framework;
+        if (!string.IsNullOrWhiteSpace(parameterName)) metadata["parameterName"] = parameterName;
 
         return new EvidenceFact(
             id,
