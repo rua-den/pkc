@@ -61,12 +61,7 @@ try
             var workflow = await synthesizer.SynthesizeAsync(candidate);
             workflows.Add(workflow);
             var relativePath = workflowRenderer.GetRelativePath(workflow);
-            var content = workflowRenderer.Render(workflow);
-            var outputPath = Resolve(repositoryPath, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, content);
-            canonicalKnowledgeFiles[relativePath] = content;
-            Console.WriteLine(outputPath);
+            canonicalKnowledgeFiles[relativePath] = workflowRenderer.Render(workflow);
         }
 
         var productFeatures = new ProductFeatureBuilder().Build(workflows);
@@ -78,29 +73,25 @@ try
         foreach (var feature in productFeatures.Features)
         {
             var relativePath = featureRenderer.GetRelativePath(feature);
-            var content = featureRenderer.Render(feature);
-            var outputPath = Resolve(repositoryPath, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, content);
-            canonicalKnowledgeFiles[relativePath] = content;
-            Console.WriteLine(outputPath);
+            canonicalKnowledgeFiles[relativePath] = featureRenderer.Render(feature);
         }
 
         const string indexRelativePath = "knowledge/index.md";
-        var indexContent = featureRenderer.RenderIndex(productFeatures);
-        var indexPath = Resolve(repositoryPath, indexRelativePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(indexPath)!);
-        await File.WriteAllTextAsync(indexPath, indexContent);
-        canonicalKnowledgeFiles[indexRelativePath] = indexContent;
-        Console.WriteLine(indexPath);
+        canonicalKnowledgeFiles[indexRelativePath] = featureRenderer.RenderIndex(productFeatures);
 
         var sourceRepositoryLabel = new DirectoryInfo(repositoryPath).Name;
         var packRenderer = new PortableKnowledgePackRenderer();
-        var instructionsContent = packRenderer.RenderInstructions(sourceRepositoryLabel);
-        var instructionsPath = Resolve(repositoryPath, PortableKnowledgePackRenderer.InstructionsRelativePath);
-        await File.WriteAllTextAsync(instructionsPath, instructionsContent);
-        canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] = instructionsContent;
-        Console.WriteLine(instructionsPath);
+        canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] =
+            packRenderer.RenderInstructions(sourceRepositoryLabel);
+
+        ReconcileGeneratedKnowledge(repositoryPath, canonicalKnowledgeFiles);
+        foreach (var pair in canonicalKnowledgeFiles.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var outputPath = Resolve(repositoryPath, pair.Key);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            await File.WriteAllTextAsync(outputPath, pair.Value);
+            Console.WriteLine(outputPath);
+        }
 
         var bundlePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.BundleFileName);
         await File.WriteAllTextAsync(bundlePath, packRenderer.RenderBundle(canonicalKnowledgeFiles, sourceRepositoryLabel));
@@ -128,6 +119,66 @@ catch (Exception exception)
 
 static string Resolve(string repositoryPath, string relativePath) =>
     Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+static void ReconcileGeneratedKnowledge(
+    string repositoryPath,
+    IReadOnlyDictionary<string, string> canonicalFiles)
+{
+    var knowledgeDirectory = Path.Combine(repositoryPath, "knowledge");
+    if (!Directory.Exists(knowledgeDirectory))
+    {
+        return;
+    }
+
+    var currentGeneratedFiles = canonicalFiles.Keys
+        .Select(path => Path.GetFullPath(Resolve(repositoryPath, path)))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var file in Directory.EnumerateFiles(knowledgeDirectory, "*.md", SearchOption.AllDirectories))
+    {
+        var fullPath = Path.GetFullPath(file);
+        if (currentGeneratedFiles.Contains(fullPath) || !HasGeneratedFrontMatter(file))
+        {
+            continue;
+        }
+
+        File.Delete(file);
+    }
+
+    foreach (var directory in Directory.EnumerateDirectories(knowledgeDirectory, "*", SearchOption.AllDirectories)
+                 .OrderByDescending(path => path.Length))
+    {
+        if (!Directory.EnumerateFileSystemEntries(directory).Any())
+        {
+            Directory.Delete(directory);
+        }
+    }
+}
+
+static bool HasGeneratedFrontMatter(string path)
+{
+    using var reader = File.OpenText(path);
+    if (!string.Equals(reader.ReadLine()?.Trim(), "---", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    for (var lineNumber = 0; lineNumber < 64; lineNumber++)
+    {
+        var line = reader.ReadLine();
+        if (line is null || string.Equals(line.Trim(), "---", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (string.Equals(line.Trim(), "generated: true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 static void WriteKnowledgeArchive(string archivePath, IReadOnlyDictionary<string, string> canonicalFiles)
 {
