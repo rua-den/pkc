@@ -5,10 +5,10 @@ public sealed class PokeTradeStore
     private readonly object _gate = new();
     private readonly List<PokemonCard> _cards =
     [
-        new() { Id = 1, Name = "Charizard ex", SetName = "Obsidian Flames", Rarity = "Special Illustration Rare", Price = 149.90m, Stock = 2, ReorderLevel = 3 },
-        new() { Id = 2, Name = "Pikachu ex", SetName = "Surging Sparks", Rarity = "Ultra Rare", Price = 42.50m, Stock = 8, ReorderLevel = 4 },
-        new() { Id = 3, Name = "Umbreon ex", SetName = "Prismatic Evolutions", Rarity = "Special Illustration Rare", Price = 219.00m, Stock = 1, ReorderLevel = 2 },
-        new() { Id = 4, Name = "Mewtwo VSTAR", SetName = "Crown Zenith", Rarity = "Galarian Gallery", Price = 85.00m, Stock = 5, ReorderLevel = 3 }
+        new() { Id = 1, Name = "Charizard ex", SetName = "Obsidian Flames", Rarity = "Special Illustration Rare", Price = 149.90m, Stock = 2, ReorderLevel = 3, IsPublished = true, WebEnabled = true, SaleStartsAt = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero), SaleEndsAt = null },
+        new() { Id = 2, Name = "Pikachu ex", SetName = "Surging Sparks", Rarity = "Ultra Rare", Price = 42.50m, Stock = 8, ReorderLevel = 4, IsPublished = true, WebEnabled = true, SaleStartsAt = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero), SaleEndsAt = null },
+        new() { Id = 3, Name = "Umbreon ex", SetName = "Prismatic Evolutions", Rarity = "Special Illustration Rare", Price = 219.00m, Stock = 1, ReorderLevel = 2, IsPublished = true, WebEnabled = true, SaleStartsAt = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero), SaleEndsAt = null },
+        new() { Id = 4, Name = "Mewtwo VSTAR", SetName = "Crown Zenith", Rarity = "Galarian Gallery", Price = 85.00m, Stock = 5, ReorderLevel = 3, IsPublished = true, WebEnabled = true, SaleStartsAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero), SaleEndsAt = null }
     ];
 
     private readonly List<Order> _orders = [];
@@ -20,7 +20,19 @@ public sealed class PokeTradeStore
 
     public IReadOnlyList<PokemonCard> GetCards()
     {
-        lock (_gate) return _cards.Select(CloneCard).ToArray();
+        lock (_gate)
+        {
+            var now = DateTimeOffset.UtcNow;
+            return _cards
+                .Where(card =>
+                    card.IsPublished &&
+                    card.WebEnabled &&
+                    card.SaleStartsAt <= now &&
+                    (card.SaleEndsAt == null || now < card.SaleEndsAt) &&
+                    card.Stock > 0)
+                .Select(CloneCard)
+                .ToArray();
+        }
     }
 
     public IReadOnlyList<Order> GetOrders()
@@ -212,6 +224,10 @@ public sealed class PokeTradeStore
         Rarity = card.Rarity,
         Price = card.Price,
         Stock = card.Stock,
-        ReorderLevel = card.ReorderLevel
+        ReorderLevel = card.ReorderLevel,
+        IsPublished = card.IsPublished,
+        WebEnabled = card.WebEnabled,
+        SaleStartsAt = card.SaleStartsAt,
+        SaleEndsAt = card.SaleEndsAt
     };
 }
