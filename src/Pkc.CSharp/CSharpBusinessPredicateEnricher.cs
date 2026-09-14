@@ -62,7 +62,8 @@ internal sealed class CSharpBusinessPredicateEnricher
 
                 foreach (var invocation in method.DescendantNodes().OfType<InvocationExpressionSyntax>())
                 {
-                    if (!TryDescribe(invocation, out var description))
+                    if (!TryDescribe(invocation, out var description) ||
+                        !TryResolveSupportedOperation(document, owner, invocation, description.Operation, out var semanticTarget))
                     {
                         continue;
                     }
@@ -83,7 +84,11 @@ internal sealed class CSharpBusinessPredicateEnricher
                             ["parameter"] = description.Parameter,
                             ["expression"] = description.Expression,
                             ["effect"] = description.Effect,
-                            ["sourceKind"] = "query-predicate"
+                            ["sourceKind"] = "query-predicate",
+                            ["operationResolution"] = "project-semantic",
+                            ["operationSymbol"] = semanticTarget,
+                            ["analysisMode"] = "project-semantic",
+                            ["analysisConfidence"] = "high"
                         });
 
                     facts[id] = fact;
@@ -113,6 +118,36 @@ internal sealed class CSharpBusinessPredicateEnricher
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray()
         };
+    }
+
+    private static bool TryResolveSupportedOperation(
+        FactDocument document,
+        EvidenceFact owner,
+        InvocationExpressionSyntax invocation,
+        string operation,
+        out string semanticTarget)
+    {
+        semanticTarget = string.Empty;
+        var location = GetLocation(invocation, owner.Source.Path);
+        var enumerableTarget = $"System.Linq.Enumerable.{operation}";
+        var queryableTarget = $"System.Linq.Queryable.{operation}";
+
+        var target = document.Relations
+            .Where(relation => relation.FromFactId == owner.Id && relation.Kind == "invokes")
+            .Where(relation => string.Equals(relation.Source.Path, location.Path, StringComparison.Ordinal))
+            .Where(relation => relation.Source.StartLine == location.StartLine && relation.Source.EndLine == location.EndLine)
+            .Select(relation => relation.Target)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate, enumerableTarget, StringComparison.Ordinal) ||
+                string.Equals(candidate, queryableTarget, StringComparison.Ordinal));
+
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return false;
+        }
+
+        semanticTarget = target;
+        return true;
     }
 
     private static void AddConfiguredSourceObjects(
