@@ -18,6 +18,7 @@ public sealed class BusinessPredicateKnowledgeTests
 
         try
         {
+            await File.WriteAllTextAsync(Path.Combine(root, "Demo.csproj"), Project);
             await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), Source);
 
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
@@ -29,6 +30,8 @@ public sealed class BusinessPredicateKnowledgeTests
 
             Assert.Equal("_cards", predicate.Metadata["source"]);
             Assert.Equal("inclusion", predicate.Metadata["effect"]);
+            Assert.Equal("project-semantic", predicate.Metadata["operationResolution"]);
+            Assert.Equal("System.Linq.Enumerable.Where", predicate.Metadata["operationSymbol"]);
             Assert.Contains("card.IsPublished", predicate.Metadata["expression"], StringComparison.Ordinal);
             Assert.Contains("card.WebEnabled", predicate.Metadata["expression"], StringComparison.Ordinal);
             Assert.Contains("card.SaleStartsAt <= now", predicate.Metadata["expression"], StringComparison.Ordinal);
@@ -70,6 +73,16 @@ public sealed class BusinessPredicateKnowledgeTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    private const string Project = """
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>net8.0</TargetFramework>
+            <ImplicitUsings>enable</ImplicitUsings>
+            <Nullable>enable</Nullable>
+          </PropertyGroup>
+        </Project>
+        """;
 
     private const string Source = """
         using System;
