@@ -4,15 +4,15 @@ Use this file when continuing PKC in another coding/review thread.
 
 ## Product contract
 
-PKC is a Product/System Knowledge Compiler. A Product Owner should be able to hand generated portable knowledge to an AI assistant and ask product/system questions without requiring a source-code rescan.
+PKC is a Product/System Knowledge Compiler. A Product Owner should be able to hand generated portable knowledge to an AI assistant and ask practical product/system questions without requiring the assistant to re-read or grep source code.
 
 Keep the compiler architecture deterministic:
 
 ```text
-source
+source inputs
 → analyzers/adapters
 → evidence/facts
-→ feature/workflow candidates
+→ feature/workflow/business-decision candidates
 → knowledge synthesis
 → canonical model
 → portable rendering
@@ -20,151 +20,291 @@ source
 
 Do not implement direct source-to-freeform-AI generation.
 
+The V0.4.x exit standard is now explicitly business-logic/PO-question readiness, not merely endpoint or workflow enumeration.
+
+A representative target question is:
+
+> When is the Mewtwo card sold and shown in the web list, and what conditions are required for it to appear?
+
+Generated knowledge must preserve enough grounded predicate, configured-value, data-flow and frontend behavior evidence for an AI to answer that class of question truthfully.
+
 ## Current state
 
-**V0.4.4 Loren Knowledge Readiness has PASSED independent external review and is COMPLETE.**
+```text
+V0.4.4  Loren knowledge readiness              PASS / COMPLETE
+V0.4.5  Jellyfin generalization               INTERNAL TRIAL COMPLETE / INDEPENDENT REVIEW REQUIRED
+V0.4.6  business logic reconstruction         REVIEW CANDIDATE / CURRENT
+V0.4.7  cross-layer PO-question readiness     NEXT / LOCKED UNTIL REVIEW
+V0.5    Azure DevOps input evidence           LOCKED
+```
 
-**V0.4.5 Independent Real-Repository Generalization Gate is now unlocked and is the next milestone.**
-
-V0.5 Azure DevOps remains locked until V0.4.5 also passes.
-
-Read first:
+The last code checkpoint before review-documentation commits is:
 
 ```text
-docs/status.md
-docs/milestones.md
-docs/real-project-trial.md
+cbfaf6fb9107fdb233045358a2c0e7b689a647ce
+```
+
+Review current `main` HEAD. Do not self-declare V0.4.5 or V0.4.6 PASS.
+
+## Read first
+
+```text
+1. docs/status.md
+2. docs/handoff.md
+3. docs/milestones.md
+4. docs/real-project-trial.md
+5. docs/trials/2026-09-14-v0.4.5-jellyfin.md
+6. docs/trials/2026-09-14-v0.4.5-jellyfin-crosscheck.md
+7. docs/reviews/2026-09-14-v0.4.6-business-logic-review-request.md
+```
+
+For the previously accepted baseline also read, when needed:
+
+```text
 docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-For review history, the earlier blocker records remain under `docs/reviews/2026-09-13-v0.4.4-*`.
+The final `Current next action` footer in `docs/real-project-trial.md` is an older V0.4.4 snapshot. The current status/handoff/milestones supersede only that stale footer; the trial methodology/rubric remains applicable.
 
-## V0.4.4 accepted checkpoint
+## V0.4.4 accepted baseline
+
+V0.4.4 passed independent external review. Do not reopen it without new contradictory evidence.
+
+Accepted review:
 
 ```text
-final B1 implementation: 5a5fdcb5fdf1a9fb888857791a4757382b86c774
-reviewed HEAD:            cd7c4139f0bb2d17deb883a1639fd343c1b68d67
-final verdict:            PASS
+docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-Final accepted gate state:
+Important invariant retained from V0.4.4:
 
 ```text
-B1 validation-condition equivalence correctness   PASS
-B2 repeated-build canonical parity                 PASS
-B3 capability-flow anti-overfit                    PASS
-B4 frontend product-source scope                   PASS
-PokeTrade                                           PASS
-Loren pinned                                        PASS
-Loren-main canary                                   PASS
-portable handoff parity                             PASS
-independent external review                         PASS
+No deterministic proof → do not promote cross-stack semantic equivalence to a high-confidence consistent claim.
 ```
 
-The final B1 regression proves through real C# + frontend scanning and cross-stack correlation that missing backend validated-object provenance cannot be promoted to `consistent / high` merely because another condition root is an endpoint parameter.
+## V0.4.5 Jellyfin state
 
-The accepted backend condition proof contract is:
+Pinned benchmark:
 
 ```text
-conditional backend equivalence requires:
-1. non-empty validation fact parameterName;
-2. exact endpoint-parameter membership;
-3. exact condition field root == parameterName.
-
-No proof → non-consistent conservative result.
+repository: jellyfin/jellyfin
+commit:     1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 ```
 
-Do not weaken this contract in later work.
+Blind review was frozen before source inspection. Source cross-check then found a real generic MVC route-inheritance blocker.
 
-## Exact reviewed automation
-
-For reviewed HEAD `cd7c4139f0bb2d17deb883a1639fd343c1b68d67`:
+Regression/fix chain:
 
 ```text
-CI / PokeTrade       PASS  run 34770333701
-pinned Loren trial   PASS  run 34770333766
-Loren-main canary    PASS  run 34770333731
+red regression:       204b1b3e1d16d41f5c7feee2322d2e16c316b681
+red run:              34790695916 — FAIL as expected
+override protection:  f1c62410706853c047ffbbcfcde6be9a6e458867
+generic fix:          2a9ec6c00d46ebf907d543837e6e270d85c240e1
 ```
 
-CI contained:
+Post-fix checkpoint:
 
 ```text
-build:          0 warnings / 0 errors
-C# tests:       54 / 54 PASS
-frontend tests:  8 / 8 PASS
-WorkPlay build: PASS
-PokeTrade:      PASS
+CI + PokeTrade       34791017350 — PASS
+pinned Loren         34791017335 — PASS
+Loren-main canary    34791017349 — PASS
+pinned Jellyfin      34791017353 — PASS
 ```
 
-Pinned Loren portable output was independently rechecked:
+The corrected Jellyfin artifact retained exact portable parity and no source leak and corrected 153 endpoint route metadata claims.
+
+Independent review must still classify warnings W3/W4/W5 and decide V0.4.5 PASS or blocker.
+
+## V0.4.6 implementation
+
+### C# business predicate reconstruction
+
+Production:
 
 ```text
-structured Markdown: 23
-bundle parity:        23 / 23 verbatim
-portable ZIP:         exact same 23 files + byte parity
-source/raw leak:      0
+src/Pkc.CSharp/CSharpBusinessPredicateEnricher.cs
+src/Pkc.CSharp/CSharpEvidenceScanner.cs
 ```
 
-## Next milestone — V0.4.5
-
-Purpose: prove PKC did not overfit PokeTrade + Loren before adding another major evidence source.
-
-Select a **second genuine repository** that:
-
-- was not authored or modified for PKC;
-- fits the currently supported C# surface;
-- has non-trivial product/system behavior;
-- differs materially from PokeTrade/Loren;
-- is not chosen merely because current heuristics handle it easily.
-
-Then run the same acceptance discipline described in `docs/real-project-trial.md`:
+Regression:
 
 ```text
-pin benchmark commit
-→ compile layered knowledge output
-→ inspect analyzer/fallback provenance
-→ knowledge-only blind review
-→ freeze answers
-→ source cross-check
-→ classify concrete gaps
-→ fix compiler generically, regression-first if needed
-→ rerun PokeTrade + Loren + new benchmark
-→ independent external review
+tests/Pkc.CSharp.Tests/BusinessPredicateKnowledgeTests.cs
 ```
 
-V0.4.5 passes only when:
+Supported common expression-lambda operations include `Where`, `Any`, `All`, `First*` and `Single*`.
 
-- critical product questions have no blocker false claims;
-- important behavior is answerable or explicitly unknown;
-- product-level output is high-signal;
-- evidence remains traceable;
-- fixes are generic, with no repository-specific exceptions;
-- PokeTrade + Loren remain green after any fixes;
-- independent external review has no unresolved blocker.
-
-## Scope locks
-
-Do not start V0.5 Azure DevOps ingestion until V0.4.5 independently passes.
-
-Also avoid unrelated roadmap expansion while V0.4.5 is being used as the anti-overfit/generalization gate.
-
-Warnings W1 (claim-level portable provenance) and W2 (durable blind-review evidence) remain non-blocking follow-up concerns and should be tracked, but they do not reopen V0.4.4.
-
-## Bootstrap prompt for the next coding thread
+The raw boolean expression is preserved so knowledge can distinguish logic such as:
 
 ```text
-Continue PKC from current main HEAD.
+A && B && (C || D) && E
+```
+
+from an unordered bag of referenced fields.
+
+### Configured instance evidence
+
+For a simple predicate-source member backed by declarative object initializers, the C# enricher emits separate `configured-object` evidence. This allows a generic eligibility rule to be combined with a concrete statically configured instance without pretending the configured value is itself a predicate.
+
+Do not generalize this to runtime DB/config/external values unless a future evidence source grounds those values.
+
+### Angular list result flow
+
+Production:
+
+```text
+src/Pkc.Frontend/AngularListBehaviorScanner.cs
+src/Pkc.Frontend/AngularFrontendAdapter.cs
+```
+
+Regression:
+
+```text
+tests/Pkc.Frontend.Tests/AngularListBehaviorTests.cs
+```
+
+Supported direct pattern:
+
+```text
+api.getCards()
+→ subscribe(cards => this.cards = cards)
+→ @for (card of cards; ...)
+```
+
+Facts:
+
+```text
+ui-result-binding
+ui-list-render
+feeds-list
+```
+
+Confidence/provenance is intentionally syntactic/structural rather than falsely claiming full TypeScript type-checker semantics.
+
+### Cross-stack knowledge
+
+Production:
+
+```text
+src/Pkc.Knowledge/FeatureCandidateBuilder.cs
+src/Pkc.Knowledge/CrossStackFeatureCandidateBuilder.cs
+src/Pkc.Knowledge/GroundedKnowledgeSynthesizer.cs
+```
+
+Endpoint knowledge can now carry the relevant predicate, configured data, matching frontend API call, result binding and rendered list for the supported pattern.
+
+## PokeTrade PO known-answer gate
+
+The PokeTrade benchmark now contains a real Mewtwo sale/visibility rule.
+
+Mewtwo static configuration:
+
+```text
+Name          = Mewtwo VSTAR
+IsPublished   = true
+WebEnabled    = true
+SaleStartsAt  = 2026-09-01T00:00:00Z
+SaleEndsAt    = null
+Stock         = 5
+```
+
+Backend inclusion predicate:
+
+```text
+card.IsPublished
+&& card.WebEnabled
+&& card.SaleStartsAt <= now
+&& (card.SaleEndsAt == null || now < card.SaleEndsAt)
+&& card.Stock > 0
+```
+
+Frontend supported proof:
+
+```text
+GET /api/cards
+→ getCards result
+→ CatalogComponent.cards
+→ @for card of cards
+```
+
+End-to-end regression:
+
+```text
+tests/Pkc.Frontend.Tests/PokeTradePoQuestionReadinessTests.cs
+```
+
+The test compiles real PokeTrade backend + frontend evidence and requires synthesized knowledge to contain both the Mewtwo values and the cross-layer decision chain.
+
+## Code-checkpoint verification
+
+For code checkpoint `cbfaf6fb9107fdb233045358a2c0e7b689a647ce`:
+
+```text
+CI run              34805025453 — PASS
+dotnet build        PASS
+dotnet test         PASS
+tool pack/install   PASS
+WorkPlay build      PASS
+PokeTrade backend   PASS
+PokeTrade Angular   PASS
+live API acceptance PASS
+knowledge compile   PASS
+```
+
+After the final docs commit, review exact current HEAD and verify all four workflow families again:
+
+```text
+CI / PokeTrade
+pinned Loren
+Loren-main canary
+pinned Jellyfin
+```
+
+## Boundaries reviewer must challenge
+
+Current known boundaries:
+
+- block-bodied/complex query predicates are not yet generally reconstructed;
+- configured-object evidence is strongest for simple source members with declarative initializers;
+- DB/runtime/remote configuration remains unknown without grounded input;
+- Angular direct subscription assignment + `@for` is covered, but stores, RxJS transformations, nested filters and richer visibility conditions remain V0.4.7 work;
+- DTO/projection/computed transformations that affect observable eligibility need broader coverage;
+- feature-level promotion can still bury useful workflow rules;
+- Jellyfin W3/W4/W5 and existing W1/W2 remain review concerns.
+
+Any generated knowledge that claims certainty beyond these boundaries should be treated as a blocker.
+
+## Azure DevOps scope
+
+Do not implement Azure DevOps yet.
+
+When V0.5 eventually unlocks, ADO is an additional **input evidence source** for requirement/product intent around code: Epic/Feature/PBI, acceptance intent, history/status and links through PRs/commits where possible.
+
+The purpose is to help developers and AI understand what requirement/context the code implements and why it exists. It is not only delivery reporting.
+
+ADO must not be used to hide a failure to reconstruct the business logic that is observable in code.
+
+## Independent review bootstrap
+
+```text
+Continue PKC review from current main HEAD.
 
 Read in order:
 1. docs/status.md
 2. docs/handoff.md
 3. docs/milestones.md
 4. docs/real-project-trial.md
-5. docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
+5. docs/trials/2026-09-14-v0.4.5-jellyfin.md
+6. docs/trials/2026-09-14-v0.4.5-jellyfin-crosscheck.md
+7. docs/reviews/2026-09-14-v0.4.6-business-logic-review-request.md
 
-V0.4.4 has passed independent external review. Begin only V0.4.5: the independent real-repository generalization gate.
+Review both pending gates:
+- V0.4.5 Jellyfin independent real-repository generalization
+- V0.4.6 business logic reconstruction
 
-Select and pin a second genuine repository according to the milestone criteria, run the same layered-output + blind knowledge-only + source-cross-check process, keep all fixes generic and regression-first, and rerun PokeTrade + Loren after any compiler change.
+Challenge the inherited MVC route fix, no-hardcoding/generalization, C# predicate AND/OR preservation, configured-object evidence, Angular API-result-to-list flow, the real PokeTrade Mewtwo PO-question regression, known limitations, and all cross-benchmark gates.
 
-Do not start V0.5 Azure DevOps until V0.4.5 independently passes.
+Return PASS only if there is no unresolved blocker. Otherwise give concrete blockers with source/evidence references.
+
+Do not start V0.4.7 or V0.5 during this review.
 ```
