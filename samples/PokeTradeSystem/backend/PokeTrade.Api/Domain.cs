@@ -33,6 +33,10 @@ public sealed class PokemonCard
     public required string Rarity { get; init; }
     public required decimal Price { get; init; }
     public required int ReorderLevel { get; init; }
+    public required bool IsPublished { get; init; }
+    public required bool WebEnabled { get; init; }
+    public required DateTimeOffset SaleStartsAt { get; init; }
+    public DateTimeOffset? SaleEndsAt { get; init; }
     public int Stock { get; set; }
 }
 
