@@ -96,17 +96,47 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         return result.Distinct(StringComparer.Ordinal).ToArray();
     }
 
-    private static IReadOnlyList<string> BuildUiToBackend(FeatureCandidate candidate) =>
-        candidate.Facts
-            .Where(fact => fact.Kind == "ui-api-call")
-            .Select(fact =>
+    private static IReadOnlyList<string> BuildUiToBackend(FeatureCandidate candidate)
+    {
+        var result = new List<string>();
+
+        foreach (var fact in candidate.Facts.Where(fact => fact.Kind == "ui-api-call"))
+        {
+            fact.Metadata.TryGetValue("httpMethod", out var method);
+            fact.Metadata.TryGetValue("url", out var url);
+            result.Add($"UI sends `{method ?? "HTTP"} {url ?? fact.Name}`.");
+        }
+
+        foreach (var binding in candidate.Facts.Where(fact => fact.Kind == "ui-result-binding"))
+        {
+            if (!binding.Metadata.TryGetValue("apiMethod", out var apiMethod) ||
+                !binding.Metadata.TryGetValue("target", out var target))
             {
-                fact.Metadata.TryGetValue("httpMethod", out var method);
-                fact.Metadata.TryGetValue("url", out var url);
-                return $"UI sends `{method ?? "HTTP"} {url ?? fact.Name}`.";
-            })
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+                continue;
+            }
+
+            var component = string.IsNullOrWhiteSpace(binding.Container)
+                ? string.Empty
+                : $" on `{binding.Container}`";
+            result.Add($"UI assigns the result of API method `{apiMethod}` to `{target}`{component}.");
+        }
+
+        foreach (var render in candidate.Facts.Where(fact => fact.Kind == "ui-list-render"))
+        {
+            if (!render.Metadata.TryGetValue("item", out var item) ||
+                !render.Metadata.TryGetValue("collection", out var collection))
+            {
+                continue;
+            }
+
+            var component = string.IsNullOrWhiteSpace(render.Container)
+                ? "The UI"
+                : $"`{render.Container}`";
+            result.Add($"{component} renders each `{item}` from `{collection}` in the list.");
+        }
+
+        return result.Distinct(StringComparer.Ordinal).ToArray();
+    }
 
     private static IReadOnlyList<string> BuildEntryPoints(EvidenceFact? endpoint)
     {
@@ -251,6 +281,17 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 
                 rules.Add($"When `{expression}`, the implementation throws {exception}{detail}.");
             }
+        }
+
+        foreach (var configured in candidate.Facts.Where(fact => fact.Kind == "configured-object"))
+        {
+            if (!configured.Metadata.TryGetValue("source", out var source) ||
+                !configured.Metadata.TryGetValue("assignments", out var assignments))
+            {
+                continue;
+            }
+
+            rules.Add($"Configured item in `{source}`: `{assignments}`.");
         }
 
         foreach (var property in candidate.Facts.Where(fact => fact.Kind == "computed-property"))
@@ -415,6 +456,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                     "method" or
                     "condition" or
                     "business-predicate" or
+                    "configured-object" or
                     "throw" or
                     "computed-property" or
                     "object-construction" or
@@ -423,7 +465,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                     "ui-screen" or
                     "ui-route" or
                     "ui-action" or
-                    "ui-api-call" ||
+                    "ui-api-call" or
+                    "ui-result-binding" or
+                    "ui-list-render" ||
                 IsKnowledgeMutation(candidate, factsById, fact, endpoint))
             .Select(fact => new KnowledgeEvidence(
                 fact.Id,
@@ -543,6 +587,11 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         "business-predicate" when fact.Metadata.TryGetValue("expression", out var predicate) =>
             $"Business predicate: {predicate}",
 
+        "configured-object"
+            when fact.Metadata.TryGetValue("source", out var configuredSource) &&
+                 fact.Metadata.TryGetValue("assignments", out var configuredAssignments) =>
+            $"Configured item in {configuredSource}: {configuredAssignments}",
+
         "throw" when fact.Metadata.TryGetValue("exceptionType", out var type) =>
             $"Throws {type}",
 
@@ -572,6 +621,16 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             when fact.Metadata.TryGetValue("httpMethod", out var method) &&
                  fact.Metadata.TryGetValue("url", out var url) =>
             $"UI API call {method} {url}",
+
+        "ui-result-binding"
+            when fact.Metadata.TryGetValue("apiMethod", out var apiMethod) &&
+                 fact.Metadata.TryGetValue("target", out var bindingTarget) =>
+            $"UI result binding {apiMethod} -> {bindingTarget}",
+
+        "ui-list-render"
+            when fact.Metadata.TryGetValue("item", out var item) &&
+                 fact.Metadata.TryGetValue("collection", out var renderCollection) =>
+            $"UI list renders {item} from {renderCollection}",
 
         _ => $"{fact.Kind}: {fact.Name}"
     };
