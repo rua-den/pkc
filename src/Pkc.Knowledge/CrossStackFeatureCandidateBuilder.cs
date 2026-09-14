@@ -192,10 +192,7 @@ public sealed class CrossStackFeatureCandidateBuilder
             return;
         }
 
-        foreach (var binding in document.Facts.Where(fact =>
-                     fact.Kind == "ui-result-binding" &&
-                     fact.Metadata.TryGetValue("apiMethod", out var apiMethod) &&
-                     string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal)))
+        foreach (var binding in document.Facts.Where(fact => IsResultBindingForApiCall(fact, apiCall)))
         {
             facts[binding.Id] = binding;
             AddRelation(
@@ -214,6 +211,23 @@ public sealed class CrossStackFeatureCandidateBuilder
                 }
             }
         }
+    }
+
+    private static bool IsResultBindingForApiCall(EvidenceFact binding, EvidenceFact apiCall)
+    {
+        if (binding.Kind != "ui-result-binding" ||
+            string.IsNullOrWhiteSpace(apiCall.Container) ||
+            !binding.Metadata.TryGetValue("apiMethod", out var apiMethod) ||
+            !string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal) ||
+            !binding.Metadata.TryGetValue("serviceType", out var serviceType) ||
+            string.IsNullOrWhiteSpace(serviceType) ||
+            !apiCall.Metadata.TryGetValue("ownerClass", out var ownerClass) ||
+            string.IsNullOrWhiteSpace(ownerClass))
+        {
+            return false;
+        }
+
+        return string.Equals(serviceType, ownerClass, StringComparison.Ordinal);
     }
 
     private static FeatureCandidate FilterFlowNoise(FeatureCandidate candidate)
@@ -287,11 +301,7 @@ public sealed class CrossStackFeatureCandidateBuilder
         }
 
         var components = document.Facts
-            .Where(fact =>
-                fact.Kind == "ui-result-binding" &&
-                fact.Metadata.TryGetValue("apiMethod", out var apiMethod) &&
-                string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal) &&
-                !string.IsNullOrWhiteSpace(fact.Container))
+            .Where(fact => IsResultBindingForApiCall(fact, apiCall) && !string.IsNullOrWhiteSpace(fact.Container))
             .Select(fact => fact.Container!)
             .ToHashSet(StringComparer.Ordinal);
 
