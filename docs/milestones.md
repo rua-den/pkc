@@ -99,43 +99,80 @@ PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidat
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-The increment continues to demonstrate the intended Mewtwo known-answer path and exact-head cross-benchmark gates are green, but independent re-review found unresolved authority gaps.
-
-Latest review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
 ```
 
-Current disposition:
+Reviewed implementation checkpoint:
 
 ```text
-B6.1 BLOCK — semantic LINQ proof is joined by line range rather than exact invocation identity
-B6.2 PASS  — direct configured-item ownership is conservative for the reviewed supported forms
-B6.3 BLOCK — Angular result/list service identity uses only simple class names, so same-named classes across modules can collide
-B6.4 BLOCK — observed LINQ operation is promoted as endpoint business behavior without proving its result affects the observable outcome
+34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
 ```
 
-V0.4.6 cannot pass merely because a supported LINQ method is semantically resolved. PKC must also preserve authority boundaries:
+Current independent disposition:
+
+```text
+B6.1 PASS  — exact invocation semantic identity is re-resolved by syntax span in the project semantic model
+B6.2 PASS  — direct configured-item ownership remains conservative for the reviewed supported forms
+B6.3 BLOCK — raw-text Angular import resolution can promote commented import-like text into service ownership authority
+B6.4 BLOCK — return-expression containment does not prove predicate value flow, result type or polarity
+```
+
+Exact-head automation is green but does not override the blocker-class semantic counterexamples:
+
+```text
+CI + PKC tests + WorkPlay + PokeTrade   34841796973 — PASS
+pinned Loren                            34841796981 — PASS
+Loren-main canary                       34841796980 — PASS
+pinned Jellyfin                         34841797032 — PASS
+portable parity / no source leak        PASS
+```
+
+The required authority boundary remains:
 
 ```text
 exact invocation is proven
-+ ownership/context is proven
-+ observable product effect is proven
++ source/ownership context is proven
++ value/polarity-preserving path to observable product effect is proven
 → authoritative Product Owner rule
 ```
 
-Otherwise the evidence must remain local/lower-authority or the product-level claim must be omitted.
+Otherwise evidence must stay local/lower-authority or the product-level claim must be omitted.
+
+B6.3 concrete blocker class:
+
+```text
+active import:    import { CardsApi } from './catalog/cards-api'
+commented text:   // import { CardsApi } from './admin/cards-api'
+raw regex scan:   commented text can overwrite active service identity
+result:           unrelated admin endpoint can inherit Catalog component result/list flow
+```
+
+B6.4 concrete blocker classes:
+
+```csharp
+public bool HasNoBlockedCards()
+    => !_cards.Any(card => card.Blocked);
+
+public bool HasNoPublishedCard()
+    => _cards.FirstOrDefault(card => card.IsPublished) is null;
+
+public IReadOnlyList<Card> GetCards()
+    => ReturnAll(_cards.Where(card => card.IsPublished).ToArray());
+```
+
+Current return-containment authority can overstate all three shapes unless surrounding transformations/value flow are modeled conservatively.
 
 Required closure order is regression-first:
 
 ```text
-B6.1 exact invocation identity
-B6.3 module-qualified/deterministic Angular service identity
-B6.4 observable predicate-effect proof
+B6.3 syntax-aware Angular import/service ownership
+B6.4 value/polarity-preserving observable predicate authority
 ```
 
-B6.2 is closed unless a new concrete contradiction is discovered.
+B6.1 and B6.2 are closed unless a new concrete contradiction is discovered.
 
 After fixes, all of these must pass again:
 
@@ -148,6 +185,8 @@ pinned Jellyfin
 portable parity / no source leak
 independent V0.4.6 re-review
 ```
+
+Prefer one coherent implementation commit/push after local regression + full relevant validation. CI remains the final verification layer, not the edit-test loop.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 

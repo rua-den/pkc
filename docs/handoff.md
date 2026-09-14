@@ -27,79 +27,53 @@ The V0.4.x exit standard is business-logic and PO-question readiness, not merely
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+V0.4.6  business logic reconstruction         FAIL / FIX REQUIRED
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Current implementation checkpoint:
+Latest independent V0.4.6 review:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+```
+
+Reviewed implementation checkpoint:
 
 ```text
 34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
-fix: preserve observable predicate return semantics
 ```
 
-The docs-only handoff commit may be newer than that SHA. Review V0.4.6 code behavior at the implementation checkpoint above; the handoff/status update itself does not change production code.
-
-Latest failed independent review:
+Independent disposition:
 
 ```text
-docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
-reviewed code HEAD: 45b2d9b6e215f26c395843c77f1e59887774e21b
+B6.1  PASS
+B6.2  PASS
+B6.3  BLOCK
+B6.4  BLOCK
 ```
 
-Updated review request:
+Do not mark V0.4.6 complete. Do not start V0.4.7 or Azure DevOps.
 
-```text
-docs/reviews/2026-09-14-v0.4.6-independent-rereview-request.md
-```
-
-## Read first in the next thread
+## Read first in the next coding thread
 
 ```text
 1. docs/status.md
 2. docs/handoff.md
-3. docs/reviews/2026-09-14-v0.4.6-independent-rereview-request.md
-4. docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
-5. docs/milestones.md
+3. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+4. docs/milestones.md
+5. docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
 ```
 
 Then inspect current remote `main` before changing anything.
 
-## Accepted baseline
+## Accepted/closed scope
 
-V0.4.4 and V0.4.5 are independently accepted PASS.
+### B6.1 — PASS
 
-V0.4.5 pinned benchmark remains:
+The same-line semantic-authority collision is closed for the reviewed scope.
 
-```text
-jellyfin/jellyfin
-1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-```
-
-B6.2 is independently accepted PASS and should remain closed unless a new concrete contradiction appears.
-
-## V0.4.6 blocker implementation state
-
-```text
-B6.1  IMPLEMENTED + GREEN / independent re-review pending
-B6.2  PASS / keep closed
-B6.3  IMPLEMENTED + GREEN / independent re-review pending
-B6.4  IMPLEMENTED + GREEN / independent re-review pending
-```
-
-Do not translate the lines above into milestone PASS. V0.4.6 still needs an independent adversarial verdict.
-
-## B6.1 — exact invocation authority
-
-Problem found by independent review:
-
-```text
-same source line
-+ custom method named Where
-+ genuine LINQ Where
-→ line-range authority could be borrowed by the custom invocation
-```
+The final C# business-predicate authority stage re-resolves the exact invocation using its syntax `SpanStart` in the actual project semantic model and requires an exact supported LINQ symbol. A custom same-named call cannot borrow authority from another invocation on the same line.
 
 Focused regression:
 
@@ -107,152 +81,152 @@ Focused regression:
 Same_line_custom_Where_cannot_borrow_real_Linq_Where_semantic_authority
 ```
 
-Current production authority path re-resolves the exact predicate invocation from syntax span start in the project semantic model and accepts only exact supported LINQ symbols. Failure to prove the exact invocation rejects authoritative predicate evidence.
+Do not change B6.1 unless a new concrete counterexample is found.
 
-Regression-first evidence:
+### B6.2 — PASS
 
-```text
-RED commit   cf7645eef7b22d82803ea9f48e7575677b8d2a07
-RED run      34813594610 — FAIL expected
-FIX commit   d784013b54acbec22dc9c18a3cfa738b38adc3d3
-GREEN run    34813887033 — PASS
-```
+Configured-item ownership remains conservative for the reviewed forms. Nested property object initializers are not promoted as direct items of the source collection.
 
-Independent reviewer should still challenge same-line collisions and all supported operation names, not only `Where`.
+Do not change B6.2 unless a new concrete counterexample is found.
 
-## B6.2 — accepted PASS
+## Open blocker B6.3 — Angular ownership proof is still trivia-sensitive
 
-Configured-item ownership remains conservative for the reviewed forms. Nested object initializers are not promoted as direct collection items.
+The ordinary same-class-name/different-module case was improved by module-qualified identity, but service import ownership is currently derived using a raw-text regular expression over the entire TypeScript file.
 
-No further work unless a new concrete counterexample appears.
+That allows inactive commented text to become authoritative ownership evidence.
 
-## B6.3 — deterministic Angular service identity
+Reproducer to add as a focused regression before the fix:
 
-Problem found by independent review:
+```ts
+import { Component, inject } from '@angular/core';
+import { CardsApi } from './catalog/cards-api';
 
-```text
-different TypeScript modules
-+ same exported service class name
-+ same API method name
-→ simple-name matching could cross-link an unrelated endpoint to a component list
-```
+// Not active TypeScript; historical note only:
+// import { CardsApi } from './admin/cards-api';
 
-Focused regression:
+@Component({
+  selector: 'app-catalog',
+  template: `
+    @for (card of cards; track card.id) {
+      <article>{{ card.name }}</article>
+    }
+  `
+})
+export class CatalogComponent {
+  private readonly api = inject(CardsApi);
+  cards = [];
 
-```text
-Same_service_class_name_in_different_modules_does_not_cross_link_list_flow
-```
-
-Current behavior:
-
-```text
-ui-api-call owner identity:
-  normalized source module path + exported owner class
-
-ui-result-binding service identity:
-  resolved relative import module + exported class
-
-named import aliases:
-  normalized to exported class identity
-
-correlation:
-  requires exact deterministic identity equality
-```
-
-If deterministic relative-module/import identity cannot be resolved, PKC does not create the authoritative endpoint-to-list match.
-
-Regression-first evidence:
-
-```text
-RED commit   df1ea834b970201b511c8ff9a975f4e1fe59c53d
-RED run      34814066361 — FAIL expected
-FIX commit   84da527e8341918b1803e36ccd177a4d14056cd8
-GREEN run    34814396514 — PASS
-```
-
-Independent reviewer should challenge same exported class names, same method names, nested relative paths, `index.ts` resolution and named import aliases where supported.
-
-## B6.4 — observable predicate authority and polarity
-
-Problem found by independent review:
-
-A real supported LINQ predicate was previously promoted into Product Owner business wording merely because the operation existed and was reachable. That was too strong when its result did not affect the endpoint's observable result.
-
-Canonical false-claim shape:
-
-```csharp
-public IReadOnlyList<Card> GetCards()
-{
-    var published = _cards.Where(card => card.IsPublished).ToArray();
-    Audit(published.Length);
-    return _cards;
+  reload() {
+    this.api.getCards().subscribe(cards => this.cards = cards);
+  }
 }
 ```
 
-PKC must keep the local predicate as evidence but must not claim:
+Use two modules:
+
+```text
+catalog/cards-api.ts → class CardsApi → GET /api/cards
+admin/cards-api.ts   → class CardsApi → GET /api/admin/cards
+```
+
+Current risk:
+
+```text
+real import mapping                  catalog/cards-api.ts#CardsApi
+later commented import-like mapping  admin/cards-api.ts#CardsApi
+raw regex dictionary overwrite       admin/cards-api.ts#CardsApi
+cross-stack equality                 admin endpoint falsely feeds CatalogComponent list
+```
+
+Required generic property:
+
+```text
+only active TypeScript import declarations may establish service ownership
+comments / strings / templates have zero import authority
+ambiguous or unresolved ownership must omit the authoritative correlation
+```
+
+AST-backed import declarations are an acceptable implementation direction. Do not hardcode fixture paths/classes/routes.
+
+## Open blocker B6.4 — return containment still overclaims observable semantics
+
+The current filter correctly downgrades predicates that are not syntactically within return/yield-return expressions, but it treats any supported invocation contained anywhere inside the returned expression as observable.
+
+That does not preserve polarity, result type or value flow.
+
+### Regression A — negated Any
+
+```csharp
+public bool HasNoBlockedCards()
+    => !_cards.Any(card => card.Blocked);
+```
+
+Current false wording can be:
+
+```text
+Returns whether at least one item from `_cards` satisfies `card.Blocked`.
+```
+
+Actual behavior is the opposite.
+
+### Regression B — selection converted to boolean
+
+```csharp
+public bool HasNoPublishedCard()
+    => _cards.FirstOrDefault(card => card.IsPublished) is null;
+```
+
+Current false wording can describe returning a selected item even though the method returns `bool`.
+
+Cover equivalent `SingleOrDefault` shape too.
+
+### Regression C — helper discards returned predicate value
+
+```csharp
+public IReadOnlyList<Card> GetCards()
+    => ReturnAll(_cards.Where(card => card.IsPublished).ToArray());
+
+private IReadOnlyList<Card> ReturnAll(IReadOnlyList<Card> ignored)
+    => _cards;
+```
+
+Current syntax containment can promote the `Where` into:
 
 ```text
 Includes items from `_cards` only when `card.IsPublished`.
 ```
 
-Current production behavior:
+but the helper returns the unfiltered collection.
+
+Required generic property:
 
 ```text
-1. Re-resolve exact LINQ invocation semantically.
-2. Keep valid local predicate evidence.
-3. If direct deterministic return/yield-return participation is not proven:
-   businessRuleAuthority      = observed-only
-   observableEffectResolution = not-proven
-   contains-condition         → observes-predicate
-4. If direct return/yield-return participation is proven:
-   businessRuleAuthority      = observable
-   observableContext          = return / yield-return
-   observableEffectResolution = direct-return-syntax
-5. Synthesis only turns `contains-condition` business predicates into product-level rules.
+supported predicate invocation
++ deterministic proof that enclosing syntax/data flow preserves the relevant value and polarity to the observable result
+→ authoritative PO rule
+
+otherwise
+→ observed-only / lower authority / omit the product-level rule
 ```
 
-Polarity/context behavior now protects the reviewed forms:
+At minimum test:
 
 ```text
-Any direct boolean return:
-  Returns whether at least one item ...
-
-All direct boolean return:
-  Returns whether every item ...
-
-Where feeding the returned collection:
-  Includes items ... only when ...
-
-Any used only inside a rejecting guard:
-  does not become a positive existence requirement;
-  the ordinary condition/throw evidence still describes rejection behavior.
+!Any(...)
+!All(...)
+FirstOrDefault(...) is null
+SingleOrDefault(...) is not null
+arbitrary helper wrapping that discards/transforms the predicate result
+positive direct Any/All returns
+positive returned Where pipeline
+throwing/rejecting guards
 ```
 
-Focused regressions:
+Do not solve only the literal examples. The rule must be generic and conservative.
 
-```text
-Local_query_predicate_that_does_not_affect_return_is_not_an_authoritative_rule
-Any_guard_that_throws_is_not_rendered_as_a_positive_existence_requirement
-Returned_filter_predicate_remains_authoritative
-Direct_any_return_is_observable_but_not_rendered_as_a_requirement
-Direct_all_return_is_observable_but_not_rendered_as_a_requirement
-```
+## Exact reviewed automation evidence
 
-Regression/fix evidence:
-
-```text
-observable-authority RED run  34817523642 — FAIL expected
-observable filter fix         304a39053b243bceb6c39d85f47cc7fab68fd57f
-polarity RED commit           39079f0b7a8f9abccc850f3464202f57f9caa220
-polarity RED run              34817972557 — 2 FAIL expected
-final B6.4 implementation     34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
-```
-
-Independent reviewer should challenge non-observable side paths, nested/local functions, Any/All polarity, direct selection operations and any path that could turn an observed predicate into a stronger endpoint claim than deterministic evidence proves.
-
-## Full implementation-checkpoint gates
-
-All current automation is green for `34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b`:
+All gates for implementation checkpoint `34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b` were inspected and are green:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   34841796973 — PASS
@@ -262,79 +236,95 @@ pinned Jellyfin                             34841797032 — PASS
 Jellyfin portable parity/provenance         PASS
 ```
 
-CI job detail:
+Exact CI counts:
 
 ```text
-test                  PASS
-poketrade-real-system PASS
+build:          0 warnings / 0 errors
+C# tests:       65 / 65 PASS
+frontend tests: 12 / 12 PASS
 ```
 
-Jellyfin job detail:
+PokeTrade live behavior and generated knowledge assertions pass.
+
+Pinned Jellyfin:
 
 ```text
-build pinned source                         PASS
-compile product knowledge with PKC          PASS
-portable handoff parity/provenance          PASS
-upload blind-review/source-cross-check pack PASS
+jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+source build:                         PASS
+workflow candidates:                  386
+product features:                     116
+facts:                                43,363
+canonical Markdown files:             504
+bundle verbatim parity:               PASS
+ZIP exact file-set parity:            PASS
+ZIP byte parity:                      PASS
+raw .pkc leak:                        none
+src/ source-tree leak:                none
+artifact id:                          10346636986
+artifact digest:                      sha256:5a643ec5d2ed1f84af2a70d2b0cd108a2ca13500b6c064f8a615d4481f49b987
 ```
 
-Current Jellyfin artifact:
+Green automation does not close B6.3/B6.4 because both are semantic false-authority paths not represented by the current regressions.
+
+## Benchmark-special-case check
+
+No PokeTrade, Mewtwo, Loren or Jellyfin-specific production exception was found in the production paths reviewed for these blockers. Benchmark names remain in tests/samples/acceptance material, where they are expected.
+
+## Exact next coding action
+
+Stay in V0.4.6. Fix **only B6.3 and B6.4** regression-first.
+
+Preferred work unit:
 
 ```text
-artifact id      10346636986
-artifact digest  sha256:5a643ec5d2ed1f84af2a70d2b0cd108a2ca13500b6c064f8a615d4481f49b987
+inspect current main
+→ add focused B6.3/B6.4 adversarial regressions locally
+→ verify they fail for the intended authority reasons
+→ implement generic fixes locally
+→ run focused tests
+→ run full relevant tests/build locally
+→ review complete diff
+→ one coherent implementation commit/push when possible
+→ let CI run once as final verification
 ```
 
-## Exact next action
-
-**Do not write more production code unless independent review finds a concrete remaining blocker.**
-
-The next thread should perform an independent adversarial V0.4.6 re-review of B6.1, B6.3 and B6.4 against implementation checkpoint:
+After the implementation checkpoint is green across:
 
 ```text
-34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
+full PKC tests
+PokeTrade known-answer/live acceptance
+pinned Loren
+Loren-main canary
+pinned Jellyfin
+portable parity/no-leak
 ```
 
-Review source + focused regressions + real-system output. Green automation is supporting evidence, not semantic proof.
+request another independent V0.4.6 re-review.
 
-If review returns PASS:
-
-```text
-record independent V0.4.6 PASS
-update status/handoff
-only then unlock V0.4.7
-```
-
-If review returns a blocker:
-
-```text
-reproduce concrete contradiction locally with one focused regression
-→ generic fix
-→ focused + relevant full local validation
-→ one coherent commit/push
-→ rerun final gates
-→ independent re-review again
-```
-
-## Scope locks
-
-Do not start V0.4.7 before independent V0.4.6 PASS.
+Do not reopen B6.1/B6.2 without new evidence.
+Do not start V0.4.7.
 Do not start Azure DevOps ingestion.
 
-## Copy/paste bootstrap for an independent review thread
+## Copy/paste bootstrap for the next coding thread
 
 ```text
-Independently re-review PKC V0.4.6 at implementation checkpoint
-34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b.
+Continue PKC from current remote main HEAD.
 
-Read:
+Read in order:
 1. docs/status.md
 2. docs/handoff.md
-3. docs/reviews/2026-09-14-v0.4.6-independent-rereview-request.md
-4. docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
+3. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+4. docs/milestones.md
 
-Re-review B6.1, B6.3 and B6.4 adversarially. B6.2 is already accepted PASS.
-Do not trust green automation alone; inspect implementation and construct counterexamples.
-Return PASS only if no blocker-class false-product-claim path remains in the accepted V0.4.6 scope.
+Stay in V0.4.6.
+B6.1 PASS; keep closed unless new contradiction appears.
+B6.2 PASS; keep closed unless new contradiction appears.
+
+Fix only B6.3 and B6.4 regression-first:
+- B6.3: commented/string import-like TypeScript text must never establish Angular service ownership.
+- B6.4: return-expression containment alone is not observable-effect proof; preserve polarity/result semantics for negated Any/All, First*/Single* transformations and arbitrary helper wrapping.
+
+Batch the related work locally and prefer one coherent implementation commit/push after local validation.
+Rerun all current gates, then request independent V0.4.6 re-review.
 Do not start V0.4.7 or Azure DevOps.
 ```
