@@ -14,7 +14,9 @@ public sealed class CrossStackFeatureCandidateBuilder
         "ui-field-option",
         "ui-field-validation",
         "ui-field-visibility",
-        "ui-field-enabled-state"
+        "ui-field-enabled-state",
+        "ui-result-binding",
+        "ui-list-render"
     };
 
     private const string CSharpFallbackWarning =
@@ -27,7 +29,7 @@ public sealed class CrossStackFeatureCandidateBuilder
     {
         ArgumentNullException.ThrowIfNull(document);
         var baseline = new FeatureCandidateBuilder().Build(document);
-        return new FeatureCandidateDocument("0.4.4", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+        return new FeatureCandidateDocument("0.4.6", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
     }
 
     private static FeatureCandidate Enrich(FeatureCandidate candidate, FactDocument document)
@@ -57,6 +59,7 @@ public sealed class CrossStackFeatureCandidateBuilder
             facts[apiCall.Id] = apiCall;
             AddRelation(new EvidenceRelation(apiCall.Id, "calls-endpoint", endpoint.Id, apiCall.Source), relations, relationKeys);
             AddBindingsForApiCall(document, apiCall, facts, relations, relationKeys);
+            AddResultFlowForApiCall(document, apiCall, facts, relations, relationKeys);
 
             var actionRelations = document.Relations
                 .Where(relation => relation.Kind == "triggers-api" && relation.Target == apiCall.Id)
@@ -84,6 +87,7 @@ public sealed class CrossStackFeatureCandidateBuilder
             var screens = actions
                 .SelectMany(action => FindScreensForAction(document, action))
                 .Concat(FindScreensForApiCall(document, apiCall))
+                .Concat(FindScreensForResultFlow(document, apiCall))
                 .DistinctBy(screen => screen.Id, StringComparer.Ordinal)
                 .ToArray();
 
@@ -137,6 +141,18 @@ public sealed class CrossStackFeatureCandidateBuilder
                 new EvidenceRelation(screen.Id, "contains-ui-behavior", behavior.Id, behavior.Source),
                 relations,
                 relationKeys);
+
+            foreach (var relation in document.Relations.Where(relation =>
+                         relation.FromFactId == behavior.Id &&
+                         relation.Kind == "feeds-list"))
+            {
+                AddRelation(relation, relations, relationKeys);
+                var target = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
+                if (target is not null)
+                {
+                    facts[target.Id] = target;
+                }
+            }
         }
     }
 
@@ -161,6 +177,42 @@ public sealed class CrossStackFeatureCandidateBuilder
                 new EvidenceRelation(binding.Id, "binds-api", apiCall.Id, binding.Source),
                 relations,
                 relationKeys);
+        }
+    }
+
+    private static void AddResultFlowForApiCall(
+        FactDocument document,
+        EvidenceFact apiCall,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return;
+        }
+
+        foreach (var binding in document.Facts.Where(fact =>
+                     fact.Kind == "ui-result-binding" &&
+                     fact.Metadata.TryGetValue("apiMethod", out var apiMethod) &&
+                     string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal)))
+        {
+            facts[binding.Id] = binding;
+            AddRelation(
+                new EvidenceRelation(apiCall.Id, "feeds-ui-binding", binding.Id, binding.Source),
+                relations,
+                relationKeys);
+
+            foreach (var relation in document.Relations.Where(relation =>
+                         relation.FromFactId == binding.Id && relation.Kind == "feeds-list"))
+            {
+                AddRelation(relation, relations, relationKeys);
+                var render = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
+                if (render is not null)
+                {
+                    facts[render.Id] = render;
+                }
+            }
         }
     }
 
@@ -226,6 +278,26 @@ public sealed class CrossStackFeatureCandidateBuilder
         document.Facts.Where(fact =>
             fact.Kind == "ui-screen" &&
             string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal));
+
+    private static IEnumerable<EvidenceFact> FindScreensForResultFlow(FactDocument document, EvidenceFact apiCall)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return [];
+        }
+
+        var components = document.Facts
+            .Where(fact =>
+                fact.Kind == "ui-result-binding" &&
+                fact.Metadata.TryGetValue("apiMethod", out var apiMethod) &&
+                string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(fact.Container))
+            .Select(fact => fact.Container!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" && components.Contains(fact.Name));
+    }
 
     private static void AddRelation(EvidenceRelation relation, ICollection<EvidenceRelation> relations, ISet<string> keys)
     {
