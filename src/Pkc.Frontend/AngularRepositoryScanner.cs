@@ -19,6 +19,10 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
         @"export\s+class\s+(?<name>[A-Z][A-Za-z0-9_]*Component)\b",
         RegexOptions.Compiled);
 
+    private static readonly Regex ClassRegex = new(
+        @"(?:export\s+)?(?:abstract\s+)?class\s+(?<name>[A-Z][A-Za-z0-9_$]*)\b[^{]*\{",
+        RegexOptions.Compiled);
+
     private static readonly Regex RouteRegex = new(
         @"\{\s*path\s*:\s*[""'](?<path>[^""']*)[""'][^}]*?component\s*:\s*(?<component>[A-Z][A-Za-z0-9_]*)\s*\}",
         RegexOptions.Compiled);
@@ -249,6 +253,13 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 ["framework"] = "angular-static"
             };
 
+            var ownerClass = FindContainingClassName(text, match.Index);
+            if (!string.IsNullOrWhiteSpace(ownerClass))
+            {
+                metadata["ownerClass"] = ownerClass;
+                metadata["ownerResolution"] = "typescript-syntactic-class-range";
+            }
+
             facts.Add(CreateFact(
                 relativePath,
                 text,
@@ -258,6 +269,140 @@ public sealed class AngularRepositoryScanner : IFrontendAdapter
                 container,
                 metadata));
         }
+    }
+
+    private static string? FindContainingClassName(string text, int index)
+    {
+        string? owner = null;
+        var ownerStart = -1;
+
+        foreach (Match match in ClassRegex.Matches(text))
+        {
+            if (match.Index > index)
+            {
+                break;
+            }
+
+            var openBrace = match.Index + match.Value.LastIndexOf('{');
+            var closeBrace = FindMatchingBrace(text, openBrace);
+            if (openBrace >= 0 && closeBrace >= index && index > openBrace && openBrace > ownerStart)
+            {
+                owner = match.Groups["name"].Value;
+                ownerStart = openBrace;
+            }
+        }
+
+        return owner;
+    }
+
+    private static int FindMatchingBrace(string text, int openBrace)
+    {
+        if (openBrace < 0 || openBrace >= text.Length || text[openBrace] != '{')
+        {
+            return -1;
+        }
+
+        var depth = 0;
+        var mode = LexicalMode.Normal;
+        var escaped = false;
+
+        for (var index = openBrace; index < text.Length; index++)
+        {
+            var current = text[index];
+            var next = index + 1 < text.Length ? text[index + 1] : '\0';
+
+            if (mode == LexicalMode.LineComment)
+            {
+                if (current == '\n') mode = LexicalMode.Normal;
+                continue;
+            }
+
+            if (mode == LexicalMode.BlockComment)
+            {
+                if (current == '*' && next == '/')
+                {
+                    mode = LexicalMode.Normal;
+                    index++;
+                }
+                continue;
+            }
+
+            if (mode is LexicalMode.SingleQuote or LexicalMode.DoubleQuote or LexicalMode.Template)
+            {
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (current == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if ((mode == LexicalMode.SingleQuote && current == '\'') ||
+                    (mode == LexicalMode.DoubleQuote && current == '"') ||
+                    (mode == LexicalMode.Template && current == '`'))
+                {
+                    mode = LexicalMode.Normal;
+                }
+                continue;
+            }
+
+            if (current == '/' && next == '/')
+            {
+                mode = LexicalMode.LineComment;
+                index++;
+                continue;
+            }
+
+            if (current == '/' && next == '*')
+            {
+                mode = LexicalMode.BlockComment;
+                index++;
+                continue;
+            }
+
+            if (current == '\'')
+            {
+                mode = LexicalMode.SingleQuote;
+                continue;
+            }
+
+            if (current == '"')
+            {
+                mode = LexicalMode.DoubleQuote;
+                continue;
+            }
+
+            if (current == '`')
+            {
+                mode = LexicalMode.Template;
+                continue;
+            }
+
+            if (current == '{')
+            {
+                depth++;
+            }
+            else if (current == '}' && --depth == 0)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private enum LexicalMode
+    {
+        Normal,
+        SingleQuote,
+        DoubleQuote,
+        Template,
+        LineComment,
+        BlockComment
     }
 
     private static IReadOnlyList<string> FindTransitiveCalledMethods(
