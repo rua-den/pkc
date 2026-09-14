@@ -64,9 +64,13 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             normalized,
             cancellationToken);
-        return await new CSharpBusinessPredicateEnricher().EnrichAsync(
+        var predicates = await new CSharpBusinessPredicateEnricher().EnrichAsync(
             repositoryPath,
             semantic,
+            cancellationToken);
+        return await new CSharpBusinessPredicateAuthorityFilter().FilterAsync(
+            repositoryPath,
+            predicates,
             cancellationToken);
     }
 }
