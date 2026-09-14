@@ -17,6 +17,8 @@ public sealed class BusinessPredicateReturnContextRegressionTests
 
         Assert.DoesNotContain(knowledge.Rules, rule =>
             rule.Contains("Requires at least one item", StringComparison.Ordinal));
+        Assert.Contains(knowledge.Rules, rule =>
+            rule.Contains("Returns whether at least one item from `_cards` satisfies `card.Blocked`.", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -30,6 +32,8 @@ public sealed class BusinessPredicateReturnContextRegressionTests
 
         Assert.DoesNotContain(knowledge.Rules, rule =>
             rule.Contains("Requires every item", StringComparison.Ordinal));
+        Assert.Contains(knowledge.Rules, rule =>
+            rule.Contains("Returns whether every item from `_cards` satisfies `card.IsPublished`.", StringComparison.Ordinal));
     }
 
     private static async Task<FeatureKnowledge> BuildKnowledgeAsync(

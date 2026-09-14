@@ -349,17 +349,43 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
     {
         fact.Metadata.TryGetValue("source", out var source);
         fact.Metadata.TryGetValue("effect", out var effect);
+        fact.Metadata.TryGetValue("observableContext", out var observableContext);
         var sourceText = string.IsNullOrWhiteSpace(source) ? "the source collection" : $"`{source}`";
 
-        return effect switch
+        if (string.Equals(observableContext, "return", StringComparison.Ordinal))
+        {
+            return effect switch
+            {
+                "existence" => $"Returns whether at least one item from {sourceText} satisfies `{expression}`.",
+                "universal-requirement" => $"Returns whether every item from {sourceText} satisfies `{expression}`.",
+                "selection" => $"Returns an item from {sourceText} selected where `{expression}`.",
+                _ => DescribePredicateEffect(effect, sourceText, expression)
+            };
+        }
+
+        if (string.Equals(observableContext, "yield-return", StringComparison.Ordinal))
+        {
+            return effect switch
+            {
+                "existence" => $"Yields whether at least one item from {sourceText} satisfies `{expression}`.",
+                "universal-requirement" => $"Yields whether every item from {sourceText} satisfies `{expression}`.",
+                "selection" => $"Yields an item from {sourceText} selected where `{expression}`.",
+                _ => DescribePredicateEffect(effect, sourceText, expression)
+            };
+        }
+
+        return DescribePredicateEffect(effect, sourceText, expression);
+    }
+
+    private static string DescribePredicateEffect(string? effect, string sourceText, string expression) =>
+        effect switch
         {
             "inclusion" => $"Includes items from {sourceText} only when `{expression}`.",
-            "existence" => $"Requires at least one item from {sourceText} to satisfy `{expression}`.",
-            "universal-requirement" => $"Requires every item from {sourceText} to satisfy `{expression}`.",
+            "existence" => $"Checks whether at least one item from {sourceText} satisfies `{expression}`.",
+            "universal-requirement" => $"Checks whether every item from {sourceText} satisfies `{expression}`.",
             "selection" => $"Selects an item from {sourceText} where `{expression}`.",
             _ => $"Business predicate on {sourceText}: `{expression}`."
         };
-    }
 
     private static bool Contains(SourceLocation parent, SourceLocation child) =>
         string.Equals(parent.Path, child.Path, StringComparison.Ordinal) &&
