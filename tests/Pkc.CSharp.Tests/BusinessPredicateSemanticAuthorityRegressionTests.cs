@@ -35,6 +35,41 @@ public sealed class BusinessPredicateSemanticAuthorityRegressionTests
         }
     }
 
+    [Fact]
+    public async Task Same_line_custom_Where_cannot_borrow_real_Linq_Where_semantic_authority()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "pkc-business-predicate-same-line-authority-tests",
+            Guid.NewGuid().ToString("N"));
+
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Demo.csproj"), Project);
+            await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), SameLineSource);
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+
+            Assert.DoesNotContain(facts.Facts, fact =>
+                fact.Kind == "business-predicate" &&
+                fact.Metadata.TryGetValue("source", out var source) &&
+                source == "_bucket");
+
+            var predicate = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "business-predicate" &&
+                fact.Metadata.TryGetValue("source", out var source) &&
+                source == "_cards");
+
+            Assert.Equal("System.Linq.Enumerable.Where", predicate.Metadata["operationSymbol"]);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private const string Project = """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -69,6 +104,37 @@ public sealed class BusinessPredicateSemanticAuthorityRegressionTests
 
             public IReadOnlyList<Card> GetCards()
                 => _bucket.Where(card => card.IsPublished);
+        }
+        """;
+
+    private const string SameLineSource = """
+        using System;
+        using System.Collections.Generic;
+        using System.Linq;
+
+        namespace Demo;
+
+        public sealed class Card
+        {
+            public bool IsPublished { get; init; }
+        }
+
+        public sealed class CustomBucket
+        {
+            private readonly IReadOnlyList<Card> _allCards = [new Card { IsPublished = false }];
+
+            public IReadOnlyList<Card> Where(Func<Card, bool> ignored) => _allCards;
+        }
+
+        public sealed class Store
+        {
+            private readonly CustomBucket _bucket = new();
+            private readonly List<Card> _cards = [new Card { IsPublished = true }];
+
+            public IReadOnlyList<Card> GetCards()
+            {
+                _ = _bucket.Where(card => card.IsPublished); return _cards.Where(card => card.IsPublished).ToArray();
+            }
         }
         """;
 }
