@@ -95,42 +95,49 @@ W5 large-pack signal/noise
 
 PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidate.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT REVIEW FAILED
+### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAILED
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-The current increment successfully demonstrates the intended known-answer Mewtwo path, including:
+The increment continues to demonstrate the intended Mewtwo known-answer path and exact-head cross-benchmark gates are green, but independent re-review found unresolved authority gaps.
 
-- preservation of raw boolean predicate expression structure;
-- declarative configured values for the supported sample shape;
-- Angular API-result assignment and rendered-list evidence;
-- a cross-stack PO-question regression.
-
-However independent review found three generic false-claim paths that must be fixed before V0.4.6 can pass.
-
-Review record:
+Latest review:
 
 ```text
-docs/reviews/2026-09-14-v0.4.5-v0.4.6-independent-review.md
+docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
 ```
 
-Blocking requirements:
+Current disposition:
 
 ```text
-B6.1 prove supported business-predicate operation semantics
-     - lexical method-name matching is insufficient
-     - custom Where/Any/First-style methods must not become LINQ rules
-
-B6.2 prove configured-item ownership
-     - nested object creations under a collection initializer must not be
-       mislabeled as additional configured items of that collection
-
-B6.3 prove Angular API-service ownership for result/list flow
-     - same method name across different services must not cross-link one
-       component's list flow to the wrong backend endpoint
+B6.1 BLOCK — semantic LINQ proof is joined by line range rather than exact invocation identity
+B6.2 PASS  — direct configured-item ownership is conservative for the reviewed supported forms
+B6.3 BLOCK — Angular result/list service identity uses only simple class names, so same-named classes across modules can collide
+B6.4 BLOCK — observed LINQ operation is promoted as endpoint business behavior without proving its result affects the observable outcome
 ```
 
-V0.4.6 passes only when all three are regression-locked and fixed generically, then exact gates pass again:
+V0.4.6 cannot pass merely because a supported LINQ method is semantically resolved. PKC must also preserve authority boundaries:
+
+```text
+exact invocation is proven
++ ownership/context is proven
++ observable product effect is proven
+→ authoritative Product Owner rule
+```
+
+Otherwise the evidence must remain local/lower-authority or the product-level claim must be omitted.
+
+Required closure order is regression-first:
+
+```text
+B6.1 exact invocation identity
+B6.3 module-qualified/deterministic Angular service identity
+B6.4 observable predicate-effect proof
+```
+
+B6.2 is closed unless a new concrete contradiction is discovered.
+
+After fixes, all of these must pass again:
 
 ```text
 PKC tests
@@ -139,7 +146,7 @@ pinned Loren
 Loren-main canary
 pinned Jellyfin
 portable parity / no source leak
-independent re-review
+independent V0.4.6 re-review
 ```
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
