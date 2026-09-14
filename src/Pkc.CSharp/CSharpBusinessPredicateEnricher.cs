@@ -175,20 +175,20 @@ internal sealed class CSharpBusinessPredicateEnricher
                      .SelectMany(field => field.Declaration.Variables)
                      .Where(variable => string.Equals(variable.Identifier.ValueText, sourceName, StringComparison.Ordinal)))
         {
-            if (variable.Initializer?.Value is not { } initializer)
+            if (variable.Initializer?.Value is not ExpressionSyntax initializer)
             {
                 continue;
             }
 
-            var configuredObjects = initializer.DescendantNodesAndSelf()
-                .Where(node => node is ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax)
-                .Select(node => new { Node = node, Initializer = GetInitializer(node) })
-                .Where(item => item.Initializer is not null)
-                .ToArray();
-
-            foreach (var item in configuredObjects)
+            foreach (var node in GetDirectConfiguredObjectCreations(initializer))
             {
-                var assignments = item.Initializer!.Expressions
+                var objectInitializer = GetInitializer(node);
+                if (objectInitializer is null)
+                {
+                    continue;
+                }
+
+                var assignments = objectInitializer.Expressions
                     .OfType<AssignmentExpressionSyntax>()
                     .Where(assignment => assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
                     .Select(assignment => $"{assignment.Left} = {assignment.Right}")
@@ -199,8 +199,8 @@ internal sealed class CSharpBusinessPredicateEnricher
                     continue;
                 }
 
-                var location = GetLocation(item.Node, owner.Source.Path);
-                var id = $"cs:{owner.Source.Path}:{location.StartLine}:configured-object:{sourceName}:{item.Node.SpanStart}";
+                var location = GetLocation(node, owner.Source.Path);
+                var id = $"cs:{owner.Source.Path}:{location.StartLine}:configured-object:{sourceName}:{node.SpanStart}";
                 var configured = new EvidenceFact(
                     id,
                     "configured-object",
@@ -212,7 +212,8 @@ internal sealed class CSharpBusinessPredicateEnricher
                     {
                         ["source"] = sourceName,
                         ["assignments"] = string.Join("; ", assignments),
-                        ["sourceKind"] = "declarative-initializer"
+                        ["sourceKind"] = "direct-collection-item-initializer",
+                        ["ownershipResolution"] = "direct-syntax-parent"
                     });
 
                 facts[id] = configured;
@@ -222,6 +223,33 @@ internal sealed class CSharpBusinessPredicateEnricher
                     relationKeys);
             }
         }
+    }
+
+    private static IEnumerable<SyntaxNode> GetDirectConfiguredObjectCreations(ExpressionSyntax initializer)
+    {
+        IEnumerable<ExpressionSyntax> directElements = initializer switch
+        {
+            CollectionExpressionSyntax collection => collection.Elements
+                .OfType<ExpressionElementSyntax>()
+                .Select(element => element.Expression),
+
+            ArrayCreationExpressionSyntax array when array.Initializer is not null =>
+                array.Initializer.Expressions,
+
+            ImplicitArrayCreationExpressionSyntax array =>
+                array.Initializer.Expressions,
+
+            ObjectCreationExpressionSyntax creation when creation.Initializer is not null =>
+                creation.Initializer.Expressions,
+
+            ImplicitObjectCreationExpressionSyntax creation when creation.Initializer is not null =>
+                creation.Initializer.Expressions,
+
+            _ => []
+        };
+
+        return directElements.Where(element =>
+            element is ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax);
     }
 
     private static InitializerExpressionSyntax? GetInitializer(SyntaxNode node) => node switch
