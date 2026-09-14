@@ -27,37 +27,62 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         }
 
         var root = Path.GetFullPath(repositoryPath);
-        var exactTargets = await ResolveExactInvocationTargetsAsync(root, predicates, cancellationToken);
+        var authorities = await ResolveInvocationAuthoritiesAsync(root, predicates, cancellationToken);
         var rejected = new HashSet<string>(StringComparer.Ordinal);
+        var observedOnly = new HashSet<string>(StringComparer.Ordinal);
+        var facts = document.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
 
         foreach (var predicate in predicates)
         {
             if (!TryGetInvocationSpanStart(predicate, out var spanStart) ||
                 !predicate.Metadata.TryGetValue("operation", out var operation) ||
-                !exactTargets.TryGetValue(new InvocationKey(predicate.Source.Path, spanStart), out var target) ||
-                !IsSupportedTarget(target, operation))
+                !authorities.TryGetValue(new InvocationKey(predicate.Source.Path, spanStart), out var authority) ||
+                !IsSupportedTarget(authority.Target, operation))
             {
                 rejected.Add(predicate.Id);
+                continue;
             }
+
+            var metadata = new Dictionary<string, string>(predicate.Metadata, StringComparer.Ordinal);
+            if (authority.ObservableContext is null)
+            {
+                metadata["businessRuleAuthority"] = "observed-only";
+                metadata["observableEffectResolution"] = "not-proven";
+                observedOnly.Add(predicate.Id);
+            }
+            else
+            {
+                metadata["businessRuleAuthority"] = "observable";
+                metadata["observableContext"] = authority.ObservableContext;
+                metadata["observableEffectResolution"] = "direct-return-syntax";
+            }
+
+            facts[predicate.Id] = predicate with { Metadata = metadata };
         }
 
-        if (rejected.Count == 0)
-        {
-            return document;
-        }
+        var relations = document.Relations
+            .Where(relation => !rejected.Contains(relation.Target))
+            .Select(relation =>
+                observedOnly.Contains(relation.Target) && relation.Kind == "contains-condition"
+                    ? relation with { Kind = "observes-predicate" }
+                    : relation)
+            .ToArray();
 
         return document with
         {
-            Facts = document.Facts
+            Facts = facts.Values
                 .Where(fact => !rejected.Contains(fact.Id))
+                .OrderBy(fact => fact.Id, StringComparer.Ordinal)
                 .ToArray(),
-            Relations = document.Relations
-                .Where(relation => !rejected.Contains(relation.Target))
+            Relations = relations
+                .OrderBy(relation => relation.FromFactId, StringComparer.Ordinal)
+                .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
+                .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray()
         };
     }
 
-    private static async Task<IReadOnlyDictionary<InvocationKey, string>> ResolveExactInvocationTargetsAsync(
+    private static async Task<IReadOnlyDictionary<InvocationKey, InvocationAuthority>> ResolveInvocationAuthoritiesAsync(
         string rootPath,
         IReadOnlyList<EvidenceFact> predicates,
         CancellationToken cancellationToken)
@@ -72,7 +97,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
         if (requested.Length == 0)
         {
-            return new Dictionary<InvocationKey, string>();
+            return new Dictionary<InvocationKey, InvocationAuthority>();
         }
 
         var requestedByPath = requested
@@ -80,7 +105,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         var candidates = requested.ToDictionary(
             key => key,
-            _ => new HashSet<string>(StringComparer.Ordinal));
+            _ => new HashSet<InvocationAuthority>());
 
         var projectFiles = Directory.EnumerateFiles(rootPath, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !CSharpSourceScope.IsExcluded(rootPath, path))
@@ -89,7 +114,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
         if (projectFiles.Length == 0)
         {
-            return new Dictionary<InvocationKey, string>();
+            return new Dictionary<InvocationKey, InvocationAuthority>();
         }
 
         EnsureMsBuildRegistered();
@@ -147,13 +172,15 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
                             continue;
                         }
 
-                        candidates[key].Add(GetMethodTarget(methodSymbol));
+                        candidates[key].Add(new InvocationAuthority(
+                            GetMethodTarget(methodSymbol),
+                            GetObservableContext(invocation)));
                     }
                 }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // Exact authority is conservative. A project that cannot be loaded contributes no proof.
+                // Authority is conservative. A project that cannot be loaded contributes no proof.
             }
         }
 
@@ -161,6 +188,48 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             .Where(pair => pair.Value.Count == 1)
             .ToDictionary(pair => pair.Key, pair => pair.Value.Single());
     }
+
+    private static string? GetObservableContext(InvocationExpressionSyntax invocation)
+    {
+        var containingMethod = invocation.Ancestors().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
+        if (containingMethod is null)
+        {
+            return null;
+        }
+
+        var nestedFunctionBoundary = invocation.Ancestors()
+            .TakeWhile(node => node != containingMethod)
+            .Any(node => node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax);
+        if (nestedFunctionBoundary)
+        {
+            return null;
+        }
+
+        var returnStatement = invocation.Ancestors().OfType<ReturnStatementSyntax>().FirstOrDefault();
+        if (returnStatement?.Expression is not null &&
+            ContainsNode(returnStatement.Expression, invocation))
+        {
+            return "return";
+        }
+
+        var arrow = invocation.Ancestors().OfType<ArrowExpressionClauseSyntax>().FirstOrDefault();
+        if (arrow?.Parent == containingMethod && ContainsNode(arrow.Expression, invocation))
+        {
+            return "return";
+        }
+
+        var yieldReturn = invocation.Ancestors().OfType<YieldStatementSyntax>()
+            .FirstOrDefault(statement => statement.ReturnOrBreakKeyword.ValueText == "return");
+        if (yieldReturn?.Expression is not null && ContainsNode(yieldReturn.Expression, invocation))
+        {
+            return "yield-return";
+        }
+
+        return null;
+    }
+
+    private static bool ContainsNode(SyntaxNode container, SyntaxNode candidate) =>
+        container == candidate || container.DescendantNodes().Any(node => node == candidate);
 
     private static InvocationExpressionSyntax? FindInvocationAtSpan(SyntaxNode root, int spanStart)
     {
@@ -217,4 +286,6 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 
     private readonly record struct InvocationKey(string? Path, int SpanStart);
+
+    private sealed record InvocationAuthority(string Target, string? ObservableContext);
 }
