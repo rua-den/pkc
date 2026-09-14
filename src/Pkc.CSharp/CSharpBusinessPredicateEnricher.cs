@@ -31,7 +31,7 @@ internal sealed class CSharpBusinessPredicateEnricher
         var facts = document.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
         var relations = document.Relations.ToList();
         var relationKeys = relations
-            .Select(relation => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}")
+            .Select(RelationKey)
             .ToHashSet(StringComparer.Ordinal);
 
         var callableFacts = document.Facts
@@ -67,11 +67,7 @@ internal sealed class CSharpBusinessPredicateEnricher
                         continue;
                     }
 
-                    var span = invocation.GetLocation().GetLineSpan();
-                    var location = new SourceLocation(
-                        owner.Source.Path,
-                        span.StartLinePosition.Line + 1,
-                        span.EndLinePosition.Line + 1);
+                    var location = GetLocation(invocation, owner.Source.Path);
                     var id = $"cs:{owner.Source.Path}:{location.StartLine}:business-predicate:{description.Operation}:{invocation.SpanStart}";
                     var fact = new EvidenceFact(
                         id,
@@ -91,12 +87,18 @@ internal sealed class CSharpBusinessPredicateEnricher
                         });
 
                     facts[id] = fact;
-                    var relation = new EvidenceRelation(owner.Id, "contains-condition", id, location);
-                    var relationKey = $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
-                    if (relationKeys.Add(relationKey))
-                    {
-                        relations.Add(relation);
-                    }
+                    AddRelation(
+                        new EvidenceRelation(owner.Id, "contains-condition", id, location),
+                        relations,
+                        relationKeys);
+
+                    AddConfiguredSourceObjects(
+                        method,
+                        owner,
+                        description.Source,
+                        facts,
+                        relations,
+                        relationKeys);
                 }
             }
         }
@@ -111,6 +113,98 @@ internal sealed class CSharpBusinessPredicateEnricher
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray()
         };
+    }
+
+    private static void AddConfiguredSourceObjects(
+        BaseMethodDeclarationSyntax method,
+        EvidenceFact owner,
+        string source,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        var sourceName = GetSourceMemberName(source);
+        if (string.IsNullOrWhiteSpace(sourceName))
+        {
+            return;
+        }
+
+        var containingType = method.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+        if (containingType is null)
+        {
+            return;
+        }
+
+        foreach (var variable in containingType.Members
+                     .OfType<FieldDeclarationSyntax>()
+                     .SelectMany(field => field.Declaration.Variables)
+                     .Where(variable => string.Equals(variable.Identifier.ValueText, sourceName, StringComparison.Ordinal)))
+        {
+            if (variable.Initializer?.Value is not { } initializer)
+            {
+                continue;
+            }
+
+            var configuredObjects = initializer.DescendantNodesAndSelf()
+                .Where(node => node is ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax)
+                .Select(node => new { Node = node, Initializer = GetInitializer(node) })
+                .Where(item => item.Initializer is not null)
+                .ToArray();
+
+            foreach (var item in configuredObjects)
+            {
+                var assignments = item.Initializer!.Expressions
+                    .OfType<AssignmentExpressionSyntax>()
+                    .Where(assignment => assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+                    .Select(assignment => $"{assignment.Left} = {assignment.Right}")
+                    .ToArray();
+
+                if (assignments.Length == 0)
+                {
+                    continue;
+                }
+
+                var location = GetLocation(item.Node, owner.Source.Path);
+                var id = $"cs:{owner.Source.Path}:{location.StartLine}:configured-object:{sourceName}:{item.Node.SpanStart}";
+                var configured = new EvidenceFact(
+                    id,
+                    "configured-object",
+                    sourceName,
+                    owner.Container,
+                    location,
+                    [],
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["source"] = sourceName,
+                        ["assignments"] = string.Join("; ", assignments),
+                        ["sourceKind"] = "declarative-initializer"
+                    });
+
+                facts[id] = configured;
+                AddRelation(
+                    new EvidenceRelation(owner.Id, "contains-configuration", id, location),
+                    relations,
+                    relationKeys);
+            }
+        }
+    }
+
+    private static InitializerExpressionSyntax? GetInitializer(SyntaxNode node) => node switch
+    {
+        ObjectCreationExpressionSyntax creation => creation.Initializer,
+        ImplicitObjectCreationExpressionSyntax creation => creation.Initializer,
+        _ => null
+    };
+
+    private static string? GetSourceMemberName(string source)
+    {
+        var normalized = source.Trim();
+        if (normalized.StartsWith("this.", StringComparison.Ordinal))
+        {
+            normalized = normalized[5..];
+        }
+
+        return SyntaxFacts.IsValidIdentifier(normalized) ? normalized : null;
     }
 
     private static BaseMethodDeclarationSyntax? FindMethod(SyntaxNode root, EvidenceFact owner) =>
@@ -184,6 +278,26 @@ internal sealed class CSharpBusinessPredicateEnricher
         description = new PredicateDescription(operation, source, parameter, body.ToString(), effect);
         return true;
     }
+
+    private static SourceLocation GetLocation(SyntaxNode node, string path)
+    {
+        var span = node.GetLocation().GetLineSpan();
+        return new SourceLocation(path, span.StartLinePosition.Line + 1, span.EndLinePosition.Line + 1);
+    }
+
+    private static void AddRelation(
+        EvidenceRelation relation,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        if (relationKeys.Add(RelationKey(relation)))
+        {
+            relations.Add(relation);
+        }
+    }
+
+    private static string RelationKey(EvidenceRelation relation) =>
+        $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
 
     private sealed record PredicateDescription(
         string Operation,
