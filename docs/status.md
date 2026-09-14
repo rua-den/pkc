@@ -7,27 +7,27 @@ Last updated: 2026-09-14
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             FIXES COMPLETE / INDEPENDENT RE-REVIEW REQUIRED
+V0.4.6 business logic reconstruction             INDEPENDENT RE-REVIEW FAIL / 3 BLOCKERS
 V0.4.7 cross-layer PO-question readiness         LOCKED
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-Previous independent review:
+Latest independent V0.4.6 re-review:
 
 ```text
-docs/reviews/2026-09-14-v0.4.5-v0.4.6-independent-review.md
+docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
 ```
 
-V0.4.6 re-review request:
-
-```text
-docs/reviews/2026-09-14-v0.4.6-independent-rereview-request.md
-```
-
-V0.4.6 implementation checkpoint:
+Reviewed code checkpoint:
 
 ```text
 478e92343154083c3987f07e4fbad66a042c25e8
+```
+
+Reviewed repository HEAD before review-documentation commits:
+
+```text
+45b2d9b6e215f26c395843c77f1e59887774e21b
 ```
 
 V0.4.3 remains the last accepted tool package:
@@ -35,8 +35,6 @@ V0.4.3 remains the last accepted tool package:
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
-
-No new package version is accepted merely because the V0.4.6 implementation is ready for re-review.
 
 ## Product contract governing V0.4.x
 
@@ -69,205 +67,149 @@ jellyfin/jellyfin
 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 ```
 
-Records:
+Independent review accepted V0.4.5. W1/W2/W3/W4/W5 remain non-blocking quality follow-ups unless a concrete regression appears.
+
+## V0.4.6 — independent re-review FAIL
+
+The prior coding pass genuinely reproduced and fixed the exact original B6.1/B6.2/B6.3 counterexamples regression-first. Independent re-review accepts B6.2 but found remaining authority gaps in B6.1 and B6.3 plus a new B6.4 product-claim gap.
+
+### B6.1 — BLOCK: semantic operation proof is only line-level
+
+Current code requires `System.Linq.Enumerable.<operation>` or `System.Linq.Queryable.<operation>`, which is materially better than lexical naming.
+
+However the proof joins semantic invocation evidence by only:
 
 ```text
-docs/trials/2026-09-14-v0.4.5-jellyfin.md
-docs/trials/2026-09-14-v0.4.5-jellyfin-crosscheck.md
+owner + source path + StartLine + EndLine
 ```
 
-Independent review accepted V0.4.5. Its warnings W1/W2/W3/W4/W5 remain quality follow-ups but are not reopened by this V0.4.6 work unless a concrete regression appears.
+`SourceLocation` has no exact invocation span/column. A custom `Where(...)` and a real LINQ `Where(...)` on the same source line can therefore share the LINQ proof and promote the custom call to a high-confidence business predicate.
 
-## V0.4.6 — blocker fixes complete / independent re-review required
+Required regression: custom same-named operation + genuine LINQ operation on the same line; only the genuine invocation may be authoritative.
 
-The previous independent review found exactly three blocker-class false-claim paths. All three now have focused red reproduction, generic fixes and green regression proof.
+Required property: exact per-invocation semantic identity, not line-range coincidence.
 
-### B6.1 — semantic authority for LINQ/business-predicate operations
+### B6.2 — PASS: direct configured-item ownership
 
-Red regression:
+Nested property object initializers are no longer emitted as additional configured items of the source collection for the reviewed supported forms.
 
-```text
-commit: f09658a8f5f097abd4003b15e5261a5388691488
-run:    34806787160 — FAIL as expected
-C#:     1 failed / 57 passed / 58 total
-```
-
-The fixture used a custom `Where(Func<...>)` that ignores its predicate. Before the fix, PKC incorrectly promoted the call to authoritative inclusion logic.
-
-Generic fix:
-
-```text
-b13b9d7b0a89f2df0100fa5f8e22a7969b0fdf30
-0bc0be87e94472d6a972899a3928085ba3ef636d  positive semantic-proof fixture hardening
-```
-
-Authoritative `business-predicate` evidence now requires the project-semantic invocation target at the same invocation source span to resolve exactly to a supported method on:
-
-```text
-System.Linq.Enumerable
-System.Linq.Queryable
-```
-
-The shared rule applies to supported `Where`, `Any`, `All`, `First*` and `Single*` operations. Custom/unresolved same-named methods are conservatively omitted.
-
-Green proof:
-
-```text
-run 34806900948 — PASS
-C#:       58 / 58
-frontend: 10 / 10
-PokeTrade PASS
-```
-
-### B6.2 — direct configured-item ownership
-
-Red regression:
-
-```text
-commit: bec7ff74d48dc7b56b27850f3060d690e1bb311a
-run:    34807054449 — FAIL as expected
-C#:     1 failed / 58 passed / 59 total
-```
-
-The fixture placed a nested `CardMetadata` object inside a configured `Card`. Before the fix, both objects were incorrectly emitted as configured items of `_cards`.
-
-Generic fix:
-
-```text
-edb16980d88cd24b6d4052a477f9fb736fc981ad
-```
-
-Configured-object extraction now promotes only direct item/value expressions of supported collection/array initializer forms. Nested property object initializers are not additional source items.
-
-Ownership evidence now records:
+Direct configured items remain available with:
 
 ```text
 sourceKind          = direct-collection-item-initializer
 ownershipResolution = direct-syntax-parent
 ```
 
-Focused green proof:
+Do not reopen B6.2 without a new concrete contradiction.
+
+### B6.3 — BLOCK: Angular service identity is only a simple class name
+
+Current result/list correlation requires method name + service type == API owner class. This closes the original `CatalogApi` versus `AdminApi` case.
+
+But two different modules can both export `CardsApi`. A component importing one `CardsApi` and an unrelated endpoint owned by the other `CardsApi` still compare equal by simple class name and can cross-link list flow.
+
+Required regression: two modules exporting the same class + method name with different routes. Only the actually imported/injected module may feed the component list.
+
+Required property: module-qualified/deterministic service identity where provable; otherwise omit the correlation.
+
+### B6.4 — BLOCK: proven LINQ operation does not prove observable endpoint behavior
+
+Current code promotes every supported LINQ predicate attached to a reachable callable as an endpoint business rule, with wording such as:
 
 ```text
-run 34807153439 — PKC test step PASS
+Includes items from `_cards` only when `...`.
+Requires at least one item from `_cards` to satisfy `...`.
 ```
 
-The final implementation gate below provides the full-suite proof after all three fixes are present together.
+It does not yet prove that the LINQ result determines the endpoint return, guard, mutation or another observable outcome.
 
-### B6.3 — service-aware Angular result/list correlation
+Counterexample:
 
-Red regression:
+```csharp
+var published = _cards.Where(card => card.IsPublished).ToArray();
+Audit(published.Length);
+return _cards;
+```
+
+The LINQ call is real, but the endpoint returns unfiltered cards. Rendering it as endpoint inclusion logic is a false Product Owner claim.
+
+Required property: separate observed local query predicates from proven observable business rules. Promote authoritative product wording only when deterministic control/data flow proves the predicate participates in the observable outcome.
+
+## Regression-first evidence already verified
+
+Original red runs were genuine:
 
 ```text
-commit: aee74969d26627ba7e446de3e28bed5ce6276110
-run:    34807296605 — FAIL as expected
-frontend: 1 failed / 10 passed / 11 total
-C#:       59 / 59 PASS
+B6.1 red  f09658a8f5f097abd4003b15e5261a5388691488 / run 34806787160 — FAIL
+B6.2 red  bec7ff74d48dc7b56b27850f3060d690e1bb311a / run 34807054449 — FAIL
+B6.3 red  aee74969d26627ba7e446de3e28bed5ce6276110 / run 34807296605 — FAIL
 ```
 
-The adversarial fixture contained both `CatalogApi.getCards()` and `AdminApi.getCards()`, while `CatalogComponent` injected only `CatalogApi`. Before the fix, `/api/admin/cards` inherited the Catalog result/list flow solely because the method names matched.
+## Exact reviewed-head gates
 
-Generic fix chain:
+For reviewed HEAD `45b2d9b6e215f26c395843c77f1e59887774e21b`:
 
 ```text
-b63d79ba51ab08b82e3e1a468e96974289660d8e  binding service identity
-5264f1c6ba8011c901e00360a612be3a0aecc68d  fallback API owner identity
-06af278dc4cf51dd3152eaf8693b17e2fa6853d6  AST API owner identity
-478e92343154083c3987f07e4fbad66a042c25e8  exact service-owner correlation
+CI / PokeTrade        34807855630 — PASS
+pinned Loren          34807855596 — PASS
+Loren-main push       34807855650 — PASS
+Loren-main scheduled  34807965935 — PASS
+pinned Jellyfin       34807855635 — PASS
 ```
 
-Cross-stack result/list promotion now requires both method identity and exact service ownership:
+Current-head CI:
 
 ```text
-binding.apiMethod == apiCall.Container
-AND binding.serviceType == apiCall.ownerClass
+build           0 warnings / 0 errors
+C# tests        59 / 59 PASS
+frontend tests  11 / 11 PASS
+tool pack       PASS
+WorkPlay        PASS
+PokeTrade       PASS
 ```
 
-If service ownership cannot be proved, endpoint-to-list correlation is omitted rather than guessed.
-
-Final green proof:
+Current-head Jellyfin artifact:
 
 ```text
-run 34807482174 — PASS
-build:          0 warnings / 0 errors
-C# tests:       59 / 59
-frontend tests: 11 / 11
-PokeTrade:      PASS
+artifact id:     10334150660
+artifact digest: sha256:17b546f3119f4350dfffa5fc22833a80872a76c677005ca0c2c66810c6f79f82
 ```
 
-## Exact implementation-checkpoint gates
-
-For implementation checkpoint `478e92343154083c3987f07e4fbad66a042c25e8`:
+Independent portable recheck:
 
 ```text
-CI / full PKC / PokeTrade    34807482174 — PASS
-pinned Loren                 34807482181 — PASS
-Loren-main canary            34807482197 — PASS
-pinned Jellyfin              34807482203 — PASS
+canonical Markdown                  504
+bundle canonical content            504 / 504
+portable ZIP files                  504
+ZIP set parity                      PASS
+ZIP byte parity                     504 / 504
+raw/source leak                     0
+PKC_KNOWLEDGE.md sha256             737535fc3bc9fc04d07a2cc8a53d8bfd2a427b297dedba3cc38986f8e84ae55f
+PKC_KNOWLEDGE.zip sha256            a2c2f876ae76f7a24a66b7219bbc970cf21545b4bec315e7919d64cda38be809
 ```
 
-CI/PokeTrade includes:
-
-```text
-PKC build                       PASS, 0 warnings / 0 errors
-C# tests                        59 / 59 PASS
-frontend tests                  11 / 11 PASS
-tool pack/install               PASS
-WorkPlay knowledge build        PASS
-PokeTrade .NET build            PASS
-PokeTrade Angular build         PASS
-PokeTrade live branch acceptance PASS
-PokeTrade knowledge assertions  PASS
-```
-
-Jellyfin exact-checkpoint verification:
-
-```text
-pinned source normal build      PASS
-workflow candidates             386
-product features                116
-canonical Markdown files        504
-facts                           43,700
-analysis mode                   project-semantic 43,700 / 43,700
-bundle verbatim parity          PASS
-portable ZIP exact file set     PASS
-portable ZIP byte parity        PASS
-raw .pkc leak                   none
-src/ source leak                none
-artifact id                     10333522300
-artifact sha256                 a96bc785c268da30ef03f4282eb64246c964c49599b7443d4020bd80fc049d85
-```
-
-## Independent V0.4.6 re-review
-
-The implementation is **not self-declared PASS**. Independent review must challenge the adversarial cases and genericity described in:
-
-```text
-docs/reviews/2026-09-14-v0.4.6-independent-rereview-request.md
-```
-
-Required independent outcome before any next milestone unlock:
-
-```text
-B6.1 no unresolved blocker
-B6.2 no unresolved blocker
-B6.3 no unresolved blocker
-cross-benchmark regression PASS
-portable integrity PASS
-no repository-specific production exception
-```
+Green automation and portable integrity do not override the semantic false-claim blockers.
 
 ## Exact next action
 
+Stay in V0.4.6. Fix only:
+
 ```text
-independent V0.4.6 re-review only
+B6.1 exact invocation identity for semantic operation proof
+B6.3 module-qualified/deterministic Angular service identity
+B6.4 observable-effect proof before product-rule promotion
 ```
+
+Each fix must be regression-first:
+
+```text
+focused red
+→ verify failure
+→ generic fix
+→ focused green
+```
+
+Then rerun full PKC tests, PokeTrade, pinned Loren, Loren-main, pinned Jellyfin and portable parity/no-leak, update status/handoff and request independent V0.4.6 re-review.
 
 Do not start V0.4.7.
 Do not start Azure DevOps ingestion.
-
-## Azure DevOps scope lock
-
-V0.5 remains an additional input-evidence source for Epic/Feature/PBI, acceptance intent, history/status and PR/commit linkage. It must not compensate for missing code-derived business logic.
-
-V0.5 stays locked until the V0.4.x PO-question readiness gates explicitly permit it.
