@@ -10,7 +10,7 @@ public sealed class BusinessPredicateReturnContextRegressionTests
     public async Task Direct_any_return_is_observable_but_not_rendered_as_a_requirement()
     {
         var knowledge = await BuildKnowledgeAsync(
-            "HasBlockedCards",
+            "Has Blocked Cards",
             "public bool HasBlockedCards() => _cards.Any(card => card.Blocked);",
             "public bool HasBlockedCards() => _store.HasBlockedCards();",
             "Any");
@@ -23,7 +23,7 @@ public sealed class BusinessPredicateReturnContextRegressionTests
     public async Task Direct_all_return_is_observable_but_not_rendered_as_a_requirement()
     {
         var knowledge = await BuildKnowledgeAsync(
-            "AllCardsPublished",
+            "All Cards Published",
             "public bool AllCardsPublished() => _cards.All(card => card.IsPublished);",
             "public bool AllCardsPublished() => _store.AllCardsPublished();",
             "All");
