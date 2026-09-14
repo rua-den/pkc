@@ -8,6 +8,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularTypeScriptAstScanner _astScanner = new();
     private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
     private readonly AngularListBehaviorScanner _listBehaviorScanner = new();
+    private readonly AngularServiceIdentityEnricher _serviceIdentityEnricher = new();
 
     public string Id => "angular";
 
@@ -29,7 +30,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
                 "regex-fallback",
                 "low",
                 astAttempt.FailureReason ?? "typescript-ast-unavailable");
-            return Merge([fallback, formBehaviorDocument, listBehaviorDocument], "0.4.6-angular");
+            var mergedFallback = Merge(
+                [fallback, formBehaviorDocument, listBehaviorDocument],
+                "0.4.6-angular");
+            return await _serviceIdentityEnricher.EnrichAsync(
+                repositoryPath,
+                mergedFallback,
+                cancellationToken);
         }
 
         var templateFacts = fallbackDocument.Facts
@@ -51,9 +58,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             templateFacts,
             templateRelations);
 
-        return Merge(
+        var merged = Merge(
             [astAttempt.Document, templateDocument, formBehaviorDocument, listBehaviorDocument],
             "0.4.6-angular");
+        return await _serviceIdentityEnricher.EnrichAsync(
+            repositoryPath,
+            merged,
+            cancellationToken);
     }
 
     private static FactDocument Merge(
