@@ -218,6 +218,12 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                 continue;
             }
 
+            if (condition.Kind == "business-predicate")
+            {
+                rules.Add(DescribeBusinessPredicate(condition, expression));
+                continue;
+            }
+
             var ownedThrows = throws
                 .Where(throwFact =>
                     throwOwner.TryGetValue(throwFact.Id, out var ownerId) &&
@@ -296,6 +302,22 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return rules.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string DescribeBusinessPredicate(EvidenceFact fact, string expression)
+    {
+        fact.Metadata.TryGetValue("source", out var source);
+        fact.Metadata.TryGetValue("effect", out var effect);
+        var sourceText = string.IsNullOrWhiteSpace(source) ? "the source collection" : $"`{source}`";
+
+        return effect switch
+        {
+            "inclusion" => $"Includes items from {sourceText} only when `{expression}`.",
+            "existence" => $"Requires at least one item from {sourceText} to satisfy `{expression}`.",
+            "universal-requirement" => $"Requires every item from {sourceText} to satisfy `{expression}`.",
+            "selection" => $"Selects an item from {sourceText} where `{expression}`.",
+            _ => $"Business predicate on {sourceText}: `{expression}`."
+        };
     }
 
     private static bool Contains(SourceLocation parent, SourceLocation child) =>
@@ -392,6 +414,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                     "endpoint" or
                     "method" or
                     "condition" or
+                    "business-predicate" or
                     "throw" or
                     "computed-property" or
                     "object-construction" or
@@ -516,6 +539,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 
         "condition" when fact.Metadata.TryGetValue("expression", out var expression) =>
             $"Condition: {expression}",
+
+        "business-predicate" when fact.Metadata.TryGetValue("expression", out var predicate) =>
+            $"Business predicate: {predicate}",
 
         "throw" when fact.Metadata.TryGetValue("exceptionType", out var type) =>
             $"Throws {type}",
