@@ -17,6 +17,18 @@ internal sealed class AngularListBehaviorScanner
         @"this\.(?<service>[A-Za-z_$][A-Za-z0-9_$]*)\.(?<method>[A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*\.subscribe\s*\(\s*(?<result>[A-Za-z_$][A-Za-z0-9_$]*)\s*=>\s*this\.(?<target>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*\k<result>",
         RegexOptions.Compiled);
 
+    private static readonly Regex InjectServiceRegex = new(
+        @"(?<service>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*inject\s*\(\s*(?<type>[A-Z][A-Za-z0-9_$]*)\s*\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex NewServiceRegex = new(
+        @"(?<service>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*new\s+(?<type>[A-Z][A-Za-z0-9_$]*)\s*\(",
+        RegexOptions.Compiled);
+
+    private static readonly Regex ConstructorServiceRegex = new(
+        @"(?:private|public|protected)\s+(?:readonly\s+)?(?<service>[A-Za-z_$][A-Za-z0-9_$]*)\s*:\s*(?<type>[A-Z][A-Za-z0-9_$]*)\b",
+        RegexOptions.Compiled);
+
     public async Task<FactDocument> ScanAsync(
         string repositoryPath,
         CancellationToken cancellationToken = default)
@@ -42,6 +54,7 @@ internal sealed class AngularListBehaviorScanner
                 continue;
             }
 
+            var serviceTypes = FindServiceTypes(text);
             var fileFacts = new List<EvidenceFact>();
 
             foreach (Match match in ListRegex.Matches(text))
@@ -71,6 +84,24 @@ internal sealed class AngularListBehaviorScanner
             {
                 var target = match.Groups["target"].Value;
                 var apiMethod = match.Groups["method"].Value;
+                var service = match.Groups["service"].Value;
+                var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["service"] = service,
+                    ["apiMethod"] = apiMethod,
+                    ["resultParameter"] = match.Groups["result"].Value,
+                    ["target"] = target,
+                    ["component"] = component,
+                    ["analysisMode"] = "typescript-syntactic-binding",
+                    ["analysisConfidence"] = "medium"
+                };
+
+                if (serviceTypes.TryGetValue(service, out var serviceType))
+                {
+                    metadata["serviceType"] = serviceType;
+                    metadata["serviceResolution"] = "typescript-syntactic-declaration";
+                }
+
                 var fact = CreateFact(
                     relativePath,
                     text,
@@ -78,16 +109,7 @@ internal sealed class AngularListBehaviorScanner
                     "ui-result-binding",
                     $"{apiMethod} -> {target}",
                     component,
-                    new Dictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["service"] = match.Groups["service"].Value,
-                        ["apiMethod"] = apiMethod,
-                        ["resultParameter"] = match.Groups["result"].Value,
-                        ["target"] = target,
-                        ["component"] = component,
-                        ["analysisMode"] = "typescript-syntactic-binding",
-                        ["analysisConfidence"] = "medium"
-                    });
+                    metadata);
                 facts.Add(fact);
                 fileFacts.Add(fact);
 
@@ -108,6 +130,31 @@ internal sealed class AngularListBehaviorScanner
                 .ThenBy(relation => relation.Kind, StringComparer.Ordinal)
                 .ThenBy(relation => relation.Target, StringComparer.Ordinal)
                 .ToArray());
+    }
+
+    private static IReadOnlyDictionary<string, string> FindServiceTypes(string text)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        AddServiceTypes(InjectServiceRegex, text, result);
+        AddServiceTypes(NewServiceRegex, text, result);
+        AddServiceTypes(ConstructorServiceRegex, text, result);
+        return result;
+    }
+
+    private static void AddServiceTypes(
+        Regex regex,
+        string text,
+        IDictionary<string, string> result)
+    {
+        foreach (Match match in regex.Matches(text))
+        {
+            var service = match.Groups["service"].Value;
+            var type = match.Groups["type"].Value;
+            if (!string.IsNullOrWhiteSpace(service) && !string.IsNullOrWhiteSpace(type))
+            {
+                result[service] = type;
+            }
+        }
     }
 
     private static EvidenceFact CreateFact(
