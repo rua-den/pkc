@@ -19,6 +19,7 @@ public sealed class BusinessPredicateKnowledgeTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), Source);
+
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
 
             var predicate = Assert.Single(facts.Facts, fact =>
@@ -34,9 +35,21 @@ public sealed class BusinessPredicateKnowledgeTests
             Assert.Contains("card.SaleEndsAt == null || now < card.SaleEndsAt", predicate.Metadata["expression"], StringComparison.Ordinal);
             Assert.Contains("card.Stock > 0", predicate.Metadata["expression"], StringComparison.Ordinal);
 
+            var configured = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "configured-object" &&
+                fact.Metadata.TryGetValue("source", out var source) &&
+                source == "_cards");
+            Assert.Contains("Name = \"Mewtwo VSTAR\"", configured.Metadata["assignments"], StringComparison.Ordinal);
+            Assert.Contains("IsPublished = true", configured.Metadata["assignments"], StringComparison.Ordinal);
+            Assert.Contains("WebEnabled = true", configured.Metadata["assignments"], StringComparison.Ordinal);
+            Assert.Contains("SaleStartsAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero)", configured.Metadata["assignments"], StringComparison.Ordinal);
+            Assert.Contains("SaleEndsAt = null", configured.Metadata["assignments"], StringComparison.Ordinal);
+            Assert.Contains("Stock = 5", configured.Metadata["assignments"], StringComparison.Ordinal);
+
             var candidate = Assert.Single(
                 new FeatureCandidateBuilder().Build(facts).Candidates,
                 candidate => candidate.Name.Contains("Get Cards", StringComparison.Ordinal));
+
             var knowledge = await new GroundedKnowledgeSynthesizer().SynthesizeAsync(candidate);
 
             Assert.Contains(knowledge.Rules, rule =>
@@ -46,6 +59,11 @@ public sealed class BusinessPredicateKnowledgeTests
                 rule.Contains("card.SaleStartsAt <= now", StringComparison.Ordinal) &&
                 rule.Contains("card.SaleEndsAt == null || now < card.SaleEndsAt", StringComparison.Ordinal) &&
                 rule.Contains("card.Stock > 0", StringComparison.Ordinal));
+
+            Assert.Contains(knowledge.Rules, rule =>
+                rule.Contains("Configured item in `_cards`", StringComparison.Ordinal) &&
+                rule.Contains("Mewtwo VSTAR", StringComparison.Ordinal) &&
+                rule.Contains("2026, 9, 1", StringComparison.Ordinal));
         }
         finally
         {
@@ -62,6 +80,7 @@ public sealed class BusinessPredicateKnowledgeTests
 
         public sealed class PokemonCard
         {
+            public string Name { get; init; } = "";
             public bool IsPublished { get; init; }
             public bool WebEnabled { get; init; }
             public DateTimeOffset SaleStartsAt { get; init; }
@@ -71,7 +90,18 @@ public sealed class BusinessPredicateKnowledgeTests
 
         public sealed class Store
         {
-            private readonly List<PokemonCard> _cards = [];
+            private readonly List<PokemonCard> _cards =
+            [
+                new()
+                {
+                    Name = "Mewtwo VSTAR",
+                    IsPublished = true,
+                    WebEnabled = true,
+                    SaleStartsAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero),
+                    SaleEndsAt = null,
+                    Stock = 5
+                }
+            ];
 
             public IReadOnlyList<PokemonCard> GetCards(DateTimeOffset now) => _cards
                 .Where(card =>
