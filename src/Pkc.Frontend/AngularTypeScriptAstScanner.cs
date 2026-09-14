@@ -269,6 +269,12 @@ function nearestMethod(node) {
   }
   return null;
 }
+function nearestClass(node) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (ts.isClassDeclaration(current) && current.name) return current.name.text;
+  }
+  return null;
+}
 function callName(call) {
   const expression = call.expression;
   if (ts.isIdentifier(expression)) return expression.text;
@@ -350,12 +356,18 @@ for (const file of walk(root).sort()) {
         const url = stringValue(node.arguments[0], sf);
         if (url && (url.startsWith('/') || url.startsWith('http'))) {
           const container = nearestMethod(node);
-          addFact(sf, node, 'ui-api-call', `${method.toUpperCase()} ${url}`, container, {
+          const metadata = {
             httpMethod: method.toUpperCase(),
             url,
             routeKey: normalizeRouteKey(url),
             client: node.expression.expression.getText(sf)
-          });
+          };
+          const ownerClass = nearestClass(node);
+          if (ownerClass) {
+            metadata.ownerClass = ownerClass;
+            metadata.ownerResolution = 'typescript-ast-class-parent';
+          }
+          addFact(sf, node, 'ui-api-call', `${method.toUpperCase()} ${url}`, container, metadata);
         }
       }
     }
