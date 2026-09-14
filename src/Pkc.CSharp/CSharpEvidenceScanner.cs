@@ -60,9 +60,13 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             raw,
             cancellationToken);
-        return await new CSharpProjectSemanticEnricher().EnrichAsync(
+        var semantic = await new CSharpProjectSemanticEnricher().EnrichAsync(
             repositoryPath,
             normalized,
+            cancellationToken);
+        return await new CSharpBusinessPredicateEnricher().EnrichAsync(
+            repositoryPath,
+            semantic,
             cancellationToken);
     }
 }
