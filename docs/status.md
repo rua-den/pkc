@@ -2,6 +2,8 @@
 
 Last updated: 2026-09-15
 
+Latest continuation checkpoint: [Queryable direction check](reviews/2026-09-15-v0.4.6-queryable-direction-checkpoint.md). Implementation is committed at `c310e893762997f34562a6b3a62dbab2b05c0c93`; exact-SHA gates and fresh independent acceptance remain to be established. See the checkpoint for the remote-state caveat before attempting another push.
+
 ## Current milestone state
 
 ```text
@@ -123,7 +125,7 @@ underlying item IsPublished == false
 → returned item does not satisfy card.IsPublished
 ```
 
-Current PKC can still promote:
+Before implementation commit `c310e89`, PKC could still promote:
 
 ```text
 Includes items from `_cards` only when `card.IsPublished`.

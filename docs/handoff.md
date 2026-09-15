@@ -2,6 +2,8 @@
 
 Use this file when continuing PKC in another coding or independent-review thread.
 
+Start with the [2026-09-15 Queryable direction checkpoint](reviews/2026-09-15-v0.4.6-queryable-direction-checkpoint.md) for implementation SHA `c310e893762997f34562a6b3a62dbab2b05c0c93`, the scoped audit, test limits, and remote-state caveat. The implementation commit already exists; gate verification and fresh independent acceptance remain open.
+
 ## Product contract
 
 PKC is a deterministic Product/System Knowledge Compiler. A Product Owner should be able to hand generated portable knowledge to an AI and ask practical product/system questions without the AI re-reading source code.
@@ -58,7 +60,7 @@ FAIL / REOPEN V0.4.6
 
 Current implementation status: `IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING`. Queryable predicates remain observed evidence without Product Owner authority, and Enumerable `Where` authority fails closed across Queryable pipeline hops. V0.4.7 and V0.5 remain locked.
 
-Local validation is green: focused authority regressions 7/7, full C# suite 88/88, frontend suite 13/13, and Release build 0 warnings/0 errors. TDD mutation RED removing both Queryable guards produced expected observed-only versus actual observable; the evidence-retention RED showed the downgraded predicate missing from portable Evidence before `observes-predicate` traversal was added. `DOTNET_ROLL_FORWARD=LatestMajor` was required because the net8 test host runs with only SDK 10 MSBuild discovery. Commit, push, exact-SHA gates, and fresh independent review remain outstanding.
+Local validation is green: focused authority regressions 7/7, full C# suite 88/88, frontend suite 13/13, and Release build 0 warnings/0 errors. TDD mutation RED removing both Queryable guards produced expected observed-only versus actual observable; the evidence-retention RED showed the downgraded predicate missing from portable Evidence before `observes-predicate` traversal was added. `DOTNET_ROLL_FORWARD=LatestMajor` was required because the net8 test host runs with only SDK 10 MSBuild discovery. Implementation commit `c310e89` exists; verify remote state before any push. Exact-SHA gates and fresh independent review remain outstanding.
 
 Rereview 8 remains accepted for its constructor-effect analysis. V0.4.6 was reopened only because rereview 9 found a separate provider-semantics contradiction.
 
