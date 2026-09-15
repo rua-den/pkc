@@ -7,25 +7,25 @@ Last updated: 2026-09-15
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+V0.4.6 business logic reconstruction             INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 V0.4.7 cross-layer PO-question readiness         LOCKED
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-V0.4.6 is **not complete yet**. The two blockers from the latest independent review have been fixed with adversarial regression coverage and the full exact-checkpoint gate set is green, but milestone acceptance still requires a new independent adversarial re-review.
+V0.4.6 is **not complete**. The implementation checkpoint is green across all current automated gates, but independent adversarial review found one remaining false-product-claim path in B6.4.
 
-Current implementation checkpoint:
+Reviewed implementation checkpoint:
 
 ```text
 9a0817b21075a3d810072a310ed8fd3314625cd8
 fix: enforce observable authority boundaries
 ```
 
-Latest failed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
-reviewed implementation: 34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
+verdict: FAIL / FIX REQUIRED
 ```
 
 V0.4.3 remains the last accepted tool package:
@@ -60,7 +60,7 @@ No deterministic proof means no authoritative product claim. Runtime database/co
 
 ### B6.1 — PASS / keep closed
 
-Exact C# predicate authority is re-resolved from the exact invocation syntax `SpanStart` in the target project semantic model. Same-line custom and genuine LINQ invocations cannot share semantic authority merely because they occupy the same source line/range.
+Exact C# predicate authority is re-resolved from the exact invocation syntax `SpanStart` in the target project semantic model. Same-line custom and genuine LINQ invocations cannot share authority merely because they occupy the same source line/range.
 
 Focused regression remains:
 
@@ -72,79 +72,72 @@ Do not reopen B6.1 without a new concrete contradiction.
 
 ### B6.2 — PASS / keep closed
 
-Configured-item ownership remains conservative for the reviewed forms. Nested property object initializers are not promoted as additional direct collection items.
+Configured-item ownership remains conservative for the reviewed forms. Nested property object initializers are not promoted as direct collection items.
 
 Do not reopen B6.2 without a new concrete contradiction.
 
-### B6.3 — IMPLEMENTED + GREEN / independent re-review pending
+### B6.3 — PASS / independently accepted
 
-Previous blocker: Angular service ownership could be overwritten by import-like text inside comments/strings/templates because the fallback import matcher scanned raw source text.
+Module-qualified Angular service ownership now requires lexically active relative import evidence. Inactive line comments, block comments, strings and template literals have zero import authority; conflicting active local-name imports are treated as ambiguous; unresolved ownership is omitted rather than guessed.
 
-Current implementation property:
-
-```text
-module-qualified owner identity is preserved
-only lexically active import declarations may establish service ownership
-line comments / block comments / strings / template literals have zero import authority
-conflicting active local-name imports are treated as ambiguous and omitted
-unresolved relative module identity remains uncorrelated
-```
-
-Focused adversarial regression:
+Focused regression:
 
 ```text
 Inactive_import_like_text_does_not_override_active_service_module
 ```
 
-The fixture includes line-comment, block-comment, ordinary-string and template-literal import-like collisions while two modules export the same `CardsApi.getCards()` identity shape.
+Independent re-review found no remaining false ownership-authority path in V0.4.6 scope. Conservative false negatives remain acceptable at this milestone.
 
-### B6.4 — IMPLEMENTED + GREEN / independent re-review pending
+### B6.4 — BLOCK / FIX REQUIRED
 
-Previous blocker: merely being syntactically contained somewhere inside a return expression could promote a LINQ predicate to observable product behavior, even when surrounding syntax inverted polarity, transformed the result type, or an arbitrary helper discarded the value.
+The previous polarity/return-containment defects are fixed, but the current `Where` return-pipeline allowlist treats arbitrary LINQ `Select` as preserving the filtered output-item semantics.
 
-Current authority property:
+That is unsound.
+
+Counterexample:
+
+```csharp
+private readonly List<Card> _cards =
+[
+    new Card(IsPublished: false),
+    new Card(IsPublished: true)
+];
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished)
+        .Select(_ => _cards[0])
+        .ToArray();
+```
+
+Runtime returns the unpublished `_cards[0]`, but the current authority path can still promote the `Where` predicate and synthesize:
 
 ```text
-supported predicate invocation
-+ exact LINQ semantic identity
-+ conservatively proven value/polarity-preserving path to return/yield-return
-→ authoritative Product Owner rule
+Includes items from `_cards` only when `card.IsPublished`.
+```
+
+That claim is false.
+
+Required authority boundary:
+
+```text
+Where predicate
++ every outer operation proven to preserve the predicate's output-item semantics
+→ authoritative inclusion rule
 
 otherwise
-→ businessRuleAuthority=observed-only
-→ observes-predicate
-→ no product-level rule promotion
+→ observed-only / lower authority / no product-level inclusion claim
 ```
 
-Current supported positive authority paths include:
+The minimum safe V0.4.6 direction is to stop treating arbitrary `Select` as preserving inclusion semantics unless its selector is deterministically proven identity-preserving.
+
+Required focused regression before fixing:
 
 ```text
-Any / All / First* / Single*  → direct returned value, parentheses allowed
-Where                          → direct return or semantically resolved allowlisted LINQ/materialization receiver chain
+Where(...).Select(nonIdentity).ToArray()
 ```
 
-Arbitrary helper wrapping is not considered proof.
-
-Focused regressions now cover:
-
-```text
-!Any(...)
-!All(...)
-FirstOrDefault(...) is null
-SingleOrDefault(...) is not null
-Where passed through an arbitrary helper that discards the result
-positive direct Any/All/First returns
-positive returned Where
-positive Where → Select → ToArray pipeline
-throwing Any guard
-local discarded Where
-```
-
-Observable promoted facts now record:
-
-```text
-observableEffectResolution=semantic-return-value-path
-```
+The existing identity projection positive regression may remain authoritative only if identity preservation is explicitly proven.
 
 ## Exact implementation-checkpoint automation
 
@@ -179,6 +172,7 @@ pinned Loren build + PKC compile:        PASS
 current Loren-main build + PKC compile:  PASS
 pinned Jellyfin source build:            PASS, 0 warnings / 0 errors
 Jellyfin PKC facts:                      43,363
+Jellyfin relations:                      195,314
 Jellyfin workflow candidates:            386
 Jellyfin product features:               116
 canonical Markdown files:                504
@@ -202,47 +196,30 @@ artifact id:     10377409728
 artifact digest: sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
 ```
 
+Green automation does not override the semantic blocker.
+
 ## Benchmark-special-case check
 
-The B6.3/B6.4 production changes are generic analyzer/authority logic. No PokeTrade, Mewtwo, Loren or Jellyfin-specific production exception was added. Benchmark names remain only where appropriate in tests, samples and acceptance material.
-
-## Repository-history note
-
-A transient accidental placeholder commit exists immediately before the implementation checkpoint:
-
-```text
-57831e0541100cd7d629283f0c8a57bc8b0c0363
-```
-
-The implementation tree at `9a0817b21075a3d810072a310ed8fd3314625cd8` removes that placeholder. The clean baseline-to-implementation diff contains only the intended two production files and three regression-test files.
+The reviewed production changes are generic analyzer/authority logic. No PokeTrade, Mewtwo, Loren or Jellyfin-specific production exception was found.
 
 ## Exact next action
 
-Stay in V0.4.6 and perform **independent adversarial re-review only** against implementation checkpoint:
+Stay in V0.4.6.
+
+Fix only B6.4 regression-first:
 
 ```text
-9a0817b21075a3d810072a310ed8fd3314625cd8
+1. add a focused red regression for Where(...).Select(nonIdentity).ToArray()
+2. prove the current false authoritative inclusion rule
+3. implement the minimum generic item-semantics-preservation fix
+4. keep identity/safe pipeline positive regressions green
+5. run focused + related + full relevant tests locally
+6. review the complete diff
+7. commit regression + fix together as one coherent checkpoint
+8. push once
+9. rerun PokeTrade, pinned Loren, Loren-main, pinned Jellyfin and portable parity/no-leak
+10. request another independent V0.4.6 re-review
 ```
 
-The reviewer must inspect implementation and adversarial regressions rather than accepting green CI as semantic proof.
-
-Challenge B6.3 with active/inactive import collisions, aliases, nested/index modules, conflicting imports and unresolved ownership. Challenge B6.4 with polarity/result transformations, arbitrary helper boundaries, positive direct returns, safe returned LINQ pipelines and guard/throw contexts.
-
-If the independent review returns PASS:
-
-```text
-mark V0.4.6 COMPLETE
-unlock V0.4.7 as next/current milestone
-keep V0.5 Azure DevOps locked
-```
-
-If it finds a concrete blocker:
-
-```text
-stay in V0.4.6
-record the counterexample
-fix only that blocker regression-first
-```
-
-Do not start V0.4.7 before independent V0.4.6 PASS.
+Do not start V0.4.7.
 Do not start Azure DevOps ingestion.

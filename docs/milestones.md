@@ -95,70 +95,85 @@ W5 large-pack signal/noise
 
 PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidate.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest failed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
+reviewed implementation: 9a0817b21075a3d810072a310ed8fd3314625cd8
+verdict: FAIL / FIX REQUIRED
 ```
 
-That review accepted B6.1/B6.2 and found two remaining blocker classes:
+Current disposition:
 
 ```text
 B6.1 PASS  — exact C# invocation semantic identity
 B6.2 PASS  — conservative configured-item ownership
-B6.3 BLOCK — inactive TypeScript import-like text could become Angular service ownership authority
-B6.4 BLOCK — return-expression containment did not prove predicate value flow/result type/polarity
+B6.3 PASS  — active module-qualified Angular service ownership
+B6.4 BLOCK — arbitrary LINQ Select treated as preserving Where output-item semantics
 ```
 
-Both open blockers have now been implemented with adversarial regressions at:
+B6.1 remains closed by exact invocation semantic re-resolution through Roslyn using source path + syntax `SpanStart`.
 
-```text
-9a0817b21075a3d810072a310ed8fd3314625cd8
-fix: enforce observable authority boundaries
+B6.2 remains closed by direct configured-item ownership; nested property objects are not promoted as collection items.
+
+B6.3 is now independently accepted. Module-qualified service ownership requires lexically active relative import evidence. Comment/string/template import-like text has zero authority; conflicting local-name imports are ambiguous; unresolved ownership is omitted rather than guessed.
+
+B6.4 still has one false-product-claim path. The current `Where` return-pipeline allowlist accepts arbitrary `Enumerable.Select` / `Queryable.Select` as though projection preserved the original filtered item identity.
+
+Counterexample:
+
+```csharp
+private readonly List<Card> _cards =
+[
+    new Card(IsPublished: false),
+    new Card(IsPublished: true)
+];
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished)
+        .Select(_ => _cards[0])
+        .ToArray();
 ```
 
-Current implementation disposition pending independent re-review:
+The returned list contains unpublished `_cards[0]`, but current authority can still synthesize:
 
 ```text
-B6.1 PASS / keep closed
-B6.2 PASS / keep closed
-B6.3 IMPLEMENTED + GREEN / independent re-review pending
-B6.4 IMPLEMENTED + GREEN / independent re-review pending
+Includes items from `_cards` only when `card.IsPublished`.
 ```
 
-B6.3 now requires deterministic module-qualified ownership from active import syntax context. Inactive line/block comments, strings and template literals cannot establish import authority; conflicting active local-name imports are treated as ambiguous; unresolved ownership is omitted rather than guessed.
-
-B6.4 now requires operation-specific value/polarity-preserving return authority. Direct Any/All/First*/Single* results may be authoritative; transformed/negated forms are downgraded unless modeled. Returned `Where` remains authoritative only through semantically resolved allowlisted LINQ/materialization receiver chains; arbitrary helper wrapping is not proof.
-
-The authority boundary remains:
+That violates the V0.4.6 authority boundary:
 
 ```text
-exact invocation is proven
-+ ownership/context is proven
-+ value/polarity-preserving path to observable product effect is proven
+exact predicate identity proven
++ context/ownership proven
++ every outer operation proven to preserve the relevant observable semantics
 → authoritative Product Owner rule
 
 otherwise
 → local/lower-authority evidence or omitted product-level claim
 ```
 
-Adversarial regression coverage added for the latest blockers includes:
+Required coding checkpoint:
 
 ```text
-comment/block-comment/string/template Angular import-like collisions
-!Any(...)
-!All(...)
-FirstOrDefault(...) is null
-SingleOrDefault(...) is not null
-Where passed through an arbitrary helper that discards its value
-positive direct Any/All/First returns
-positive returned Where
-positive Where → Select → ToArray
+focused red regression:
+  Where(...).Select(nonIdentity).ToArray()
+
+then:
+  generic item-semantics-preservation fix
+  focused green
+  related/full local tests
+  one coherent implementation commit/push
+  PokeTrade/Loren/Loren-main/Jellyfin/parity gates
+  fresh independent V0.4.6 re-review
 ```
+
+The existing identity projection positive regression `.Select(card => card)` may remain authoritative only if identity preservation is explicitly proven rather than inferred from the method name `Select` alone.
 
 All exact-checkpoint gates for `9a0817b21075a3d810072a310ed8fd3314625cd8` are green:
 
@@ -196,9 +211,9 @@ artifact id:            10377409728
 artifact digest:        sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
 ```
 
-Green implementation does **not** complete V0.4.6 by itself. A fresh independent adversarial review must inspect the exact checkpoint and attempt counterexamples for B6.3/B6.4 while confirming B6.1/B6.2 remain safe.
+Green automation does **not** complete V0.4.6 while the concrete B6.4 false-product-claim path remains.
 
-If the independent review returns PASS:
+If a future independent review returns PASS after the blocker is fixed:
 
 ```text
 mark V0.4.6 COMPLETE
@@ -206,9 +221,7 @@ unlock V0.4.7 as next/current milestone
 keep V0.5 Azure DevOps locked
 ```
 
-If any blocker remains, stay in V0.4.6 and fix only the concrete blocker regression-first.
-
-A transient accidental placeholder commit exists immediately before the implementation checkpoint in history; the implementation tree removes it and the clean baseline-to-checkpoint diff contains only the intended production/test changes.
+Until then, stay in V0.4.6.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 
