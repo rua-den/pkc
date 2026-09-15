@@ -10,6 +10,33 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 {
     private static readonly object RegistrationGate = new();
 
+    private static readonly HashSet<string> WherePipelineTargets = new(StringComparer.Ordinal)
+    {
+        "System.Linq.Enumerable.Select",
+        "System.Linq.Queryable.Select",
+        "System.Linq.Enumerable.OrderBy",
+        "System.Linq.Queryable.OrderBy",
+        "System.Linq.Enumerable.OrderByDescending",
+        "System.Linq.Queryable.OrderByDescending",
+        "System.Linq.Enumerable.ThenBy",
+        "System.Linq.Queryable.ThenBy",
+        "System.Linq.Enumerable.ThenByDescending",
+        "System.Linq.Queryable.ThenByDescending",
+        "System.Linq.Enumerable.Skip",
+        "System.Linq.Queryable.Skip",
+        "System.Linq.Enumerable.Take",
+        "System.Linq.Queryable.Take",
+        "System.Linq.Enumerable.Distinct",
+        "System.Linq.Queryable.Distinct",
+        "System.Linq.Enumerable.Reverse",
+        "System.Linq.Queryable.Reverse",
+        "System.Linq.Enumerable.AsEnumerable",
+        "System.Linq.Queryable.AsQueryable",
+        "System.Linq.Enumerable.ToArray",
+        "System.Linq.Enumerable.ToList",
+        "System.Linq.Enumerable.ToHashSet"
+    };
+
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -54,7 +81,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             {
                 metadata["businessRuleAuthority"] = "observable";
                 metadata["observableContext"] = authority.ObservableContext;
-                metadata["observableEffectResolution"] = "direct-return-syntax";
+                metadata["observableEffectResolution"] = "semantic-return-value-path";
             }
 
             facts[predicate.Id] = predicate with { Metadata = metadata };
@@ -174,7 +201,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
                         candidates[key].Add(new InvocationAuthority(
                             GetMethodTarget(methodSymbol),
-                            GetObservableContext(invocation)));
+                            GetObservableContext(invocation, methodSymbol, semanticModel, cancellationToken)));
                     }
                 }
             }
@@ -189,7 +216,11 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             .ToDictionary(pair => pair.Key, pair => pair.Value.Single());
     }
 
-    private static string? GetObservableContext(InvocationExpressionSyntax invocation)
+    private static string? GetObservableContext(
+        InvocationExpressionSyntax invocation,
+        IMethodSymbol methodSymbol,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
     {
         var containingMethod = invocation.Ancestors().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
         if (containingMethod is null)
@@ -205,27 +236,130 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             return null;
         }
 
-        var returnStatement = invocation.Ancestors().OfType<ReturnStatementSyntax>().FirstOrDefault();
-        if (returnStatement?.Expression is not null &&
-            ContainsNode(returnStatement.Expression, invocation))
+        if (TryGetObservableExpression(invocation, containingMethod, out var expression, out var context) &&
+            HasProvenObservableValuePath(invocation, expression, methodSymbol.Name, semanticModel, cancellationToken))
         {
-            return "return";
+            return context;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetObservableExpression(
+        InvocationExpressionSyntax invocation,
+        BaseMethodDeclarationSyntax containingMethod,
+        out ExpressionSyntax expression,
+        out string context)
+    {
+        var returnStatement = invocation.Ancestors().OfType<ReturnStatementSyntax>().FirstOrDefault();
+        if (returnStatement?.Expression is not null && ContainsNode(returnStatement.Expression, invocation))
+        {
+            expression = returnStatement.Expression;
+            context = "return";
+            return true;
         }
 
         var arrow = invocation.Ancestors().OfType<ArrowExpressionClauseSyntax>().FirstOrDefault();
         if (arrow?.Parent == containingMethod && ContainsNode(arrow.Expression, invocation))
         {
-            return "return";
+            expression = arrow.Expression;
+            context = "return";
+            return true;
         }
 
         var yieldReturn = invocation.Ancestors().OfType<YieldStatementSyntax>()
             .FirstOrDefault(statement => statement.ReturnOrBreakKeyword.ValueText == "return");
         if (yieldReturn?.Expression is not null && ContainsNode(yieldReturn.Expression, invocation))
         {
-            return "yield-return";
+            expression = yieldReturn.Expression;
+            context = "yield-return";
+            return true;
         }
 
-        return null;
+        expression = null!;
+        context = string.Empty;
+        return false;
+    }
+
+    private static bool HasProvenObservableValuePath(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax observableExpression,
+        string operation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken) =>
+        operation switch
+        {
+            "Where" => IsWhereEffectPreserved(
+                invocation,
+                observableExpression,
+                semanticModel,
+                cancellationToken),
+            "Any" or "All" or "First" or "FirstOrDefault" or "Single" or "SingleOrDefault" =>
+                IsDirectValuePath(invocation, observableExpression),
+            _ => false
+        };
+
+    private static bool IsDirectValuePath(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax observableExpression)
+    {
+        SyntaxNode current = invocation;
+        while (current != observableExpression)
+        {
+            if (current.Parent is ParenthesizedExpressionSyntax parenthesized &&
+                parenthesized.Expression == current)
+            {
+                current = parenthesized;
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsWhereEffectPreserved(
+        InvocationExpressionSyntax invocation,
+        ExpressionSyntax observableExpression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        SyntaxNode current = invocation;
+        while (current != observableExpression)
+        {
+            if (current.Parent is ParenthesizedExpressionSyntax parenthesized &&
+                parenthesized.Expression == current)
+            {
+                current = parenthesized;
+                continue;
+            }
+
+            if (current.Parent is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Expression == current &&
+                memberAccess.Parent is InvocationExpressionSyntax pipelineInvocation &&
+                pipelineInvocation.Expression == memberAccess &&
+                IsAllowedWherePipelineInvocation(pipelineInvocation, semanticModel, cancellationToken))
+            {
+                current = pipelineInvocation;
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsAllowedWherePipelineInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol ??
+                           symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().SingleOrDefault();
+        return methodSymbol is not null && WherePipelineTargets.Contains(GetMethodTarget(methodSymbol));
     }
 
     private static bool ContainsNode(SyntaxNode container, SyntaxNode candidate) =>

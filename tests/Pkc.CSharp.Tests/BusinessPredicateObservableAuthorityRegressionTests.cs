@@ -62,6 +62,37 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
             rule.Contains("card.IsPublished", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Returned_filter_through_supported_projection_pipeline_remains_authoritative()
+    {
+        var knowledge = await BuildKnowledgeAsync("""
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished)
+                    .Select(card => card)
+                    .ToArray();
+            """);
+
+        Assert.Contains(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Filter_passed_to_helper_that_discards_result_is_not_authoritative()
+    {
+        var knowledge = await BuildKnowledgeAsync("""
+            public IReadOnlyList<Card> GetCards() =>
+                ReturnAll(_cards.Where(card => card.IsPublished).ToArray());
+
+            private IReadOnlyList<Card> ReturnAll(IReadOnlyList<Card> ignored) => _cards;
+            """);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
     private static async Task<FeatureKnowledge> BuildKnowledgeAsync(string methodBody)
     {
         var root = Path.Combine(

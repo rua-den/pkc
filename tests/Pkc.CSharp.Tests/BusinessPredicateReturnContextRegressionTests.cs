@@ -36,11 +36,83 @@ public sealed class BusinessPredicateReturnContextRegressionTests
             rule.Contains("Returns whether every item from `_cards` satisfies `card.IsPublished`.", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Negated_any_return_is_observed_only_because_polarity_is_inverted()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            "Has No Blocked Cards",
+            "public bool HasNoBlockedCards() => !_cards.Any(card => card.Blocked);",
+            "public bool HasNoBlockedCards() => _store.HasNoBlockedCards();",
+            "Any",
+            expectObservable: false);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("card.Blocked", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Negated_all_return_is_observed_only_because_polarity_is_inverted()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            "Not All Cards Published",
+            "public bool NotAllCardsPublished() => !_cards.All(card => card.IsPublished);",
+            "public bool NotAllCardsPublished() => _store.NotAllCardsPublished();",
+            "All",
+            expectObservable: false);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task First_or_default_null_test_is_not_rendered_as_returning_a_selected_item()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            "Has No Published Card",
+            "public bool HasNoPublishedCard() => _cards.FirstOrDefault(card => card.IsPublished) is null;",
+            "public bool HasNoPublishedCard() => _store.HasNoPublishedCard();",
+            "FirstOrDefault",
+            expectObservable: false);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Returns an item", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Single_or_default_null_test_is_not_rendered_as_returning_a_selected_item()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            "Has One Published Card",
+            "public bool HasOnePublishedCard() => _cards.SingleOrDefault(card => card.IsPublished) is not null;",
+            "public bool HasOnePublishedCard() => _store.HasOnePublishedCard();",
+            "SingleOrDefault",
+            expectObservable: false);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Returns an item", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Direct_first_return_remains_an_observable_selection()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            "First Published Card",
+            "public Card FirstPublishedCard() => _cards.First(card => card.IsPublished);",
+            "public Card FirstPublishedCard() => _store.FirstPublishedCard();",
+            "First");
+
+        Assert.Contains(knowledge.Rules, rule =>
+            rule.Contains("Returns an item from `_cards` selected where `card.IsPublished`.", StringComparison.Ordinal));
+    }
+
     private static async Task<FeatureKnowledge> BuildKnowledgeAsync(
         string endpointName,
         string storeMethod,
         string controllerMethod,
-        string operation)
+        string operation,
+        bool expectObservable = true)
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -60,8 +132,18 @@ public sealed class BusinessPredicateReturnContextRegressionTests
                 fact.Metadata.TryGetValue("operation", out var value) &&
                 value == operation);
 
-            Assert.Equal("observable", predicate.Metadata["businessRuleAuthority"]);
-            Assert.Equal("return", predicate.Metadata["observableContext"]);
+            if (expectObservable)
+            {
+                Assert.Equal("observable", predicate.Metadata["businessRuleAuthority"]);
+                Assert.Equal("return", predicate.Metadata["observableContext"]);
+                Assert.Equal("semantic-return-value-path", predicate.Metadata["observableEffectResolution"]);
+            }
+            else
+            {
+                Assert.Equal("observed-only", predicate.Metadata["businessRuleAuthority"]);
+                Assert.Equal("not-proven", predicate.Metadata["observableEffectResolution"]);
+                Assert.False(predicate.Metadata.ContainsKey("observableContext"));
+            }
 
             var candidate = Assert.Single(
                 new FeatureCandidateBuilder().Build(facts).Candidates,

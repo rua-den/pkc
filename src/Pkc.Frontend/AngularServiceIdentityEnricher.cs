@@ -6,7 +6,7 @@ namespace Pkc.Frontend;
 internal sealed class AngularServiceIdentityEnricher
 {
     private static readonly Regex NamedImportRegex = new(
-        "import\\s*\\{(?<bindings>[^}]+)\\}\\s*from\\s*['\\\"](?<module>[^'\\\"]+)['\\\"]",
+        "^[\\t ]*\\bimport\\s*\\{(?<bindings>[^}]+)\\}\\s*from\\s*['\\\"](?<module>[^'\\\"]+)['\\\"]",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
     public async Task<FactDocument> EnrichAsync(
@@ -63,7 +63,7 @@ internal sealed class AngularServiceIdentityEnricher
                         ["serviceModule"] = imported.ModulePath,
                         ["serviceExportName"] = imported.ExportedName,
                         ["serviceType"] = TypeIdentity(imported.ModulePath, imported.ExportedName),
-                        ["serviceIdentityResolution"] = "typescript-relative-import+declaration"
+                        ["serviceIdentityResolution"] = "typescript-active-relative-import+declaration"
                     };
                     facts.Add(fact with { Metadata = metadata });
                     continue;
@@ -89,6 +89,7 @@ internal sealed class AngularServiceIdentityEnricher
         }
 
         var result = new Dictionary<string, ImportedType>(StringComparer.Ordinal);
+        var ambiguousLocalNames = new HashSet<string>(StringComparer.Ordinal);
         var fullPath = Path.Combine(root, sourcePath.Replace('/', Path.DirectorySeparatorChar));
         if (!File.Exists(fullPath))
         {
@@ -99,6 +100,11 @@ internal sealed class AngularServiceIdentityEnricher
         var text = await File.ReadAllTextAsync(fullPath, cancellationToken);
         foreach (Match match in NamedImportRegex.Matches(text))
         {
+            if (!IsActiveCodePosition(text, match.Index))
+            {
+                continue;
+            }
+
             var moduleSpecifier = match.Groups["module"].Value;
             var resolvedModule = ResolveRelativeModule(sourcePath, moduleSpecifier, sourcePaths);
             if (resolvedModule is null)
@@ -109,12 +115,7 @@ internal sealed class AngularServiceIdentityEnricher
             foreach (var rawBinding in match.Groups["bindings"].Value.Split(','))
             {
                 var binding = rawBinding.Trim();
-                if (binding.StartsWith("type ", StringComparison.Ordinal))
-                {
-                    binding = binding[5..].Trim();
-                }
-
-                if (binding.Length == 0)
+                if (binding.StartsWith("type ", StringComparison.Ordinal) || binding.Length == 0)
                 {
                     continue;
                 }
@@ -122,15 +123,146 @@ internal sealed class AngularServiceIdentityEnricher
                 var aliasParts = Regex.Split(binding, @"\s+as\s+", RegexOptions.IgnoreCase);
                 var exportedName = aliasParts[0].Trim();
                 var localName = aliasParts.Length == 2 ? aliasParts[1].Trim() : exportedName;
-                if (IsIdentifier(exportedName) && IsIdentifier(localName))
+                if (!IsIdentifier(exportedName) || !IsIdentifier(localName) || ambiguousLocalNames.Contains(localName))
                 {
-                    result[localName] = new ImportedType(exportedName, resolvedModule);
+                    continue;
                 }
+
+                var imported = new ImportedType(exportedName, resolvedModule);
+                if (result.TryGetValue(localName, out var existing) && existing != imported)
+                {
+                    result.Remove(localName);
+                    ambiguousLocalNames.Add(localName);
+                    continue;
+                }
+
+                result[localName] = imported;
             }
         }
 
         cache[sourcePath] = result;
         return result;
+    }
+
+    private static bool IsActiveCodePosition(string text, int position)
+    {
+        var state = TypeScriptLexicalState.Code;
+        var interpolatedTemplate = false;
+
+        for (var index = 0; index < position; index++)
+        {
+            var current = text[index];
+            var next = index + 1 < text.Length ? text[index + 1] : '\0';
+
+            switch (state)
+            {
+                case TypeScriptLexicalState.Code:
+                    if (current == '/' && next == '/')
+                    {
+                        state = TypeScriptLexicalState.LineComment;
+                        index++;
+                    }
+                    else if (current == '/' && next == '*')
+                    {
+                        state = TypeScriptLexicalState.BlockComment;
+                        index++;
+                    }
+                    else if (current == '\'')
+                    {
+                        state = TypeScriptLexicalState.SingleQuotedString;
+                    }
+                    else if (current == '"')
+                    {
+                        state = TypeScriptLexicalState.DoubleQuotedString;
+                    }
+                    else if (current == '`')
+                    {
+                        state = TypeScriptLexicalState.TemplateLiteral;
+                        interpolatedTemplate = false;
+                    }
+                    else if (current == '/')
+                    {
+                        // Conservative fallback for JavaScript/TypeScript regex literals. Treating a
+                        // division operator as a regex can only suppress ownership proof; it cannot
+                        // create false ownership authority.
+                        state = TypeScriptLexicalState.RegexLiteral;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.LineComment:
+                    if (current is '\r' or '\n')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.BlockComment:
+                    if (current == '*' && next == '/')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                        index++;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.SingleQuotedString:
+                    if (current == '\\')
+                    {
+                        index++;
+                    }
+                    else if (current == '\'')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.DoubleQuotedString:
+                    if (current == '\\')
+                    {
+                        index++;
+                    }
+                    else if (current == '"')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.TemplateLiteral:
+                    if (current == '\\')
+                    {
+                        index++;
+                    }
+                    else if (current == '$' && next == '{')
+                    {
+                        // A template expression can contain nested templates and arbitrary code.
+                        // Rather than guess where the outer template resumes, remain conservative
+                        // for the rest of this prefix and suppress import authority.
+                        interpolatedTemplate = true;
+                        index++;
+                    }
+                    else if (current == '`' && !interpolatedTemplate)
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    break;
+
+                case TypeScriptLexicalState.RegexLiteral:
+                    if (current == '\\')
+                    {
+                        index++;
+                    }
+                    else if (current == '/')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    else if (current is '\r' or '\n')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                    }
+                    break;
+            }
+        }
+
+        return state == TypeScriptLexicalState.Code;
     }
 
     private static string? ResolveRelativeModule(
@@ -201,6 +333,17 @@ internal sealed class AngularServiceIdentityEnricher
         $"{Normalize(modulePath)}#{typeName}";
 
     private static string Normalize(string path) => path.Replace('\\', '/');
+
+    private enum TypeScriptLexicalState
+    {
+        Code,
+        LineComment,
+        BlockComment,
+        SingleQuotedString,
+        DoubleQuotedString,
+        TemplateLiteral,
+        RegexLiteral
+    }
 
     private sealed record ImportedType(string ExportedName, string ModulePath);
 }
