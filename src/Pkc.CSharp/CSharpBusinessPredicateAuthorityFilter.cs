@@ -1,5 +1,6 @@
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Pkc.Core;
@@ -12,8 +13,6 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
     private static readonly HashSet<string> WherePipelineTargets = new(StringComparer.Ordinal)
     {
-        "System.Linq.Enumerable.Select",
-        "System.Linq.Queryable.Select",
         "System.Linq.Enumerable.OrderBy",
         "System.Linq.Queryable.OrderBy",
         "System.Linq.Enumerable.OrderByDescending",
@@ -35,6 +34,12 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         "System.Linq.Enumerable.ToArray",
         "System.Linq.Enumerable.ToList",
         "System.Linq.Enumerable.ToHashSet"
+    };
+
+    private static readonly HashSet<string> IdentityProjectionTargets = new(StringComparer.Ordinal)
+    {
+        "System.Linq.Enumerable.Select",
+        "System.Linq.Queryable.Select"
     };
 
     public async Task<FactDocument> FilterAsync(
@@ -359,7 +364,74 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
         var methodSymbol = symbolInfo.Symbol as IMethodSymbol ??
                            symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().SingleOrDefault();
-        return methodSymbol is not null && WherePipelineTargets.Contains(GetMethodTarget(methodSymbol));
+        if (methodSymbol is null)
+        {
+            return false;
+        }
+
+        var target = GetMethodTarget(methodSymbol);
+        if (WherePipelineTargets.Contains(target))
+        {
+            return true;
+        }
+
+        return IdentityProjectionTargets.Contains(target) &&
+               IsIdentityProjection(invocation, semanticModel, cancellationToken);
+    }
+
+    private static bool IsIdentityProjection(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (invocation.ArgumentList.Arguments.Count != 1)
+        {
+            return false;
+        }
+
+        return invocation.ArgumentList.Arguments[0].Expression switch
+        {
+            SimpleLambdaExpressionSyntax simpleLambda => IsIdentityLambda(
+                simpleLambda.Parameter,
+                simpleLambda.Body,
+                semanticModel,
+                cancellationToken),
+            ParenthesizedLambdaExpressionSyntax parenthesizedLambda
+                when parenthesizedLambda.ParameterList.Parameters.Count > 0 => IsIdentityLambda(
+                    parenthesizedLambda.ParameterList.Parameters[0],
+                    parenthesizedLambda.Body,
+                    semanticModel,
+                    cancellationToken),
+            _ => false
+        };
+    }
+
+    private static bool IsIdentityLambda(
+        ParameterSyntax sourceParameter,
+        SyntaxNode body,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (body is not ExpressionSyntax expression)
+        {
+            return false;
+        }
+
+        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            expression = parenthesized.Expression;
+        }
+
+        if (expression is not IdentifierNameSyntax identifier)
+        {
+            return false;
+        }
+
+        var parameterSymbol = semanticModel.GetDeclaredSymbol(sourceParameter, cancellationToken);
+        var returnedSymbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+        return parameterSymbol is not null &&
+               returnedSymbol is not null &&
+               SymbolEqualityComparer.Default.Equals(parameterSymbol, returnedSymbol);
     }
 
     private static bool ContainsNode(SyntaxNode container, SyntaxNode candidate) =>

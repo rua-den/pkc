@@ -79,6 +79,24 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Non_identity_projection_does_not_preserve_returned_filter_authority()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            """
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished)
+                    .Select(_ => _cards[0])
+                    .ToArray();
+            """,
+            "[new Card(IsPublished: false, Blocked: false), new Card(IsPublished: true, Blocked: false)]");
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Filter_passed_to_helper_that_discards_result_is_not_authoritative()
     {
         var knowledge = await BuildKnowledgeAsync("""
@@ -93,7 +111,9 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
             rule.Contains("card.IsPublished", StringComparison.Ordinal));
     }
 
-    private static async Task<FeatureKnowledge> BuildKnowledgeAsync(string methodBody)
+    private static async Task<FeatureKnowledge> BuildKnowledgeAsync(
+        string methodBody,
+        string cardsInitializer = "[new(true, false), new(false, true)]")
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -105,7 +125,7 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "Demo.csproj"), Project);
-            await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), Source(methodBody));
+            await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), Source(methodBody, cardsInitializer));
 
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
 
@@ -127,7 +147,7 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
         }
     }
 
-    private static string Source(string methodBody) => $$"""
+    private static string Source(string methodBody, string cardsInitializer) => $$"""
         using System;
         using System.Collections.Generic;
         using System.Linq;
@@ -138,7 +158,7 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
 
         public sealed class Store
         {
-            private readonly List<Card> _cards = [new(true, false), new(false, true)];
+            private readonly List<Card> _cards = {{cardsInitializer}};
 
             {{methodBody}}
         }
