@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-15
+Last updated: 2026-09-16
 
 ## Current milestone state
 
@@ -12,14 +12,22 @@ V0.4.7 cross-layer PO-question readiness         CURRENT / NEXT MILESTONE
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-Accepted V0.4.6 production checkpoint:
+V0.4.7 planning/acceptance is now defined in:
+
+```text
+docs/v0.4.7-acceptance-plan.md
+```
+
+No V0.4.7 analyzer/compiler behavior has been implemented by this planning checkpoint.
+
+Accepted V0.4.6 production remains:
 
 ```text
 c310e893762997f34562a6b3a62dbab2b05c0c93
 fix: fail closed on Queryable authority
 ```
 
-Final independent review:
+Final independent V0.4.6 review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
@@ -27,15 +35,9 @@ verdict: PASS / COMPLETE
 reviewed production: c310e893762997f34562a6b3a62dbab2b05c0c93
 ```
 
-V0.4.3 remains the last accepted tool package:
-
-```text
-RuaDen.Pkc.Tool 0.4.3-preview.2
-```
+V0.4.6 is closed. Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
 
 ## Product contract governing V0.4.x
-
-PKC must generate portable knowledge rich enough for an AI to answer practical Product Owner questions about observable behavior, business conditions, value origin, mutation causality and cross-layer outcomes without re-reading source code.
 
 Permanent guardrail: `docs/product-knowledge-contract.md`.
 
@@ -47,9 +49,9 @@ value lineage / provenance
 mutation / causality
 ```
 
-No deterministic proof means no authoritative product claim. Downgrading rule authority must not erase deterministic lower-authority causal/value-origin evidence.
+No deterministic proof means no authoritative product claim. Conservative authority downgrade must not erase deterministic lower-authority causal/value-origin evidence.
 
-## V0.4.6 final disposition
+## V0.4.6 accepted boundary
 
 ```text
 B6.1 PASS — exact C# invocation semantic identity; keep closed
@@ -73,20 +75,91 @@ Accepted B6.4 hardening includes:
 - an Enumerable `Where` path loses returned-item authority when it crosses any Queryable pipeline hop;
 - downgraded predicates remain deterministic Evidence through `observes-predicate` rather than being deleted.
 
-Rereview 10 independently challenged direct Queryable predicates, static/extension syntax, semantic candidate fallback, mixed Enumerable/Queryable chains, multiple Queryable hops, projection after downgrade, downstream synthesis/product aggregation, and portable rendering. No compile-valid/behavior-valid false-authority bypass was found.
+## V0.4.7 acceptance scope
 
-## Non-blocking warnings
+V0.4.7 must make portable knowledge answer practical PO questions across value flow and layers, including:
 
 ```text
-W10.1 rendered Evidence says `Business predicate: ...` without explicitly printing `observed-only`; authority separation is currently conveyed by Evidence placement and AI instructions.
-W10.2 old Queryable names remain in internal safe-operation sets but are unreachable because the Queryable guard rejects them first.
+Where did this value originally come from?
+If the upstream value changes later, does the existing downstream value change automatically?
+What code path can change this value after creation?
+Was this value directly copied or computed?
+What was the last observed source before the value was persisted or returned?
+What backend conditions and frontend conditions jointly determine whether an item is visible?
+How did the value move through backend → DTO/projection → API → frontend composition?
+If authority is incomplete, what lineage or causal evidence is still deterministically known?
 ```
 
-Neither warning produced an authoritative Product Owner rule in the reviewed pipeline.
+Canonical lineage acceptance includes:
 
-## Exact automation for accepted production
+```text
+ProductGroup.Price → Product.Price → Service.Price
+```
 
-All exact-SHA gates are green on `c310e893762997f34562a6b3a62dbab2b05c0c93`:
+with each edge classified from proof as applicable:
+
+```text
+copy
+snapshot
+derivation
+reference/dynamic
+override
+mutation
+```
+
+A blocking collision regression must prove that unrelated same-name members such as:
+
+```text
+Product.Price
+Service.Price
+Dto.Price
+Component.price
+```
+
+are never connected merely because names match.
+
+See `docs/v0.4.7-acceptance-plan.md` for the complete regression matrix and implementation sequence.
+
+## V0.4.6 warnings carried forward as non-blocking V0.4.7 considerations
+
+```text
+W10.1
+Observed-only predicate evidence is separated from Rules but rendered Evidence does not explicitly print `observed-only`.
+
+W10.2
+Queryable names remain in old safe-operation sets but are currently unreachable behind the Queryable fail-closed guard.
+```
+
+Do not reopen V0.4.6 for these warnings.
+
+## Version semantics
+
+These version domains are independent:
+
+```text
+roadmap milestone version
+tool/package version
+evidence/schema version
+```
+
+Current examples:
+
+```text
+roadmap:             V0.4.7 CURRENT
+tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
+C# raw schema:       0.4.4-csharp-raw
+merged facts schema: 0.4.4
+cross-stack candidate schema: 0.4.6
+frontend schema:     0.4.3-frontend
+```
+
+Do not mechanically bump package or schema versions because the roadmap milestone advances. Schema versions change only when that serialized contract/schema changes.
+
+This planning checkpoint does not change package or schema versions.
+
+## Exact accepted-production automation
+
+All exact-SHA gates remain accepted on `c310e893762997f34562a6b3a62dbab2b05c0c93`:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
@@ -103,15 +176,6 @@ C# tests:            88 / 88 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
-```
-
-PokeTrade:
-
-```text
-.NET 10 backend build:      PASS, 0 warnings / 0 errors
-Angular 22 build:           PASS
-live business acceptance:   PASS
-known-answer knowledge:     PASS
 ```
 
 Pinned Jellyfin:
@@ -137,13 +201,23 @@ artifact size:           9,159,880 bytes
 
 ## Exact next action
 
-V0.4.6 is closed. V0.4.7 is the current / next milestone.
+Stay in V0.4.7. Do not start Azure DevOps ingestion.
 
-Before implementation, define concrete V0.4.7 acceptance questions and regression gates for cross-layer PO-question readiness, especially value lineage, copy/snapshot vs dynamic semantics, later mutation/override causality, frontend visibility, and backend→frontend composition.
+Start the first V0.4.7 implementation checkpoint regression-first:
 
-Preserve all accepted V0.4.6 authority/evidence-retention boundaries. Do not begin Azure DevOps ingestion yet.
+```text
+ProductGroup.Price
+→ Product.Price
+→ Service.Price
+```
+
+Require exact symbol/dataflow-backed direct-copy snapshot edges, plus a same-name collision negative covering `Product.Price`, `Service.Price`, `Dto.Price` and `Component.price`.
+
+Only after that regression is red and compile-valid should implementation add the minimum generic backend lineage evidence/model needed to pass it.
+
+Do not begin DTO/frontend composition until the backend lineage identity/collision gate is green.
 
 ```text
 V0.4.7 CURRENT / NEXT MILESTONE
-V0.5 LOCKED
+V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
 ```

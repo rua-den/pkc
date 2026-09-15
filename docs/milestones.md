@@ -24,13 +24,23 @@ React/TypeScript static evidence adds routes, screens, actions, permission guard
 
 V0.4 is complete only when generated portable knowledge is sufficiently rich for an AI to answer practical Product Owner questions about observable behavior, business conditions, value origin, mutation causality and cross-layer outcomes without re-reading source code.
 
-PKC must preserve three distinct knowledge classes: authoritative business conditions, lower-authority value lineage/provenance, and mutation/causality evidence. Conservative downgrade must prevent false business claims without deleting deterministic causal evidence. See `docs/product-knowledge-contract.md`.
+PKC must preserve three distinct knowledge classes:
 
-Representative exit questions:
+```text
+business conditions
+value lineage / provenance
+mutation / causality
+```
 
-> When is entity X sellable/visible on the web, and what exact conditions must be true for it to appear?
+Conservative downgrade must prevent false business claims without deleting deterministic lower-authority evidence. See `docs/product-knowledge-contract.md`.
 
-> Where does field X on entity Y come from besides the UI, and what code path can later change it?
+Representative V0.4.x exit questions include:
+
+> When is entity X sellable/visible on the web, and what exact backend/frontend conditions must be true for it to appear?
+
+> Where did field X come from, was it copied or computed, and what can change it later?
+
+> If an upstream value changes, does an existing downstream value update automatically or is it a stored snapshot?
 
 ### V0.4.1 — Frontend adapter architecture — COMPLETE
 
@@ -50,6 +60,8 @@ Last accepted tool package:
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
+Package version is independent of roadmap milestone state.
+
 ### V0.4.4 — Loren knowledge readiness — COMPLETE / EXTERNAL REVIEW PASS
 
 Final independent review:
@@ -57,6 +69,8 @@ Final independent review:
 ```text
 docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
+
+The detailed Loren readiness execution steps remain preserved as historical evidence in `docs/real-project-trial.md`.
 
 ### V0.4.5 — Independent real-repository generalization gate — COMPLETE / INDEPENDENT REVIEW PASS
 
@@ -67,7 +81,7 @@ repository: jellyfin/jellyfin
 pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 ```
 
-V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
+V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion and large-pack signal/noise.
 
 ### V0.4.6 — Business logic reconstruction — COMPLETE / INDEPENDENT REVIEW PASS
 
@@ -100,29 +114,29 @@ B6.4 PASS — observable predicate authority is conservative across projection, 
 Accepted B6.4 hardening covers:
 
 1. local/discarded predicates do not become observable rules merely because a LINQ call exists;
-2. transformed/polarity-changing return contexts for `Any`, `All`, `First*`, `Single*` fail closed unless modeled;
-3. arbitrary `Select` is not an unconditional preserving operation after `Where`;
+2. transformed/polarity-changing return contexts fail closed unless modeled;
+3. arbitrary `Select` is not an unconditional preserving operation;
 4. direct identity `Select(card => card)` is proven by symbol identity;
 5. unsupported whole-item/unmodeled predicate dependencies cause conservative downgrade;
-6. same-type method-group projection requires a closed item type and direct safe same-member copies;
+6. same-type method-group projection requires safe stored same-member copies;
 7. custom setter, nested initializer and rewritten output effects fail closed;
 8. callback/comparer-bearing ordering/equality operations do not preserve authority merely from LINQ target identity;
 9. callback-free Enumerable pipeline preservation is limited to an audited exact-shape subset;
-10. same-type clone construction must itself be proven inert;
+10. same-type clone construction must be proven inert;
 11. exact `System.Linq.Queryable` predicate targets are observed-only without provider-semantics proof;
 12. an Enumerable `Where` authority path fails closed after any Queryable pipeline hop;
 13. downgraded predicate evidence is retained through `observes-predicate` instead of being deleted.
 
-Rereview 10 challenged direct and static Queryable shapes, mixed Enumerable/Queryable chains, semantic fallback, multiple Queryable hops, projections after downgrade, downstream rule synthesis, cross-stack enrichment, product aggregation and portable rendering. No compile-valid/behavior-valid false-authority bypass was found.
-
-Non-blocking rereview-10 warnings:
+Non-blocking rereview-10 warnings carried into V0.4.7:
 
 ```text
 W10.1 rendered Evidence does not yet print an explicit `observed-only` label.
-W10.2 unreachable Queryable names remain in old internal safe-operation sets behind the new guard.
+W10.2 unreachable Queryable names remain in old internal safe-operation sets behind the fail-closed guard.
 ```
 
-Exact accepted-production gates:
+Do not reopen V0.4.6 solely for those warnings.
+
+Accepted exact-production gates:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
@@ -131,73 +145,155 @@ Loren-main canary                       34990080551 — PASS
 pinned Jellyfin                         34990080546 — PASS
 ```
 
-Core evidence:
+Pinned Jellyfin artifact:
 
 ```text
-Release build:       0 warnings / 0 errors
-C# tests:            88 / 88 PASS
-frontend tests:      13 / 13 PASS
-WorkPlay:            PASS
-PokeTrade:           PASS
+artifact id:     10405810551
+digest:          sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
+size:            9,159,880 bytes
+portable parity: PASS
+raw .pkc leak:   NONE
+src/ leak:       NONE
 ```
 
-Pinned Jellyfin evidence:
-
-```text
-source build:         0 warnings / 0 errors
-facts:                43,363
-relations:            195,314
-workflow candidates:  386
-product features:     116
-canonical Markdown:   504
-project-semantic:     43,363 / 43,363
-portable parity:      PASS
-portable ZIP parity:  PASS
-raw .pkc leak:        NONE
-src/ leak:            NONE
-artifact id:          10405810551
-digest:               sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
-size:                 9,159,880 bytes
-```
-
-V0.4.6 is closed by independent rereview 10.
+V0.4.6 is closed.
 
 ### V0.4.7 — Cross-layer PO question readiness — CURRENT / NEXT MILESTONE
 
-Purpose: broaden supported direct business-logic patterns into robust cross-layer product-behavior understanding.
+Purpose: compile cross-entity and cross-layer evidence strongly enough that portable knowledge can answer where values came from, how they change, how they reach the UI, and what backend/frontend conditions jointly determine observable outcomes.
 
-Before coding, define concrete acceptance questions and regression gates for semantic chains such as:
+Acceptance contract:
 
 ```text
-source value
-→ copied / derived / snapshotted value
-→ persisted or returned value
-→ later mutation / override
-→ backend condition / API output
-→ frontend visibility / behavior
-→ PO-facing explanation with provenance
+docs/v0.4.7-acceptance-plan.md
 ```
 
-Planned target coverage includes:
+Required Product Owner questions include:
 
-- frontend visibility/filter predicates that independently affect observable outcomes;
-- DTO/projection/computed transformations that change observable state;
-- cross-entity value lineage such as `ProductGroup.A → Product.A → Service.A` where source proves each copy/derivation step;
-- snapshot/copy versus dynamic/reference-derived semantics;
-- later overrides and mutation/causality paths that explain why a persisted or returned value changed;
-- preservation of lower-authority causal evidence even when product-rule authority is downgraded;
-- composition of backend conditions, data/value flow and frontend behavior into a PO-facing explanation;
-- high-signal promotion so useful causal/value-origin knowledge is not buried in raw implementation noise.
+```text
+Where did this value originally come from?
+If the upstream value changes later, does the existing downstream value change automatically?
+What code path can change this value after creation?
+Was this value directly copied or computed?
+What was the last observed source before the value was persisted or returned?
+What backend conditions and frontend conditions jointly determine whether an item is visible?
+How did the value move through backend → DTO/projection → API → frontend composition?
+If authority is incomplete, what lineage or causal evidence is still deterministically known?
+```
+
+Required semantic coverage includes:
+
+```text
+cross-entity value lineage
+source/origin of values
+copy/snapshot vs reference/dynamic semantics
+derived/computed values
+later mutation and override causality
+DTO/projection and API output
+frontend result binding/composition
+frontend visibility/filter conditions
+authority downgrade with evidence retention
+```
+
+Canonical lineage fixture:
+
+```text
+ProductGroup.Price
+→ Product.Price
+→ Service.Price
+```
+
+Each proven edge must distinguish as applicable:
+
+```text
+copy
+snapshot
+derivation
+reference/dynamic
+override
+mutation
+```
+
+Blocking same-name collision regression:
+
+```text
+Product.Price
+Service.Price
+Dto.Price
+Component.price
+```
+
+No lineage edge may be inferred merely from matching member/property names.
+
+#### V0.4.7 implementation checkpoints
+
+```text
+V0.4.7-A
+backend cross-entity lineage
++ exact symbol/dataflow edge identity
++ same-name collision negative
++ snapshot vs dynamic distinction
+
+V0.4.7-B
+derivation
++ last source before persist/return
++ later mutation/override causality
+
+V0.4.7-C
+DTO/projection
++ API output lineage
+
+V0.4.7-D
+frontend result binding/composition
++ frontend visibility/filter conditions
++ joint backend/frontend explanation
+
+V0.4.7-E
+portable rendering
++ blind PO-question review
++ cross-benchmark exact-SHA gates
+```
+
+Do not advance past an earlier checkpoint while its regression gate is red.
 
 V0.4.7 must preserve every accepted V0.4.6 authority and evidence-retention guardrail.
 
-## V0.5 — Azure DevOps input evidence — LOCKED
+#### Version semantics during V0.4.7
+
+Do not conflate:
+
+```text
+roadmap milestone version
+tool/package version
+evidence/schema version
+```
+
+Current accepted package remains:
+
+```text
+RuaDen.Pkc.Tool 0.4.3-preview.2
+```
+
+Current schema examples include:
+
+```text
+0.4.4-csharp-raw
+0.4.4
+0.4.6
+0.4.3-frontend
+```
+
+Milestone progress does not mechanically bump package or schema versions. Schema versions change only when their serialized contract/semantics change and that change has explicit compatibility/regression coverage.
+
+### V0.5 — Azure DevOps input evidence — LOCKED
 
 Azure DevOps is planned as an additional compiler input for requirement intent, Epic/Feature/PBI history, status and traceability. ADO must not compensate for missing code-derived business logic.
 
 Until ADO is integrated, its absence should be declared as a global knowledge boundary rather than repeated in every feature/workflow file.
 
-V0.5 may start only after the V0.4.x PO-question-readiness exit gate independently passes.
+V0.5 may start only after the V0.4.7 / V0.4.x PO-question-readiness exit gate independently passes.
+
+The older V0.4.4/V0.4.5 real-project unlock checks are historical accepted prerequisites, not the complete current unlock condition. V0.4.7 cross-layer PO-question readiness is now the remaining V0.4.x gate.
 
 ## V0.6 — Incremental compilation
 

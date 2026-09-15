@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Use this file when continuing PKC in another coding or independent-review thread.
+Use this file when continuing PKC in another coding or review thread.
 
 ## Read first
 
@@ -8,11 +8,46 @@ Use this file when continuing PKC in another coding or independent-review thread
 2. this handoff
 3. `docs/milestones.md`
 4. `docs/product-knowledge-contract.md`
-5. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
+5. `docs/v0.4.7-acceptance-plan.md`
+6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
 
-## Product contract
+## Repository checkpoint
 
-PKC is a deterministic Product/System Knowledge Compiler. A Product Owner should be able to hand generated portable knowledge to an AI and ask practical product/system questions without the AI re-reading source code.
+This V0.4.7 planning checkpoint was prepared directly from verified `main`:
+
+```text
+c6f0769ac53869c89ee7defe41bd57603a553b33
+docs: accept V0.4.6 independent rereview 10 [skip ci]
+```
+
+The planning commit on top of that checkpoint is docs-only. Before coding, verify current `main` is that planning commit and that its parent/ancestry preserves the accepted V0.4.6 production unchanged.
+
+Accepted V0.4.6 production remains exactly:
+
+```text
+c310e893762997f34562a6b3a62dbab2b05c0c93
+fix: fail closed on Queryable authority
+```
+
+Do not reset to, branch from, amend, or modify the accepted production SHA as part of V0.4.7 planning/history cleanup.
+
+## Current milestone state
+
+```text
+V0.4.4  Loren knowledge readiness              PASS / COMPLETE
+V0.4.5  Jellyfin generalization               PASS / COMPLETE
+V0.4.6  business logic reconstruction         PASS / COMPLETE
+V0.4.7  cross-layer PO-question readiness     CURRENT / NEXT MILESTONE
+V0.5    Azure DevOps input evidence           LOCKED
+```
+
+V0.4.6 is closed by `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`.
+
+Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
+
+## Permanent product contract
+
+PKC is a deterministic Product/System Knowledge Compiler. The portable knowledge pack must allow a Product Owner to ask practical system/product questions without requiring the AI to re-read source code.
 
 Keep the architecture:
 
@@ -38,102 +73,177 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative downgrade of product-rule authority must not erase deterministic lower-authority evidence.
+These may be connected in explanations but must not be silently promoted into one another.
 
-## Current state
+Conservative product-rule downgrade must not erase deterministic lower-authority lineage, mutation or causal evidence.
 
-```text
-V0.4.4  Loren knowledge readiness              PASS / COMPLETE
-V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         PASS / COMPLETE
-V0.4.7  cross-layer PO-question readiness     CURRENT / NEXT MILESTONE
-V0.5    Azure DevOps input evidence           LOCKED
-```
-
-Accepted V0.4.6 production:
-
-```text
-c310e893762997f34562a6b3a62dbab2b05c0c93
-fix: fail closed on Queryable authority
-```
-
-Final independent review:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
-PASS / COMPLETE on production c310e893762997f34562a6b3a62dbab2b05c0c93
-```
-
-V0.4.6 is closed. Do not reopen accepted boundaries without a new concrete compile-valid/behavior-valid contradiction.
-
-## Accepted V0.4.6 scope
+## V0.4.6 closed scope
 
 ```text
 B6.1 PASS — exact C# invocation semantic identity
 B6.2 PASS — conservative configured-item ownership
 B6.3 PASS — module-qualified Angular service ownership
-B6.4 PASS — observable business-predicate authority is conservative and provider-aware
+B6.4 PASS — observable predicate authority is conservative across projection, callback, constructor and Queryable-provider boundaries
 ```
 
-Accepted B6.4 hardening includes:
+Accepted B6.4 boundaries include:
 
-1. discarded/local predicates downgrade;
-2. transformed/polarity-changing `Any`/`All`/`First*`/`Single*` contexts fail closed;
+1. local/discarded predicates downgrade;
+2. transformed/polarity-changing return contexts fail closed unless modeled;
 3. arbitrary `Select` is not preserving by default;
-4. identity `Select(card => card)` uses symbol identity;
-5. whole-item/unmodeled predicate dependencies fail closed;
-6. direct defensive clones require safe stored same-member copies;
-7. custom setters, nested writes and rewritten initializer effects fail closed;
-8. ordering/equality callback/comparer paths do not preserve authority merely from LINQ target identity;
-9. callback-free Enumerable pipeline preservation is exact-shape and conservative;
-10. same-type defensive clone construction must be deterministically inert;
-11. exact `System.Linq.Queryable` predicate targets are observed-only unless provider semantics are independently proven;
-12. an Enumerable `Where` path loses returned-item authority when it crosses any `System.Linq.Queryable.*` pipeline hop;
-13. authority downgrade retains deterministic predicate evidence through `observes-predicate` instead of deleting it.
+4. direct identity projection uses symbol identity;
+5. unsupported predicate dependencies fail closed;
+6. defensive clone members require safe direct same-member copies;
+7. custom setter/nested initializer/output effects fail closed;
+8. callback/comparer-bearing ordering/equality paths do not preserve authority by target name alone;
+9. callback-free Enumerable preservation is an audited exact-shape subset;
+10. same-type clone construction must be proven inert;
+11. exact Queryable predicates are observed-only without provider-semantics proof;
+12. an Enumerable `Where` path loses authority after any Queryable hop;
+13. downgraded predicate evidence remains through `observes-predicate`.
 
-## Rereview-10 acceptance rationale
+## V0.4.7 acceptance contract
 
-Rereview 9 found that a custom `IQueryable<T>` / `IQueryProvider` can retain a `Where` expression while enumeration ignores it. That made exact Queryable method identity insufficient for a Product Owner claim.
-
-Production `c310e893...` closes the gap generically:
+Concrete scope is frozen in:
 
 ```text
-Queryable predicate
-→ deterministic predicate Evidence retained
-→ businessRuleAuthority = observed-only
-→ no authoritative returned-item/business rule
+docs/v0.4.7-acceptance-plan.md
 ```
 
-and:
+The required PO questions include:
 
 ```text
-Enumerable Where
-→ any later Queryable pipeline hop
-→ returned-item authority fails closed
+Where did this value originally come from?
+If the upstream value changes later, does the existing downstream value change automatically?
+What code path can change this value after creation?
+Was this value directly copied or computed?
+What was the last observed source before the value was persisted or returned?
+What backend conditions and frontend conditions jointly determine whether an item is visible?
+How did the value move through backend → DTO/projection → API → frontend composition?
+If authority is incomplete, what lineage or causal evidence is still deterministically known?
 ```
 
-Fresh independent review challenged direct Queryable predicates, static/extension syntax, ambiguous semantic resolution, mixed Enumerable/Queryable chains, multiple Queryable hops, projection after downgrade, workflow synthesis, cross-stack enrichment, product aggregation and portable rendering. No false-authority bypass was found.
-
-Downstream authority separation is important:
-
-- `GroundedKnowledgeSynthesizer.BuildRules()` promotes business predicates only through `contains-condition`;
-- downgraded facts use `observes-predicate` and remain in Evidence;
-- `EvidenceAwareKnowledgeSynthesizer` does not re-promote them;
-- `ProductFeatureBuilder` aggregates workflow Rules, not Evidence;
-- portable Markdown separates `Observed business rules` from `Evidence` and AI instructions prohibit silent authority upgrades.
-
-## Non-blocking warnings
+The canonical backend lineage fixture begins with:
 
 ```text
-W10.1 Evidence text currently says `Business predicate: ...` without printing an explicit `observed-only` label. It remains separated from Rules and did not produce a false claim.
-W10.2 Queryable operation names remain in old internal safe-operation sets, but the new Queryable guard rejects them before those sets are consulted.
+ProductGroup.Price
+→ Product.Price
+→ Service.Price
 ```
 
-These are maintenance/clarity follow-ups, not V0.4.6 blockers.
+Each edge must be classified from proof as applicable:
 
-## Exact accepted-production gates
+```text
+copy
+snapshot
+derivation
+reference/dynamic
+override
+mutation
+```
 
-All gates are green on exact SHA `c310e893762997f34562a6b3a62dbab2b05c0c93`:
+The blocking identity/collision negative includes:
+
+```text
+Product.Price
+Service.Price
+Dto.Price
+Component.price
+```
+
+PKC must never connect these merely because names match.
+
+## V0.4.7 regression gate sequence
+
+The acceptance plan defines R7.1-R7.13. The intended implementation order is:
+
+```text
+V0.4.7-A
+backend cross-entity lineage
++ exact symbol/dataflow identity
++ same-name collision negative
++ snapshot vs dynamic semantics
+
+V0.4.7-B
+derivation
++ last source before persist/return
++ later mutation/override causality
+
+V0.4.7-C
+DTO/projection
++ API output lineage
+
+V0.4.7-D
+frontend result binding/composition
++ frontend visibility/filter conditions
++ joint backend/frontend explanation
+
+V0.4.7-E
+portable rendering
++ blind PO-question review
++ cross-benchmark final gates
+```
+
+Do not jump ahead to later slices while an earlier identity/semantics gate is red.
+
+## Version semantics — do not conflate
+
+There are three independent version domains:
+
+```text
+roadmap milestone version
+tool/package version
+evidence/schema version
+```
+
+Current examples:
+
+```text
+roadmap milestone:        V0.4.7
+tool/package:             RuaDen.Pkc.Tool 0.4.3-preview.2
+raw C# evidence schema:   0.4.4-csharp-raw
+merged facts schema:      0.4.4
+cross-stack candidates:   0.4.6
+frontend evidence schema: 0.4.3-frontend
+```
+
+Roadmap progress does not mechanically bump package or schema versions.
+
+Schema strings change only when their serialized contract/semantics change and that change is regression-documented.
+
+Do not bump the NuGet/.NET tool package in the first V0.4.7 implementation checkpoint unless a separate release decision explicitly requires it.
+
+## V0.4.6 warnings carried forward
+
+These are non-blocking V0.4.7 considerations, not reopened V0.4.6 blockers:
+
+```text
+W10.1
+Observed-only predicate Evidence is separated from Rules but does not explicitly render the `observed-only` label.
+
+W10.2
+Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
+```
+
+Only address them when the touched V0.4.7 scope makes doing so coherent and regression-safe.
+
+## Documentation reconciliation completed by this planning checkpoint
+
+Current-state documents must agree that:
+
+```text
+V0.4.6 COMPLETE
+V0.4.7 CURRENT
+V0.5 LOCKED
+```
+
+`README.md` no longer describes V0.4.4 as current development.
+
+`docs/real-project-trial.md` keeps V0.4.4/V0.4.5 acceptance evidence as historical material, while its current-state and next-action sections now point to V0.4.7 and keep V0.5 locked until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes.
+
+## Accepted V0.4.6 gate evidence
+
+Exact production `c310e893762997f34562a6b3a62dbab2b05c0c93`:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
@@ -142,67 +252,47 @@ Loren-main canary                           34990080551 — PASS
 pinned Jellyfin                             34990080546 — PASS
 ```
 
-Core CI:
+Pinned Jellyfin portable parity/no-leak remained PASS with artifact:
 
 ```text
-Release build:             0 warnings / 0 errors
-C# tests:                  88 / 88 PASS
-frontend tests:            13 / 13 PASS
-tool pack/install:         PASS
-WorkPlay:                  PASS
+10405810551
+sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
+9,159,880 bytes
 ```
 
-PokeTrade:
+These gates close V0.4.6; they do not replace new V0.4.7 regression proof.
+
+## Exact next implementation action
+
+Start **V0.4.7-A**, regression-first.
+
+Add a compile-valid focused C# fixture proving:
 
 ```text
-.NET 10 backend build:      PASS, 0 warnings / 0 errors
-Angular 22 build:           PASS
-live business acceptance:   PASS
-known-answer knowledge:     PASS
+ProductGroup.Price → Product.Price → Service.Price
 ```
 
-Pinned Jellyfin:
+as exact symbol/dataflow-backed direct-copy snapshot edges.
+
+In the same regression checkpoint add unrelated same-name members:
 
 ```text
-commit:                  1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-source build:            0 warnings / 0 errors
-facts:                   43,363
-relations:               195,314
-workflow candidates:     386
-product features:        116
-canonical Markdown:      504
-project-semantic:        43,363 / 43,363
-portable bundle parity:  PASS
-ZIP file-set parity:     PASS
-ZIP byte parity:         PASS
-raw .pkc leak:           none
-src/ source-tree leak:   none
-artifact id:             10405810551
-digest:                  sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
-size:                    9,159,880 bytes
+Product.Price
+Service.Price
+Dto.Price
+Component.price
 ```
 
-## Next thread
+and assert that no lineage edge is created without explicit deterministic dataflow.
 
-V0.4.7 is now current. Before coding, define its concrete PO-question-readiness acceptance questions and regression gates.
+First prove the regression is red against current behavior. Then implement the minimum generic backend lineage evidence/model required to pass R7.1-R7.4.
 
-The planned focus is cross-layer semantic chaining, especially:
+Run focused tests locally, then related/full C# tests and Release build. Review the complete diff. Commit/push once for the coherent implementation checkpoint. Use CI only as final verification.
 
-```text
-source value
-→ copy / derivation / snapshot
-→ persisted or returned value
-→ later mutation / override
-→ backend condition / API result
-→ frontend visibility / behavior
-→ PO-facing explanation with provenance
-```
+Do **not** begin DTO/API/frontend lineage until the backend lineage identity, collision and snapshot-vs-dynamic gates are green.
 
-Cover cross-entity value lineage, snapshot vs dynamic/reference semantics, later overrides/mutation causality, frontend visibility predicates and backend→frontend composition. Preserve every accepted V0.4.6 authority/evidence-retention guardrail.
-
-Do not begin Azure DevOps ingestion yet:
+Do not start Azure DevOps ingestion:
 
 ```text
-V0.4.7 CURRENT / NEXT MILESTONE
-V0.5 LOCKED
+V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
 ```

@@ -1,6 +1,42 @@
 # V0.4 Knowledge Readiness Exit Plan
 
-This document is the execution plan for finishing the V0.4 line safely before V0.5 Azure DevOps work begins.
+Last reconciled: 2026-09-16
+
+This document preserves the historical V0.4.4/V0.4.5 knowledge-readiness gates and records the current V0.4.7 exit state before V0.5 Azure DevOps work may begin.
+
+## Current state
+
+```text
+V0.4.4 Loren knowledge readiness                  PASS / COMPLETE
+V0.4.5 independent real-repository generalization PASS / COMPLETE
+V0.4.6 business logic reconstruction              PASS / COMPLETE
+V0.4.7 cross-layer PO-question readiness          CURRENT / NEXT MILESTONE
+V0.5 Azure DevOps input evidence                  LOCKED
+```
+
+Accepted V0.4.6 production:
+
+```text
+c310e893762997f34562a6b3a62dbab2b05c0c93
+fix: fail closed on Queryable authority
+```
+
+Final V0.4.6 review:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
+PASS / COMPLETE
+```
+
+Current V0.4.7 acceptance contract:
+
+```text
+docs/v0.4.7-acceptance-plan.md
+```
+
+The V0.4.4 and V0.4.5 sections below are historical acceptance evidence. Their original execution requirements remain useful as regression context, but they are not the current next action.
+
+V0.5 remains locked until V0.4.7 and the overall V0.4.x PO-question-readiness exit gate pass.
 
 ## North star
 
@@ -29,6 +65,22 @@ AI CAN EXPLAIN THE PRODUCT AT THE RIGHT ABSTRACTION LEVEL
 ```
 
 Analyzer fidelity matters only because inaccurate evidence produces inaccurate knowledge. Analyzer breadth is **not** the V0.4 exit goal.
+
+## Permanent product-knowledge contract
+
+PKC must preserve:
+
+```text
+business conditions
+value lineage / provenance
+mutation / causality
+```
+
+These classes may be connected in explanations, but they must remain distinct.
+
+Observed implementation is not automatically approved business intent. Conservative authority downgrade must not erase deterministic lower-authority lineage, mutation or causal evidence.
+
+See `docs/product-knowledge-contract.md`.
 
 ## Knowledge pack contract
 
@@ -72,6 +124,7 @@ Rules for abstraction:
 7. **UI behavior is product knowledge.** When the source statically expresses validation/configuration behavior, route/button/API extraction alone is not sufficient.
 
 Detailed AI handoff contract: `docs/ai-handoff.md`.
+
 Detailed UI behavior contract: `docs/ui-behavior-contract.md`.
 
 ## Benchmark roles
@@ -84,9 +137,9 @@ PokeTrade remains the controlled runnable system where expected behavior is know
 
 It does **not** prove real-world generalization by itself.
 
-### Loren pinned commit — V0.4.4 blocking real-project benchmark
+### Loren pinned commit — accepted V0.4.4 real-project benchmark
 
-A pinned Loren commit is the deterministic real-repository acceptance target.
+The pinned Loren commit is the deterministic real-repository knowledge-readiness acceptance target.
 
 It must not be modified to suit PKC.
 
@@ -94,11 +147,31 @@ It must not be modified to suit PKC.
 
 Current Loren `main` is a non-blocking canary. It exposes newly introduced source patterns as Loren evolves, but it never silently replaces the pinned acceptance SHA.
 
-### Independent second real repository — V0.4.5 anti-overfit benchmark
+### Jellyfin pinned commit — accepted V0.4.5 anti-overfit benchmark
 
-After Loren passes, PKC must be tried against a second genuine repository that was not created for PKC and is meaningfully different from PokeTrade/Loren.
+Accepted repository:
 
-This exists specifically to catch overfitting before V0.5.
+```text
+jellyfin/jellyfin
+1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+```
+
+The second genuine repository gate exists specifically to catch overfitting.
+
+### V0.4.7 focused fixtures — current semantic acceptance surface
+
+Focused fixtures now cover the new questions that cannot be proven merely by rerunning older repositories:
+
+```text
+cross-entity value origin
+copy/snapshot vs dynamic/reference semantics
+derivation
+later mutation/override
+DTO/API/frontend value composition
+joint backend/frontend visibility
+authority downgrade with evidence retention
+same-name collision negatives
+```
 
 ## Finding taxonomy
 
@@ -133,13 +206,21 @@ Every proven compiler bug gets a regression fixture or acceptance assertion.
 
 ---
 
-# V0.4.4 — Loren Knowledge Readiness
+# Historical V0.4.4 — Loren Knowledge Readiness — COMPLETE / EXTERNAL REVIEW PASS
 
-## Current status
+## Final status
 
-**IN PROGRESS.**
+**COMPLETE.**
 
-The Loren trial has already exposed and regression-locked fixes for:
+Final independent review:
+
+```text
+docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
+```
+
+The former `IN PROGRESS` wording in this plan was historical and is superseded by the accepted result above.
+
+The Loren trial exposed and regression-locked fixes for:
 
 - Minimal API discovery and semantic enrichment;
 - source contamination from `tests/` and `spikes/`;
@@ -150,13 +231,14 @@ The Loren trial has already exposed and regression-locked fixes for:
 - framework/primitive call-flow noise;
 - ASP.NET sign-in/sign-out side effects;
 - response metadata collision for endpoints declared inside extension methods;
-- explicit zero-fallback acceptance for the pinned production benchmark.
+- explicit zero-fallback acceptance for the pinned production benchmark;
+- layered knowledge abstraction/comprehension;
+- statically observable UI validation/configuration behavior for supported patterns;
+- portable single-file/structured-pack parity.
 
-Current artifact review shows the main remaining risks are **knowledge abstraction/comprehension and UI behavior completeness**. The compiler must not only produce accurate backend/workflow facts; it must preserve product-relevant configuration/validation behavior when that behavior is present in supported UI source.
+The historical V0.4.4 execution plan is preserved below because it defines accepted behavior that later milestones must not regress.
 
-## Step 1 — Freeze the output hierarchy
-
-Before adding analyzer capability, make the knowledge layers obey the contract above.
+## Historical Step 1 — Freeze the output hierarchy
 
 Required result:
 
@@ -171,14 +253,12 @@ Acceptance:
 
 - raw facts remain available;
 - workflow traceability does not regress;
-- product pages no longer behave like transitive call-graph dumps;
+- product pages do not behave like transitive call-graph dumps;
 - production vs conditional/dev behavior remains distinguishable.
 
-## Step 2 — Product-feature signal hardening
+## Historical Step 2 — Product-feature signal hardening
 
-Use Loren output to fix only proven abstraction problems.
-
-For `Run Operations`, feature-level knowledge should retain product-impacting behavior such as:
+For Loren `Run Operations`, feature-level knowledge needed to retain product-impacting behavior such as:
 
 ```text
 requires authenticated owner
@@ -201,13 +281,11 @@ Acceptance:
 - dev-only differences are preserved;
 - no meaningful validation, permission, state transition, side effect or externally relevant failure disappears.
 
-## Step 3 — Index/system orientation
+## Historical Step 3 — Index/system orientation
 
-`knowledge/index.md` must do more than list files.
+`knowledge/index.md` must let an AI identify the observed capability surface and navigate relationships between important areas without inventing product intent.
 
-Without inventing product intent, it should let an AI identify the observed capability surface and navigate relationships between important areas.
-
-For Loren, a knowledge-only reader should be able to orient around concepts such as:
+For Loren, a knowledge-only reader needed to orient around concepts such as:
 
 ```text
 owner access/authentication
@@ -218,13 +296,11 @@ health/basic surface
 conditional development behavior
 ```
 
-Do not invent a journey that evidence does not support. The goal is orientation, not speculative product design.
+The goal is orientation, not speculative product design.
 
-## Step 3.5 — Portable AI handoff parity
+## Historical Step 3.5 — Portable AI handoff parity
 
-The acceptance artifact must match how a Product Owner will actually give PKC knowledge to an AI.
-
-Generate and validate:
+Accepted artifacts:
 
 ```text
 knowledge/AI_INSTRUCTIONS.md
@@ -233,27 +309,25 @@ PKC_KNOWLEDGE.md
 PKC_KNOWLEDGE.zip
 ```
 
-Rules:
+Rules retained from the original gate:
 
 - `knowledge/` remains canonical;
-- `PKC_KNOWLEDGE.md` must embed every canonical knowledge file with explicit file boundaries;
-- the bundle must place AI instructions/index before feature/workflow detail;
-- the single-file bundle must preserve the same authority, unknowns and important behavior as the structured pack;
-- `PKC_KNOWLEDGE.zip` must contain only portable knowledge by default, not source code or `.pkc/facts.json`;
-- ZIP parsing is not required for an AI consumer; it is a transport/storage convenience.
+- `PKC_KNOWLEDGE.md` embeds every canonical knowledge file with explicit file boundaries;
+- the bundle places AI instructions/index before feature/workflow detail;
+- the single-file bundle preserves the same authority, unknowns and important behavior as the structured pack;
+- `PKC_KNOWLEDGE.zip` contains only portable knowledge by default, not source code or `.pkc/facts.json`;
+- ZIP parsing is not required for an AI consumer.
 
 Acceptance:
 
-- the same fixed product questions can be answered from `PKC_KNOWLEDGE.md` and from the structured `knowledge/` pack without semantic disagreement;
+- the same fixed product questions are answerable from `PKC_KNOWLEDGE.md` and the structured pack without semantic disagreement;
 - a packaging difference that changes or hides a critical answer is a blocker.
 
-## Step 3.75 — UI validation and configuration behavior
+## Historical Step 3.75 — UI validation and configuration behavior
 
-This is a required code-derived knowledge gate before V0.5.
+This gate established that portable knowledge must preserve important statically observable UI behavior instead of stopping at route/action/API structure.
 
-PKC must prove, on a supported Angular/form benchmark, that portable knowledge preserves important statically observable UI behavior instead of stopping at navigation/action/API structure.
-
-At minimum the benchmark must contain:
+The supported benchmark required:
 
 ```text
 a selectable type/option
@@ -264,7 +338,7 @@ field → request/API mapping
 backend validation for at least one corresponding value
 ```
 
-Target questions must be answerable from portable knowledge without source access:
+Accepted target questions:
 
 ```text
 What fields/options exist?
@@ -275,29 +349,38 @@ Where is the important field sent in the request/API?
 Does backend validation agree with the UI requirement when both are observed?
 ```
 
-Example acceptance question:
+Historical example:
 
 > For a CSP service, is Microsoft Subscription Id required on the UI, under what condition, where is it sent, and does backend validation agree?
 
-Do not hardcode CSP or repository-specific names. Implement canonical evidence such as `ui-field`, `ui-field-option`, `ui-field-validation`, `ui-field-visibility`, `ui-field-enabled-state` and `ui-field-binding` as needed.
+No CSP/repository-specific compiler special case was allowed.
 
-A custom validator whose meaning cannot be proven should remain an explicit validator reference/unknown rather than being paraphrased into invented business semantics.
+Canonical evidence included supported concepts such as:
 
-## Step 4 — Blind knowledge-only comprehension review
+```text
+ui-field
+ui-field-option
+ui-field-validation
+ui-field-visibility
+ui-field-enabled-state
+ui-field-binding
+```
 
-This is the primary V0.4.4 acceptance gate.
+A custom validator whose meaning cannot be proven remains a validator reference/unknown rather than invented business semantics.
 
-Procedure:
+## Historical Step 4 — Blind knowledge-only comprehension review
 
-1. Generate a fresh pinned Loren artifact and the UI-behavior regression artifact.
-2. Hide source repositories and `.pkc` raw files from the reviewer for the first pass.
-3. First give the reviewer only `PKC_KNOWLEDGE.md` to exercise the simplest PO handoff path.
-4. Ask the fixed benchmark questions below and record the answers.
-5. Give the reviewer the structured `knowledge/` pack and repeat/check any answer that requires deeper navigation.
-6. Record any semantic disagreement between the bundle and structured pack as a packaging blocker.
-7. Reopen source/known behavior only after the knowledge-only answers are recorded.
-8. Compare every critical answer against source/known behavior.
-9. Classify every mismatch using the finding taxonomy.
+The V0.4.4 gate required:
+
+1. generate a fresh pinned Loren artifact and UI-behavior regression artifact;
+2. hide source repositories and `.pkc` raw files for the first pass;
+3. first give the reviewer only `PKC_KNOWLEDGE.md`;
+4. ask fixed benchmark questions and record answers;
+5. provide the structured `knowledge/` pack for deeper navigation;
+6. treat semantic disagreement between bundle and structured pack as a packaging blocker;
+7. reopen source/known behavior only after knowledge-only answers are recorded;
+8. compare critical answers against source/known behavior;
+9. classify mismatches using the finding taxonomy.
 
 Required Loren questions:
 
@@ -314,30 +397,28 @@ Required Loren questions:
 10. What does PKC explicitly not know yet because that evidence source has not been compiled?
 ```
 
-Required UI/form questions are the ones defined in Step 3.75 and `docs/ui-behavior-contract.md`.
-
-Pass/fail rubric:
+Pass/fail rubric retained:
 
 ### Accuracy
 
-- zero blocker-class false statements in answers to the fixed questions;
+- zero blocker-class false statements in fixed-question answers;
 - no implementation observation presented as approved business intent.
 
 ### Coverage
 
-- every critical question is answerable from the portable knowledge artifact or explicitly answered as unknown;
-- an important known behavior may not disappear merely because it was filtered as noise;
-- statically observable UI validation/configuration behavior required by the UI contract may not disappear merely because route/action/API linkage is already present.
+- every critical question is answerable or explicitly unknown;
+- important known behavior does not disappear merely because it was filtered as noise;
+- supported UI validation/configuration behavior does not disappear merely because route/action/API linkage exists.
 
 ### Abstraction
 
-- product-level answers can be produced without relying on helper-level string/collection mechanics;
+- product-level answers do not depend on helper-level string/collection mechanics;
 - feature pages expose capability-level rules before implementation details.
 
 ### Traceability
 
-- after the blind pass, important answers can be traced through workflow evidence to source locations;
-- reducing product noise must not destroy proof.
+- important answers trace through workflow evidence to source locations;
+- reducing product noise does not destroy proof.
 
 ### Honest uncertainty
 
@@ -346,16 +427,14 @@ Pass/fail rubric:
 
 ### Handoff parity
 
-- `PKC_KNOWLEDGE.md` and the canonical `knowledge/` pack must not disagree on a critical answer;
-- archive transport must preserve the canonical files intact.
+- `PKC_KNOWLEDGE.md` and canonical `knowledge/` do not disagree on critical answers;
+- archive transport preserves canonical files intact.
 
-A green CI/grep suite is necessary but **cannot pass this gate by itself**.
+A green CI/grep suite was necessary but could not pass this gate by itself.
 
-## Step 5 — External review of V0.4.4
+## Historical Step 5 — External review
 
-After the blind review passes internally, hand the pinned commit + generated artifact + this acceptance plan to an independent review thread.
-
-The reviewer should attempt to find:
+The reviewer challenged:
 
 ```text
 wrong claims
@@ -368,84 +447,207 @@ handoff mismatch
 benchmark gaming / repository-specific hardcoding
 ```
 
-V0.4.4 closes only after blocker findings are fixed and regression-locked.
+V0.4.4 closed only after blocker findings were fixed, regression-locked and independently accepted.
 
 ---
 
-# V0.4.5 — Independent Real-Repository Generalization Gate
+# Historical V0.4.5 — Independent Real-Repository Generalization Gate — COMPLETE
 
-V0.4.5 exists because one real repository is not enough evidence to unlock a new evidence source such as Azure DevOps.
+## Repository selection requirement
 
-## Repository selection
+The second repository had to:
 
-Choose one genuine repository that:
+- be genuine and not authored/modified for PKC;
+- fit at least the supported C# backend surface;
+- contain non-trivial product/system behavior;
+- differ materially from PokeTrade and Loren;
+- be pinned at the reviewed commit;
+- not be selected merely because it was easy for current heuristics.
 
-- was not authored or modified for PKC;
-- fits at least the currently supported C# backend surface;
-- contains non-trivial product/system behavior;
-- differs materially from PokeTrade and Loren in code organization/patterns;
-- preferably includes a supported Angular or React frontend if a suitable repo is available, especially if it can exercise real form/configuration behavior without forcing unrelated framework expansion.
+Accepted repository:
 
-Do not pick a repository because it is easy for the current heuristics.
+```text
+jellyfin/jellyfin
+1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+```
 
-Pin the reviewed commit.
+## Historical trial procedure
 
-## Trial procedure
-
-1. Build/run the target normally enough to establish that the pinned source is valid.
+1. Build/run the target normally enough to establish valid pinned source.
 2. Run PKC without changing the target repo to help the compiler.
 3. Review analyzer fallback/provenance only to detect knowledge risk.
-4. Review `knowledge/` using the same layered-output contract.
+4. Review `knowledge/` using the layered-output contract.
 5. Validate single-file vs structured-pack handoff parity.
-6. Perform a blind knowledge-only comprehension review with questions adapted to that product.
-7. If the repository has a supported UI form/configuration surface, include the UI behavior questions from `docs/ui-behavior-contract.md`.
+6. Perform a blind knowledge-only comprehension review with product-adapted questions.
+7. Include UI behavior questions when a supported UI surface exists.
 8. Reopen source and compare answers.
 9. Fix only proven generic gaps and add regression coverage.
-10. Re-run PokeTrade + Loren + the independent repo after each blocker fix.
+10. Re-run PokeTrade + Loren + the independent repo after blocker fixes.
 
-## V0.4.5 pass condition
+## Historical V0.4.5 pass condition
 
 - no blocker wrong claims in critical product questions;
-- important behavior is answerable or explicitly unknown;
-- product-level pages are high-signal;
-- evidence remains traceable;
+- important behavior answerable or explicitly unknown;
+- product-level pages high-signal;
+- evidence traceable;
 - portable handoff forms preserve the same critical knowledge;
-- supported UI validation/configuration behavior is preserved when present;
+- supported UI validation/configuration behavior preserved when present;
 - no benchmark-specific hardcoding;
 - existing PokeTrade and Loren acceptance remain green;
 - independent external review finds no unresolved blocker.
 
+V0.4.5 is accepted and remains closed.
+
 ---
 
-# V0.5 Unlock Gate
+# Historical V0.4.6 — Business Logic Reconstruction — COMPLETE
 
-**V0.5 Azure DevOps remains locked until every item below is true.**
+Accepted production:
 
 ```text
-PokeTrade known-answer regression                   PASS
-Loren pinned evidence/workflow correctness          PASS
-Loren blind knowledge-only comprehension            PASS
-Loren single-file/structured handoff parity          PASS
-UI validation/behavior knowledge benchmark          PASS
-Loren external review with no blocker                PASS
-Second independent real-repo trial                  PASS
-Second blind knowledge-only comprehension           PASS
-Second handoff parity                                PASS
-Cross-benchmark regression after fixes              PASS
-Known boundaries/unknowns documented honestly       PASS
-No repository-specific compiler exceptions          PASS
+c310e893762997f34562a6b3a62dbab2b05c0c93
 ```
 
-Only then is the code-derived knowledge foundation stable enough to add a second major evidence source (Azure DevOps intent/history).
+Final independent review:
 
-If any item is not PASS, stay in V0.4.x.
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
+PASS / COMPLETE
+```
+
+Accepted exact-SHA gates:
+
+```text
+CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
+pinned Loren                            34990080707 — PASS
+Loren-main canary                       34990080551 — PASS
+pinned Jellyfin                         34990080546 — PASS
+```
+
+V0.4.6 established conservative business-predicate authority, including fail-closed Queryable/provider behavior, while retaining downgraded deterministic predicate evidence.
+
+Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
+
+Non-blocking carry-forward warnings:
+
+```text
+W10.1
+Rendered Evidence does not explicitly print `observed-only`, although authority separation is preserved.
+
+W10.2
+Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
+```
+
+These are V0.4.7 maintenance considerations, not V0.4.6 blockers.
+
+---
+
+# Current V0.4.7 — Cross-layer PO-question Readiness
+
+V0.4.7 is the remaining V0.4.x gate before Azure DevOps may be considered.
+
+Acceptance contract:
+
+```text
+docs/v0.4.7-acceptance-plan.md
+```
+
+Required PO questions include:
+
+```text
+Where did this value originally come from?
+If the upstream value changes later, does the existing downstream value change automatically?
+What code path can change this value after creation?
+Was this value directly copied or computed?
+What was the last observed source before the value was persisted or returned?
+What backend conditions and frontend conditions jointly determine whether an item is visible?
+How did the value move through backend → DTO/projection → API → frontend composition?
+If authority is incomplete, what lineage or causal evidence is still deterministically known?
+```
+
+Canonical lineage:
+
+```text
+ProductGroup.Price → Product.Price → Service.Price
+```
+
+Required semantics:
+
+```text
+copy
+snapshot
+derivation
+reference/dynamic
+override
+mutation
+```
+
+Blocking collision regression:
+
+```text
+Product.Price
+Service.Price
+Dto.Price
+Component.price
+```
+
+Matching names alone must never create lineage.
+
+Current implementation sequence:
+
+```text
+V0.4.7-A backend lineage identity + collision + snapshot/dynamic
+V0.4.7-B derivation + terminal source + mutation/override
+V0.4.7-C DTO/projection + API
+V0.4.7-D frontend composition + joint visibility
+V0.4.7-E portable rendering + blind review + cross-benchmark gates
+```
+
+No V0.4.7 compiler behavior is implemented by the planning checkpoint itself.
+
+---
+
+# V0.5 Unlock Gate — CURRENT FRAMING
+
+**V0.5 Azure DevOps remains locked.**
+
+Historical prerequisites are accepted:
+
+```text
+PokeTrade known-answer regression                    PASS
+Loren pinned evidence/workflow correctness           PASS
+Loren blind knowledge-only comprehension             PASS
+Loren single-file/structured handoff parity          PASS
+UI validation/behavior knowledge benchmark           PASS
+Loren external review with no blocker                PASS
+Second independent real-repo trial                   PASS
+Second blind knowledge-only comprehension            PASS
+Second handoff parity                                PASS
+Cross-benchmark regression after accepted fixes      PASS
+Known boundaries/unknowns documented honestly        PASS
+No repository-specific compiler exceptions          PASS
+V0.4.6 business-logic independent review             PASS
+```
+
+Those historical checks are necessary but no longer sufficient by themselves.
+
+The current remaining unlock requirement is:
+
+```text
+V0.4.7 cross-layer PO-question readiness            REQUIRED / CURRENT
+V0.4.x final PO-question-readiness exit review      REQUIRED
+```
+
+Only after V0.4.7 and the overall V0.4.x PO-question-readiness exit gate pass may V0.5 Azure DevOps ingestion begin.
+
+If the V0.4.7 gate is not PASS, stay in V0.4.x.
 
 ## Explicit non-goals before the unlock gate
 
 Do not start these merely because they are on the roadmap:
 
-- Angular TypeScript `TypeChecker` migration unless a proven validation/binding gap requires it;
-- React AST rewrite unless a real benchmark requires it;
+- Angular TypeScript `TypeChecker` migration unless a proven V0.4.7 acceptance gap requires it;
+- React AST rewrite unless a real acceptance gap requires it;
 - MVC/Razor/Blazor/Vue expansion;
 - runtime browser exploration;
 - incremental compilation;
@@ -453,17 +655,51 @@ Do not start these merely because they are on the roadmap:
 - generalized product insight/drift analysis;
 - live MCP/connector delivery merely for convenience.
 
-They are allowed only when a real acceptance finding proves one is required, or after the V0.5 unlock gate is satisfied.
+They are allowed only when a real acceptance finding proves one is required, or after the relevant roadmap gate is satisfied.
+
+## Version semantics before any package bump
+
+Do not conflate:
+
+```text
+roadmap milestone version
+tool/package version
+evidence/schema version
+```
+
+Current examples:
+
+```text
+roadmap:             V0.4.7
+tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
+C# raw schema:       0.4.4-csharp-raw
+merged facts schema: 0.4.4
+cross-stack schema:  0.4.6
+frontend schema:     0.4.3-frontend
+```
+
+A milestone change does not automatically change package or schema versions.
+
+Schema versions change only when the serialized contract/semantics change and the compatibility change is explicit and regression-covered.
+
+Do not mechanically change `0.4.4`, `0.4.4-csharp-raw`, `0.4.6` or other schema strings because V0.4.7 is current.
 
 ## Current next action
 
 ```text
-V0.4.4
-→ finish layered knowledge + handoff checks
-→ implement canonical UI field/validation/conditional behavior evidence
-→ add frontend/backend validation regression fixture
-→ regenerate artifacts
-→ run blind knowledge-only review
+V0.4.7-A
+→ add compile-valid ProductGroup.Price → Product.Price → Service.Price regression
+→ require exact symbol/dataflow-backed direct-copy snapshot edges
+→ add Product.Price / Service.Price / Dto.Price / Component.price same-name collision negatives
+→ prove the regression red
+→ implement the minimum generic backend lineage evidence/model
+→ run focused + full relevant local tests/build
+→ review diff
+→ one coherent commit/push
 ```
 
-Do not bump the accepted tool version until the milestone acceptance gate passes.
+Do not begin DTO/frontend composition until the backend lineage identity/collision/snapshot-vs-dynamic gate is green.
+
+Do not bump the accepted tool package as part of the planning checkpoint.
+
+Do not start Azure DevOps ingestion.
