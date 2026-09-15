@@ -69,16 +69,29 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-6.md
 reviewed production: 18a1f1d1ef551833d859f23ea2e92dd548a6a81d
 verdict: FAIL / FIX REQUIRED
+```
+
+Current production checkpoint awaiting re-review:
+
+```text
+eb0903ef93b2b85669ded0e2227ca1a950bc49c7
+fix: fail closed on callback-bearing where pipelines
+```
+
+Fresh independent review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-7-request.md
 ```
 
 Current disposition:
@@ -87,7 +100,7 @@ Current disposition:
 B6.1 PASS  — exact C# invocation semantic identity; keep closed
 B6.2 PASS  — conservative configured-item ownership; keep closed
 B6.3 PASS  — active module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — callback-bearing Where pipeline operation may mutate predicate state after filtering
+B6.4 IMPLEMENTATION GREEN — callback/comparer-bearing Where pipeline preservation now fails closed outside the audited safe subset
 ```
 
 Accepted B6.4 hardening already covers:
@@ -99,42 +112,14 @@ Accepted B6.4 hardening already covers:
 5. same-type method-group projection requires a closed/sealed item type, complete predicate dependencies and direct object creation;
 6. unsupported whole-item/unmodeled predicate uses such as `helper(card)`, `card.SomeMethod()`, reference identity or custom/operator semantics cause conservative downgrade;
 7. every supported clone initializer entry must be a simple assignment to a direct stored non-static field or auto-property;
-8. every supported clone initializer assignment must be an exact same-member input→output copy, closing the custom-setter-after-copy path found in re-review 5.
+8. every supported clone initializer assignment must be an exact same-member input→output copy, closing the custom-setter-after-copy path found in re-review 5;
+9. callback/comparer-bearing pipeline operations are no longer trusted merely from LINQ method identity.
 
-The re-review-5 regression remains green:
+#### Rereview-6 blocker implementation
 
-```text
-Later_custom_setter_that_invalidates_predicate_state_downgrades_projection_authority
-```
-
-#### Remaining B6.4 blocker
-
-The general `Where` pipeline still treats several known LINQ operations as preserving predicate semantics solely because the resolved target appears in `WherePipelineTargets`.
-
-Delegate-bearing entries include:
-
-```text
-OrderBy / OrderByDescending
-ThenBy / ThenByDescending
-```
-
-and their Enumerable/Queryable variants.
-
-Current authority logic does not prove that selector/comparer callbacks are unable to mutate predicate-relevant item state.
-
-Compile-valid counterexample:
+Rereview 6 demonstrated this compile-valid false-authority path:
 
 ```csharp
-public sealed class Card
-{
-    public bool IsPublished { get; set; }
-}
-
-private readonly List<Card> _cards =
-[
-    new() { IsPublished = true }
-];
-
 public IReadOnlyList<Card> GetCards() =>
     _cards
         .Where(card => card.IsPublished)
@@ -151,60 +136,85 @@ Where sees IsPublished == true
 → returned item has IsPublished == false
 ```
 
-Yet the current pipeline can still preserve the original `Where` authority and render:
+The old allowlist could still preserve:
 
 ```text
 Includes items from `_cards` only when `card.IsPublished`.
 ```
 
-That is a false observable Product Owner claim.
+Production `eb0903ef...` replaces that broad authority with an exact-shape callback-free safe subset.
 
-Required authority contract:
-
-```text
-exact predicate identity proven
-+ context/ownership proven
-+ every semantic source-parameter dependency supported and proven
-+ every outer operation proven to preserve item semantics
-+ every callback/comparer capable of observing or mutating item semantics proven safe
-→ authoritative Product Owner rule
-
-otherwise
-→ local/lower-authority evidence or omitted product-level claim
-```
-
-A conservative V0.4.6 fix may fail closed for callback-bearing `OrderBy*` / `ThenBy*` unless callback safety is deterministically proven. The coding pass must audit the rest of the allowlist for user callback/comparer overloads rather than special-casing one method spelling.
-
-Required focused regression:
-
-```csharp
-_cards
-    .Where(card => card.IsPublished)
-    .OrderBy(card => card.IsPublished = false)
-    .ToArray();
-```
-
-must not produce an authoritative returned-item inclusion rule.
-
-This is an authority boundary only. Lower-authority value-lineage/mutation evidence remains a first-class product direction under `docs/product-knowledge-contract.md`.
-
-Exact gates for reviewed production checkpoint `18a1f1d1ef551833d859f23ea2e92dd548a6a81d`:
+Safe zero-argument operations:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34954590262 — PASS
-pinned Loren                            34954590188 — PASS
-Loren-main canary                       34954590239 — PASS
-pinned Jellyfin                         34954590155 — PASS
+Reverse
+AsEnumerable
+AsQueryable
+ToArray
+ToList
+```
+
+Safe slice operations only with exact supported argument shape:
+
+```text
+Skip
+Take
+```
+
+No longer automatically preserving solely from resolved target:
+
+```text
+OrderBy / OrderByDescending
+ThenBy / ThenByDescending
+Distinct
+ToHashSet
+```
+
+This boundary is intentionally conservative. Default equality may execute item `Equals`/`GetHashCode`, and explicit comparers/selectors may execute arbitrary user code; without deterministic effect proof these operations fail closed for authoritative returned-item predicate semantics.
+
+Focused regression coverage added:
+
+```text
+Side_effecting_ordering_callback_downgrades_returned_filter_authority
+Equality_comparer_pipeline_downgrades_returned_filter_authority
+Default_item_equality_pipeline_downgrades_returned_filter_authority
+Callback_free_enumerable_and_queryable_pipeline_remains_authoritative
+```
+
+Existing positive behavior remains intentionally supported where deterministic preservation is proven, including direct returned `Where`, materialization through `ToArray`/`ToList`, `Skip`/`Take`, `Reverse`, `AsEnumerable`/`AsQueryable`, identity `Select(card => card)`, and the accepted same-type direct-member defensive clone path.
+
+This is an authority boundary only. Lower-authority value-lineage/mutation evidence remains a first-class product direction under `docs/product-knowledge-contract.md`; no lineage synthesis from V0.4.7 is implemented early.
+
+#### Validation checkpoint
+
+The coding sandbox did not provide `dotnet`, so the focused regression could not be executed locally before the implementation change. The defect was confirmed by inspecting the pre-fix implementation: membership in `WherePipelineTargets` caused an immediate preserving result without callback/comparer effect proof.
+
+Exact-SHA runtime verification for `eb0903ef93b2b85669ded0e2227ca1a950bc49c7`:
+
+```text
+CI + PKC tests + WorkPlay + PokeTrade   34959028651 — PASS
+pinned Loren                            34959028686 — PASS
+Loren-main canary                       34959028633 — PASS
+pinned Jellyfin                         34959028626 — PASS
 ```
 
 Core evidence:
 
 ```text
 PKC build:       0 warnings / 0 errors
-C# tests:        77 / 77 PASS
+C# tests:        81 / 81 PASS
 frontend tests:  13 / 13 PASS
 WorkPlay:        PASS
 PokeTrade:       PASS
+```
+
+PokeTrade evidence:
+
+```text
+.NET 10 backend build:      PASS, 0 warnings / 0 errors
+Angular 22 build:           PASS
+live business acceptance:   PASS
+known-answer knowledge:     PASS
 ```
 
 Pinned Jellyfin evidence:
@@ -219,14 +229,17 @@ product features:        116
 canonical Markdown:      504
 analysis mode:           project-semantic 43,363 / 43,363
 portable bundle parity:  PASS
-portable ZIP parity:     PASS
+ZIP file-set parity:     PASS
+ZIP byte parity:         PASS
 raw .pkc leak:           none
 src/ source-tree leak:   none
-artifact id:             10390258392
-artifact digest:         sha256:6ba875d99cf64141267bb13811485cc025eabc87723beaa9f3a46a985860b497
+artifact id:             10391499835
+artifact digest:         sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
+artifact size:           9,016,935 bytes
+uploaded files:          509
 ```
 
-V0.4.6 stays open until a new implementation checkpoint fixes B6.4 and a fresh independent reviewer returns PASS.
+V0.4.6 remains open. Green automation does not self-approve semantic authority. A fresh independent reviewer must inspect exact production SHA `eb0903ef93b2b85669ded0e2227ca1a950bc49c7` and return PASS before V0.4.6 may be marked complete.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 

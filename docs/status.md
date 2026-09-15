@@ -7,23 +7,30 @@ Last updated: 2026-09-15
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7 cross-layer PO-question readiness         LOCKED
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-Latest independently reviewed production checkpoint:
+Production checkpoint awaiting independent review:
 
 ```text
-18a1f1d1ef551833d859f23ea2e92dd548a6a81d
-fix: fail closed on unsafe same-type projector effects
+eb0903ef93b2b85669ded0e2227ca1a950bc49c7
+fix: fail closed on callback-bearing where pipelines
 ```
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-6.md
 verdict: FAIL / FIX REQUIRED
+```
+
+Next review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-7-request.md
+review production: eb0903ef93b2b85669ded0e2227ca1a950bc49c7
 ```
 
 V0.4.3 remains the last accepted tool package:
@@ -54,103 +61,80 @@ No deterministic proof means no authoritative product claim. Downgrading rule au
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — delegate-bearing Where pipeline operations can invalidate predicate state after filtering
+B6.4 IMPLEMENTATION GREEN — callback/comparer-bearing Where pipeline preservation now fails closed unless the operation is in the audited callback-free safe subset
 ```
 
-### Re-review-5 blocker is closed
+### B6.4 implementation checkpoint
 
-Checkpoint `18a1f1d1...` correctly closes the prior same-type projector custom-setter gap by validating every supported clone initializer assignment, not only the predicate-required copies.
+Independent rereview 6 demonstrated that `WherePipelineTargets` incorrectly preserved authoritative predicate semantics across operations that execute user-controlled callbacks/comparers after `Where`, including a mutating `OrderBy` key selector.
 
-Focused regression remains green:
+Production checkpoint `eb0903ef...` replaces the unconditional pipeline allowlist with an exact-shape callback-free safe subset:
 
 ```text
-Later_custom_setter_that_invalidates_predicate_state_downgrades_projection_authority
+zero-argument safe targets:
+  Reverse
+  AsEnumerable
+  AsQueryable
+  ToArray
+  ToList
+
+slice safe targets with exact supported scalar/range argument shape:
+  Skip
+  Take
 ```
 
-### Remaining B6.4 blocker
-
-`WherePipelineTargets` still unconditionally treats known LINQ targets such as `OrderBy*` and `ThenBy*` as predicate-semantics-preserving. `IsAllowedWherePipelineInvocation()` returns `true` based on target membership without proving that the user-supplied selector/comparer cannot mutate predicate-relevant state.
-
-Compile-valid counterexample:
-
-```csharp
-public sealed class Card
-{
-    public bool IsPublished { get; set; }
-}
-
-private readonly List<Card> _cards =
-[
-    new() { IsPublished = true }
-];
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .OrderBy(card => card.IsPublished = false)
-        .ToArray();
-```
-
-Observable behavior:
+The following no longer preserve authoritative `Where` semantics merely because their resolved LINQ target is known:
 
 ```text
-Where sees IsPublished == true
-→ item passes
-→ OrderBy key selector sets IsPublished = false
-→ returned item has IsPublished == false
+OrderBy / OrderByDescending
+ThenBy / ThenByDescending
+Distinct
+ToHashSet
 ```
 
-Current authority logic may still promote:
+This applies generically to Enumerable/Queryable variants where applicable and intentionally fails closed for callback/comparer/default-equality paths whose item-effect safety is not deterministically proven.
+
+Focused regression coverage includes:
 
 ```text
-Includes items from `_cards` only when `card.IsPublished`.
+Side_effecting_ordering_callback_downgrades_returned_filter_authority
+Equality_comparer_pipeline_downgrades_returned_filter_authority
+Default_item_equality_pipeline_downgrades_returned_filter_authority
+Callback_free_enumerable_and_queryable_pipeline_remains_authoritative
 ```
 
-That Product Owner claim is false for the returned item state.
+Existing identity `Select(card => card)` and accepted same-type direct-member defensive clone proof remain unchanged. The prior custom-setter fix is not reopened.
 
-Required generic boundary:
+The sandbox used for this coding pass did not provide `dotnet`, so the new regression could not be executed locally before the production change. The defect was confirmed by direct inspection of the pre-fix authority path: any resolved target in the old `WherePipelineTargets` returned `true` without inspecting callback/comparer effects. Runtime verification was then performed by the exact-SHA CI gates below.
 
-```text
-known pipeline operation
-+ exact overload/argument shape proven
-+ every callback/comparer that can affect item semantics proven safe
-→ may preserve authoritative Where semantics
+## Exact automation for production checkpoint
 
-otherwise
-→ observed-only / no authoritative inclusion rule
-```
-
-A conservative V0.4.6 solution may fail closed for callback-bearing `OrderBy*` / `ThenBy*` unless effect safety is deterministically proven. Audit the rest of the allowlist for callback/comparer overloads rather than special-casing one spelling.
-
-Required focused regression:
+All required gates for exact SHA `eb0903ef93b2b85669ded0e2227ca1a950bc49c7` are green:
 
 ```text
-Where(card => card.IsPublished)
-→ OrderBy(card => card.IsPublished = false)
-→ ToArray()
-```
-
-must not produce an authoritative returned-item inclusion rule.
-
-## Exact automation for reviewed production checkpoint
-
-All existing gates for exact SHA `18a1f1d1ef551833d859f23ea2e92dd548a6a81d` are green:
-
-```text
-CI + PKC tests + WorkPlay + PokeTrade   34954590262 — PASS
-pinned Loren                            34954590188 — PASS
-Loren-main canary                       34954590239 — PASS
-pinned Jellyfin                         34954590155 — PASS
+CI + PKC tests + WorkPlay + PokeTrade   34959028651 — PASS
+pinned Loren                            34959028686 — PASS
+Loren-main canary                       34959028633 — PASS
+pinned Jellyfin                         34959028626 — PASS
 ```
 
 Core CI:
 
 ```text
 PKC build:       0 warnings / 0 errors
-C# tests:        77 / 77 PASS
+C# tests:        81 / 81 PASS
 frontend tests:  13 / 13 PASS
 WorkPlay:        PASS
 PokeTrade:       PASS
+```
+
+PokeTrade validation:
+
+```text
+.NET 10 backend build:      PASS, 0 warnings / 0 errors
+Angular 22 build:           PASS
+live business acceptance:   PASS
+known-answer knowledge:     PASS
 ```
 
 Pinned Jellyfin:
@@ -169,21 +153,24 @@ ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
 src/ source-tree leak:   none
-artifact id:             10390258392
-artifact digest:         sha256:6ba875d99cf64141267bb13811485cc025eabc87723beaa9f3a46a985860b497
+artifact id:             10391499835
+artifact digest:         sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
+artifact size:           9,016,935 bytes
+uploaded files:          509
 ```
 
-Green CI is final verification evidence, not proof that semantic authority is correct.
+Green CI is final verification evidence, not independent semantic approval.
 
 ## Exact next action
 
 Stay in V0.4.6.
 
-Fix only the remaining B6.4 callback/pipeline preservation gap regression-first, review the complete local diff, make one coherent implementation commit and one push, then request another independent review of the new exact production SHA.
+Have an independent reviewer inspect exact production SHA `eb0903ef93b2b85669ded0e2227ca1a950bc49c7` against rereview 6 and the new rereview 7 request. Do not make further production changes unless the independent review identifies a concrete contradiction.
 
 Until independent PASS:
 
 ```text
+V0.4.6 IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7 LOCKED
 V0.5 LOCKED
 ```
