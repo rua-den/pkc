@@ -480,8 +480,12 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             return false;
         }
 
-        var requiredMembers = GetWherePredicateMembers(whereInvocation, semanticModel, cancellationToken);
-        if (requiredMembers.Count == 0 || requiredMembers.Any(member => !IsDirectlyStoredMember(member, cancellationToken)))
+        if (!TryGetWherePredicateMembers(
+                whereInvocation,
+                semanticModel,
+                cancellationToken,
+                out var requiredMembers) ||
+            requiredMembers.Any(member => !IsDirectlyStoredMember(member, cancellationToken)))
         {
             return false;
         }
@@ -530,15 +534,18 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
                     cancellationToken)));
     }
 
-    private static IReadOnlyList<ISymbol> GetWherePredicateMembers(
+    private static bool TryGetWherePredicateMembers(
         InvocationExpressionSyntax whereInvocation,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        out IReadOnlyList<ISymbol> members)
     {
+        members = Array.Empty<ISymbol>();
+
         if (whereInvocation.ArgumentList.Arguments.Count != 1 ||
             whereInvocation.ArgumentList.Arguments[0].Expression is not LambdaExpressionSyntax predicateLambda)
         {
-            return Array.Empty<ISymbol>();
+            return false;
         }
 
         var sourceParameterSyntax = predicateLambda switch
@@ -551,36 +558,56 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         };
         if (sourceParameterSyntax is null)
         {
-            return Array.Empty<ISymbol>();
+            return false;
         }
 
         var sourceParameter = semanticModel.GetDeclaredSymbol(sourceParameterSyntax, cancellationToken);
         if (sourceParameter is null)
         {
-            return Array.Empty<ISymbol>();
+            return false;
         }
 
-        var members = new List<ISymbol>();
-        foreach (var memberAccess in predicateLambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
+        var collectedMembers = new List<ISymbol>();
+        foreach (var identifier in predicateLambda.Body.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            if (!IsReferenceToSymbol(memberAccess.Expression, sourceParameter, semanticModel, cancellationToken))
+            var referencedSymbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+            if (!SymbolEqualityComparer.Default.Equals(referencedSymbol, sourceParameter))
             {
                 continue;
+            }
+
+            SyntaxNode receiver = identifier;
+            while (receiver.Parent is ParenthesizedExpressionSyntax parenthesized &&
+                   parenthesized.Expression == receiver)
+            {
+                receiver = parenthesized;
+            }
+
+            if (receiver.Parent is not MemberAccessExpressionSyntax memberAccess ||
+                memberAccess.Expression != receiver)
+            {
+                return false;
             }
 
             var member = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
             if (member is not IPropertySymbol and not IFieldSymbol)
             {
-                continue;
+                return false;
             }
 
-            if (!members.Any(existing => SymbolEqualityComparer.Default.Equals(existing, member)))
+            if (!collectedMembers.Any(existing => SymbolEqualityComparer.Default.Equals(existing, member)))
             {
-                members.Add(member);
+                collectedMembers.Add(member);
             }
         }
 
-        return members;
+        if (collectedMembers.Count == 0)
+        {
+            return false;
+        }
+
+        members = collectedMembers;
+        return true;
     }
 
     private static bool IsDirectMemberCopy(

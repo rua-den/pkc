@@ -122,6 +122,33 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Whole_item_helper_dependency_downgrades_same_type_projection_authority()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            """
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished && IsAllowed(card))
+                    .Select(CloneCard)
+                    .ToArray();
+
+            private static bool IsAllowed(Card card) => !card.Blocked;
+
+            private static Card CloneCard(Card card) => new()
+            {
+                IsPublished = card.IsPublished,
+                Blocked = true
+            };
+            """,
+            "[new() { IsPublished = true, Blocked = false }]",
+            AutoPropertyCardDeclaration);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("IsAllowed(card)", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Same_type_method_group_that_changes_predicate_member_is_not_authoritative()
     {
         var knowledge = await BuildKnowledgeAsync(
