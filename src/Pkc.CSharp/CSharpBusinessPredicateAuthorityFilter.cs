@@ -36,7 +36,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         "System.Linq.Enumerable.ToHashSet"
     };
 
-    private static readonly HashSet<string> IdentityProjectionTargets = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> ProjectionTargets = new(StringComparer.Ordinal)
     {
         "System.Linq.Enumerable.Select",
         "System.Linq.Queryable.Select"
@@ -344,7 +344,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
                 memberAccess.Expression == current &&
                 memberAccess.Parent is InvocationExpressionSyntax pipelineInvocation &&
                 pipelineInvocation.Expression == memberAccess &&
-                IsAllowedWherePipelineInvocation(pipelineInvocation, semanticModel, cancellationToken))
+                IsAllowedWherePipelineInvocation(invocation, pipelineInvocation, semanticModel, cancellationToken))
             {
                 current = pipelineInvocation;
                 continue;
@@ -357,11 +357,12 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
     }
 
     private static bool IsAllowedWherePipelineInvocation(
-        InvocationExpressionSyntax invocation,
+        InvocationExpressionSyntax whereInvocation,
+        InvocationExpressionSyntax pipelineInvocation,
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
-        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+        var symbolInfo = semanticModel.GetSymbolInfo(pipelineInvocation, cancellationToken);
         var methodSymbol = symbolInfo.Symbol as IMethodSymbol ??
                            symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().SingleOrDefault();
         if (methodSymbol is null)
@@ -375,9 +376,25 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
             return true;
         }
 
-        return IdentityProjectionTargets.Contains(target) &&
-               IsIdentityProjection(invocation, semanticModel, cancellationToken);
+        return ProjectionTargets.Contains(target) &&
+               IsItemSemanticsPreservingProjection(
+                   whereInvocation,
+                   pipelineInvocation,
+                   semanticModel,
+                   cancellationToken);
     }
+
+    private static bool IsItemSemanticsPreservingProjection(
+        InvocationExpressionSyntax whereInvocation,
+        InvocationExpressionSyntax selectInvocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken) =>
+        IsIdentityProjection(selectInvocation, semanticModel, cancellationToken) ||
+        IsPredicatePreservingSameTypeMethodGroupProjection(
+            whereInvocation,
+            selectInvocation,
+            semanticModel,
+            cancellationToken);
 
     private static bool IsIdentityProjection(
         InvocationExpressionSyntax invocation,
@@ -432,6 +449,240 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         return parameterSymbol is not null &&
                returnedSymbol is not null &&
                SymbolEqualityComparer.Default.Equals(parameterSymbol, returnedSymbol);
+    }
+
+    private static bool IsPredicatePreservingSameTypeMethodGroupProjection(
+        InvocationExpressionSyntax whereInvocation,
+        InvocationExpressionSyntax selectInvocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (selectInvocation.ArgumentList.Arguments.Count != 1)
+        {
+            return false;
+        }
+
+        var selector = selectInvocation.ArgumentList.Arguments[0].Expression;
+        if (selector is LambdaExpressionSyntax)
+        {
+            return false;
+        }
+
+        var selectorInfo = semanticModel.GetSymbolInfo(selector, cancellationToken);
+        var projector = selectorInfo.Symbol as IMethodSymbol ??
+                        selectorInfo.CandidateSymbols.OfType<IMethodSymbol>().SingleOrDefault();
+        if (projector is null ||
+            projector.Parameters.Length != 1 ||
+            !SymbolEqualityComparer.Default.Equals(projector.Parameters[0].Type, projector.ReturnType) ||
+            !IsClosedItemType(projector.ReturnType) ||
+            projector.DeclaringSyntaxReferences.Length != 1)
+        {
+            return false;
+        }
+
+        var requiredMembers = GetWherePredicateMembers(whereInvocation, semanticModel, cancellationToken);
+        if (requiredMembers.Count == 0 || requiredMembers.Any(member => !IsDirectlyStoredMember(member, cancellationToken)))
+        {
+            return false;
+        }
+
+        var declaration = projector.DeclaringSyntaxReferences[0].GetSyntax(cancellationToken) as MethodDeclarationSyntax;
+        if (declaration is null || declaration.ParameterList.Parameters.Count != 1)
+        {
+            return false;
+        }
+
+        var returnedExpression = GetSingleReturnedExpression(declaration);
+        if (returnedExpression is null)
+        {
+            return false;
+        }
+
+        var declarationModel = semanticModel.Compilation.GetSemanticModel(declaration.SyntaxTree, ignoreAccessibility: true);
+        var createdType = declarationModel.GetTypeInfo(returnedExpression, cancellationToken).Type;
+        if (!SymbolEqualityComparer.Default.Equals(createdType, projector.ReturnType))
+        {
+            return false;
+        }
+
+        var initializer = GetObjectInitializer(returnedExpression);
+        if (initializer is null)
+        {
+            return false;
+        }
+
+        var sourceParameter = declarationModel.GetDeclaredSymbol(
+            declaration.ParameterList.Parameters[0],
+            cancellationToken);
+        if (sourceParameter is null)
+        {
+            return false;
+        }
+
+        return requiredMembers.All(requiredMember =>
+            initializer.Expressions
+                .OfType<AssignmentExpressionSyntax>()
+                .Any(assignment => IsDirectMemberCopy(
+                    assignment,
+                    requiredMember,
+                    sourceParameter,
+                    declarationModel,
+                    cancellationToken)));
+    }
+
+    private static IReadOnlyList<ISymbol> GetWherePredicateMembers(
+        InvocationExpressionSyntax whereInvocation,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (whereInvocation.ArgumentList.Arguments.Count != 1 ||
+            whereInvocation.ArgumentList.Arguments[0].Expression is not LambdaExpressionSyntax predicateLambda)
+        {
+            return Array.Empty<ISymbol>();
+        }
+
+        var sourceParameterSyntax = predicateLambda switch
+        {
+            SimpleLambdaExpressionSyntax simpleLambda => simpleLambda.Parameter,
+            ParenthesizedLambdaExpressionSyntax parenthesizedLambda
+                when parenthesizedLambda.ParameterList.Parameters.Count > 0 =>
+                    parenthesizedLambda.ParameterList.Parameters[0],
+            _ => null
+        };
+        if (sourceParameterSyntax is null)
+        {
+            return Array.Empty<ISymbol>();
+        }
+
+        var sourceParameter = semanticModel.GetDeclaredSymbol(sourceParameterSyntax, cancellationToken);
+        if (sourceParameter is null)
+        {
+            return Array.Empty<ISymbol>();
+        }
+
+        var members = new List<ISymbol>();
+        foreach (var memberAccess in predicateLambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
+        {
+            if (!IsReferenceToSymbol(memberAccess.Expression, sourceParameter, semanticModel, cancellationToken))
+            {
+                continue;
+            }
+
+            var member = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
+            if (member is not IPropertySymbol and not IFieldSymbol)
+            {
+                continue;
+            }
+
+            if (!members.Any(existing => SymbolEqualityComparer.Default.Equals(existing, member)))
+            {
+                members.Add(member);
+            }
+        }
+
+        return members;
+    }
+
+    private static bool IsDirectMemberCopy(
+        AssignmentExpressionSyntax assignment,
+        ISymbol requiredMember,
+        IParameterSymbol sourceParameter,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+        {
+            return false;
+        }
+
+        var targetMember = semanticModel.GetSymbolInfo(assignment.Left, cancellationToken).Symbol;
+        if (!SymbolEqualityComparer.Default.Equals(targetMember, requiredMember) ||
+            assignment.Right is not MemberAccessExpressionSyntax sourceMemberAccess)
+        {
+            return false;
+        }
+
+        var sourceMember = semanticModel.GetSymbolInfo(sourceMemberAccess, cancellationToken).Symbol;
+        return SymbolEqualityComparer.Default.Equals(sourceMember, requiredMember) &&
+               IsReferenceToSymbol(
+                   sourceMemberAccess.Expression,
+                   sourceParameter,
+                   semanticModel,
+                   cancellationToken);
+    }
+
+    private static bool IsReferenceToSymbol(
+        ExpressionSyntax expression,
+        ISymbol expectedSymbol,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            expression = parenthesized.Expression;
+        }
+
+        if (expression is not IdentifierNameSyntax identifier)
+        {
+            return false;
+        }
+
+        var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+        return symbol is not null && SymbolEqualityComparer.Default.Equals(symbol, expectedSymbol);
+    }
+
+    private static ExpressionSyntax? GetSingleReturnedExpression(MethodDeclarationSyntax declaration)
+    {
+        if (declaration.ExpressionBody?.Expression is not null)
+        {
+            return declaration.ExpressionBody.Expression;
+        }
+
+        return declaration.Body?.Statements.Count == 1 &&
+               declaration.Body.Statements[0] is ReturnStatementSyntax returnStatement
+            ? returnStatement.Expression
+            : null;
+    }
+
+    private static InitializerExpressionSyntax? GetObjectInitializer(ExpressionSyntax expression)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            expression = parenthesized.Expression;
+        }
+
+        return expression switch
+        {
+            ObjectCreationExpressionSyntax objectCreation => objectCreation.Initializer,
+            ImplicitObjectCreationExpressionSyntax implicitObjectCreation => implicitObjectCreation.Initializer,
+            _ => null
+        };
+    }
+
+    private static bool IsClosedItemType(ITypeSymbol type) =>
+        type.TypeKind == TypeKind.Struct ||
+        type is INamedTypeSymbol { IsSealed: true };
+
+    private static bool IsDirectlyStoredMember(ISymbol member, CancellationToken cancellationToken) =>
+        member switch
+        {
+            IFieldSymbol field => !field.IsStatic,
+            IPropertySymbol property => IsAutoProperty(property, cancellationToken),
+            _ => false
+        };
+
+    private static bool IsAutoProperty(IPropertySymbol property, CancellationToken cancellationToken)
+    {
+        if (property.IsStatic || property.DeclaringSyntaxReferences.Length != 1)
+        {
+            return false;
+        }
+
+        var declaration = property.DeclaringSyntaxReferences[0].GetSyntax(cancellationToken) as PropertyDeclarationSyntax;
+        return declaration?.AccessorList is not null &&
+               declaration.AccessorList.Accessors.Count > 0 &&
+               declaration.AccessorList.Accessors.All(accessor =>
+                   accessor.Body is null && accessor.ExpressionBody is null);
     }
 
     private static bool ContainsNode(SyntaxNode container, SyntaxNode candidate) =>

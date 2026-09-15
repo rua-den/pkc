@@ -97,6 +97,56 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Predicate_preserving_same_type_method_group_projection_remains_authoritative()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            """
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished)
+                    .Select(CloneCard)
+                    .ToArray();
+
+            private static Card CloneCard(Card card) => new()
+            {
+                IsPublished = card.IsPublished,
+                Blocked = card.Blocked
+            };
+            """,
+            "[new() { IsPublished = true, Blocked = false }, new() { IsPublished = false, Blocked = true }]",
+            AutoPropertyCardDeclaration);
+
+        Assert.Contains(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Same_type_method_group_that_changes_predicate_member_is_not_authoritative()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            """
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished)
+                    .Select(RewriteCard)
+                    .ToArray();
+
+            private static Card RewriteCard(Card card) => new()
+            {
+                IsPublished = false,
+                Blocked = card.Blocked
+            };
+            """,
+            "[new() { IsPublished = true, Blocked = false }, new() { IsPublished = false, Blocked = true }]",
+            AutoPropertyCardDeclaration);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Filter_passed_to_helper_that_discards_result_is_not_authoritative()
     {
         var knowledge = await BuildKnowledgeAsync("""
@@ -113,7 +163,8 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
 
     private static async Task<FeatureKnowledge> BuildKnowledgeAsync(
         string methodBody,
-        string cardsInitializer = "[new(true, false), new(false, true)]")
+        string cardsInitializer = "[new(true, false), new(false, true)]",
+        string cardDeclaration = "public sealed record Card(bool IsPublished, bool Blocked);")
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -125,7 +176,9 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "Demo.csproj"), Project);
-            await File.WriteAllTextAsync(Path.Combine(root, "Catalog.cs"), Source(methodBody, cardsInitializer));
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "Catalog.cs"),
+                Source(methodBody, cardsInitializer, cardDeclaration));
 
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
 
@@ -147,14 +200,17 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
         }
     }
 
-    private static string Source(string methodBody, string cardsInitializer) => $$"""
+    private static string Source(
+        string methodBody,
+        string cardsInitializer,
+        string cardDeclaration) => $$"""
         using System;
         using System.Collections.Generic;
         using System.Linq;
 
         namespace Demo;
 
-        public sealed record Card(bool IsPublished, bool Blocked);
+        {{cardDeclaration}}
 
         public sealed class Store
         {
@@ -170,6 +226,14 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
 
             [HttpGet]
             public IReadOnlyList<Card> GetCards() => _store.GetCards();
+        }
+        """;
+
+    private const string AutoPropertyCardDeclaration = """
+        public sealed class Card
+        {
+            public bool IsPublished { get; init; }
+            public bool Blocked { get; init; }
         }
         """;
 
