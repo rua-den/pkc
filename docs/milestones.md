@@ -24,7 +24,7 @@ React/TypeScript static evidence adds routes, screens, actions, permission guard
 
 V0.4 is complete only when generated portable knowledge is sufficiently rich for an AI to answer practical Product Owner questions about observable behavior, business conditions and cross-layer outcomes without re-reading source code.
 
-PKC must preserve three distinct knowledge classes as it improves product-level synthesis: authoritative business conditions, lower-authority value lineage/provenance, and mutation/causality evidence. Conservative downgrade must prevent false business claims without deleting deterministic causal evidence that can answer `where did this value come from?` or `why did this value/status change?` questions. See `docs/product-knowledge-contract.md`.
+PKC must preserve three distinct knowledge classes: authoritative business conditions, lower-authority value lineage/provenance, and mutation/causality evidence. Conservative downgrade must prevent false business claims without deleting deterministic causal evidence. See `docs/product-knowledge-contract.md`.
 
 Representative exit questions:
 
@@ -69,127 +69,96 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-6.md
-reviewed production: 18a1f1d1ef551833d859f23ea2e92dd548a6a81d
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md
+reviewed production: eb0903ef93b2b85669ded0e2227ca1a950bc49c7
 verdict: FAIL / FIX REQUIRED
-```
-
-Current production checkpoint awaiting re-review:
-
-```text
-eb0903ef93b2b85669ded0e2227ca1a950bc49c7
-fix: fail closed on callback-bearing where pipelines
-```
-
-Fresh independent review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-7-request.md
 ```
 
 Current disposition:
 
 ```text
-B6.1 PASS  — exact C# invocation semantic identity; keep closed
-B6.2 PASS  — conservative configured-item ownership; keep closed
-B6.3 PASS  — active module-qualified Angular service ownership; keep closed
-B6.4 IMPLEMENTATION GREEN — callback/comparer-bearing Where pipeline preservation now fails closed outside the audited safe subset
+B6.1 PASS — exact C# invocation semantic identity; keep closed
+B6.2 PASS — conservative configured-item ownership; keep closed
+B6.3 PASS — active module-qualified Angular service ownership; keep closed
+B6.4 BLOCK — same-type projector constructor effects are not proven safe
 ```
 
 Accepted B6.4 hardening already covers:
 
-1. local/discarded predicates do not become observable rules merely because a LINQ call exists;
+1. discarded/local predicates do not become observable rules merely because a LINQ call exists;
 2. transformed/polarity-changing return contexts for `Any`, `All`, `First*`, `Single*` fail closed unless modeled;
 3. arbitrary `Select` is not an unconditional preserving operation after `Where`;
 4. direct identity `Select(card => card)` is proven by symbol identity;
-5. same-type method-group projection requires a closed/sealed item type, complete predicate dependencies and direct object creation;
-6. unsupported whole-item/unmodeled predicate uses such as `helper(card)`, `card.SomeMethod()`, reference identity or custom/operator semantics cause conservative downgrade;
-7. every supported clone initializer entry must be a simple assignment to a direct stored non-static field or auto-property;
-8. every supported clone initializer assignment must be an exact same-member input→output copy, closing the custom-setter-after-copy path found in re-review 5;
-9. callback/comparer-bearing pipeline operations are no longer trusted merely from LINQ method identity.
+5. unsupported whole-item predicate dependencies cause conservative downgrade;
+6. same-type method-group projection requires a closed item type and direct same-member initializer copies;
+7. custom setter / nested / rewritten initializer effects fail closed;
+8. callback/comparer-bearing pipeline operations are not trusted merely from LINQ method identity;
+9. callback-free pipeline preservation is limited to an audited exact-shape subset.
 
-#### Rereview-6 blocker implementation
+#### Rereview-7 remaining blocker
 
-Rereview 6 demonstrated this compile-valid false-authority path:
+The same-type method-group defensive-clone path validates object initializer assignments but does not validate object-constructor effects.
+
+Counterexample:
 
 ```csharp
+public sealed class Card
+{
+    public bool IsPublished { get; set; }
+    public bool Blocked { get; set; }
+
+    public Card() { }
+    public Card(Card source) => source.IsPublished = false;
+}
+
 public IReadOnlyList<Card> GetCards() =>
     _cards
         .Where(card => card.IsPublished)
-        .OrderBy(card => card.IsPublished = false)
+        .Select(CloneCard)
         .ToArray();
+
+private static Card CloneCard(Card card) => new Card(card)
+{
+    IsPublished = card.IsPublished,
+    Blocked = card.Blocked
+};
 ```
 
 Execution:
 
 ```text
-Where sees IsPublished == true
-→ item passes
-→ OrderBy key selector mutates IsPublished = false
-→ returned item has IsPublished == false
+Where passes while IsPublished == true
+→ projector constructor mutates source IsPublished = false
+→ initializer copies false
+→ returned clone has IsPublished == false
 ```
 
-The old allowlist could still preserve:
+The current proof can still preserve the earlier `Where` predicate because constructor arguments/body are outside the modeled safe-initializer boundary.
+
+Required generic authority boundary:
 
 ```text
-Includes items from `_cards` only when `card.IsPublished`.
+complete predicate dependencies
++ same closed item type
++ object-construction path proven effect-safe
++ every initializer write proven safe
++ every required predicate member copied
+→ authoritative returned-item predicate may be retained
+
+otherwise
+→ observed-only / omitted authoritative rule
 ```
 
-Production `eb0903ef...` replaces that broad authority with an exact-shape callback-free safe subset.
+A conservative V0.4.6 fix may require an implicit/default inert constructor and fail closed for constructor arguments or user-defined constructor code unless deterministically proven safe.
 
-Safe zero-argument operations:
-
-```text
-Reverse
-AsEnumerable
-AsQueryable
-ToArray
-ToList
-```
-
-Safe slice operations only with exact supported argument shape:
-
-```text
-Skip
-Take
-```
-
-No longer automatically preserving solely from resolved target:
-
-```text
-OrderBy / OrderByDescending
-ThenBy / ThenByDescending
-Distinct
-ToHashSet
-```
-
-This boundary is intentionally conservative. Default equality may execute item `Equals`/`GetHashCode`, and explicit comparers/selectors may execute arbitrary user code; without deterministic effect proof these operations fail closed for authoritative returned-item predicate semantics.
-
-Focused regression coverage added:
-
-```text
-Side_effecting_ordering_callback_downgrades_returned_filter_authority
-Equality_comparer_pipeline_downgrades_returned_filter_authority
-Default_item_equality_pipeline_downgrades_returned_filter_authority
-Callback_free_enumerable_and_queryable_pipeline_remains_authoritative
-```
-
-Existing positive behavior remains intentionally supported where deterministic preservation is proven, including direct returned `Where`, materialization through `ToArray`/`ToList`, `Skip`/`Take`, `Reverse`, `AsEnumerable`/`AsQueryable`, identity `Select(card => card)`, and the accepted same-type direct-member defensive clone path.
-
-This is an authority boundary only. Lower-authority value-lineage/mutation evidence remains a first-class product direction under `docs/product-knowledge-contract.md`; no lineage synthesis from V0.4.7 is implemented early.
-
-#### Validation checkpoint
-
-The coding sandbox did not provide `dotnet`, so the focused regression could not be executed locally before the implementation change. The defect was confirmed by inspecting the pre-fix implementation: membership in `WherePipelineTargets` caused an immediate preserving result without callback/comparer effect proof.
-
-Exact-SHA runtime verification for `eb0903ef93b2b85669ded0e2227ca1a950bc49c7`:
+Exact gates for the reviewed production checkpoint remain green:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34959028651 — PASS
@@ -208,53 +177,21 @@ WorkPlay:        PASS
 PokeTrade:       PASS
 ```
 
-PokeTrade evidence:
+Pinned Jellyfin artifact:
 
 ```text
-.NET 10 backend build:      PASS, 0 warnings / 0 errors
-Angular 22 build:           PASS
-live business acceptance:   PASS
-known-answer knowledge:     PASS
+id:      10391499835
+digest:  sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
+size:    9,016,935 bytes
 ```
 
-Pinned Jellyfin evidence:
-
-```text
-jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-source build:            PASS, 0 warnings / 0 errors
-facts:                   43,363
-relations:               195,314
-workflow candidates:     386
-product features:        116
-canonical Markdown:      504
-analysis mode:           project-semantic 43,363 / 43,363
-portable bundle parity:  PASS
-ZIP file-set parity:     PASS
-ZIP byte parity:         PASS
-raw .pkc leak:           none
-src/ source-tree leak:   none
-artifact id:             10391499835
-artifact digest:         sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
-artifact size:           9,016,935 bytes
-uploaded files:          509
-```
-
-V0.4.6 remains open. Green automation does not self-approve semantic authority. A fresh independent reviewer must inspect exact production SHA `eb0903ef93b2b85669ded0e2227ca1a950bc49c7` and return PASS before V0.4.6 may be marked complete.
+V0.4.6 remains open until a new implementation checkpoint closes this constructor-effect authority gap and a fresh independent review passes it.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 
 Purpose: broaden supported direct business-logic patterns into robust cross-layer product-behavior understanding.
 
-Planned target coverage includes, without starting implementation before V0.4.6 passes:
-
-- frontend visibility/filter predicates that independently affect observable outcomes;
-- DTO/projection/computed transformations that change observable state;
-- cross-entity value lineage such as `ProductGroup.A → Product.A → Service.A` when source proves copy/derivation steps;
-- snapshot/copy versus dynamic/reference-derived value semantics;
-- later overrides and mutation/causality paths that explain why a persisted or returned value changed;
-- preservation of lower-authority causal evidence even when product-rule authority is downgraded;
-- composition of backend conditions, data/value flow and frontend behavior into a PO-facing explanation;
-- high-signal promotion so useful causal/value-origin knowledge is not buried in raw implementation noise.
+Planned target coverage includes frontend visibility predicates, DTO/projection transformations, cross-entity value lineage, snapshot/copy versus dynamic semantics, later overrides/mutation causality, and cross-layer PO-facing explanations.
 
 Do not start V0.4.7 while V0.4.6 lacks independent PASS.
 
@@ -262,7 +199,7 @@ Do not start V0.4.7 while V0.4.6 lacks independent PASS.
 
 Azure DevOps is planned as an additional compiler input for requirement intent, Epic/Feature/PBI history, status and traceability. ADO must not compensate for missing code-derived business logic.
 
-Until ADO is integrated, its absence should be declared as a global knowledge boundary rather than repeated as an `unknown` placeholder in every feature/workflow Markdown file. Feature-local unknowns remain appropriate only when the missing value materially affects that feature's answer.
+Until ADO is integrated, its absence should be declared as a global knowledge boundary rather than repeated in every feature/workflow file.
 
 V0.5 may start only after the V0.4.x PO-question-readiness exit gate independently passes.
 
