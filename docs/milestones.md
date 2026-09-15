@@ -95,11 +95,11 @@ W5 large-pack signal/noise
 
 PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidate.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
@@ -107,46 +107,37 @@ reviewed implementation: 9a0817b21075a3d810072a310ed8fd3314625cd8
 verdict: FAIL / FIX REQUIRED
 ```
 
+Current production checkpoint awaiting fresh independent review:
+
+```text
+a636172ea8575f46d51e503d1ba7ad6d861650fb
+fix: preserve proven same-type Select projections
+```
+
+Fresh review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
+```
+
 Current disposition:
 
 ```text
-B6.1 PASS  — exact C# invocation semantic identity
-B6.2 PASS  — conservative configured-item ownership
-B6.3 PASS  — active module-qualified Angular service ownership
-B6.4 BLOCK — arbitrary LINQ Select treated as preserving Where output-item semantics
+B6.1 PASS  — exact C# invocation semantic identity; keep closed
+B6.2 PASS  — conservative configured-item ownership; keep closed
+B6.3 PASS  — active module-qualified Angular service ownership; keep closed
+B6.4 IMPLEMENTED + GREEN — independent acceptance pending
 ```
 
 B6.1 remains closed by exact invocation semantic re-resolution through Roslyn using source path + syntax `SpanStart`.
 
 B6.2 remains closed by direct configured-item ownership; nested property objects are not promoted as collection items.
 
-B6.3 is now independently accepted. Module-qualified service ownership requires lexically active relative import evidence. Comment/string/template import-like text has zero authority; conflicting local-name imports are ambiguous; unresolved ownership is omitted rather than guessed.
+B6.3 remains independently accepted. Module-qualified service ownership requires lexically active relative import evidence. Comment/string/template import-like text has zero authority; conflicting local-name imports are ambiguous; unresolved ownership is omitted rather than guessed.
 
-B6.4 still has one false-product-claim path. The current `Where` return-pipeline allowlist accepts arbitrary `Enumerable.Select` / `Queryable.Select` as though projection preserved the original filtered item identity.
+B6.4's re-review-3 blocker was arbitrary `Select` authority after a returned `Where` pipeline. The implementation now requires deterministic item-semantics preservation instead of trusting the method name `Select`.
 
-Counterexample:
-
-```csharp
-private readonly List<Card> _cards =
-[
-    new Card(IsPublished: false),
-    new Card(IsPublished: true)
-];
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .Select(_ => _cards[0])
-        .ToArray();
-```
-
-The returned list contains unpublished `_cards[0]`, but current authority can still synthesize:
-
-```text
-Includes items from `_cards` only when `card.IsPublished`.
-```
-
-That violates the V0.4.6 authority boundary:
+Required boundary remains:
 
 ```text
 exact predicate identity proven
@@ -158,39 +149,68 @@ otherwise
 → local/lower-authority evidence or omitted product-level claim
 ```
 
-Required coding checkpoint:
+Current supported `Select` proof is conservative:
 
 ```text
-focused red regression:
-  Where(...).Select(nonIdentity).ToArray()
+direct identity selector:
+  card => card
 
-then:
-  generic item-semantics-preservation fix
-  focused green
-  related/full local tests
-  one coherent implementation commit/push
-  PokeTrade/Loren/Loren-main/Jellyfin/parity gates
-  fresh independent V0.4.6 re-review
+or same-type method-group projector where:
+  input type == return type
+  item type is sealed or struct
+  projector source is available
+  predicate-relevant fields/auto-properties are known
+  every predicate-relevant member is directly copied input.Member → output.Member
 ```
 
-The existing identity projection positive regression `.Select(card => card)` may remain authoritative only if identity preservation is explicitly proven rather than inferred from the method name `Select` alone.
+Arbitrary projections such as this are rejected:
 
-All exact-checkpoint gates for `9a0817b21075a3d810072a310ed8fd3314625cd8` are green:
+```csharp
+_cards
+    .Where(card => card.IsPublished)
+    .Select(_ => _cards[0])
+    .ToArray();
+```
+
+Same-type projectors that rewrite a predicate member are also rejected.
+
+Focused B6.4 regressions include:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34920522723 — PASS
-pinned Loren                            34920522961 — PASS
-Loren-main canary                       34920522799 — PASS
-pinned Jellyfin                         34920522831 — PASS
+Non_identity_projection_does_not_preserve_returned_filter_authority
+Returned_filter_through_supported_projection_pipeline_remains_authoritative
+Predicate_preserving_same_type_method_group_projection_remains_authoritative
+Same_type_method_group_that_changes_predicate_member_is_not_authoritative
+```
+
+Implementation history:
+
+```text
+ea9f423bdd6ab37658b632cdfa3fcd7c6f0c0d9f
+  rejected arbitrary Select; C# suite green; final CI exposed safe PokeTrade Select(CloneCard) false-negative
+
+a636172ea8575f46d51e503d1ba7ad6d861650fb
+  added conservative same-type predicate-member-copy proof; all final gates green
+```
+
+Final gates for `a636172ea8575f46d51e503d1ba7ad6d861650fb`:
+
+```text
+CI + PKC tests + WorkPlay + PokeTrade   34931116584 — PASS
+pinned Loren                            34931116570 — PASS
+Loren-main canary                       34931116599 — PASS
+pinned Jellyfin                         34931116503 — PASS
 portable parity / no source leak        PASS
 ```
 
-Exact core test counts:
+Exact core test evidence:
 
 ```text
-C# tests:       72 / 72 PASS
-frontend tests: 13 / 13 PASS
-PKC build:      0 warnings / 0 errors
+PKC build:       0 warnings / 0 errors
+C# tests:        75 / 75 PASS
+frontend tests:  13 / 13 PASS
+WorkPlay:        PASS
+PokeTrade:       PASS
 ```
 
 Pinned Jellyfin remains:
@@ -207,21 +227,20 @@ portable bundle parity: PASS
 portable ZIP parity:    PASS
 raw .pkc leak:          none
 src/ source-tree leak:  none
-artifact id:            10377409728
-artifact digest:        sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
+artifact id:            10381642948
+artifact digest:        sha256:1e4df6f7c0b77ce7a72488462c209b4b5a783647f88b1fb7c9c737e8a7ba507f
 ```
 
-Green automation does **not** complete V0.4.6 while the concrete B6.4 false-product-claim path remains.
+V0.4.6 is **not complete until fresh independent review returns PASS**.
 
-If a future independent review returns PASS after the blocker is fixed:
+Until then:
 
 ```text
-mark V0.4.6 COMPLETE
-unlock V0.4.7 as next/current milestone
-keep V0.5 Azure DevOps locked
+V0.4.7 LOCKED
+V0.5   LOCKED
 ```
 
-Until then, stay in V0.4.6.
+If the fresh independent review passes, mark V0.4.6 COMPLETE and unlock V0.4.7 as next/current milestone. Keep V0.5 Azure DevOps locked.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 

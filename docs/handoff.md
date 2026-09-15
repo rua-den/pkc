@@ -27,22 +27,28 @@ The V0.4.x exit standard is business-logic and PO-question readiness, not merely
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Latest reviewed implementation checkpoint:
+Production checkpoint to review:
 
 ```text
-9a0817b21075a3d810072a310ed8fd3314625cd8
-fix: enforce observable authority boundaries
+a636172ea8575f46d51e503d1ba7ad6d861650fb
+fix: preserve proven same-type Select projections
 ```
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
+```
+
+Fresh review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
 ```
 
 Current disposition:
@@ -50,17 +56,29 @@ Current disposition:
 ```text
 B6.1  PASS / keep closed
 B6.2  PASS / keep closed
-B6.3  PASS / independently accepted
-B6.4  BLOCK / one remaining authority defect
+B6.3  PASS / keep closed
+B6.4  IMPLEMENTED + GREEN / fresh independent acceptance pending
 ```
 
-Do not start V0.4.7 until B6.4 is fixed and V0.4.6 receives a fresh independent PASS.
+Do not mark V0.4.6 complete yet. Do not start V0.4.7 or Azure DevOps until a fresh independent V0.4.6 review returns PASS.
+
+## Read first in the next review thread
+
+```text
+1. docs/status.md
+2. docs/handoff.md
+3. docs/milestones.md
+4. docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
+5. docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
+```
+
+Then inspect current remote `main`. The docs-only HEAD may be newer than the production checkpoint; review production behavior at `a636172ea8575f46d51e503d1ba7ad6d861650fb`.
 
 ## Accepted/closed scope
 
 ### B6.1 — PASS
 
-The same-line semantic-authority collision remains closed. The final C# predicate authority stage re-resolves the exact invocation by syntax `SpanStart` in the target project semantic model and accepts only the exact supported LINQ symbol.
+The same-line semantic-authority collision is closed. Final C# predicate authority re-resolves the exact invocation by syntax `SpanStart` in the target project semantic model and accepts only the exact supported LINQ symbol.
 
 Regression:
 
@@ -72,35 +90,13 @@ Do not reopen without a new concrete contradiction.
 
 ### B6.2 — PASS
 
-Configured-item ownership remains conservative for reviewed supported initializer forms. Nested property objects are not promoted as direct configured items of the source collection.
+Configured-item ownership remains conservative for reviewed supported initializer forms. Nested property objects are not promoted as direct collection items.
 
 Do not reopen without a new concrete contradiction.
 
 ### B6.3 — PASS
 
-The inactive-import authority blocker is closed.
-
-Current generic behavior:
-
-```text
-API owner identity:
-  normalized TypeScript source module path + exported class
-
-component service identity:
-  resolved relative active import module + exported class
-
-inactive import-like text:
-  line comments     → no authority
-  block comments    → no authority
-  quoted strings    → no authority
-  template literals → no authority
-
-conflicting active local-name imports:
-  ambiguous → no deterministic identity
-
-unresolved/non-relative module:
-  no authoritative endpoint → result/list correlation
-```
+Module-qualified Angular service ownership requires lexically active relative import evidence. Comment/string/template import-like text has no authority. Conflicting active local-name imports are ambiguous, and unresolved/non-relative ownership is omitted rather than guessed.
 
 Regression:
 
@@ -108,88 +104,13 @@ Regression:
 Inactive_import_like_text_does_not_override_active_service_module
 ```
 
-Independent review found conservative false-negative edges but no remaining false ownership-authority path in V0.4.6 scope.
+Independent re-review 3 accepted B6.3. Do not reopen without a new concrete contradiction.
 
-## Remaining blocker: B6.4 — arbitrary `Select` is not item-semantics-preserving
+## B6.4 implementation checkpoint
 
-The previous B6.4 problems are fixed for negation, null/pattern transformations, arbitrary helper wrapping, discarded local queries and throwing guards.
+Independent re-review 3 found one remaining false-authority path: arbitrary LINQ `Select` was treated as preserving a preceding `Where` predicate's observable item semantics.
 
-The remaining problem is the `Where` receiver-chain allowlist.
-
-Current production code treats both:
-
-```text
-System.Linq.Enumerable.Select
-System.Linq.Queryable.Select
-```
-
-as operations that preserve the original `Where` predicate's observable inclusion semantics.
-
-That is not true for arbitrary projections.
-
-Concrete counterexample:
-
-```csharp
-private readonly List<Card> _cards =
-[
-    new Card(IsPublished: false),
-    new Card(IsPublished: true)
-];
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .Select(_ => _cards[0])
-        .ToArray();
-```
-
-Actual behavior:
-
-```text
-Where keeps the published card
-Select replaces it with unpublished _cards[0]
-returned list contains an unpublished source card
-```
-
-Current PKC authority path can still promote the predicate as observable and synthesize:
-
-```text
-Includes items from `_cards` only when `card.IsPublished`.
-```
-
-That claim is false.
-
-The existing positive regression only proves this safe identity projection:
-
-```csharp
-.Select(card => card)
-```
-
-It does not justify accepting arbitrary `Select` in production.
-
-### Required generic fix property
-
-```text
-Where predicate
-+ every outer receiver-chain operation proven to preserve output-item semantics
-→ authoritative inclusion rule
-
-otherwise
-→ businessRuleAuthority=observed-only
-→ observes-predicate
-→ no product-level inclusion rule
-```
-
-For the current V0.4.6 scope, the safest minimal fix is either:
-
-- prove that `Select` is identity-preserving before keeping authority; or
-- treat arbitrary `Select` as non-preserving and downgrade it.
-
-Do not create a selector-specific special case for the fixture. The rule must be generic.
-
-### Regression-first coding sequence
-
-Add a focused regression with:
+Counterexample from the review:
 
 ```csharp
 _cards
@@ -198,49 +119,101 @@ _cards
     .ToArray();
 ```
 
-Before the fix, confirm that generated product knowledge incorrectly contains:
+The implementation now removes `Select` from the unconditional `Where` receiver-pipeline allowlist.
 
-```text
-Includes items from `_cards` only when `card.IsPublished`.
+A `Select` is accepted only when item-semantics preservation is deterministically proven for supported forms.
+
+### Supported proof 1 — direct identity lambda
+
+```csharp
+.Select(card => card)
 ```
 
-After the generic fix, that authoritative rule must disappear.
+The returned identifier must resolve by Roslyn symbol equality to the selector source parameter.
 
-Keep the existing identity-projection positive case green if identity preservation is intentionally modeled.
+### Supported proof 2 — conservative same-type method-group copy
 
-Use the repository workflow:
+This exists because PokeTrade's genuine known-answer path uses:
 
-```text
-focused red
-→ generic fix
-→ focused green
-→ related tests
-→ full relevant local suite
-→ review complete diff
-→ one coherent implementation commit
-→ one push
-→ final CI verification
+```csharp
+.Where(...)
+.Select(CloneCard)
+.ToArray();
 ```
 
-Do not use GitHub Actions as the edit-test loop.
-
-## Exact reviewed-checkpoint gates
-
-All final gates for `9a0817b21075a3d810072a310ed8fd3314625cd8` were green:
+PKC does **not** allow arbitrary method groups. Authority is kept only when all relevant proof succeeds:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34920522723 — PASS
-pinned Loren                            34920522961 — PASS
-Loren-main canary                       34920522799 — PASS
-pinned Jellyfin                         34920522831 — PASS
-Jellyfin portable parity/provenance     PASS
+selector resolves uniquely to a source method
+projector has exactly one source parameter
+parameter type == return type
+item type is sealed or a struct
+projector source declaration is available
+Where directly reads known stored fields/auto-properties from its source parameter
+projector directly returns a same-type object initializer
+for every member used by the Where predicate:
+    returned.Member = input.Member
+is proven by symbol equality
+```
+
+If a predicate member is rewritten, defaulted, transformed, routed through an arbitrary helper, or cannot be proven, the `Where` predicate is downgraded to observed-only.
+
+Focused coverage:
+
+```text
+Non_identity_projection_does_not_preserve_returned_filter_authority
+Returned_filter_through_supported_projection_pipeline_remains_authoritative
+Predicate_preserving_same_type_method_group_projection_remains_authoritative
+Same_type_method_group_that_changes_predicate_member_is_not_authoritative
+```
+
+The original B6.4 regressions for negated `Any`/`All`, transformed `First*`/`Single*`, arbitrary helper wrapping, local side-path predicates and throwing guards remain green.
+
+## Implementation history and CI evidence
+
+### First checkpoint
+
+```text
+ea9f423bdd6ab37658b632cdfa3fcd7c6f0c0d9f
+fix: prove identity-preserving Select authority
+```
+
+This checkpoint correctly rejected the independent-review counterexample. C# tests were green at 73/73. Final CI then found one genuine integration regression:
+
+```text
+PokeTradePoQuestionReadinessTests.Mewtwo_catalog_visibility_is_answerable_from_compiled_knowledge
+```
+
+Source inspection showed PokeTrade uses `Select(CloneCard)` after its eligibility `Where`, and `CloneCard` copies the predicate-relevant auto-properties directly into a same-type sealed object. That is a valid supported semantic-preservation case, not a reason to restore arbitrary `Select` authority.
+
+### Final implementation checkpoint
+
+```text
+a636172ea8575f46d51e503d1ba7ad6d861650fb
+fix: preserve proven same-type Select projections
+```
+
+The final fix proves that narrow same-type member-copy shape and keeps non-identity projection rejected.
+
+This required a second implementation push because the first final-validation CI exposed a concrete integration defect. It was investigated from exact source before the second change; there was no speculative push loop.
+
+## Exact final automation evidence
+
+All final gates for `a636172ea8575f46d51e503d1ba7ad6d861650fb` are green:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   34931116584 — PASS
+pinned Loren                                34931116570 — PASS
+Loren-main canary                           34931116599 — PASS
+pinned Jellyfin                             34931116503 — PASS
+Jellyfin portable parity/provenance         PASS
 ```
 
 Exact CI counts/results:
 
 ```text
 PKC build:                 0 warnings / 0 errors
-C# tests:                  72 / 72 PASS
+C# tests:                  75 / 75 PASS
 frontend tests:            13 / 13 PASS
 local tool pack/install:   PASS
 WorkPlay build:            PASS
@@ -277,26 +250,53 @@ src/ source-tree leak:                                      none
 Jellyfin artifact:
 
 ```text
-artifact id:     10377409728
-artifact digest: sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
+artifact id:     10381642948
+artifact digest: sha256:1e4df6f7c0b77ce7a72488462c209b4b5a783647f88b1fb7c9c737e8a7ba507f
 ```
 
-Green automation is supporting evidence only and does not override B6.4.
+## Environment note
+
+The implementation session's sandbox could not resolve GitHub for a local clone and did not contain the .NET SDK, so it could not honestly execute local red/green tests. The source diff was reviewed before each publish. Exact-SHA CI was used as final verification; the first run exposed a real integration regression, which was source-inspected and fixed generically before the final checkpoint.
 
 ## Exact next action
 
-Coding thread only:
+Independent review only.
 
-1. read `docs/status.md`;
-2. read `docs/handoff.md`;
-3. read `docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md`;
-4. stay in V0.4.6;
-5. fix only the remaining B6.4 `Select` item-semantics authority blocker regression-first;
-6. validate locally before pushing;
-7. make one coherent implementation commit/push;
-8. rerun all current gates;
-9. update status/handoff with the new exact checkpoint;
-10. request another independent re-review.
+Review production behavior at:
 
-Do not start V0.4.7.
-Do not start Azure DevOps ingestion.
+```text
+a636172ea8575f46d51e503d1ba7ad6d861650fb
+```
+
+Challenge B6.4 adversarially, especially:
+
+```text
+arbitrary/non-identity Select must not preserve Where authority
+identity Select may preserve it only with exact proof
+same-type method-group projection must preserve every predicate-relevant stored member
+member rewrite/default/transform/helper indirection must downgrade authority
+no benchmark-specific production exception may exist
+```
+
+Keep B6.1/B6.2/B6.3 closed unless a new concrete contradiction appears.
+
+If independent review returns PASS:
+
+```text
+mark V0.4.6 COMPLETE
+unlock V0.4.7 as next/current milestone
+keep V0.5 Azure DevOps locked
+```
+
+If review finds a concrete blocker:
+
+```text
+focused regression
+→ generic minimum fix
+→ focused/related/full validation
+→ one coherent implementation checkpoint
+→ final gates
+→ independent re-review
+```
+
+Do not write more production code before such a blocker exists.
