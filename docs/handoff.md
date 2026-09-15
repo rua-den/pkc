@@ -22,7 +22,7 @@ Do not add direct source-to-freeform-AI generation.
 
 Permanent product-knowledge guardrail: `docs/product-knowledge-contract.md`.
 
-PKC must keep distinct and retain:
+Keep distinct and retain:
 
 ```text
 business conditions
@@ -30,40 +30,30 @@ value lineage / provenance
 mutation / causality
 ```
 
-Failing to prove an authoritative business rule must not erase deterministic causal/value-origin evidence. Example target question:
-
-> Where does Service.A come from besides the UI, and what code path can later change it?
-
-Until Azure DevOps is integrated, declare that missing evidence source once at the global knowledge boundary. Do not spam every feature/workflow Markdown file with ADO/product-intent unknown placeholders.
+Conservative downgrade of product-rule authority must not erase deterministic lower-authority evidence that can explain where a value came from or what code path changed it.
 
 ## Current state
 
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+V0.4.6  business logic reconstruction         INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Production checkpoint awaiting independent review:
+Latest reviewed production checkpoint:
 
 ```text
 18a1f1d1ef551833d859f23ea2e92dd548a6a81d
 fix: fail closed on unsafe same-type projector effects
 ```
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-5.md
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-6.md
 verdict: FAIL / FIX REQUIRED
-```
-
-Next independent review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-6-request.md
 ```
 
 Current disposition:
@@ -72,70 +62,128 @@ Current disposition:
 B6.1 PASS / keep closed
 B6.2 PASS / keep closed
 B6.3 PASS / keep closed
-B6.4 IMPLEMENTATION GREEN / independent acceptance pending
+B6.4 BLOCK / callback-bearing Where pipeline preservation remains unsafe
 ```
 
 Do not start V0.4.7 or Azure DevOps until V0.4.6 independently passes.
 
-## B6.4 implementation checkpoint
+## Closed scope
 
-Re-review 5 found one remaining false-authority path: a same-type projector could copy a predicate member correctly and then another initializer assignment could invoke a custom setter that mutates the copied predicate state.
+### B6.1 — PASS
 
-Checkpoint `18a1f1d1ef551833d859f23ea2e92dd548a6a81d` narrows the supported projector boundary instead of attempting general side-effect analysis.
+Exact C# predicate authority is tied to the exact invocation syntax/semantic identity. Same-line custom and genuine LINQ calls cannot borrow authority.
 
-Current generic rule:
+### B6.2 — PASS
 
-```text
-same-type Select method-group projector preserves Where authority only when
-  predicate dependencies are completely proven
-AND
-  every initializer entry is a simple assignment
-AND
-  every output target is a direct non-static field or auto-property
-AND
-  every assignment is exact same-member input → output copy
-AND
-  every predicate-required member is copied
+Configured-item ownership remains conservative; nested property object initializers are not promoted as direct collection items.
 
-anything else
-→ no projection-preservation proof
-→ observed-only / no authoritative Product Owner inclusion rule
-```
+### B6.3 — PASS
 
-This rejects custom setters, nested/unmodeled effects, constants/rewrites/helpers in clone assignments and other output mutations that have not been proven harmless.
+Angular service correlation requires lexically active module-qualified relative import evidence. Ambiguous/unresolved ownership is omitted rather than guessed.
 
-Focused regression:
+## B6.4 — remaining blocker
+
+Re-review 5's same-type projector custom-setter gap is closed by `18a1f1d1...`.
+
+The same-type method-group clone path now requires every supported initializer assignment to be a direct same-member input→output copy targeting a direct stored non-static field or auto-property. Custom setters and unmodeled initializer effects therefore fail closed.
+
+Focused regression that remains green:
 
 ```text
 Later_custom_setter_that_invalidates_predicate_state_downgrades_projection_authority
 ```
 
-Regression-fixture note: the re-review-5 example's source initializer order would itself run the mutating setter after `IsPublished = true`, leaving the source false before `Where`. The production regression uses behavior-valid ordering (`Blocked = false, IsPublished = true`) so the source passes `Where` and the returned clone is then invalidated by the later setter. The independent review document is intentionally left unchanged as an audit record.
+However, the broader `Where` pipeline still contains delegate-bearing operations that are accepted solely from their LINQ semantic target.
 
-Positive regression retained:
-
-```text
-Predicate_preserving_same_type_method_group_projection_remains_authoritative
-```
-
-Arbitrary non-identity projection remains conservative:
+Current unconditional allowlist includes:
 
 ```text
-Non_identity_projection_does_not_preserve_returned_filter_authority
+OrderBy / OrderByDescending
+ThenBy / ThenByDescending
 ```
 
-The authority downgrade is not permission to delete deterministic assignment/mutation evidence. Future lineage/causality synthesis must be able to preserve facts such as `ProductGroup.A → Product.A → Service.A` and setter-driven changes while keeping product-intent authority separate.
+and their Enumerable/Queryable targets. `IsAllowedWherePipelineInvocation()` returns true for a target in `WherePipelineTargets` without proving that the operation's selector/comparer cannot mutate predicate-relevant item state.
 
-## Exact checkpoint verification
+### Compile-valid counterexample
 
-All current gates are green on exact production SHA `18a1f1d1ef551833d859f23ea2e92dd548a6a81d`:
+```csharp
+public sealed class Card
+{
+    public bool IsPublished { get; set; }
+}
+
+private readonly List<Card> _cards =
+[
+    new() { IsPublished = true }
+];
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished)
+        .OrderBy(card => card.IsPublished = false)
+        .ToArray();
+```
+
+Runtime:
+
+```text
+Where sees IsPublished == true
+→ item passes
+→ OrderBy key selector sets IsPublished = false
+→ ToArray returns the same Card instance
+→ returned item has IsPublished == false
+```
+
+Current authority logic may still emit:
+
+```text
+Includes items from `_cards` only when `card.IsPublished`.
+```
+
+That Product Owner claim is false for the returned item state.
+
+## Required coding fix
+
+Fix only this B6.4 boundary, regression-first.
+
+Required generic property:
+
+```text
+exact LINQ operation proven
++ exact overload/argument shape proven
++ every callback/comparer that can execute during enumeration proven unable to invalidate predicate semantics
+→ pipeline operation may preserve authoritative Where semantics
+
+otherwise
+→ observed-only / no authoritative inclusion rule
+```
+
+A conservative V0.4.6 fix is acceptable. Callback-bearing `OrderBy*` / `ThenBy*` can simply stop preserving authority unless callback safety is deterministically proven.
+
+Audit the remaining `WherePipelineTargets` overloads for user callbacks/comparers rather than special-casing only the literal `OrderBy` name.
+
+Required focused regression:
+
+```csharp
+_cards
+    .Where(card => card.IsPublished)
+    .OrderBy(card => card.IsPublished = false)
+    .ToArray();
+```
+
+must not produce an authoritative inclusion rule.
+
+Preserve the accepted positive direct-return / safe materialization cases where preservation is truly deterministic.
+
+## Exact reviewed checkpoint gates
+
+All current automated gates are green on exact production SHA `18a1f1d1ef551833d859f23ea2e92dd548a6a81d`:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   34954590262 — PASS
 pinned Loren                                34954590188 — PASS
 Loren-main canary                           34954590239 — PASS
 pinned Jellyfin                             34954590155 — PASS
-Jellyfin portable parity/provenance         PASS
 ```
 
 Core evidence:
@@ -144,11 +192,10 @@ Core evidence:
 PKC build:                 0 warnings / 0 errors
 C# tests:                  77 / 77 PASS
 frontend tests:            13 / 13 PASS
-local tool pack/install:   PASS in CI runner
 WorkPlay build:            PASS
 PokeTrade backend build:   PASS
 PokeTrade Angular build:   PASS
-PokeTrade live branches:   PASS
+PokeTrade acceptance:      PASS
 PokeTrade knowledge check: PASS
 ```
 
@@ -161,7 +208,7 @@ facts:                   43,363
 relations:               195,314
 workflow candidates:     386
 product features:        116
-canonical Markdown:      504 files
+canonical Markdown:      504
 analysis mode:           project-semantic 43,363 / 43,363
 bundle parity:           PASS
 ZIP file-set parity:     PASS
@@ -170,31 +217,29 @@ raw .pkc leak:           none
 src/ source-tree leak:   none
 artifact id:             10390258392
 artifact digest:         sha256:6ba875d99cf64141267bb13811485cc025eabc87723beaa9f3a46a985860b497
-artifact size:           9,016,989 bytes
 ```
 
-## Validation environment note
+Green CI does not override the semantic blocker.
 
-The coding sandbox had no local `dotnet` executable, so local runtime red/green execution was unavailable. The regression, generic fix and coherent diff were reviewed before a single production push. Exact-head GitHub Actions then provided final runtime validation. Do not reinterpret that as local execution evidence.
+## Coding-thread workflow
 
-## Next thread / reviewer read order
+1. Read `docs/status.md` and this handoff first.
+2. Inspect current `main` HEAD and this latest review.
+3. Add one focused regression for the side-effecting `OrderBy` callback.
+4. Confirm the defect locally if tooling permits.
+5. Implement the minimum generic fail-closed fix and audit callback/comparer-bearing allowlist entries.
+6. Run focused and related tests locally, then the broader relevant suite.
+7. Review the full diff.
+8. Commit the regression + fix together in one coherent implementation commit.
+9. Push once.
+10. Record exact production SHA and final gate evidence.
+11. Stop and request another independent V0.4.6 review.
 
-1. `docs/status.md`
-2. `docs/handoff.md`
-3. `docs/milestones.md`
-4. `docs/product-knowledge-contract.md`
-5. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-5.md`
-6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-6-request.md`
-7. inspect current `main`, but semantically review exact production checkpoint below
+Do not use GitHub Actions as the normal edit/test loop.
 
-Independent reviewer must review exact production checkpoint:
+Until independent PASS:
 
 ```text
-18a1f1d1ef551833d859f23ea2e92dd548a6a81d
+V0.4.7 LOCKED
+V0.5 LOCKED
 ```
-
-not a later docs-only handoff SHA.
-
-If independent review returns PASS, mark V0.4.6 complete and unlock V0.4.7. Keep V0.5 locked.
-
-Until then, do not advance milestones and do not modify production without a new concrete blocker.
