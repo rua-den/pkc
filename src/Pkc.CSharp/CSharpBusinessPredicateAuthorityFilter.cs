@@ -525,7 +525,12 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
         var declarationModel = semanticModel.Compilation.GetSemanticModel(declaration.SyntaxTree, ignoreAccessibility: true);
         var createdType = declarationModel.GetTypeInfo(returnedExpression, cancellationToken).Type;
-        if (!SymbolEqualityComparer.Default.Equals(createdType, projector.ReturnType))
+        if (!SymbolEqualityComparer.Default.Equals(createdType, projector.ReturnType) ||
+            !IsEffectSafeObjectConstruction(
+                returnedExpression,
+                projector.ReturnType,
+                declarationModel,
+                cancellationToken))
         {
             return false;
         }
@@ -634,6 +639,89 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 
         members = collectedMembers;
         return true;
+    }
+
+    private static bool IsEffectSafeObjectConstruction(
+        ExpressionSyntax expression,
+        ITypeSymbol expectedType,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            expression = parenthesized.Expression;
+        }
+
+        var argumentCount = expression switch
+        {
+            ObjectCreationExpressionSyntax objectCreation => objectCreation.ArgumentList?.Arguments.Count ?? 0,
+            ImplicitObjectCreationExpressionSyntax implicitObjectCreation => implicitObjectCreation.ArgumentList.Arguments.Count,
+            _ => -1
+        };
+        if (argumentCount != 0)
+        {
+            return false;
+        }
+
+        var symbolInfo = semanticModel.GetSymbolInfo(expression, cancellationToken);
+        var constructor = symbolInfo.Symbol as IMethodSymbol ??
+                          symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().SingleOrDefault();
+        if (constructor is null ||
+            constructor.MethodKind != MethodKind.Constructor ||
+            !constructor.IsImplicitlyDeclared ||
+            constructor.Parameters.Length != 0 ||
+            !SymbolEqualityComparer.Default.Equals(constructor.ContainingType, expectedType) ||
+            expectedType is not INamedTypeSymbol namedType)
+        {
+            return false;
+        }
+
+        if (namedType.TypeKind == TypeKind.Class &&
+            namedType.BaseType?.SpecialType != SpecialType.System_Object)
+        {
+            return false;
+        }
+
+        return !HasInstanceInitializationCode(namedType, cancellationToken);
+    }
+
+    private static bool HasInstanceInitializationCode(
+        INamedTypeSymbol type,
+        CancellationToken cancellationToken)
+    {
+        foreach (var syntaxReference in type.DeclaringSyntaxReferences)
+        {
+            if (syntaxReference.GetSyntax(cancellationToken) is not TypeDeclarationSyntax declaration)
+            {
+                continue;
+            }
+
+            foreach (var member in declaration.Members)
+            {
+                if (member is FieldDeclarationSyntax field &&
+                    !field.Modifiers.Any(SyntaxKind.StaticKeyword) &&
+                    field.Declaration.Variables.Any(variable => variable.Initializer is not null))
+                {
+                    return true;
+                }
+
+                if (member is EventFieldDeclarationSyntax eventField &&
+                    !eventField.Modifiers.Any(SyntaxKind.StaticKeyword) &&
+                    eventField.Declaration.Variables.Any(variable => variable.Initializer is not null))
+                {
+                    return true;
+                }
+
+                if (member is PropertyDeclarationSyntax property &&
+                    !property.Modifiers.Any(SyntaxKind.StaticKeyword) &&
+                    property.Initializer is not null)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static bool IsSafeDirectCloneInitializer(
