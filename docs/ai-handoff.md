@@ -25,6 +25,8 @@ PKC_KNOWLEDGE.zip           archive transport of knowledge/
 
 Do not make ZIP parsing a requirement for PKC knowledge consumption. Archive support differs across AI products.
 
+The product-knowledge authority/retention rules are defined in `docs/product-knowledge-contract.md`. In particular, business-rule downgrade must not erase deterministic value-lineage or mutation/causality evidence that may answer provenance or diagnostic questions.
+
 ## Recommended PO experience
 
 ### Path A — single-file upload
@@ -68,9 +70,20 @@ If the destination cannot inspect ZIP content, use the single-file bundle or the
 5. respect `Important unknowns` and never invent missing UI/runtime/delivery/product-intent evidence;
 6. distinguish production behavior from conditional/development-only behavior;
 7. prefer explicit unknown over unsupported inference;
-8. cite the relevant knowledge file/path when explaining an important claim when practical.
+8. use deterministic value-origin and mutation evidence when answering `where did this value come from?` or `why did this value/status change?` questions, without silently converting observed causality into approved business intent;
+9. cite the relevant knowledge file/path when explaining an important claim when practical.
 
 The instructions must not contain repository-specific behavior. They describe how to consume any PKC knowledge pack.
+
+## Evidence-source boundary and signal-to-noise
+
+Only evidence sources that PKC has actually integrated should generate detailed per-feature/per-workflow knowledge.
+
+Unavailable sources such as Azure DevOps before V0.5 integration should be declared once at the global knowledge boundary/index level. PKC should not repeat placeholders such as `Azure DevOps history: unknown` or `product intent unavailable` across every generated Markdown file.
+
+A feature/workflow should carry an explicit unknown when that unknown materially affects the answer for that feature, for example an unresolved runtime feature flag, database/configuration value, external-system response or other value that changes observable behavior.
+
+This keeps the portable pack high-signal without weakening honest uncertainty.
 
 ## Bundle contract
 

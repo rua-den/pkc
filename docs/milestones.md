@@ -24,9 +24,13 @@ React/TypeScript static evidence adds routes, screens, actions, permission guard
 
 V0.4 is complete only when generated portable knowledge is sufficiently rich for an AI to answer practical Product Owner questions about observable behavior, business conditions and cross-layer outcomes without re-reading source code.
 
-Representative exit question:
+PKC must preserve three distinct knowledge classes as it improves product-level synthesis: authoritative business conditions, lower-authority value lineage/provenance, and mutation/causality evidence. Conservative downgrade must prevent false business claims without deleting deterministic causal evidence that can answer `where did this value come from?` or `why did this value/status change?` questions. See `docs/product-knowledge-contract.md`.
+
+Representative exit questions:
 
 > When is entity X sellable/visible on the web, and what exact conditions must be true for it to appear?
+
+> Where does field X on entity Y come from besides the UI, and what code path can later change it?
 
 ### V0.4.1 — Frontend adapter architecture — COMPLETE
 
@@ -135,7 +139,7 @@ otherwise
 → observed-only / omitted authoritative rule
 ```
 
-Conservative rejection of custom setter / nested / unproven initializer effects is acceptable for V0.4.6.
+Conservative rejection of custom setter / nested / unproven initializer effects is acceptable for V0.4.6. That downgrade is an authority decision only; deterministic assignment/mutation evidence must remain available for future lineage/causality synthesis rather than being erased.
 
 Exact gates for reviewed production checkpoint `7f652c717c17f40f99a08b126b889a27a84c6376` remain green:
 
@@ -167,11 +171,24 @@ V0.4.6 remains open until a new implementation checkpoint fixes B6.4 and indepen
 
 Purpose: broaden supported direct business-logic patterns into robust cross-layer product-behavior understanding.
 
+Planned target coverage includes, without starting implementation before V0.4.6 passes:
+
+- frontend visibility/filter predicates that independently affect observable outcomes;
+- DTO/projection/computed transformations that change observable state;
+- cross-entity value lineage such as `ProductGroup.A → Product.A → Service.A` when source proves copy/derivation steps;
+- snapshot/copy versus dynamic/reference-derived value semantics;
+- later overrides and mutation/causality paths that explain why a persisted or returned value changed;
+- preservation of lower-authority causal evidence even when product-rule authority is downgraded;
+- composition of backend conditions, data/value flow and frontend behavior into a PO-facing explanation;
+- high-signal promotion so useful causal/value-origin knowledge is not buried in raw implementation noise.
+
 Do not start V0.4.7 while V0.4.6 lacks independent PASS.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 
 Azure DevOps is planned as an additional compiler input for requirement intent, Epic/Feature/PBI history, status and traceability. ADO must not compensate for missing code-derived business logic.
+
+Until ADO is integrated, its absence should be declared as a global knowledge boundary rather than repeated as an `unknown` placeholder in every feature/workflow Markdown file. Feature-local unknowns remain appropriate only when the missing value materially affects that feature's answer.
 
 V0.5 may start only after the V0.4.x PO-question-readiness exit gate independently passes.
 

@@ -518,7 +518,12 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         var sourceParameter = declarationModel.GetDeclaredSymbol(
             declaration.ParameterList.Parameters[0],
             cancellationToken);
-        if (sourceParameter is null)
+        if (sourceParameter is null ||
+            !IsSafeDirectCloneInitializer(
+                initializer,
+                sourceParameter,
+                declarationModel,
+                cancellationToken))
         {
             return false;
         }
@@ -607,6 +612,42 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         }
 
         members = collectedMembers;
+        return true;
+    }
+
+    private static bool IsSafeDirectCloneInitializer(
+        InitializerExpressionSyntax initializer,
+        IParameterSymbol sourceParameter,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        if (initializer.Expressions.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var expression in initializer.Expressions)
+        {
+            if (expression is not AssignmentExpressionSyntax assignment ||
+                !assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+            {
+                return false;
+            }
+
+            var targetMember = semanticModel.GetSymbolInfo(assignment.Left, cancellationToken).Symbol;
+            if (targetMember is null ||
+                !IsDirectlyStoredMember(targetMember, cancellationToken) ||
+                !IsDirectMemberCopy(
+                    assignment,
+                    targetMember,
+                    sourceParameter,
+                    semanticModel,
+                    cancellationToken))
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 

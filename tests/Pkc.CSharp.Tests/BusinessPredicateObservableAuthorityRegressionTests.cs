@@ -149,6 +149,31 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Later_custom_setter_that_invalidates_predicate_state_downgrades_projection_authority()
+    {
+        var knowledge = await BuildKnowledgeAsync(
+            """
+            public IReadOnlyList<Card> GetCards() =>
+                _cards
+                    .Where(card => card.IsPublished)
+                    .Select(CloneCard)
+                    .ToArray();
+
+            private static Card CloneCard(Card card) => new()
+            {
+                IsPublished = card.IsPublished,
+                Blocked = card.Blocked
+            };
+            """,
+            "[new() { Blocked = false, IsPublished = true }]",
+            MutatingSetterCardDeclaration);
+
+        Assert.DoesNotContain(knowledge.Rules, rule =>
+            rule.Contains("Includes items from `_cards` only when", StringComparison.Ordinal) &&
+            rule.Contains("card.IsPublished", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Same_type_method_group_that_changes_predicate_member_is_not_authoritative()
     {
         var knowledge = await BuildKnowledgeAsync(
@@ -261,6 +286,24 @@ public sealed class BusinessPredicateObservableAuthorityRegressionTests
         {
             public bool IsPublished { get; init; }
             public bool Blocked { get; init; }
+        }
+        """;
+
+    private const string MutatingSetterCardDeclaration = """
+        public sealed class Card
+        {
+            public bool IsPublished { get; set; }
+
+            private bool _blocked;
+            public bool Blocked
+            {
+                get => _blocked;
+                set
+                {
+                    _blocked = value;
+                    IsPublished = false;
+                }
+            }
         }
         """;
 
