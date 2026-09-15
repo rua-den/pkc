@@ -69,38 +69,32 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+### V0.4.6 — Business logic reconstruction — COMPLETE / INDEPENDENT REVIEW PASS
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest completed independent review:
+Final independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md
-reviewed production: eb0903ef93b2b85669ded0e2227ca1a950bc49c7
-verdict: FAIL / FIX REQUIRED
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-8.md
+reviewed production: 868195eff5435cca1c98d4bf6ffd4b18018daf66
+verdict: PASS / COMPLETE
 ```
 
-Production checkpoint awaiting fresh review:
+Accepted production checkpoint:
 
 ```text
 868195eff5435cca1c98d4bf6ffd4b18018daf66
 fix: require inert clone construction
 ```
 
-Fresh review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md
-```
-
-Current disposition:
+Final disposition:
 
 ```text
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — active module-qualified Angular service ownership; keep closed
-B6.4 IMPLEMENTATION GREEN — fresh independent semantic review required
+B6.4 PASS — constructor-effect authority gap closed; keep closed
 ```
 
 Accepted B6.4 hardening covers:
@@ -116,7 +110,7 @@ Accepted B6.4 hardening covers:
 9. callback-free pipeline preservation is limited to an audited exact-shape subset;
 10. same-type projector construction must itself be proven inert before earlier `Where` authority is retained.
 
-#### Rereview-7 constructor-effect checkpoint
+#### Accepted constructor-effect checkpoint
 
 Rereview 7 demonstrated that a copy constructor could mutate the source item after `Where` passed and before initializer values were copied. Production `868195eff...` closes that authority gap with a conservative generic boundary:
 
@@ -135,11 +129,13 @@ otherwise
 → observed-only / omitted authoritative rule
 ```
 
-Regression coverage now includes source-mutating copy constructors, user-defined parameterless constructors, implicit construction with instance initializers, and implicit construction with an effectful base constructor. Existing positive implicit inert defensive-clone behavior remains green.
+Regression coverage includes source-mutating copy constructors, user-defined parameterless constructors, implicit construction with instance initializers, and implicit construction with an effectful base constructor. Existing positive implicit inert defensive-clone behavior remains green.
 
-No benchmark-specific exception is present. Authority downgrade continues to preserve deterministic lower-authority mutation/provenance evidence.
+Independent rereview 8 additionally challenged constructor overloads, optional/`params` zero-argument calls, target-typed `new`, explicit `new Type()`, parenthesized creation, partial declarations, inheritance/base constructors and semantic candidate fallback. No compile-valid/behavior-valid bypass was found.
 
-Local sandbox lacked `dotnet`, so no local runtime claim is made. Exact-head CI is green:
+The rereview-6 callback/comparer pipeline boundary remains accepted. No benchmark-specific exception is present. Authority downgrade continues to preserve deterministic lower-authority mutation/provenance evidence.
+
+The reviewer environment lacked `dotnet`, so no local runtime rerun is claimed. Exact-production CI is green:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34964195712 — PASS
@@ -177,15 +173,15 @@ raw .pkc leak:        NONE
 src/ leak:            NONE
 ```
 
-V0.4.6 remains open until a fresh independent review passes production `868195eff...`.
+V0.4.6 is closed by independent rereview 8.
 
-### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
+### V0.4.7 — Cross-layer PO question readiness — CURRENT / NEXT MILESTONE
 
 Purpose: broaden supported direct business-logic patterns into robust cross-layer product-behavior understanding.
 
 Planned target coverage includes frontend visibility predicates, DTO/projection transformations, cross-entity value lineage, snapshot/copy versus dynamic semantics, later overrides/mutation causality, and cross-layer PO-facing explanations.
 
-Do not start V0.4.7 while V0.4.6 lacks independent PASS.
+V0.4.7 must preserve every accepted V0.4.6 authority and evidence-retention guardrail. Its concrete acceptance scope and regression gates should be defined before implementation advances.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 

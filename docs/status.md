@@ -7,12 +7,12 @@ Last updated: 2026-09-15
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
-V0.4.7 cross-layer PO-question readiness         LOCKED
+V0.4.6 business logic reconstruction             PASS / COMPLETE
+V0.4.7 cross-layer PO-question readiness         CURRENT / NEXT MILESTONE
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-Production checkpoint awaiting independent review:
+Accepted V0.4.6 production checkpoint:
 
 ```text
 868195eff5435cca1c98d4bf6ffd4b18018daf66
@@ -22,16 +22,9 @@ fix: require inert clone construction
 Latest completed independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md
-verdict: FAIL / FIX REQUIRED
-reviewed production: eb0903ef93b2b85669ded0e2227ca1a950bc49c7
-```
-
-Next review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md
-semantic production target: 868195eff5435cca1c98d4bf6ffd4b18018daf66
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-8.md
+verdict: PASS / COMPLETE
+reviewed production: 868195eff5435cca1c98d4bf6ffd4b18018daf66
 ```
 
 V0.4.3 remains the last accepted tool package:
@@ -62,20 +55,22 @@ No deterministic proof means no authoritative product claim. Downgrading rule au
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — module-qualified Angular service ownership; keep closed
-B6.4 IMPLEMENTATION GREEN — fresh independent review required
+B6.4 PASS — constructor-effect authority gap closed; keep closed
 ```
+
+V0.4.6 is complete after independent rereview 8 accepted exact production `868195eff...`.
 
 ### Closed callback/comparer pipeline blocker
 
 Production `eb0903ef...` replaced the broad unconditional `Where` pipeline allowlist with an exact-shape callback-free safe subset. `OrderBy*`, `ThenBy*`, `Distinct`, and `ToHashSet` no longer preserve authoritative `Where` semantics merely from LINQ method identity.
 
-Do not reopen absent a concrete contradiction.
+Independent rereviews 7 and 8 found no concrete contradiction in that boundary. Keep it closed absent new evidence.
 
-### Constructor-effect implementation checkpoint
+### Accepted constructor-effect checkpoint
 
-Rereview 7 found that the same-type defensive-clone proof validated initializer writes but did not validate object-constructor effects. Production `868195eff...` now requires construction itself to be deterministically inert before preserving an earlier authoritative `Where` predicate.
+Rereview 7 found that the same-type defensive-clone proof validated initializer writes but did not validate object-constructor effects. Production `868195eff...` requires construction itself to be deterministically inert before preserving an earlier authoritative `Where` predicate.
 
-Current conservative boundary:
+Accepted conservative boundary:
 
 ```text
 same closed item type
@@ -92,7 +87,7 @@ otherwise
 → observed-only / no authoritative inclusion rule
 ```
 
-New regressions cover:
+Regressions cover:
 
 ```text
 source-mutating copy constructor
@@ -101,11 +96,15 @@ implicit constructor with instance initializer
 implicit constructor with effectful base constructor
 ```
 
+Independent rereview 8 additionally challenged constructor overloads, optional/`params` zero-argument calls, target-typed `new`, explicit `new Type()`, parentheses, partial declarations, inheritance/base construction and semantic-resolution fallback. No compile-valid/behavior-valid bypass was found.
+
 The existing positive implicit inert defensive-clone regression remains green. The implementation is generic and contains no benchmark-specific exception.
 
-Local limitation: the coding sandbox had no `dotnet`, so no local runtime test is claimed. The semantic defect and fix were inspected before the single push; exact-SHA CI is the runtime verification layer.
+Fail-closed construction retains the predicate as observed-only evidence rather than deleting deterministic lower-authority evidence, preserving the permanent product-knowledge contract.
 
-## Exact automation for production `868195eff...`
+Local limitation: the reviewer environment had no `dotnet`, so no local runtime test is claimed. Exact-production CI is the runtime verification layer.
+
+## Exact automation for accepted production `868195eff...`
 
 All exact-SHA gates are green:
 
@@ -154,17 +153,13 @@ no raw .pkc leak in portable ZIP
 no src/ source-tree leak in portable ZIP
 ```
 
-Green automation is final execution verification; V0.4.6 still requires independent semantic acceptance.
-
 ## Exact next action
 
-Stay in V0.4.6 and independently review exact production SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66` using `docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md`.
+V0.4.6 is closed. V0.4.7 is now the current / next milestone.
 
-Do not self-approve.
-
-Until independent PASS:
+Start V0.4.7 only from the current `main` HEAD and preserve all accepted V0.4.6 authority/retention guardrails. Define and execute the V0.4.7 cross-layer PO-question-readiness acceptance work before considering any V0.5 Azure DevOps ingestion.
 
 ```text
-V0.4.7 LOCKED
+V0.4.7 CURRENT / NEXT MILESTONE
 V0.5 LOCKED
 ```
