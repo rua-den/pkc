@@ -7,31 +7,25 @@ Last updated: 2026-09-15
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+V0.4.6 business logic reconstruction             INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 V0.4.7 cross-layer PO-question readiness         LOCKED
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-V0.4.6 is **not complete yet**. The only blocker from independent re-review 4 has been fixed generically and every current automated gate is green on the exact production checkpoint below. A fresh independent review is still required before V0.4.6 may be marked complete.
+V0.4.6 is **not complete**. Independent re-review 5 found one remaining B6.4 false-authority path in the same-type `Select` projector proof.
 
-Production checkpoint for independent review:
+Reviewed production checkpoint:
 
 ```text
 7f652c717c17f40f99a08b126b889a27a84c6376
 fix: require complete predicate dependency proof
 ```
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-4.md
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-5.md
 verdict: FAIL / FIX REQUIRED
-```
-
-Next review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-5-request.md
 ```
 
 V0.4.3 remains the last accepted tool package:
@@ -44,174 +38,123 @@ RuaDen.Pkc.Tool 0.4.3-preview.2
 
 PKC must generate portable knowledge rich enough for an AI to answer practical Product Owner questions about observable behavior, business conditions and cross-layer outcomes without re-reading source code.
 
-Representative question:
-
-> When is entity X sellable/visible on the web, and what exact conditions must be true for it to appear?
-
-Required evidence chain where source can prove it:
-
-```text
-configured/static values
-→ business predicates and boolean semantics
-→ backend selection/eligibility
-→ API/result flow
-→ DTO/computed transformation when relevant
-→ frontend visibility/list/filter behavior
-→ observable product outcome
-```
-
-No deterministic proof means no authoritative product claim. Runtime database/config/external values remain unknown unless grounded by another input.
+No deterministic proof means no authoritative product claim.
 
 ## V0.4.6 disposition
 
 ### B6.1 — PASS / keep closed
 
-Exact C# predicate authority is re-resolved from the exact invocation syntax `SpanStart` in the target project semantic model. Same-line custom and genuine LINQ invocations cannot share authority merely because they occupy the same source line/range.
-
-Regression:
-
-```text
-Same_line_custom_Where_cannot_borrow_real_Linq_Where_semantic_authority
-```
+Exact C# predicate authority is re-resolved from exact invocation syntax identity. Same-line custom and genuine LINQ invocations cannot borrow authority.
 
 ### B6.2 — PASS / keep closed
 
-Configured-item ownership remains conservative for reviewed forms. Nested property object initializers are not promoted as direct collection items.
+Configured-item ownership remains conservative; nested property object initializers are not promoted as direct collection items.
 
 ### B6.3 — PASS / keep closed
 
-Module-qualified Angular service ownership requires lexically active relative import evidence. Inactive comments, strings and template literals have zero import authority; conflicting active local-name imports are ambiguous; unresolved ownership is omitted rather than guessed.
+Angular service ownership remains module-qualified and requires lexically active relative import evidence. Ambiguity/unresolved ownership is omitted rather than guessed.
 
-Regression:
+### B6.4 — BLOCK
 
-```text
-Inactive_import_like_text_does_not_override_active_service_module
-```
+Checkpoint `7f652c717c17f40f99a08b126b889a27a84c6376` correctly closed the previous whole-item helper dependency gap. Every semantic reference to the predicate source parameter must now be a supported direct field/property read.
 
-### B6.4 — IMPLEMENTATION GREEN / independent acceptance pending
+Independent re-review 5 found a different projector-effect gap: after proving a predicate-relevant member is directly copied, the proof does not prove that later object-initializer writes cannot mutate that member through a custom setter.
 
-Independent re-review 4 found that the same-type `Select(CloneCard)` authority proof collected direct predicate members but did not prove that those members were the complete semantic dependency set. A predicate such as:
+Compile-valid counterexample:
 
 ```csharp
-.Where(card => card.IsPublished && IsAllowed(card))
-.Select(CloneCard)
+public sealed class Card
+{
+    public bool IsPublished { get; set; }
+
+    private bool _blocked;
+    public bool Blocked
+    {
+        get => _blocked;
+        set
+        {
+            _blocked = value;
+            IsPublished = false;
+        }
+    }
+}
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished)
+        .Select(CloneCard)
+        .ToArray();
+
+private static Card CloneCard(Card card) => new()
+{
+    IsPublished = card.IsPublished,
+    Blocked = card.Blocked
+};
 ```
 
-could therefore ignore the whole-item helper dependency `IsAllowed(card)` and preserve a false full-predicate inclusion claim.
+The source card can pass `Where` with `IsPublished == true`; the clone copies `IsPublished = true`; then the `Blocked` setter changes the returned clone to `IsPublished == false`. Current proof can still promote the `Where` predicate because it only requires that the direct `IsPublished` copy exists and does not validate the side effects of the later `Blocked` initializer write.
 
-Checkpoint `7f652c717c17f40f99a08b126b889a27a84c6376` fixes that boundary conservatively.
-
-The projector path now requires:
+Required generic boundary:
 
 ```text
-all semantic references to the predicate source parameter
-must be supported direct field/property reads
-AND every required stored member must be directly preserved by the projection
-→ same-type projection may retain authoritative Where semantics
+predicate dependencies completely proven
++ required predicate state copied
++ entire supported projector proven unable to invalidate that state
+→ authoritative product-level inclusion rule
 
 otherwise
-→ downgrade / no authoritative product-level inclusion rule
+→ observed-only / omitted authoritative rule
 ```
 
-Unsupported whole-item or unmodeled uses fail closed, including shapes such as:
+Conservative rejection of custom setters / unproven initializer effects is acceptable in V0.4.6.
 
-```text
-helper(card)
-card.SomeMethod()
-ReferenceEquals(card, ...)
-custom/operator or other whole-item semantics involving card
-```
+## Exact automation for reviewed checkpoint
 
-Focused regression added:
-
-```text
-Whole_item_helper_dependency_downgrades_same_type_projection_authority
-```
-
-The existing positive same-type direct-member clone regression remains green.
-
-## Exact automation for production checkpoint
-
-All push-triggered gates for `7f652c717c17f40f99a08b126b889a27a84c6376` are green:
+All exact-SHA gates for `7f652c717c17f40f99a08b126b889a27a84c6376` are green:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34933533049 — PASS
 pinned Loren                            34933533044 — PASS
 Loren-main canary                       34933533104 — PASS
 pinned Jellyfin                         34933533050 — PASS
-portable parity / provenance / no-leak  PASS inside Jellyfin run
 ```
 
-Exact CI evidence:
+Independent CI verification:
 
 ```text
-PKC build:                         0 warnings / 0 errors
-C# tests:                          76 / 76 PASS
-frontend tests:                    13 / 13 PASS
-tool pack/install:                 PASS
-WorkPlay:                          PASS
-PokeTrade backend build:           PASS
-PokeTrade Angular build:           PASS
-PokeTrade live business branches:  PASS
-PokeTrade generated knowledge:     PASS
+PKC build:       0 warnings / 0 errors
+C# tests:        76 / 76 PASS
+frontend tests:  13 / 13 PASS
+WorkPlay:        PASS
+PokeTrade:       PASS
 ```
 
-Real-repository gates:
+Pinned Jellyfin artifact independently downloaded during re-review 5:
 
 ```text
-pinned Loren build + PKC compile:        PASS
-current Loren-main build + PKC compile:  PASS
-pinned Jellyfin source build:            PASS, 0 warnings / 0 errors
-Jellyfin PKC facts:                      43,363
-Jellyfin relations:                      195,314
-Jellyfin workflow candidates:            386
-Jellyfin product features:               116
-canonical Markdown files:                504
-analysis mode:                           project-semantic 43,363 / 43,363
+artifact id:                    10382099834
+artifact digest:                sha256:f46bf8b748bb1e044b61c74f73139b23a12d1b2b0e37fcaf17d520dd89a43113
+canonical Markdown files:       504
+facts:                          43,363
+analysisMode project-semantic:  43,363 / 43,363
+bundle canonical parity:        PASS
+portable ZIP file-set parity:   PASS
+portable ZIP byte parity:       PASS
+raw .pkc leak:                  none
+src/ source-tree leak:          none
 ```
-
-Portable Jellyfin verification:
-
-```text
-every canonical Markdown file appears verbatim in PKC_KNOWLEDGE.md: PASS
-ZIP file set equals canonical Markdown file set:                       PASS
-ZIP bytes equal canonical Markdown bytes:                             PASS
-raw .pkc leak in portable ZIP:                                        none
-src/ source-tree leak in portable ZIP:                                none
-```
-
-Jellyfin artifact:
-
-```text
-artifact id:     10382099834
-artifact digest: sha256:f46bf8b748bb1e044b61c74f73139b23a12d1b2b0e37fcaf17d520dd89a43113
-```
-
-## Validation note
-
-The current coding sandbox did not have a local `dotnet` executable, so it could not truthfully execute the requested local red/green loop. The focused regression and generic fix were reviewed before one implementation push, then validated on the exact pushed SHA by the full repository gates above. Do not reinterpret this as local execution evidence.
 
 ## Exact next action
 
-Do not change production code unless fresh review finds a concrete contradiction.
-
-Request an independent V0.4.6 re-review of exact production checkpoint:
+Stay in V0.4.6. Fix only the B6.4 projector-effect blocker regression-first:
 
 ```text
-7f652c717c17f40f99a08b126b889a27a84c6376
+focused custom-setter regression
+→ minimum generic fail-closed projector-effect fix
+→ focused/related/full validation
+→ one coherent implementation commit/push
+→ exact-head gates
+→ new independent V0.4.6 re-review
 ```
 
-If and only if that independent review returns PASS:
-
-```text
-mark V0.4.6 COMPLETE
-unlock V0.4.7 as next/current milestone
-keep V0.5 Azure DevOps locked
-```
-
-Until then:
-
-```text
-V0.4.7 LOCKED
-V0.5 LOCKED
-```
+Do not start V0.4.7. Do not start Azure DevOps ingestion.
