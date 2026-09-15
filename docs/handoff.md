@@ -37,87 +37,125 @@ Conservative downgrade of product-rule authority must not erase deterministic lo
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         PASS / COMPLETE
-V0.4.7  cross-layer PO-question readiness     CURRENT / NEXT MILESTONE
+V0.4.6  business logic reconstruction         REOPENED / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.7  cross-layer PO-question readiness     LOCKED AGAIN
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Accepted V0.4.6 production checkpoint:
+Current reviewed production checkpoint:
 
 ```text
 868195eff5435cca1c98d4bf6ffd4b18018daf66
 fix: require inert clone construction
 ```
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-8.md
-PASS / COMPLETE on production 868195eff5435cca1c98d4bf6ffd4b18018daf66
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-9.md
+FAIL / REOPEN V0.4.6
 ```
 
-V0.4.6 is closed. Do not reopen its accepted blockers without a concrete contradiction.
+Rereview 8 remains accepted for its constructor-effect analysis. V0.4.6 was reopened only because rereview 9 found a separate provider-semantics contradiction.
 
-## Accepted V0.4.6 scope
+## Closed scope
+
+Keep closed unless a new concrete contradiction appears:
 
 ```text
-B6.1 PASS / keep closed
-B6.2 PASS / keep closed
-B6.3 PASS / keep closed
-B6.4 PASS / keep closed
+B6.1 PASS — exact C# invocation semantic identity
+B6.2 PASS — conservative configured-item ownership
+B6.3 PASS — module-qualified Angular service ownership
 ```
 
-Accepted B6.4 hardening includes:
+Previously fixed B6.4 sub-boundaries also remain accepted:
 
-1. discarded/local predicates do not become observable rules merely because a LINQ call exists;
-2. transformed/polarity-changing return contexts for `Any`, `All`, `First*`, `Single*` fail closed unless modeled;
-3. arbitrary `Select` is not an unconditional preserving operation after `Where`;
-4. direct identity `Select(card => card)` is proven by symbol identity;
-5. unsupported whole-item predicate dependencies cause conservative downgrade;
-6. same-type method-group projection requires a closed item type and direct same-member initializer copies;
-7. custom setter / nested / rewritten initializer effects fail closed;
-8. callback/comparer-bearing pipeline operations are not trusted merely from LINQ method identity;
-9. callback-free pipeline preservation is limited to an audited exact-shape subset;
-10. same-type projector construction must itself be proven inert before earlier `Where` authority is retained.
+1. discarded/local predicates downgrade;
+2. transformed/polarity-changing `Any`/`All`/`First*`/`Single*` contexts fail closed;
+3. arbitrary `Select` is not preserving by default;
+4. identity `Select(card => card)` uses symbol identity;
+5. whole-item/unmodeled predicate dependencies fail closed;
+6. direct defensive clones require stored same-member copies;
+7. custom setters, nested writes and rewritten initializer effects fail closed;
+8. ordering/equality callback/comparer paths do not preserve authority merely from LINQ target identity;
+9. callback-free Enumerable pipeline preservation is exact-shape and conservative;
+10. same-type defensive clone construction must be deterministically inert.
 
-The callback/comparer pipeline blocker from rereview 6 remains closed. `OrderBy*`, `ThenBy*`, `Distinct`, and `ToHashSet` do not automatically borrow earlier `Where` authority.
+Do not reopen rereview 8's constructor fix without a separate contradiction.
 
-## Accepted constructor-effect boundary
+## B6.4 — current blocker: Queryable provider semantics
 
-Rereview 7 demonstrated that a same-type projector could call a copy constructor which mutates the source item after `Where` passed and before initializer values were copied.
+Current business-predicate extraction and authority filtering accept `System.Linq.Queryable.<operation>` alongside `System.Linq.Enumerable.<operation>`.
 
-Production `868195eff...` closes the generic construction gap conservatively. Same-type method-group projection can preserve authority only when construction is proven inert:
+That is insufficient for authoritative product semantics because Queryable execution is provider-mediated.
+
+`Queryable.Where` builds an expression tree and passes it to `source.Provider.CreateQuery(...)`. The provider decides how that expression is interpreted and how enumeration executes.
+
+### Counterexample shape
+
+Use a custom `IQueryable<T>` / `IQueryProvider` that stores the expression passed to `CreateQuery` but enumerates the underlying items without applying the expression.
+
+```csharp
+private readonly IQueryable<Card> _cards =
+    new IgnoringQuery<Card>(
+    [
+        new Card { IsPublished = false }
+    ]);
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished)
+        .ToList();
+```
+
+Runtime:
 
 ```text
-zero constructor args
-+ exact constructor symbol on projected type
-+ compiler-generated implicit zero-arg constructor
-+ no non-object base-constructor path for classes
-+ no instance field/event/property initializer code
-+ existing safe direct same-member initializer proof
-+ complete predicate-member coverage
-→ preservation may continue
-
-anything unproven
-→ fail closed / observed-only
+Queryable.Where delegates expression to Provider.CreateQuery
+→ provider returns an IQueryable carrying the expression
+→ ToList enumerates it
+→ provider ignores the Where expression and yields the false item
+→ returned Card has IsPublished == false
 ```
 
-Regression coverage in `tests/Pkc.CSharp.Tests/ProjectionConstructionAuthorityRegressionTests.cs` covers:
+Current PKC can still preserve the `Where` as observable and emit:
 
-1. source-mutating copy constructor;
-2. user-defined parameterless constructor;
-3. implicit constructor with instance initializer;
-4. implicit constructor with effectful base constructor.
+```text
+Includes items from `_cards` only when `card.IsPublished`.
+```
 
-Independent rereview 8 additionally challenged constructor overloads, optional/`params` constructors callable with zero supplied arguments, target-typed `new`, explicit `new Type()`, parenthesized creation, partial type declarations, inheritance/base constructors and semantic candidate fallback. No compile-valid/behavior-valid bypass was found.
+That is false for the returned item.
 
-The existing positive implicit inert defensive-clone behavior remains accepted. No benchmark-specific exception exists.
+## Required coding fix
 
-Fail-closed behavior retains predicate facts as observed-only evidence, preserving lower-authority lineage/mutation/causal evidence rather than deleting it.
+Fix only this provider-trust authority boundary, regression-first.
 
-## Exact accepted-production gates
+Required generic property:
 
-All gates are green on exact SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66`:
+```text
+exact Queryable target
++ provider/source identity proven
++ semantics of that provider for the operation proven
++ observable execution path proven
+→ authoritative product rule
+
+otherwise
+→ observed-only / no authoritative rule
+```
+
+A conservative V0.4.6 implementation may downgrade `Queryable` predicates unless their provider semantics are deterministically proven.
+
+If a positive LINQ-to-Objects `AsQueryable()` path is retained, prove the provider/source identity rather than trusting the `Queryable` method name.
+
+Do not special-case PokeTrade, Loren, Jellyfin, EF, `Card`, `IsPublished`, or the exact test fixture.
+
+Required regression: a custom provider that ignores `Where` during enumeration must not lead to an authoritative returned-item inclusion rule.
+
+Authority downgrade must continue to retain deterministic observed-only predicate/mutation/provenance evidence.
+
+## Exact current-production gates
+
+All automation is green on exact SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66`:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   34964195712 — PASS
@@ -126,58 +164,47 @@ Loren-main canary                           34964195717 — PASS
 pinned Jellyfin                             34964195689 — PASS
 ```
 
-Core CI:
+Core evidence:
 
 ```text
 PKC build:                 0 warnings / 0 errors
 C# tests:                  85 / 85 PASS
 frontend tests:            13 / 13 PASS
 WorkPlay:                  PASS
-PokeTrade backend:         0 warnings / 0 errors
-PokeTrade Angular build:   PASS
-PokeTrade live acceptance: PASS
-PokeTrade knowledge gate:  PASS
+PokeTrade:                 PASS
 ```
 
-Pinned Jellyfin:
+Pinned Jellyfin artifact:
 
 ```text
-commit:               1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-source build:          0 warnings / 0 errors
-facts:                 43,363
-relations:             195,314
-workflow candidates:   386
-product features:      116
-canonical Markdown:    504
-project-semantic:      43,363 / 43,363
-artifact id:           10394456737
-digest:                sha256:586863e971967be62ec6e0a7763cc90806903621d43ea896813e4cf3b3a2e414
-size:                  9,016,935 bytes
+artifact id:   10394456737
+digest:        sha256:586863e971967be62ec6e0a7763cc90806903621d43ea896813e4cf3b3a2e414
+size:          9,016,935 bytes
+head SHA:      868195eff5435cca1c98d4bf6ffd4b18018daf66
 ```
 
-Portable bundle and ZIP parity are exact; no raw `.pkc` and no `src/` source tree leaks into the portable ZIP.
+Green CI does not cover the new custom-provider contradiction.
 
-The reviewer environment did not have `dotnet`; no local runtime rerun is claimed. Exact-production automation above is the recorded runtime verification.
+## Coding-thread workflow
 
-## Next thread
+1. Read `docs/status.md`, this handoff, `docs/milestones.md`, `docs/product-knowledge-contract.md`, and rereview 9.
+2. Inspect current `main` HEAD.
+3. Add the focused custom-provider regression first.
+4. Reproduce locally if tooling permits.
+5. Implement the minimum generic provider-trust/fail-closed boundary.
+6. Run focused and related C# tests, then the broader relevant suite/build locally.
+7. Review the complete diff and remove debug code.
+8. Update status/handoff/milestones to `IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING`.
+9. Commit regression + fix together in one coherent implementation commit.
+10. Push once.
+11. Verify exact-SHA CI, WorkPlay, PokeTrade, pinned Loren, Loren-main, pinned Jellyfin, and portable parity/no-leak gates.
+12. Stop and request another independent V0.4.6 review.
 
-V0.4.7 is now the current / next milestone. This handoff does not start its implementation.
+Do not use GitHub Actions as the normal edit/test loop.
 
-Read in order:
-
-1. `docs/status.md`
-2. `docs/handoff.md`
-3. `docs/milestones.md`
-4. `docs/product-knowledge-contract.md`
-5. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-8.md`
-
-Then continue from the current `main` HEAD and define/execute only the V0.4.7 cross-layer PO-question-readiness scope and acceptance criteria. Preserve all accepted V0.4.6 semantic-authority and evidence-retention guardrails.
-
-Keep:
+Until independent PASS:
 
 ```text
-V0.4.7 CURRENT / NEXT MILESTONE
+V0.4.7 LOCKED
 V0.5 LOCKED
 ```
-
-Do not begin Azure DevOps ingestion until the V0.4.x PO-question-readiness exit gate allows it.
