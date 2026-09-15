@@ -69,16 +69,29 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-5.md
 reviewed production: 7f652c717c17f40f99a08b126b889a27a84c6376
 verdict: FAIL / FIX REQUIRED
+```
+
+Implementation checkpoint awaiting fresh independent review:
+
+```text
+18a1f1d1ef551833d859f23ea2e92dd548a6a81d
+fix: fail closed on unsafe same-type projector effects
+```
+
+Fresh review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-6-request.md
 ```
 
 Current disposition:
@@ -87,85 +100,85 @@ Current disposition:
 B6.1 PASS  — exact C# invocation semantic identity; keep closed
 B6.2 PASS  — conservative configured-item ownership; keep closed
 B6.3 PASS  — active module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — projector can invalidate predicate state after direct-copy proof
+B6.4 IMPLEMENTATION GREEN — fresh independent acceptance required
 ```
 
-The re-review-4 dependency-completeness gap is closed: source-parameter uses not proven as direct field/property reads now fail closed.
+B6.4 authority hardening now covers:
 
-The remaining B6.4 blocker is narrower. Same-type method-group projection currently proves that each predicate-relevant member has a direct input→output copy, but does not prove that other object-initializer writes cannot mutate that copied state through custom setters or other unproven output effects.
+1. local/discarded predicates do not become observable rules merely because a LINQ call exists;
+2. transformed/polarity-changing return contexts for `Any`, `All`, `First*`, `Single*` fail closed unless modeled;
+3. arbitrary `Select` is not an unconditional preserving operation after `Where`;
+4. direct identity `Select(card => card)` is proven by symbol identity;
+5. same-type method-group projection requires a closed/sealed item type, complete predicate dependencies and direct object creation;
+6. unsupported whole-item/unmodeled predicate uses such as `helper(card)`, `card.SomeMethod()`, reference identity or custom/operator semantics cause conservative downgrade;
+7. every supported clone initializer entry must now be a simple assignment to a direct stored non-static field or auto-property;
+8. every initializer assignment must be an exact same-member input→output copy, so custom setters, nested/unmodeled effects, helper/constant rewrites and other unproven projector mutations cannot preserve product-level `Where` authority.
 
-Counterexample class:
-
-```csharp
-public sealed class Card
-{
-    public bool IsPublished { get; set; }
-
-    private bool _blocked;
-    public bool Blocked
-    {
-        get => _blocked;
-        set
-        {
-            _blocked = value;
-            IsPublished = false;
-        }
-    }
-}
-```
-
-Projector:
-
-```csharp
-private static Card CloneCard(Card card) => new()
-{
-    IsPublished = card.IsPublished,
-    Blocked = card.Blocked
-};
-```
-
-A source item can pass `Where(card => card.IsPublished)`, yet the returned clone can end with `IsPublished == false` after the later `Blocked` setter runs. Current authority proof can still treat the direct `IsPublished` assignment as sufficient.
-
-Required boundary:
+Focused regression for re-review-5 blocker:
 
 ```text
-exact predicate identity
-+ complete predicate dependencies
-+ required state copied
-+ entire supported projector proven not to invalidate that state
+Later_custom_setter_that_invalidates_predicate_state_downgrades_projection_authority
+```
+
+The regression uses behavior-valid source initializer ordering (`Blocked = false, IsPublished = true`) so the source reaches `Where` with `IsPublished == true`; the returned clone then demonstrates the custom-setter invalidation path. The independent re-review-5 record is intentionally not rewritten.
+
+The authority contract is now:
+
+```text
+exact predicate identity proven
++ context/ownership proven
++ every semantic source-parameter dependency supported and proven
++ every outer operation proven to preserve semantics
++ every supported projector write proven side-effect-safe within the closed model
 → authoritative Product Owner rule
 
 otherwise
-→ observed-only / omitted authoritative rule
+→ local/lower-authority evidence or omitted product-level claim
 ```
 
-Conservative rejection of custom setter / nested / unproven initializer effects is acceptable for V0.4.6. That downgrade is an authority decision only; deterministic assignment/mutation evidence must remain available for future lineage/causality synthesis rather than being erased.
+This is deliberately an authority boundary, not a rule to discard deterministic causality. Lower-authority value-lineage/mutation evidence remains a first-class product direction under `docs/product-knowledge-contract.md`.
 
-Exact gates for reviewed production checkpoint `7f652c717c17f40f99a08b126b889a27a84c6376` remain green:
+Exact gates for production checkpoint `18a1f1d1ef551833d859f23ea2e92dd548a6a81d`:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34933533049 — PASS
-pinned Loren                            34933533044 — PASS
-Loren-main canary                       34933533104 — PASS
-pinned Jellyfin                         34933533050 — PASS
+CI + PKC tests + WorkPlay + PokeTrade   34954590262 — PASS
+pinned Loren                            34954590188 — PASS
+Loren-main canary                       34954590239 — PASS
+pinned Jellyfin                         34954590155 — PASS
+portable parity / no source leak        PASS
 ```
 
-Independent artifact cross-check during re-review 5:
+Core evidence:
 
 ```text
-canonical Markdown:             504 files
-facts:                          43,363
-project-semantic facts:         43,363 / 43,363
-bundle canonical parity:        PASS
-portable ZIP file-set parity:   PASS
-portable ZIP byte parity:       PASS
-raw .pkc leak:                  none
-src/ source-tree leak:          none
-artifact id:                    10382099834
-artifact digest:                sha256:f46bf8b748bb1e044b61c74f73139b23a12d1b2b0e37fcaf17d520dd89a43113
+PKC build:       0 warnings / 0 errors
+C# tests:        77 / 77 PASS
+frontend tests:  13 / 13 PASS
+WorkPlay:        PASS
+PokeTrade:       PASS
 ```
 
-V0.4.6 remains open until a new implementation checkpoint fixes B6.4 and independently passes review.
+Pinned Jellyfin evidence:
+
+```text
+jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+source build:            PASS, 0 warnings / 0 errors
+facts:                   43,363
+relations:               195,314
+workflow candidates:     386
+product features:        116
+canonical Markdown:      504 files
+analysis mode:           project-semantic 43,363 / 43,363
+portable bundle parity:  PASS
+portable ZIP parity:     PASS
+raw .pkc leak:           none
+src/ source-tree leak:   none
+artifact id:             10390258392
+artifact digest:         sha256:6ba875d99cf64141267bb13811485cc025eabc87723beaa9f3a46a985860b497
+artifact size:           9,016,989 bytes
+```
+
+V0.4.6 is not complete until a fresh independent reviewer accepts exact production checkpoint `18a1f1d1ef551833d859f23ea2e92dd548a6a81d`.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 
