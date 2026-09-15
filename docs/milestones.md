@@ -95,98 +95,120 @@ W5 large-pack signal/noise
 
 PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidate.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAILED
+### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest independent review:
+Latest failed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
 ```
 
-Reviewed implementation checkpoint:
+That review accepted B6.1/B6.2 and found two remaining blocker classes:
 
 ```text
-34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
+B6.1 PASS  — exact C# invocation semantic identity
+B6.2 PASS  — conservative configured-item ownership
+B6.3 BLOCK — inactive TypeScript import-like text could become Angular service ownership authority
+B6.4 BLOCK — return-expression containment did not prove predicate value flow/result type/polarity
 ```
 
-Current independent disposition:
+Both open blockers have now been implemented with adversarial regressions at:
 
 ```text
-B6.1 PASS  — exact invocation semantic identity is re-resolved by syntax span in the project semantic model
-B6.2 PASS  — direct configured-item ownership remains conservative for the reviewed supported forms
-B6.3 BLOCK — raw-text Angular import resolution can promote commented import-like text into service ownership authority
-B6.4 BLOCK — return-expression containment does not prove predicate value flow, result type or polarity
+9a0817b21075a3d810072a310ed8fd3314625cd8
+fix: enforce observable authority boundaries
 ```
 
-Exact-head automation is green but does not override the blocker-class semantic counterexamples:
+Current implementation disposition pending independent re-review:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34841796973 — PASS
-pinned Loren                            34841796981 — PASS
-Loren-main canary                       34841796980 — PASS
-pinned Jellyfin                         34841797032 — PASS
-portable parity / no source leak        PASS
+B6.1 PASS / keep closed
+B6.2 PASS / keep closed
+B6.3 IMPLEMENTED + GREEN / independent re-review pending
+B6.4 IMPLEMENTED + GREEN / independent re-review pending
 ```
 
-The required authority boundary remains:
+B6.3 now requires deterministic module-qualified ownership from active import syntax context. Inactive line/block comments, strings and template literals cannot establish import authority; conflicting active local-name imports are treated as ambiguous; unresolved ownership is omitted rather than guessed.
+
+B6.4 now requires operation-specific value/polarity-preserving return authority. Direct Any/All/First*/Single* results may be authoritative; transformed/negated forms are downgraded unless modeled. Returned `Where` remains authoritative only through semantically resolved allowlisted LINQ/materialization receiver chains; arbitrary helper wrapping is not proof.
+
+The authority boundary remains:
 
 ```text
 exact invocation is proven
-+ source/ownership context is proven
++ ownership/context is proven
 + value/polarity-preserving path to observable product effect is proven
 → authoritative Product Owner rule
+
+otherwise
+→ local/lower-authority evidence or omitted product-level claim
 ```
 
-Otherwise evidence must stay local/lower-authority or the product-level claim must be omitted.
-
-B6.3 concrete blocker class:
+Adversarial regression coverage added for the latest blockers includes:
 
 ```text
-active import:    import { CardsApi } from './catalog/cards-api'
-commented text:   // import { CardsApi } from './admin/cards-api'
-raw regex scan:   commented text can overwrite active service identity
-result:           unrelated admin endpoint can inherit Catalog component result/list flow
+comment/block-comment/string/template Angular import-like collisions
+!Any(...)
+!All(...)
+FirstOrDefault(...) is null
+SingleOrDefault(...) is not null
+Where passed through an arbitrary helper that discards its value
+positive direct Any/All/First returns
+positive returned Where
+positive Where → Select → ToArray
 ```
 
-B6.4 concrete blocker classes:
-
-```csharp
-public bool HasNoBlockedCards()
-    => !_cards.Any(card => card.Blocked);
-
-public bool HasNoPublishedCard()
-    => _cards.FirstOrDefault(card => card.IsPublished) is null;
-
-public IReadOnlyList<Card> GetCards()
-    => ReturnAll(_cards.Where(card => card.IsPublished).ToArray());
-```
-
-Current return-containment authority can overstate all three shapes unless surrounding transformations/value flow are modeled conservatively.
-
-Required closure order is regression-first:
+All exact-checkpoint gates for `9a0817b21075a3d810072a310ed8fd3314625cd8` are green:
 
 ```text
-B6.3 syntax-aware Angular import/service ownership
-B6.4 value/polarity-preserving observable predicate authority
+CI + PKC tests + WorkPlay + PokeTrade   34920522723 — PASS
+pinned Loren                            34920522961 — PASS
+Loren-main canary                       34920522799 — PASS
+pinned Jellyfin                         34920522831 — PASS
+portable parity / no source leak        PASS
 ```
 
-B6.1 and B6.2 are closed unless a new concrete contradiction is discovered.
-
-After fixes, all of these must pass again:
+Exact core test counts:
 
 ```text
-PKC tests
-PokeTrade known-answer/live acceptance
-pinned Loren
-Loren-main canary
-pinned Jellyfin
-portable parity / no source leak
-independent V0.4.6 re-review
+C# tests:       72 / 72 PASS
+frontend tests: 13 / 13 PASS
+PKC build:      0 warnings / 0 errors
 ```
 
-Prefer one coherent implementation commit/push after local regression + full relevant validation. CI remains the final verification layer, not the edit-test loop.
+Pinned Jellyfin remains:
+
+```text
+jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+facts:                 43,363
+relations:             195,314
+workflow candidates:   386
+product features:      116
+canonical Markdown:    504 files
+analysis mode:         project-semantic for 43,363 / 43,363 facts
+portable bundle parity: PASS
+portable ZIP parity:    PASS
+raw .pkc leak:          none
+src/ source-tree leak:  none
+artifact id:            10377409728
+artifact digest:        sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
+```
+
+Green implementation does **not** complete V0.4.6 by itself. A fresh independent adversarial review must inspect the exact checkpoint and attempt counterexamples for B6.3/B6.4 while confirming B6.1/B6.2 remain safe.
+
+If the independent review returns PASS:
+
+```text
+mark V0.4.6 COMPLETE
+unlock V0.4.7 as next/current milestone
+keep V0.5 Azure DevOps locked
+```
+
+If any blocker remains, stay in V0.4.6 and fix only the concrete blocker regression-first.
+
+A transient accidental placeholder commit exists immediately before the implementation checkpoint in history; the implementation tree removes it and the clean baseline-to-checkpoint diff contains only the intended production/test changes.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 
@@ -201,7 +223,7 @@ Target coverage includes:
 - explicit boundaries around DB/remote configuration/feature flags/external state;
 - high-signal feature-level promotion so PO-relevant rules are not buried.
 
-Do not start V0.4.7 while V0.4.6 blockers remain.
+Do not start V0.4.7 while V0.4.6 lacks independent PASS.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 

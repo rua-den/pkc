@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Use this file when continuing PKC in another coding or review thread.
+Use this file when continuing PKC in another coding or independent-review thread.
 
 ## Product contract
 
@@ -27,304 +27,309 @@ The V0.4.x exit standard is business-logic and PO-question readiness, not merely
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         FAIL / FIX REQUIRED
+V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Latest independent V0.4.6 review:
+Current implementation checkpoint awaiting independent review:
+
+```text
+9a0817b21075a3d810072a310ed8fd3314625cd8
+fix: enforce observable authority boundaries
+```
+
+Latest failed independent review that defined the coding scope:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+reviewed code: 34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
 ```
 
-Reviewed implementation checkpoint:
+Current disposition before the new independent verdict:
 
 ```text
-34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b
+B6.1  PASS / keep closed
+B6.2  PASS / keep closed
+B6.3  IMPLEMENTED + GREEN / independent re-review pending
+B6.4  IMPLEMENTED + GREEN / independent re-review pending
 ```
 
-Independent disposition:
+Do not translate implementation-green into milestone PASS. V0.4.6 still requires an independent adversarial verdict.
 
-```text
-B6.1  PASS
-B6.2  PASS
-B6.3  BLOCK
-B6.4  BLOCK
-```
-
-Do not mark V0.4.6 complete. Do not start V0.4.7 or Azure DevOps.
-
-## Read first in the next coding thread
+## Read first in the next independent review thread
 
 ```text
 1. docs/status.md
 2. docs/handoff.md
-3. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
-4. docs/milestones.md
-5. docs/reviews/2026-09-14-v0.4.6-independent-rereview.md
+3. docs/milestones.md
+4. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
+5. prior V0.4.6 independent review/rereview documents as needed
 ```
 
-Then inspect current remote `main` before changing anything.
+Then inspect exact implementation checkpoint `9a0817b21075a3d810072a310ed8fd3314625cd8` directly.
 
 ## Accepted/closed scope
 
 ### B6.1 — PASS
 
-The same-line semantic-authority collision is closed for the reviewed scope.
+The same-line semantic-authority collision remains closed. The final C# predicate authority stage re-resolves the exact invocation by syntax `SpanStart` in the target project semantic model and accepts only the exact supported LINQ symbol.
 
-The final C# business-predicate authority stage re-resolves the exact invocation using its syntax `SpanStart` in the actual project semantic model and requires an exact supported LINQ symbol. A custom same-named call cannot borrow authority from another invocation on the same line.
-
-Focused regression:
+Regression:
 
 ```text
 Same_line_custom_Where_cannot_borrow_real_Linq_Where_semantic_authority
 ```
 
-Do not change B6.1 unless a new concrete counterexample is found.
+Do not reopen without a new concrete contradiction.
 
 ### B6.2 — PASS
 
-Configured-item ownership remains conservative for the reviewed forms. Nested property object initializers are not promoted as direct items of the source collection.
+Configured-item ownership remains conservative for reviewed supported initializer forms. Nested property objects are not promoted as direct configured items of the source collection.
 
-Do not change B6.2 unless a new concrete counterexample is found.
+Do not reopen without a new concrete contradiction.
 
-## Open blocker B6.3 — Angular ownership proof is still trivia-sensitive
+## B6.3 implementation checkpoint — active Angular import ownership
 
-The ordinary same-class-name/different-module case was improved by module-qualified identity, but service import ownership is currently derived using a raw-text regular expression over the entire TypeScript file.
+The previous independent blocker showed that raw-text import scanning could allow comments/strings/templates to overwrite a real service import and cross-link an unrelated endpoint to a rendered list.
 
-That allows inactive commented text to become authoritative ownership evidence.
-
-Reproducer to add as a focused regression before the fix:
-
-```ts
-import { Component, inject } from '@angular/core';
-import { CardsApi } from './catalog/cards-api';
-
-// Not active TypeScript; historical note only:
-// import { CardsApi } from './admin/cards-api';
-
-@Component({
-  selector: 'app-catalog',
-  template: `
-    @for (card of cards; track card.id) {
-      <article>{{ card.name }}</article>
-    }
-  `
-})
-export class CatalogComponent {
-  private readonly api = inject(CardsApi);
-  cards = [];
-
-  reload() {
-    this.api.getCards().subscribe(cards => this.cards = cards);
-  }
-}
-```
-
-Use two modules:
+Current generic behavior at `9a0817...`:
 
 ```text
-catalog/cards-api.ts → class CardsApi → GET /api/cards
-admin/cards-api.ts   → class CardsApi → GET /api/admin/cards
+API owner identity:
+  normalized TypeScript source module path + exported class
+
+component service identity:
+  resolved relative active import module + exported class
+
+inactive import-like text:
+  line comments     → no authority
+  block comments    → no authority
+  quoted strings    → no authority
+  template literals → no authority
+
+conflicting active local-name imports:
+  treated as ambiguous
+  no deterministic service identity emitted
+
+unresolved relative module:
+  no authoritative endpoint → result/list correlation
 ```
 
-Current risk:
+Focused regression:
 
 ```text
-real import mapping                  catalog/cards-api.ts#CardsApi
-later commented import-like mapping  admin/cards-api.ts#CardsApi
-raw regex dictionary overwrite       admin/cards-api.ts#CardsApi
-cross-stack equality                 admin endpoint falsely feeds CatalogComponent list
+Inactive_import_like_text_does_not_override_active_service_module
 ```
 
-Required generic property:
+The adversarial fixture has catalog/admin modules exporting the same `CardsApi.getCards()` and places fake admin imports in line-comment, block-comment, string and template text. Catalog correlation must remain correct and the admin endpoint must not inherit the catalog result/list flow.
+
+Independent reviewer should still challenge:
 
 ```text
-only active TypeScript import declarations may establish service ownership
-comments / strings / templates have zero import authority
-ambiguous or unresolved ownership must omit the authoritative correlation
+named import aliases
+nested relative module paths
+index.ts resolution
+multiple active bindings with same local name
+comment/string/template boundaries
+unresolved/non-relative imports
+same class + same method name across modules
 ```
 
-AST-backed import declarations are an acceptable implementation direction. Do not hardcode fixture paths/classes/routes.
+Conservative omission is preferable to guessed ownership.
 
-## Open blocker B6.4 — return containment still overclaims observable semantics
+## B6.4 implementation checkpoint — observable value/polarity authority
 
-The current filter correctly downgrades predicates that are not syntactically within return/yield-return expressions, but it treats any supported invocation contained anywhere inside the returned expression as observable.
+The previous independent blocker showed that syntactic containment anywhere in a returned expression did not prove that the predicate's value, type or polarity reached the observable result unchanged.
 
-That does not preserve polarity, result type or value flow.
-
-### Regression A — negated Any
-
-```csharp
-public bool HasNoBlockedCards()
-    => !_cards.Any(card => card.Blocked);
-```
-
-Current false wording can be:
+Current generic behavior at `9a0817...`:
 
 ```text
-Returns whether at least one item from `_cards` satisfies `card.Blocked`.
-```
-
-Actual behavior is the opposite.
-
-### Regression B — selection converted to boolean
-
-```csharp
-public bool HasNoPublishedCard()
-    => _cards.FirstOrDefault(card => card.IsPublished) is null;
-```
-
-Current false wording can describe returning a selected item even though the method returns `bool`.
-
-Cover equivalent `SingleOrDefault` shape too.
-
-### Regression C — helper discards returned predicate value
-
-```csharp
-public IReadOnlyList<Card> GetCards()
-    => ReturnAll(_cards.Where(card => card.IsPublished).ToArray());
-
-private IReadOnlyList<Card> ReturnAll(IReadOnlyList<Card> ignored)
-    => _cards;
-```
-
-Current syntax containment can promote the `Where` into:
-
-```text
-Includes items from `_cards` only when `card.IsPublished`.
-```
-
-but the helper returns the unfiltered collection.
-
-Required generic property:
-
-```text
-supported predicate invocation
-+ deterministic proof that enclosing syntax/data flow preserves the relevant value and polarity to the observable result
-→ authoritative PO rule
+exact supported LINQ invocation
++ method-local return/yield-return context
++ operation-specific value/polarity-preserving path proof
+→ businessRuleAuthority=observable
+→ observableEffectResolution=semantic-return-value-path
+→ contains-condition may become product-level rule
 
 otherwise
-→ observed-only / lower authority / omit the product-level rule
+→ businessRuleAuthority=observed-only
+→ observableEffectResolution=not-proven
+→ observes-predicate
+→ no product-level rule promotion
 ```
 
-At minimum test:
+Current supported positive paths:
 
 ```text
-!Any(...)
-!All(...)
-FirstOrDefault(...) is null
-SingleOrDefault(...) is not null
-arbitrary helper wrapping that discards/transforms the predicate result
-positive direct Any/All returns
-positive returned Where pipeline
-throwing/rejecting guards
+Any / All / First / FirstOrDefault / Single / SingleOrDefault:
+  invocation must be the direct returned/yielded value, with parentheses allowed
+
+Where:
+  direct return, or a semantically resolved allowlisted receiver pipeline that preserves upstream filtering
 ```
 
-Do not solve only the literal examples. The rule must be generic and conservative.
+The current returned-Where pipeline allowlist covers relevant Enumerable/Queryable projection/order/paging/distinct/reverse/as-enumerable/as-queryable operations plus Enumerable materialization (`ToArray`, `ToList`, `ToHashSet`). Every outer receiver-chain invocation must resolve to the allowed LINQ target.
 
-## Exact reviewed automation evidence
+Arbitrary helpers are not assumed to preserve the predicate result.
 
-All gates for implementation checkpoint `34c3bf00233ac4c0c4df717f7f7c5ae55fffe07b` were inspected and are green:
+Adversarial regressions now include:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   34841796973 — PASS
-pinned Loren                                34841796981 — PASS
-Loren-main canary                           34841796980 — PASS
-pinned Jellyfin                             34841797032 — PASS
-Jellyfin portable parity/provenance         PASS
+Negated_any_return_is_observed_only_because_polarity_is_inverted
+Negated_all_return_is_observed_only_because_polarity_is_inverted
+First_or_default_null_test_is_not_rendered_as_returning_a_selected_item
+Single_or_default_null_test_is_not_rendered_as_returning_a_selected_item
+Filter_passed_to_helper_that_discards_result_is_not_authoritative
+Returned_filter_through_supported_projection_pipeline_remains_authoritative
+Direct_first_return_remains_an_observable_selection
 ```
 
-Exact CI counts:
+Existing regressions retained for direct Any/All, direct returned Where, local discarded Where and rejecting Any guard/throw behavior.
+
+Independent reviewer should challenge both false-positive and false-negative boundaries, especially:
 
 ```text
-build:          0 warnings / 0 errors
-C# tests:       65 / 65 PASS
-frontend tests: 12 / 12 PASS
+!Any / !All
+binary/pattern/null transformations around First*/Single*
+nested arbitrary helper calls
+conditional/coalescing transformations
+safe Where → Select/order/materialize receiver chains
+direct Any/All/First/Single returns
+guards + throws
+nested/local functions
 ```
 
-PokeTrade live behavior and generated knowledge assertions pass.
+If an enclosing transformation is not deterministically modeled, lower authority/omission is the intended safe behavior.
 
-Pinned Jellyfin:
+## Exact implementation-checkpoint gates
+
+All final gates for `9a0817b21075a3d810072a310ed8fd3314625cd8` are green:
 
 ```text
-jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-source build:                         PASS
-workflow candidates:                  386
-product features:                     116
-facts:                                43,363
-canonical Markdown files:             504
-bundle verbatim parity:               PASS
-ZIP exact file-set parity:            PASS
-ZIP byte parity:                      PASS
-raw .pkc leak:                        none
-src/ source-tree leak:                none
-artifact id:                          10346636986
-artifact digest:                      sha256:5a643ec5d2ed1f84af2a70d2b0cd108a2ca13500b6c064f8a615d4481f49b987
+CI + PKC tests + WorkPlay + PokeTrade   34920522723 — PASS
+pinned Loren                            34920522961 — PASS
+Loren-main canary                       34920522799 — PASS
+pinned Jellyfin                         34920522831 — PASS
+Jellyfin portable parity/provenance     PASS
 ```
 
-Green automation does not close B6.3/B6.4 because both are semantic false-authority paths not represented by the current regressions.
+Exact CI counts/results:
+
+```text
+PKC build:                 0 warnings / 0 errors
+C# tests:                  72 / 72 PASS
+frontend tests:            13 / 13 PASS
+local tool pack/install:   PASS
+WorkPlay build:            PASS
+PokeTrade backend build:   PASS
+PokeTrade Angular build:   PASS
+PokeTrade live branches:   PASS
+PokeTrade knowledge check: PASS
+```
+
+Real-project gates:
+
+```text
+pinned Loren build + compile:       PASS
+current Loren-main build + compile: PASS
+pinned Jellyfin source build:       PASS, 0 warnings / 0 errors
+Jellyfin PKC facts:                 43,363
+Jellyfin relations:                 195,314
+workflow candidates:                386
+product features:                   116
+canonical Markdown files:           504
+analysis mode:                      project-semantic 43,363 / 43,363
+```
+
+Portable verification:
+
+```text
+canonical Markdown preserved verbatim in single-file bundle: PASS
+ZIP exact file-set parity:                                  PASS
+ZIP byte parity:                                            PASS
+raw .pkc leak:                                              none
+src/ source-tree leak:                                      none
+```
+
+Current Jellyfin artifact:
+
+```text
+artifact id:     10377409728
+artifact digest: sha256:74ded0b0e5271b1731599b3490d7013ad07dde74445e893868320e2e657f714d
+```
+
+Green automation is supporting evidence only. The next reviewer must inspect the implementation independently and attempt adversarial counterexamples.
 
 ## Benchmark-special-case check
 
-No PokeTrade, Mewtwo, Loren or Jellyfin-specific production exception was found in the production paths reviewed for these blockers. Benchmark names remain in tests/samples/acceptance material, where they are expected.
+No PokeTrade, Mewtwo, Loren or Jellyfin-specific production exception was introduced in the B6.3/B6.4 implementation. Benchmark names remain in tests/samples/acceptance material only where expected.
 
-## Exact next coding action
+## History note
 
-Stay in V0.4.6. Fix **only B6.3 and B6.4** regression-first.
-
-Preferred work unit:
+A transient accidental placeholder commit exists in history immediately before the implementation checkpoint:
 
 ```text
-inspect current main
-→ add focused B6.3/B6.4 adversarial regressions locally
-→ verify they fail for the intended authority reasons
-→ implement generic fixes locally
-→ run focused tests
-→ run full relevant tests/build locally
-→ review complete diff
-→ one coherent implementation commit/push when possible
-→ let CI run once as final verification
+57831e0541100cd7d629283f0c8a57bc8b0c0363
 ```
 
-After the implementation checkpoint is green across:
+Do not review that transient tree. The implementation checkpoint `9a0817b21075a3d810072a310ed8fd3314625cd8` removes the placeholder. Clean baseline-to-checkpoint diff contains only the intended two production files and three regression files.
+
+## Exact next action
+
+**Do not write more production code unless the independent re-review finds a concrete remaining blocker.**
+
+Review exact implementation checkpoint:
 
 ```text
-full PKC tests
-PokeTrade known-answer/live acceptance
-pinned Loren
-Loren-main canary
-pinned Jellyfin
-portable parity/no-leak
+9a0817b21075a3d810072a310ed8fd3314625cd8
 ```
 
-request another independent V0.4.6 re-review.
+Re-review B6.3 and B6.4 adversarially. Confirm B6.1/B6.2 remain closed.
 
-Do not reopen B6.1/B6.2 without new evidence.
-Do not start V0.4.7.
+If independent review returns PASS:
+
+```text
+record independent V0.4.6 PASS
+mark V0.4.6 COMPLETE
+unlock V0.4.7 as next/current milestone
+keep V0.5 Azure DevOps locked
+```
+
+If review returns a blocker:
+
+```text
+record exact counterexample
+stay in V0.4.6
+reproduce regression-first
+implement only the generic blocker fix
+validate locally where possible
+one coherent implementation push
+rerun all gates
+independent review again
+```
+
+## Scope locks
+
+Do not start V0.4.7 before independent V0.4.6 PASS.
 Do not start Azure DevOps ingestion.
 
-## Copy/paste bootstrap for the next coding thread
+## Copy/paste bootstrap for the independent review thread
 
 ```text
-Continue PKC from current remote main HEAD.
+Independently re-review PKC V0.4.6 at implementation checkpoint
+9a0817b21075a3d810072a310ed8fd3314625cd8.
 
-Read in order:
+Read:
 1. docs/status.md
 2. docs/handoff.md
-3. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
-4. docs/milestones.md
+3. docs/milestones.md
+4. docs/reviews/2026-09-15-v0.4.6-independent-rereview-2.md
 
-Stay in V0.4.6.
-B6.1 PASS; keep closed unless new contradiction appears.
-B6.2 PASS; keep closed unless new contradiction appears.
-
-Fix only B6.3 and B6.4 regression-first:
-- B6.3: commented/string import-like TypeScript text must never establish Angular service ownership.
-- B6.4: return-expression containment alone is not observable-effect proof; preserve polarity/result semantics for negated Any/All, First*/Single* transformations and arbitrary helper wrapping.
-
-Batch the related work locally and prefer one coherent implementation commit/push after local validation.
-Rerun all current gates, then request independent V0.4.6 re-review.
-Do not start V0.4.7 or Azure DevOps.
+B6.1 and B6.2 are previously accepted PASS; verify they remain regression-safe.
+Adversarially re-review the B6.3 and B6.4 fixes.
+Do not trust green CI alone.
+Return PASS only if no blocker-class false-product-claim path remains in V0.4.6 scope.
+Do not implement fixes in the review thread.
+Do not start V0.4.7 or Azure DevOps unless V0.4.6 independently passes.
 ```
