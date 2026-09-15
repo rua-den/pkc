@@ -2,47 +2,52 @@
 
 Last updated: 2026-09-15
 
-Latest continuation checkpoint: [Queryable direction check](reviews/2026-09-15-v0.4.6-queryable-direction-checkpoint.md). Implementation is committed at `c310e893762997f34562a6b3a62dbab2b05c0c93`; exact-SHA gates and fresh independent acceptance remain to be established. See the checkpoint for the remote-state caveat before attempting another push.
-
 ## Current milestone state
 
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
-V0.4.7 cross-layer PO-question readiness         LOCKED AGAIN
+V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / EXACT-SHA GATES PASS / INDEPENDENT RE-REVIEW PENDING
+V0.4.7 cross-layer PO-question readiness         LOCKED
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-Current reviewed production checkpoint:
+Current `main` handoff before this checkpoint:
+
+```text
+ec4be388415b9412f5e52367cf03e214498e8f54
+docs: preserve Queryable review checkpoint
+```
+
+Candidate production under fresh independent review:
+
+```text
+c310e893762997f34562a6b3a62dbab2b05c0c93
+fix: fail closed on Queryable authority
+```
+
+Last independently accepted production before rereview 9:
 
 ```text
 868195eff5435cca1c98d4bf6ffd4b18018daf66
 fix: require inert clone construction
 ```
 
-Latest independent review:
+Latest independent review result:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-9.md
 verdict: FAIL / REOPEN V0.4.6
 ```
 
-Implementation status: `IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING`. Queryable predicates remain observed evidence without Product Owner authority, and Enumerable `Where` authority fails closed across Queryable pipeline hops. V0.4.7 and V0.5 remain locked.
-
-Local implementation validation:
+Fresh acceptance request:
 
 ```text
-TDD RED — removing both Queryable guards produced expected observed-only, actual observable.
-TDD RED — before evidence retention, the downgraded predicate was absent from portable Evidence.
-Focused WherePipelineCallbackAuthorityRegressionTests: 7 / 7 PASS
-Full C# suite: 88 / 88 PASS
-Frontend suite: 13 / 13 PASS
-Release build: 0 warnings / 0 errors
-Environment: DOTNET_ROLL_FORWARD=LatestMajor required for net8 test host with SDK 10 MSBuild discovery.
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-10-request.md
+review target: c310e893762997f34562a6b3a62dbab2b05c0c93
 ```
 
-Rereview 8 remains valid for the constructor-effect boundary it accepted, but its milestone-complete disposition is superseded by rereview 9's newly discovered Queryable provider-authority contradiction.
+Rereview 8 remains valid for the constructor-effect boundary it accepted. Rereview 9 reopened V0.4.6 only for the separate Queryable provider-authority contradiction. That contradiction is now remediated in `c310e89`; milestone acceptance still requires fresh independent review.
 
 V0.4.3 remains the last accepted tool package:
 
@@ -72,7 +77,7 @@ No deterministic proof means no authoritative product claim. Downgrading rule au
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — Queryable predicate authority assumes provider semantics that are not proven
+B6.4 IMPLEMENTATION GREEN — Queryable provider-authority fix; fresh independent review pending
 ```
 
 ### Prior B6.4 hardening remains accepted
@@ -89,106 +94,109 @@ Keep closed absent a concrete contradiction:
 - exact-shape callback-free Enumerable pipeline preservation;
 - inert-constructor requirement for same-type defensive clones.
 
-Rereview 8's constructor analysis is not being reversed.
+### Remediated boundary — Queryable provider trust
 
-### Remediated boundary — `Queryable` provider trust (independent review pending)
+The prior model could treat exact `System.Linq.Queryable.<operation>` identity as sufficient authority even though `IQueryable` execution is provider-mediated.
 
-The semantic model retains exact `System.Linq.Queryable.<operation>` targets as deterministic evidence, but no Queryable operation establishes Product Owner authority without a proven provider boundary.
-
-For `Queryable.Where`, resolving the exact BCL method only proves that an expression tree is created and handed to `source.Provider.CreateQuery(...)`. Runtime query behavior depends on the provider implementation.
-
-Compile-valid behavior-valid counterexample shape:
+Rereview 9 demonstrated a compile-valid custom `IQueryable<T>` / `IQueryProvider` whose `CreateQuery` retains the expression while enumeration ignores `Where`. Such a provider can return an unpublished item from:
 
 ```csharp
-private readonly IQueryable<Card> _cards =
-    new IgnoringQuery<Card>(
-    [
-        new Card { IsPublished = false }
-    ]);
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .ToList();
+_query.Where(card => card.IsPublished).ToList();
 ```
 
-where `IgnoringQuery<T>` implements `IQueryable<T>` / `IQueryProvider`, retains the expression passed to `CreateQuery`, but enumerates the underlying items without interpreting the `Where` expression.
-
-Observable result:
+while the old authority path could synthesize the false Product Owner rule:
 
 ```text
-underlying item IsPublished == false
-→ Queryable.Where delegates expression to Provider.CreateQuery
-→ provider returns query carrying the expression
-→ ToList enumerates provider-backed query
-→ provider yields the false item
-→ returned item does not satisfy card.IsPublished
+Includes items from `_query` only when `card.IsPublished`.
 ```
 
-Before implementation commit `c310e89`, PKC could still promote:
+Implementation `c310e89` now applies the conservative generic boundary:
 
 ```text
-Includes items from `_cards` only when `card.IsPublished`.
+Queryable predicate target
+→ retain deterministic predicate evidence
+→ businessRuleAuthority = observed-only
+→ no authoritative Product Owner rule
 ```
 
-That Product Owner statement is false.
-
-Required generic boundary:
+and:
 
 ```text
-exact Queryable operation
-+ source/provider identity proven
-+ provider semantics for that operation proven/trusted
-+ observable execution path proven
-→ authoritative Product Owner rule
-
-otherwise
-→ observed-only / no authoritative product rule
+Enumerable Where path crosses any Queryable pipeline hop
+→ fail closed on returned-item authority
+→ retain predicate evidence
 ```
 
-A conservative V0.4.6 implementation downgrades Queryable business predicates and rejects Enumerable authority when the returned path crosses any Queryable hop. It does not preserve outputs through benchmark/provider-name special cases.
+No provider, benchmark, entity, property or fixture name is special-cased. LINQ-to-Objects `AsQueryable()` is also conservatively downgraded because provider identity/semantics are not currently proven.
 
-Required focused regression: custom `IQueryable<T>` / `IQueryProvider` that ignores the `Where` expression during enumeration must not yield an authoritative inclusion rule.
+`FeatureCandidateBuilder` retains `observes-predicate`, so the downgrade does not delete lower-authority evidence required by the product contract.
 
-## Exact automation for current production
+## Local validation for `c310e89`
 
-All existing gates remain green on exact SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66`:
+Recorded implementation validation:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34964195712 — PASS
-pinned Loren                            34964195642 — PASS
-Loren-main canary                       34964195717 — PASS
-pinned Jellyfin                         34964195689 — PASS
+TDD mutation RED — removing both Queryable guards produced expected observed-only vs actual observable
+Evidence-retention RED — downgraded predicate was absent until observes-predicate traversal was retained
+Focused WherePipelineCallbackAuthorityRegressionTests: 7 / 7 PASS
+Full C# suite: 88 / 88 PASS
+Frontend suite: 13 / 13 PASS
+Release build: 0 warnings / 0 errors
 ```
 
-Core CI:
+Environment note: `DOTNET_ROLL_FORWARD=LatestMajor` was required on the implementation machine because the net8 test host used SDK 10 MSBuild discovery.
+
+## Exact-SHA automation for `c310e89`
+
+All required current-production gates are green on exact implementation SHA `c310e893762997f34562a6b3a62dbab2b05c0c93`:
 
 ```text
-PKC build:       0 warnings / 0 errors
-C# tests:        85 / 85 PASS
-frontend tests:  13 / 13 PASS
-WorkPlay:        PASS
-PokeTrade:       PASS
+CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
+pinned Loren                            34990080707 — PASS
+Loren-main canary                       34990080551 — PASS
+pinned Jellyfin                         34990080546 — PASS
+```
+
+CI job-level verification:
+
+```text
+Release build                           PASS
+dotnet test PKC.sln                     PASS
+local tool pack/install                 PASS
+WorkPlay end-to-end knowledge           PASS
+PokeTrade .NET backend build            PASS
+PokeTrade Angular frontend build        PASS
+PokeTrade business acceptance           PASS
+PokeTrade PKC knowledge compile/verify  PASS
+```
+
+Pinned Jellyfin verification:
+
+```text
+Build PKC                               PASS
+Build pinned Jellyfin                   PASS
+Compile product knowledge               PASS
+portable bundle/ZIP parity              PASS
+raw .pkc leak check                     PASS
+src/ leak check                         PASS
 ```
 
 Pinned Jellyfin artifact:
 
 ```text
-artifact id:     10394456737
-digest:          sha256:586863e971967be62ec6e0a7763cc90806903621d43ea896813e4cf3b3a2e414
-size:            9,016,935 bytes
-head SHA:        868195eff5435cca1c98d4bf6ffd4b18018daf66
+artifact id: 10405810551
+digest:      sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
+size:        9,159,880 bytes
+head SHA:    c310e893762997f34562a6b3a62dbab2b05c0c93
 ```
-
-Green automation does not exercise the custom-provider contradiction and does not override the semantic blocker.
 
 ## Exact next action
 
-Stay in V0.4.6.
+Stay in V0.4.6 and perform a fresh independent rereview of exact production SHA `c310e893762997f34562a6b3a62dbab2b05c0c93` using `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10-request.md`.
 
-Review the complete implementation diff, make the implementation commit and push, verify exact-SHA CI and external gates, then request fresh independent review. Do not claim V0.4.6 accepted or complete before that review passes.
+Do not make another production change merely for output parity. Only reopen implementation if the reviewer finds a concrete compile-valid/behavior-valid contradiction or another acceptance gate fails.
 
-Until that review passes:
+Until independent PASS:
 
 ```text
 V0.4.7 LOCKED
