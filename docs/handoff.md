@@ -37,7 +37,7 @@ Conservative downgrade of product-rule authority must not erase deterministic lo
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         REOPENED / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7  cross-layer PO-question readiness     LOCKED AGAIN
 V0.5    Azure DevOps input evidence           LOCKED
 ```
@@ -55,6 +55,10 @@ Latest independent review:
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-9.md
 FAIL / REOPEN V0.4.6
 ```
+
+Current implementation status: `IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING`. Queryable predicates remain observed evidence without Product Owner authority, and Enumerable `Where` authority fails closed across Queryable pipeline hops. V0.4.7 and V0.5 remain locked.
+
+Local validation is green: focused authority regressions 7/7, full C# suite 88/88, frontend suite 13/13, and Release build 0 warnings/0 errors. TDD mutation RED removing both Queryable guards produced expected observed-only versus actual observable; the evidence-retention RED showed the downgraded predicate missing from portable Evidence before `observes-predicate` traversal was added. `DOTNET_ROLL_FORWARD=LatestMajor` was required because the net8 test host runs with only SDK 10 MSBuild discovery. Commit, push, exact-SHA gates, and fresh independent review remain outstanding.
 
 Rereview 8 remains accepted for its constructor-effect analysis. V0.4.6 was reopened only because rereview 9 found a separate provider-semantics contradiction.
 
@@ -87,7 +91,7 @@ Do not reopen rereview 8's constructor fix without a separate contradiction.
 
 Current business-predicate extraction and authority filtering accept `System.Linq.Queryable.<operation>` alongside `System.Linq.Enumerable.<operation>`.
 
-That is insufficient for authoritative product semantics because Queryable execution is provider-mediated.
+The prior model was insufficient for authoritative product semantics because Queryable execution is provider-mediated.
 
 `Queryable.Where` builds an expression tree and passes it to `source.Provider.CreateQuery(...)`. The provider decides how that expression is interpreted and how enumeration executes.
 
@@ -126,7 +130,7 @@ Includes items from `_cards` only when `card.IsPublished`.
 
 That is false for the returned item.
 
-## Required coding fix
+## Implemented coding boundary — independent review pending
 
 Fix only this provider-trust authority boundary, regression-first.
 
@@ -198,7 +202,7 @@ Green CI does not cover the new custom-provider contradiction.
 9. Commit regression + fix together in one coherent implementation commit.
 10. Push once.
 11. Verify exact-SHA CI, WorkPlay, PokeTrade, pinned Loren, Loren-main, pinned Jellyfin, and portable parity/no-leak gates.
-12. Stop and request another independent V0.4.6 review.
+12. Stop and request another independent V0.4.6 review; do not claim acceptance or completion.
 
 Do not use GitHub Actions as the normal edit/test loop.
 

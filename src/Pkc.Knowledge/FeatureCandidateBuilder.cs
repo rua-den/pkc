@@ -10,6 +10,7 @@ public sealed partial class FeatureCandidateBuilder
     private static readonly HashSet<string> BehaviorRelationKinds = new(StringComparer.Ordinal)
     {
         "contains-condition",
+        "observes-predicate",
         "contains-configuration",
         "throws",
         "mutates",

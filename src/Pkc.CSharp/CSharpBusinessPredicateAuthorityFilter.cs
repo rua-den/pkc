@@ -220,6 +220,14 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
+        if (string.Equals(
+                methodSymbol.ContainingType?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                "System.Linq.Queryable",
+                StringComparison.Ordinal))
+        {
+            return null;
+        }
+
         var containingMethod = invocation.Ancestors().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
         if (containingMethod is null)
         {
@@ -364,6 +372,11 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         }
 
         var target = GetMethodTarget(methodSymbol);
+        if (target.StartsWith("System.Linq.Queryable.", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         if (IsCallbackFreeWherePipelineInvocation(target, methodSymbol, pipelineInvocation))
         {
             return true;

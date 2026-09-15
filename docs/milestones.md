@@ -69,7 +69,7 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — REOPENED / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+### V0.4.6 — Business logic reconstruction — IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
@@ -95,16 +95,16 @@ Current disposition:
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — active module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — exact Queryable target does not prove IQueryProvider runtime semantics
+B6.4 IMPLEMENTED — Queryable authority downgraded pending independent review
 ```
 
 Accepted B6.4 hardening still covers local/discarded predicate downgrade, transformed return contexts, arbitrary `Select` rejection, identity projection proof, whole-item dependency completeness, safe defensive-clone members, custom setter and initializer effects, callback/comparer pipeline effects, and inert same-type clone construction.
 
-#### New Queryable provider-authority blocker
+#### Remediated Queryable provider-authority boundary
 
-The current model treats `System.Linq.Queryable.<operation>` as semantically authoritative alongside `Enumerable` once exact target and observable value path are proven.
+The prior model retained `System.Linq.Queryable.<operation>` as authority without proving the provider boundary. The implementation now retains it as deterministic evidence while withholding Product Owner authority.
 
-That is insufficient because Queryable execution is provider-mediated. `Queryable.Where` creates an expression tree and delegates it to `source.Provider.CreateQuery(...)`; the provider implementation determines the query behavior.
+That prior behavior was insufficient because Queryable execution is provider-mediated. `Queryable.Where` creates an expression tree and delegates it to `source.Provider.CreateQuery(...)`; the provider implementation determines the query behavior.
 
 A compile-valid custom `IQueryable<T>` / `IQueryProvider` can retain the expression tree while enumeration ignores the `Where` predicate:
 
@@ -140,9 +140,9 @@ otherwise
 → observed-only / no authoritative rule
 ```
 
-A conservative V0.4.6 fix may downgrade Queryable predicates unless provider semantics are deterministically proven. No benchmark/provider-name special cases.
+The V0.4.6 implementation downgrades Queryable predicates and rejects Enumerable authority across Queryable pipeline hops. No benchmark/provider-name special cases.
 
-Required regression: a custom provider that ignores `Where` during enumeration must not produce an authoritative returned-item inclusion rule.
+Focused regression: a custom provider that ignores `Where` during enumeration produces observed-only evidence and no authoritative returned-item inclusion rule. Fresh independent review remains pending; V0.4.7 and V0.5 remain locked.
 
 Exact-production gates remain green on `868195eff...`:
 
@@ -172,6 +172,8 @@ size:          9,016,935 bytes
 ```
 
 Green automation does not cover the custom-provider contradiction.
+
+Local validation is green: focused authority regressions 7/7, full C# suite 88/88, frontend suite 13/13, and Release build 0 warnings/0 errors. Mutation RED removing both Queryable guards produced expected observed-only versus actual observable; the evidence-retention RED showed the downgraded predicate missing from portable Evidence before `observes-predicate` traversal was added. `DOTNET_ROLL_FORWARD=LatestMajor` was required for SDK 10 MSBuild discovery with the net8 test host. Commit, push, exact-SHA gates, and fresh independent review remain outstanding.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED AGAIN UNTIL V0.4.6 RE-PASSES
 

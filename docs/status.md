@@ -7,7 +7,7 @@ Last updated: 2026-09-15
 ```text
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
-V0.4.6 business logic reconstruction             REOPENED / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.6 business logic reconstruction             IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7 cross-layer PO-question readiness         LOCKED AGAIN
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
@@ -24,6 +24,20 @@ Latest independent review:
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-9.md
 verdict: FAIL / REOPEN V0.4.6
+```
+
+Implementation status: `IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING`. Queryable predicates remain observed evidence without Product Owner authority, and Enumerable `Where` authority fails closed across Queryable pipeline hops. V0.4.7 and V0.5 remain locked.
+
+Local implementation validation:
+
+```text
+TDD RED — removing both Queryable guards produced expected observed-only, actual observable.
+TDD RED — before evidence retention, the downgraded predicate was absent from portable Evidence.
+Focused WherePipelineCallbackAuthorityRegressionTests: 7 / 7 PASS
+Full C# suite: 88 / 88 PASS
+Frontend suite: 13 / 13 PASS
+Release build: 0 warnings / 0 errors
+Environment: DOTNET_ROLL_FORWARD=LatestMajor required for net8 test host with SDK 10 MSBuild discovery.
 ```
 
 Rereview 8 remains valid for the constructor-effect boundary it accepted, but its milestone-complete disposition is superseded by rereview 9's newly discovered Queryable provider-authority contradiction.
@@ -75,9 +89,9 @@ Keep closed absent a concrete contradiction:
 
 Rereview 8's constructor analysis is not being reversed.
 
-### Remaining blocker — `Queryable` provider trust
+### Remediated boundary — `Queryable` provider trust (independent review pending)
 
-The current semantic authority model accepts both exact `System.Linq.Enumerable.<operation>` and exact `System.Linq.Queryable.<operation>` targets. It does not prove the runtime behavior of `IQueryable.Provider`.
+The semantic model retains exact `System.Linq.Queryable.<operation>` targets as deterministic evidence, but no Queryable operation establishes Product Owner authority without a proven provider boundary.
 
 For `Queryable.Where`, resolving the exact BCL method only proves that an expression tree is created and handed to `source.Provider.CreateQuery(...)`. Runtime query behavior depends on the provider implementation.
 
@@ -130,7 +144,7 @@ otherwise
 → observed-only / no authoritative product rule
 ```
 
-A conservative V0.4.6 fix may downgrade `Queryable` business predicates unless provider semantics are deterministically proven. Do not preserve outputs through benchmark/provider-name special cases.
+A conservative V0.4.6 implementation downgrades Queryable business predicates and rejects Enumerable authority when the returned path crosses any Queryable hop. It does not preserve outputs through benchmark/provider-name special cases.
 
 Required focused regression: custom `IQueryable<T>` / `IQueryProvider` that ignores the `Where` expression during enumeration must not yield an authoritative inclusion rule.
 
@@ -170,7 +184,7 @@ Green automation does not exercise the custom-provider contradiction and does no
 
 Stay in V0.4.6.
 
-Add the custom-provider regression first, implement the minimum generic provider-trust/fail-closed boundary, locally validate where tooling permits, review the complete diff, make one coherent implementation commit and one push, then run exact-SHA gates and request fresh independent review.
+Review the complete implementation diff, make the implementation commit and push, verify exact-SHA CI and external gates, then request fresh independent review. Do not claim V0.4.6 accepted or complete before that review passes.
 
 Until that review passes:
 
