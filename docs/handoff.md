@@ -37,79 +37,54 @@ Conservative downgrade of product-rule authority must not erase deterministic lo
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Latest reviewed production checkpoint:
+Production checkpoint for semantic review:
 
 ```text
-eb0903ef93b2b85669ded0e2227ca1a950bc49c7
-fix: fail closed on callback-bearing where pipelines
+868195eff5435cca1c98d4bf6ffd4b18018daf66
+fix: require inert clone construction
 ```
 
-Latest independent review:
+Latest completed review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md
-verdict: FAIL / FIX REQUIRED
+FAIL / FIX REQUIRED on prior production eb0903ef...
 ```
 
-Current disposition:
+Fresh review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md
+```
+
+Semantic review must stay pinned to production `868195eff...` even if `main` is a later docs-only handoff commit.
+
+## Closed scope
 
 ```text
 B6.1 PASS / keep closed
 B6.2 PASS / keep closed
 B6.3 PASS / keep closed
-B6.4 BLOCK / same-type projector constructor effects remain unproven
 ```
 
-Do not start V0.4.7 or Azure DevOps until V0.4.6 independently passes.
+The rereview-6 callback/comparer pipeline gap is closed. `OrderBy*`, `ThenBy*`, `Distinct`, and `ToHashSet` do not automatically borrow earlier `Where` authority. The audited callback-free subset remains accepted. Do not reopen absent a concrete contradiction.
 
-## Closed scope
+Previously accepted B6.4 hardening also remains in force: observable return-path proof, polarity/return-context conservatism, arbitrary `Select` rejection, identity projection proof, complete supported predicate dependencies, safe direct clone members, custom-setter fail-closed behavior, and callback/comparer pipeline safety.
 
-### B6.1 — PASS
+## Rereview-7 blocker and implementation
 
-Exact C# predicate authority is tied to exact invocation syntax/semantic identity.
-
-### B6.2 — PASS
-
-Configured-item ownership remains conservative; nested property object initializers are not promoted as direct collection items.
-
-### B6.3 — PASS
-
-Angular service correlation requires lexically active module-qualified relative import evidence.
-
-### Rereview-6 callback blocker — CLOSED
-
-`eb0903ef...` replaces the broad unconditional `Where` pipeline allowlist with a callback-free exact-shape subset.
-
-Allowed safe subset currently covers zero-argument `Reverse`, `AsEnumerable`, `AsQueryable`, `ToArray`, `ToList`, plus exact scalar/range `Skip` / `Take` shapes. Ordering, equality/comparer, `Distinct`, and `ToHashSet` paths do not retain authority without explicit proof.
-
-New callback/comparer regressions are green in exact-SHA CI.
-
-## B6.4 — remaining blocker
-
-The same-type method-group projection proof validates initializer writes but does not validate object-constructor effects.
-
-Compile-valid counterexample:
+Rereview 7 showed that same-type projector preservation could accept:
 
 ```csharp
-public sealed class Card
-{
-    public bool IsPublished { get; set; }
-    public bool Blocked { get; set; }
-
-    public Card() { }
-    public Card(Card source) => source.IsPublished = false;
-}
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .Select(CloneCard)
-        .ToArray();
+_cards
+    .Where(card => card.IsPublished)
+    .Select(CloneCard)
+    .ToArray();
 
 private static Card CloneCard(Card card) => new Card(card)
 {
@@ -118,94 +93,93 @@ private static Card CloneCard(Card card) => new Card(card)
 };
 ```
 
-Execution:
+when `Card(Card source)` mutates `source.IsPublished = false` before the initializer copies it.
+
+Production `868195eff...` closes the generic construction gap conservatively. Same-type method-group projection can preserve authority only when construction is proven inert:
 
 ```text
-Where sees source IsPublished == true
-→ item passes
-→ CloneCard constructor mutates source IsPublished = false
-→ initializer copies false into clone
-→ returned clone IsPublished == false
+zero constructor args
++ exact constructor symbol on projected type
++ compiler-generated implicit zero-arg constructor
++ no non-object base-constructor path
++ no instance field/event/property initializer code
++ existing safe direct same-member initializer proof
+→ preservation may continue
+
+anything unproven
+→ fail closed / observed-only
 ```
 
-Current proof still sees a sealed same-type projector with safe-looking direct same-member initializer assignments and can preserve the earlier `Where` predicate.
+Regressions added in `tests/Pkc.CSharp.Tests/ProjectionConstructionAuthorityRegressionTests.cs` cover:
 
-## Required coding fix
+1. source-mutating copy constructor;
+2. user-defined parameterless constructor;
+3. implicit constructor with instance initializer;
+4. implicit constructor with effectful base constructor.
 
-Fix only this constructor-effect authority gap, regression-first.
+Existing positive implicit inert defensive-clone behavior remains green, including the PokeTrade known-answer path. No benchmark-specific exception was added.
 
-Required generic property:
+Local environment limitation: the coding sandbox had no `dotnet`, so no local runtime result is claimed. The defect and implementation were inspected before the one production push; CI is the recorded runtime verification.
 
-```text
-complete predicate dependency proof
-+ same closed item type
-+ object-construction path proven effect-safe
-+ every initializer assignment proven side-effect-safe
-+ every required predicate member copied
-→ may preserve authoritative Where semantics
+## Exact production gates
 
-otherwise
-→ fail closed / observed-only / no authoritative inclusion rule
-```
-
-A conservative V0.4.6 solution is acceptable. The supported defensive-clone path may require an implicit/default inert constructor and reject constructor arguments or user-defined constructor bodies unless their effects are deterministically proven safe.
-
-Do not special-case `Card`, `IsPublished`, or the exact example.
-
-Required focused regression: a source-mutating constructor invoked by the projector must downgrade the earlier `Where` authority.
-
-Keep the existing positive defensive-clone regression green only where the constructor path is deterministically inert.
-
-Do not reopen the callback-pipeline fix, custom-setter fix, whole-item predicate dependency fix, or B6.1–B6.3 unless a concrete contradiction requires it.
-
-## Exact reviewed checkpoint gates
-
-All automation is green on exact production SHA `eb0903ef93b2b85669ded0e2227ca1a950bc49c7`:
+All gates are green on exact SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   34959028651 — PASS
-pinned Loren                                34959028686 — PASS
-Loren-main canary                           34959028633 — PASS
-pinned Jellyfin                             34959028626 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   34964195712 — PASS
+pinned Loren                                34964195642 — PASS
+Loren-main canary                           34964195717 — PASS
+pinned Jellyfin                             34964195689 — PASS
 ```
 
 Core CI:
 
 ```text
 PKC build:                 0 warnings / 0 errors
-C# tests:                  81 / 81 PASS
+C# tests:                  85 / 85 PASS
 frontend tests:            13 / 13 PASS
 WorkPlay:                  PASS
-PokeTrade:                 PASS
+PokeTrade backend:         0 warnings / 0 errors
+PokeTrade Angular build:   PASS
+PokeTrade live acceptance: PASS
+PokeTrade knowledge gate:  PASS
 ```
 
-Pinned Jellyfin artifact:
+Pinned Jellyfin:
 
 ```text
-artifact id:     10391499835
-digest:          sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
-size:            9,016,935 bytes
+commit:               1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+source build:          0 warnings / 0 errors
+facts:                 43,363
+relations:             195,314
+workflow candidates:   386
+product features:      116
+canonical Markdown:    504
+project-semantic:      43,363 / 43,363
+artifact id:           10394456737
+digest:                sha256:586863e971967be62ec6e0a7763cc90806903621d43ea896813e4cf3b3a2e414
+size:                  9,016,935 bytes
 ```
 
-## Coding-thread workflow
+Portable bundle and ZIP parity are exact; no raw `.pkc` and no `src/` source tree leaks into the portable ZIP.
 
-1. Read `docs/status.md` and this handoff first.
-2. Inspect current `main` HEAD and rereview 7.
-3. Add one focused regression for constructor-side-effect invalidation.
-4. Confirm the defect locally if tooling permits.
-5. Implement the minimum generic fail-closed constructor boundary.
-6. Run focused/related tests locally, then broader relevant tests/build.
-7. Review the full diff.
-8. Commit regression + fix together in one coherent implementation commit.
-9. Push once.
-10. Record the exact production SHA and exact-head gate evidence.
-11. Stop and request another independent V0.4.6 review.
+## Next thread
 
-Do not use GitHub Actions as the normal edit/test loop.
+This is now an independent-review handoff, not a coding task.
 
-Until independent PASS:
+Read in order:
 
-```text
-V0.4.7 LOCKED
-V0.5 LOCKED
-```
+1. `docs/status.md`
+2. `docs/handoff.md`
+3. `docs/milestones.md`
+4. `docs/product-knowledge-contract.md`
+5. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md`
+6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md`
+
+Then independently challenge exact production SHA `868195eff5435cca1c98d4bf6ffd4b18018daf66`.
+
+If PASS: record the independent review, mark V0.4.6 complete, unlock V0.4.7 as next/current, keep V0.5 locked.
+
+If FAIL: record the smallest compile-valid, behavior-valid contradiction; do not fix production code in the reviewer thread; keep V0.4.7 and V0.5 locked.
+
+Do not self-approve V0.4.6.

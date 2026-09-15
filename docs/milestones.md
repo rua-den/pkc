@@ -69,16 +69,29 @@ pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 
 V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion, and large-pack signal/noise.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
+### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest independent review:
+Latest completed independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-7.md
 reviewed production: eb0903ef93b2b85669ded0e2227ca1a950bc49c7
 verdict: FAIL / FIX REQUIRED
+```
+
+Production checkpoint awaiting fresh review:
+
+```text
+868195eff5435cca1c98d4bf6ffd4b18018daf66
+fix: require inert clone construction
+```
+
+Fresh review request:
+
+```text
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-8-request.md
 ```
 
 Current disposition:
@@ -87,10 +100,10 @@ Current disposition:
 B6.1 PASS — exact C# invocation semantic identity; keep closed
 B6.2 PASS — conservative configured-item ownership; keep closed
 B6.3 PASS — active module-qualified Angular service ownership; keep closed
-B6.4 BLOCK — same-type projector constructor effects are not proven safe
+B6.4 IMPLEMENTATION GREEN — fresh independent semantic review required
 ```
 
-Accepted B6.4 hardening already covers:
+Accepted B6.4 hardening covers:
 
 1. discarded/local predicates do not become observable rules merely because a LINQ call exists;
 2. transformed/polarity-changing return contexts for `Any`, `All`, `First*`, `Single*` fail closed unless modeled;
@@ -100,54 +113,20 @@ Accepted B6.4 hardening already covers:
 6. same-type method-group projection requires a closed item type and direct same-member initializer copies;
 7. custom setter / nested / rewritten initializer effects fail closed;
 8. callback/comparer-bearing pipeline operations are not trusted merely from LINQ method identity;
-9. callback-free pipeline preservation is limited to an audited exact-shape subset.
+9. callback-free pipeline preservation is limited to an audited exact-shape subset;
+10. same-type projector construction must itself be proven inert before earlier `Where` authority is retained.
 
-#### Rereview-7 remaining blocker
+#### Rereview-7 constructor-effect checkpoint
 
-The same-type method-group defensive-clone path validates object initializer assignments but does not validate object-constructor effects.
-
-Counterexample:
-
-```csharp
-public sealed class Card
-{
-    public bool IsPublished { get; set; }
-    public bool Blocked { get; set; }
-
-    public Card() { }
-    public Card(Card source) => source.IsPublished = false;
-}
-
-public IReadOnlyList<Card> GetCards() =>
-    _cards
-        .Where(card => card.IsPublished)
-        .Select(CloneCard)
-        .ToArray();
-
-private static Card CloneCard(Card card) => new Card(card)
-{
-    IsPublished = card.IsPublished,
-    Blocked = card.Blocked
-};
-```
-
-Execution:
-
-```text
-Where passes while IsPublished == true
-→ projector constructor mutates source IsPublished = false
-→ initializer copies false
-→ returned clone has IsPublished == false
-```
-
-The current proof can still preserve the earlier `Where` predicate because constructor arguments/body are outside the modeled safe-initializer boundary.
-
-Required generic authority boundary:
+Rereview 7 demonstrated that a copy constructor could mutate the source item after `Where` passed and before initializer values were copied. Production `868195eff...` closes that authority gap with a conservative generic boundary:
 
 ```text
 complete predicate dependencies
 + same closed item type
-+ object-construction path proven effect-safe
++ zero-argument object creation
++ exact compiler-generated implicit constructor on projected type
++ no unproven base-constructor path
++ no instance field/event/property initializer code
 + every initializer write proven safe
 + every required predicate member copied
 → authoritative returned-item predicate may be retained
@@ -156,36 +135,49 @@ otherwise
 → observed-only / omitted authoritative rule
 ```
 
-A conservative V0.4.6 fix may require an implicit/default inert constructor and fail closed for constructor arguments or user-defined constructor code unless deterministically proven safe.
+Regression coverage now includes source-mutating copy constructors, user-defined parameterless constructors, implicit construction with instance initializers, and implicit construction with an effectful base constructor. Existing positive implicit inert defensive-clone behavior remains green.
 
-Exact gates for the reviewed production checkpoint remain green:
+No benchmark-specific exception is present. Authority downgrade continues to preserve deterministic lower-authority mutation/provenance evidence.
+
+Local sandbox lacked `dotnet`, so no local runtime claim is made. Exact-head CI is green:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   34959028651 — PASS
-pinned Loren                            34959028686 — PASS
-Loren-main canary                       34959028633 — PASS
-pinned Jellyfin                         34959028626 — PASS
+CI + PKC tests + WorkPlay + PokeTrade   34964195712 — PASS
+pinned Loren                            34964195642 — PASS
+Loren-main canary                       34964195717 — PASS
+pinned Jellyfin                         34964195689 — PASS
 ```
 
 Core evidence:
 
 ```text
 PKC build:       0 warnings / 0 errors
-C# tests:        81 / 81 PASS
+C# tests:        85 / 85 PASS
 frontend tests:  13 / 13 PASS
 WorkPlay:        PASS
 PokeTrade:       PASS
 ```
 
-Pinned Jellyfin artifact:
+Pinned Jellyfin evidence:
 
 ```text
-id:      10391499835
-digest:  sha256:39aab5f88914a2e153646b75fa9c8b6cece8a03f3f2dbc821fae871dab820dc2
-size:    9,016,935 bytes
+source build:         0 warnings / 0 errors
+facts:                43,363
+relations:            195,314
+workflow candidates:  386
+product features:     116
+canonical Markdown:   504
+project-semantic:     43,363 / 43,363
+artifact id:          10394456737
+digest:               sha256:586863e971967be62ec6e0a7763cc90806903621d43ea896813e4cf3b3a2e414
+size:                 9,016,935 bytes
+portable parity:      PASS
+portable ZIP parity:  PASS
+raw .pkc leak:        NONE
+src/ leak:            NONE
 ```
 
-V0.4.6 remains open until a new implementation checkpoint closes this constructor-effect authority gap and a fresh independent review passes it.
+V0.4.6 remains open until a fresh independent review passes production `868195eff...`.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 
