@@ -11,29 +11,22 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
 {
     private static readonly object RegistrationGate = new();
 
-    private static readonly HashSet<string> WherePipelineTargets = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> CallbackFreeZeroArgumentWherePipelineTargets = new(StringComparer.Ordinal)
     {
-        "System.Linq.Enumerable.OrderBy",
-        "System.Linq.Queryable.OrderBy",
-        "System.Linq.Enumerable.OrderByDescending",
-        "System.Linq.Queryable.OrderByDescending",
-        "System.Linq.Enumerable.ThenBy",
-        "System.Linq.Queryable.ThenBy",
-        "System.Linq.Enumerable.ThenByDescending",
-        "System.Linq.Queryable.ThenByDescending",
-        "System.Linq.Enumerable.Skip",
-        "System.Linq.Queryable.Skip",
-        "System.Linq.Enumerable.Take",
-        "System.Linq.Queryable.Take",
-        "System.Linq.Enumerable.Distinct",
-        "System.Linq.Queryable.Distinct",
         "System.Linq.Enumerable.Reverse",
         "System.Linq.Queryable.Reverse",
         "System.Linq.Enumerable.AsEnumerable",
         "System.Linq.Queryable.AsQueryable",
         "System.Linq.Enumerable.ToArray",
-        "System.Linq.Enumerable.ToList",
-        "System.Linq.Enumerable.ToHashSet"
+        "System.Linq.Enumerable.ToList"
+    };
+
+    private static readonly HashSet<string> CallbackFreeSliceWherePipelineTargets = new(StringComparer.Ordinal)
+    {
+        "System.Linq.Enumerable.Skip",
+        "System.Linq.Queryable.Skip",
+        "System.Linq.Enumerable.Take",
+        "System.Linq.Queryable.Take"
     };
 
     private static readonly HashSet<string> ProjectionTargets = new(StringComparer.Ordinal)
@@ -371,7 +364,7 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
         }
 
         var target = GetMethodTarget(methodSymbol);
-        if (WherePipelineTargets.Contains(target))
+        if (IsCallbackFreeWherePipelineInvocation(target, methodSymbol, pipelineInvocation))
         {
             return true;
         }
@@ -382,6 +375,34 @@ internal sealed class CSharpBusinessPredicateAuthorityFilter
                    pipelineInvocation,
                    semanticModel,
                    cancellationToken);
+    }
+
+    private static bool IsCallbackFreeWherePipelineInvocation(
+        string target,
+        IMethodSymbol methodSymbol,
+        InvocationExpressionSyntax invocation)
+    {
+        var parameters = methodSymbol.ReducedFrom is { } reducedFrom
+            ? reducedFrom.Parameters.Skip(1).ToArray()
+            : methodSymbol.Parameters.ToArray();
+        var argumentCount = invocation.ArgumentList.Arguments.Count;
+
+        if (CallbackFreeZeroArgumentWherePipelineTargets.Contains(target))
+        {
+            return argumentCount == 0 && parameters.Length == 0;
+        }
+
+        if (!CallbackFreeSliceWherePipelineTargets.Contains(target) ||
+            argumentCount != 1 ||
+            parameters.Length != 1)
+        {
+            return false;
+        }
+
+        var parameterType = parameters[0].Type;
+        return parameterType.SpecialType == SpecialType.System_Int32 ||
+               parameterType is INamedTypeSymbol { Name: "Range" } rangeType &&
+               string.Equals(rangeType.ContainingNamespace?.ToDisplayString(), "System", StringComparison.Ordinal);
     }
 
     private static bool IsItemSemanticsPreservingProjection(
