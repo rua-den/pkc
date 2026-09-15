@@ -95,29 +95,16 @@ W5 large-pack signal/noise
 
 PokeTrade + Loren + Jellyfin regressions remained green on the reviewed candidate.
 
-### V0.4.6 — Business logic reconstruction — CURRENT / IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+### V0.4.6 — Business logic reconstruction — CURRENT / INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 
 Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
-reviewed implementation: 9a0817b21075a3d810072a310ed8fd3314625cd8
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-4.md
+reviewed production: a636172ea8575f46d51e503d1ba7ad6d861650fb
 verdict: FAIL / FIX REQUIRED
-```
-
-Current production checkpoint awaiting fresh independent review:
-
-```text
-a636172ea8575f46d51e503d1ba7ad6d861650fb
-fix: preserve proven same-type Select projections
-```
-
-Fresh review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
 ```
 
 Current disposition:
@@ -126,7 +113,7 @@ Current disposition:
 B6.1 PASS  — exact C# invocation semantic identity; keep closed
 B6.2 PASS  — conservative configured-item ownership; keep closed
 B6.3 PASS  — active module-qualified Angular service ownership; keep closed
-B6.4 IMPLEMENTED + GREEN — independent acceptance pending
+B6.4 BLOCK — same-type projection proof ignores unmodeled whole-item predicate dependencies
 ```
 
 B6.1 remains closed by exact invocation semantic re-resolution through Roslyn using source path + syntax `SpanStart`.
@@ -135,65 +122,76 @@ B6.2 remains closed by direct configured-item ownership; nested property objects
 
 B6.3 remains independently accepted. Module-qualified service ownership requires lexically active relative import evidence. Comment/string/template import-like text has zero authority; conflicting local-name imports are ambiguous; unresolved ownership is omitted rather than guessed.
 
-B6.4's re-review-3 blocker was arbitrary `Select` authority after a returned `Where` pipeline. The implementation now requires deterministic item-semantics preservation instead of trusting the method name `Select`.
+B6.4 has progressed through several authority hardening steps:
 
-Required boundary remains:
+1. local/discarded predicates no longer become observable rules merely because the LINQ call exists;
+2. polarity and transformed return contexts for `Any`, `All`, `First*`, `Single*` are conservative;
+3. arbitrary `Select` is no longer an unconditional preserving operation after `Where`;
+4. direct identity `Select(card => card)` is proven by symbol identity;
+5. a narrow same-type method-group clone may preserve authority only when discovered predicate members are copied directly.
+
+The remaining gap is that the discovered member set is not proven complete.
+
+Counterexample:
+
+```csharp
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished && IsAllowed(card))
+        .Select(CloneCard)
+        .ToArray();
+
+private static bool IsAllowed(Card card) => !card.Blocked;
+
+private static Card CloneCard(Card card) => new()
+{
+    IsPublished = card.IsPublished,
+    Blocked = true
+};
+```
+
+The current collector sees `card.IsPublished`, but not the whole-item helper dependency `IsAllowed(card)`. It can therefore prove only `IsPublished` copied, allow `Blocked` to change, and still promote the full predicate expression as authoritative.
+
+Possible false knowledge:
+
+```text
+Includes items from `_cards` only when `card.IsPublished && IsAllowed(card)`.
+```
+
+The returned clone violates `IsAllowed`, so this is a blocker-class false Product Owner claim.
+
+Required authority boundary:
 
 ```text
 exact predicate identity proven
 + context/ownership proven
-+ every outer operation proven to preserve the relevant observable semantics
++ every semantic source-parameter dependency proven
++ every outer operation proven to preserve those semantics
 → authoritative Product Owner rule
 
 otherwise
 → local/lower-authority evidence or omitted product-level claim
 ```
 
-Current supported `Select` proof is conservative:
+For V0.4.6, conservative omission is acceptable. A same-type projection should downgrade if the predicate source parameter has unsupported whole-item uses such as helper calls, instance methods, object/reference identity checks, custom/operator semantics, or other unmodeled dependency paths.
+
+Required focused regression:
 
 ```text
-direct identity selector:
-  card => card
-
-or same-type method-group projector where:
-  input type == return type
-  item type is sealed or struct
-  projector source is available
-  predicate-relevant fields/auto-properties are known
-  every predicate-relevant member is directly copied input.Member → output.Member
+Where(card => card.IsPublished && IsAllowed(card))
+→ Select(CloneCard)
 ```
 
-Arbitrary projections such as this are rejected:
+where the helper depends on a member changed by the clone.
 
-```csharp
-_cards
-    .Where(card => card.IsPublished)
-    .Select(_ => _cards[0])
-    .ToArray();
-```
-
-Same-type projectors that rewrite a predicate member are also rejected.
-
-Focused B6.4 regressions include:
+Reviewed production checkpoint:
 
 ```text
-Non_identity_projection_does_not_preserve_returned_filter_authority
-Returned_filter_through_supported_projection_pipeline_remains_authoritative
-Predicate_preserving_same_type_method_group_projection_remains_authoritative
-Same_type_method_group_that_changes_predicate_member_is_not_authoritative
-```
-
-Implementation history:
-
-```text
-ea9f423bdd6ab37658b632cdfa3fcd7c6f0c0d9f
-  rejected arbitrary Select; C# suite green; final CI exposed safe PokeTrade Select(CloneCard) false-negative
-
 a636172ea8575f46d51e503d1ba7ad6d861650fb
-  added conservative same-type predicate-member-copy proof; all final gates green
+fix: preserve proven same-type Select projections
 ```
 
-Final gates for `a636172ea8575f46d51e503d1ba7ad6d861650fb`:
+Exact gates for that checkpoint are green but do not override the semantic blocker:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34931116584 — PASS
@@ -231,16 +229,19 @@ artifact id:            10381642948
 artifact digest:        sha256:1e4df6f7c0b77ce7a72488462c209b4b5a783647f88b1fb7c9c737e8a7ba507f
 ```
 
-V0.4.6 is **not complete until fresh independent review returns PASS**.
-
-Until then:
+Exact next step:
 
 ```text
-V0.4.7 LOCKED
-V0.5   LOCKED
+stay in V0.4.6
+→ focused red regression for incomplete predicate-dependency proof
+→ minimum generic conservative fix
+→ focused/related/full validation
+→ one coherent implementation checkpoint/push
+→ rerun all current gates
+→ fresh independent review
 ```
 
-If the fresh independent review passes, mark V0.4.6 COMPLETE and unlock V0.4.7 as next/current milestone. Keep V0.5 Azure DevOps locked.
+Do not mark V0.4.6 complete until independent PASS.
 
 ### V0.4.7 — Cross-layer PO question readiness — LOCKED UNTIL V0.4.6 PASSES
 

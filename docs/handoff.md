@@ -27,28 +27,23 @@ The V0.4.x exit standard is business-logic and PO-question readiness, not merely
 ```text
 V0.4.4  Loren knowledge readiness              PASS / COMPLETE
 V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         IMPLEMENTATION GREEN / INDEPENDENT RE-REVIEW PENDING
+V0.4.6  business logic reconstruction         INDEPENDENT RE-REVIEW FAIL / 1 BLOCKER
 V0.4.7  cross-layer PO-question readiness     LOCKED
 V0.5    Azure DevOps input evidence           LOCKED
 ```
 
-Production checkpoint to review:
+Latest reviewed production checkpoint:
 
 ```text
 a636172ea8575f46d51e503d1ba7ad6d861650fb
 fix: preserve proven same-type Select projections
 ```
 
-Latest completed independent review:
+Latest independent review:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
-```
-
-Fresh review request:
-
-```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
+docs/reviews/2026-09-15-v0.4.6-independent-rereview-4.md
+verdict: FAIL / FIX REQUIRED
 ```
 
 Current disposition:
@@ -57,22 +52,10 @@ Current disposition:
 B6.1  PASS / keep closed
 B6.2  PASS / keep closed
 B6.3  PASS / keep closed
-B6.4  IMPLEMENTED + GREEN / fresh independent acceptance pending
+B6.4  BLOCK — same-type projection proof does not prove complete predicate dependencies
 ```
 
-Do not mark V0.4.6 complete yet. Do not start V0.4.7 or Azure DevOps until a fresh independent V0.4.6 review returns PASS.
-
-## Read first in the next review thread
-
-```text
-1. docs/status.md
-2. docs/handoff.md
-3. docs/milestones.md
-4. docs/reviews/2026-09-15-v0.4.6-independent-rereview-4-request.md
-5. docs/reviews/2026-09-15-v0.4.6-independent-rereview-3.md
-```
-
-Then inspect current remote `main`. The docs-only HEAD may be newer than the production checkpoint; review production behavior at `a636172ea8575f46d51e503d1ba7ad6d861650fb`.
+Do not start V0.4.7 or Azure DevOps.
 
 ## Accepted/closed scope
 
@@ -90,7 +73,7 @@ Do not reopen without a new concrete contradiction.
 
 ### B6.2 — PASS
 
-Configured-item ownership remains conservative for reviewed supported initializer forms. Nested property objects are not promoted as direct collection items.
+Configured-item ownership remains conservative for reviewed supported initializer forms. Nested property objects are not promoted as direct configured items of the source collection.
 
 Do not reopen without a new concrete contradiction.
 
@@ -106,100 +89,130 @@ Inactive_import_like_text_does_not_override_active_service_module
 
 Independent re-review 3 accepted B6.3. Do not reopen without a new concrete contradiction.
 
-## B6.4 implementation checkpoint
+## B6.4 — remaining blocker
 
-Independent re-review 3 found one remaining false-authority path: arbitrary LINQ `Select` was treated as preserving a preceding `Where` predicate's observable item semantics.
+Independent re-review 3 found that arbitrary LINQ `Select` was incorrectly treated as preserving a preceding returned `Where` predicate.
 
-Counterexample from the review:
+That specific defect is now closed at `a636172...`:
 
-```csharp
-_cards
-    .Where(card => card.IsPublished)
-    .Select(_ => _cards[0])
-    .ToArray();
-```
+- `Select` is no longer in the unconditional preserving allowlist;
+- direct identity `card => card` is proven by Roslyn symbol equality;
+- arbitrary projection such as `.Select(_ => _cards[0])` is rejected;
+- a narrow same-type method-group projector may be accepted only after proving direct copies for every predicate member the implementation discovers.
 
-The implementation now removes `Select` from the unconditional `Where` receiver-pipeline allowlist.
+The remaining defect is **dependency completeness**.
 
-A `Select` is accepted only when item-semantics preservation is deterministically proven for supported forms.
+`GetWherePredicateMembers` only discovers direct field/property member accesses whose receiver is the predicate source parameter. It does not prove that those members are the complete semantic dependency set of the predicate.
 
-### Supported proof 1 — direct identity lambda
+A whole-item helper call can therefore be ignored while at least one direct member gives the projector enough evidence to pass.
 
-```csharp
-.Select(card => card)
-```
-
-The returned identifier must resolve by Roslyn symbol equality to the selector source parameter.
-
-### Supported proof 2 — conservative same-type method-group copy
-
-This exists because PokeTrade's genuine known-answer path uses:
+Concrete counterexample:
 
 ```csharp
-.Where(...)
-.Select(CloneCard)
-.ToArray();
+public sealed class Card
+{
+    public bool IsPublished { get; init; }
+    public bool Blocked { get; init; }
+}
+
+private readonly List<Card> _cards =
+[
+    new() { IsPublished = true, Blocked = false }
+];
+
+public IReadOnlyList<Card> GetCards() =>
+    _cards
+        .Where(card => card.IsPublished && IsAllowed(card))
+        .Select(CloneCard)
+        .ToArray();
+
+private static bool IsAllowed(Card card) => !card.Blocked;
+
+private static Card CloneCard(Card card) => new()
+{
+    IsPublished = card.IsPublished,
+    Blocked = true
+};
 ```
 
-PKC does **not** allow arbitrary method groups. Authority is kept only when all relevant proof succeeds:
+Why current production can falsely promote it:
 
 ```text
-selector resolves uniquely to a source method
-projector has exactly one source parameter
-parameter type == return type
-item type is sealed or a struct
-projector source declaration is available
-Where directly reads known stored fields/auto-properties from its source parameter
-projector directly returns a same-type object initializer
-for every member used by the Where predicate:
-    returned.Member = input.Member
-is proven by symbol equality
+predicate expression stored by PKC:
+  card.IsPublished && IsAllowed(card)
+
+member collector:
+  sees card.IsPublished
+  ignores whole-item use IsAllowed(card)
+  requiredMembers = { IsPublished }
+
+projector proof:
+  Card -> Card
+  sealed source type
+  direct object initializer
+  IsPublished = card.IsPublished proven
+  Blocked rewrite is invisible to preservation proof
+
+result:
+  returned Where remains observable
+  full predicate is rendered as authoritative inclusion rule
 ```
 
-If a predicate member is rewritten, defaulted, transformed, routed through an arbitrary helper, or cannot be proven, the `Where` predicate is downgraded to observed-only.
-
-Focused coverage:
+False possible knowledge claim:
 
 ```text
-Non_identity_projection_does_not_preserve_returned_filter_authority
-Returned_filter_through_supported_projection_pipeline_remains_authoritative
-Predicate_preserving_same_type_method_group_projection_remains_authoritative
-Same_type_method_group_that_changes_predicate_member_is_not_authoritative
+Includes items from `_cards` only when `card.IsPublished && IsAllowed(card)`.
 ```
 
-The original B6.4 regressions for negated `Any`/`All`, transformed `First*`/`Single*`, arbitrary helper wrapping, local side-path predicates and throwing guards remain green.
+But the returned clone has `Blocked=true`, so `IsAllowed(clone)` is false.
 
-## Implementation history and CI evidence
+### Required generic fix property
 
-### First checkpoint
+Do not special-case helper names or this fixture.
+
+The same-type projector path may retain authoritative `Where` semantics only when PKC proves that every semantic use of the predicate source parameter is covered by the preservation model.
+
+A sufficient conservative V0.4.6 rule is:
 
 ```text
-ea9f423bdd6ab37658b632cdfa3fcd7c6f0c0d9f
-fix: prove identity-preserving Select authority
+all source-parameter uses are supported direct stored-member reads
+AND every required member is directly preserved by the projection
+→ projection may preserve authoritative Where semantics
+
+otherwise
+→ observed-only / no product-level inclusion rule
 ```
 
-This checkpoint correctly rejected the independent-review counterexample. C# tests were green at 73/73. Final CI then found one genuine integration regression:
+Unsupported/unmodeled whole-item uses should downgrade, including shapes such as:
 
 ```text
-PokeTradePoQuestionReadinessTests.Mewtwo_catalog_visibility_is_answerable_from_compiled_knowledge
+helper(card)
+card.SomeMethod()
+ReferenceEquals(card, ...)
+custom/operator semantics involving card
+other helper indirection
 ```
 
-Source inspection showed PokeTrade uses `Select(CloneCard)` after its eligibility `Where`, and `CloneCard` copies the predicate-relevant auto-properties directly into a same-type sealed object. That is a valid supported semantic-preservation case, not a reason to restore arbitrary `Select` authority.
+### Required regression-first coding action
 
-### Final implementation checkpoint
+Add a focused regression reproducing the exact semantic defect before changing production code:
 
 ```text
-a636172ea8575f46d51e503d1ba7ad6d861650fb
-fix: preserve proven same-type Select projections
+Where(card => card.IsPublished && IsAllowed(card))
+→ Select(CloneCard)
 ```
 
-The final fix proves that narrow same-type member-copy shape and keeps non-identity projection rejected.
+where `IsAllowed` depends on `Blocked` and the clone changes `Blocked` while copying `IsPublished`.
 
-This required a second implementation push because the first final-validation CI exposed a concrete integration defect. It was investigated from exact source before the second change; there was no speculative push loop.
+The generated knowledge must not contain the authoritative full-predicate inclusion rule.
 
-## Exact final automation evidence
+Then implement the minimum generic dependency-completeness fix. Keep the existing direct-member safe same-type clone regression green if it remains deterministically provable.
 
-All final gates for `a636172ea8575f46d51e503d1ba7ad6d861650fb` are green:
+Do not refactor unrelated areas.
+
+## Exact reviewed gates
+
+All final gates for production checkpoint `a636172ea8575f46d51e503d1ba7ad6d861650fb` are green:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   34931116584 — PASS
@@ -223,80 +236,49 @@ PokeTrade live branches:   PASS
 PokeTrade knowledge check: PASS
 ```
 
-Real-project gates:
+Pinned Jellyfin:
 
 ```text
-pinned Loren build + compile:       PASS
-current Loren-main build + compile: PASS
-pinned Jellyfin source build:       PASS, 0 warnings / 0 errors
-Jellyfin PKC facts:                 43,363
-Jellyfin relations:                 195,314
-workflow candidates:                386
-product features:                   116
-canonical Markdown files:           504
-analysis mode:                      project-semantic 43,363 / 43,363
+jellyfin/jellyfin @ 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+build:                   PASS, 0 warnings / 0 errors
+facts:                   43,363
+relations:               195,314
+workflow candidates:     386
+product features:        116
+canonical Markdown:      504 files
+analysis mode:           project-semantic 43,363 / 43,363
+bundle parity:           PASS
+ZIP file-set parity:     PASS
+ZIP byte parity:         PASS
+raw .pkc leak:           none
+src/ source-tree leak:   none
+artifact id:             10381642948
+artifact digest:         sha256:1e4df6f7c0b77ce7a72488462c209b4b5a783647f88b1fb7c9c737e8a7ba507f
 ```
 
-Portable verification:
+Green automation is supporting evidence only; it does not close the concrete false-product-claim path.
 
-```text
-canonical Markdown preserved verbatim in single-file bundle: PASS
-ZIP exact file-set parity:                                  PASS
-ZIP byte parity:                                            PASS
-raw .pkc leak:                                              none
-src/ source-tree leak:                                      none
-```
+## Process note
 
-Jellyfin artifact:
+The previous coding environment could not run the intended local red/green loop because the required local toolchain/network access was unavailable. The first checkpoint `ea9f423bdd6ab37658b632cdfa3fcd7c6f0c0d9f` reached final CI, which exposed a real PokeTrade false-negative; source inspection then produced the generic same-type proof in `a636172...`.
 
-```text
-artifact id:     10381642948
-artifact digest: sha256:1e4df6f7c0b77ce7a72488462c209b4b5a783647f88b1fb7c9c737e8a7ba507f
-```
-
-## Environment note
-
-The implementation session's sandbox could not resolve GitHub for a local clone and did not contain the .NET SDK, so it could not honestly execute local red/green tests. The source diff was reviewed before each publish. Exact-SHA CI was used as final verification; the first run exposed a real integration regression, which was source-inspected and fixed generically before the final checkpoint.
+For the next fix, follow the normal local regression-first process wherever the environment permits. If local execution is genuinely unavailable, document that constraint explicitly rather than claiming local red/green evidence.
 
 ## Exact next action
 
-Independent review only.
-
-Review production behavior at:
+Coding thread only:
 
 ```text
-a636172ea8575f46d51e503d1ba7ad6d861650fb
-```
-
-Challenge B6.4 adversarially, especially:
-
-```text
-arbitrary/non-identity Select must not preserve Where authority
-identity Select may preserve it only with exact proof
-same-type method-group projection must preserve every predicate-relevant stored member
-member rewrite/default/transform/helper indirection must downgrade authority
-no benchmark-specific production exception may exist
-```
-
-Keep B6.1/B6.2/B6.3 closed unless a new concrete contradiction appears.
-
-If independent review returns PASS:
-
-```text
-mark V0.4.6 COMPLETE
-unlock V0.4.7 as next/current milestone
-keep V0.5 Azure DevOps locked
-```
-
-If review finds a concrete blocker:
-
-```text
-focused regression
-→ generic minimum fix
-→ focused/related/full validation
-→ one coherent implementation checkpoint
-→ final gates
+stay in V0.4.6
+→ reproduce helper-dependent predicate gap with one focused regression
+→ implement minimum generic dependency-completeness fix
+→ focused related full validation
+→ review diff
+→ one coherent implementation push
+→ rerun exact-head PokeTrade/Loren/Loren-main/Jellyfin/parity gates
 → independent re-review
 ```
 
-Do not write more production code before such a blocker exists.
+Do not mark V0.4.6 complete yourself.
+Do not start V0.4.7.
+Do not start Azure DevOps ingestion.
