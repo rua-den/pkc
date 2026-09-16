@@ -20,6 +20,10 @@ docs/v0.4.7-acceptance-plan.md
 
 No V0.4.7 analyzer/compiler behavior has been implemented by this planning checkpoint.
 
+Current implementation step: **V0.4.7-A, first copy/snapshot slice — NOT IMPLEMENTED**. The next deliverable is an endpoint workflow that explains both `ProductGroup.Price → Product.Price → Service.Price` edges and why changing the upstream scalar alone does not change the stored copies.
+
+The [plan-readiness review](reviews/2026-09-16-v0.4.7-plan-readiness-review.md), committed as `edf59ed`, identified proof and delivery gaps. They are incorporated into the [acceptance plan](v0.4.7-acceptance-plan.md); this review is not a V0.4.7 implementation or acceptance result. Dynamic-read coverage is required before all of A can be marked complete.
+
 Accepted V0.4.6 production remains:
 
 ```text
@@ -211,11 +215,11 @@ ProductGroup.Price
 → Service.Price
 ```
 
-Require exact symbol/dataflow-backed direct-copy snapshot edges, plus a same-name collision negative covering `Product.Price`, `Service.Price`, `Dto.Price` and `Component.price`.
+Require the positive fixture to compile and execute, then require both edges to survive scanner → candidate → synthesis → workflow Markdown. Assert useful PO answers and source traceability, not just raw fact presence.
 
-Only after that regression is red and compile-valid should implementation add the minimum generic backend lineage evidence/model needed to pass it.
+The same slice must fail closed on same-name collisions, different receivers of one member, incompatible branches, intervening writes, custom setter effects, shared mutable-reference content, and unresolved project semantic context. Use the acceptance plan's bounded proof requirements; do not build general alias/path analysis to handle unsupported cases.
 
-Do not begin DTO/frontend composition until the backend lineage identity/collision gate is green.
+First obtain meaningful failing regressions, then implement the minimum generic backend proof and portable explanation. Do not mark all of A complete on the first snapshot slice. Do not begin B/C/D until A's snapshot/dynamic and portable delivery gates are green. V0.4.6 remains closed; V0.5 remains locked.
 
 ```text
 V0.4.7 CURRENT / NEXT MILESTONE

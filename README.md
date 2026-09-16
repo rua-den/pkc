@@ -54,6 +54,10 @@ The V0.4.7 acceptance contract is defined before implementation in:
 docs/v0.4.7-acceptance-plan.md
 ```
 
+Current next deliverable is a small backend workflow explanation of `ProductGroup.Price → Product.Price → Service.Price`: both proven copy/snapshot edges, traceable sources, and no false links across different objects or incompatible paths. This is the first slice of A; dynamic-read coverage is also required before A is complete.
+
+Every V0.4.7 checkpoint must deliver knowledge that answers its PO questions. A covers origin/copy timing, B computation/later changes, C DTO/API output, D frontend binding/visibility, and E final knowledge-only acceptance and portable parity. Rendering starts in A. Fact counts or all-unknown answers do not establish success. See [the roadmap](docs/milestones.md) for completion boundaries and [current status](docs/status.md) for accepted versus pending work.
+
 ## Product-knowledge contract
 
 PKC keeps three knowledge classes distinct:

@@ -10,17 +10,13 @@ Use this file when continuing PKC in another coding or review thread.
 4. `docs/product-knowledge-contract.md`
 5. `docs/v0.4.7-acceptance-plan.md`
 6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
+7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md` for the rationale already incorporated into the acceptance plan
 
 ## Repository checkpoint
 
-This V0.4.7 planning checkpoint was prepared directly from verified `main`:
+V0.4.7 acceptance planning was introduced in `024e36c`; the readiness review was committed in `edf59ed`. Both are documentation checkpoints, not lineage implementation. This reconciliation incorporates that review into the active plan.
 
-```text
-c6f0769ac53869c89ee7defe41bd57603a553b33
-docs: accept V0.4.6 independent rereview 10 [skip ci]
-```
-
-The planning commit on top of that checkpoint is docs-only. Before coding, verify current `main` is that planning commit and that its parent/ancestry preserves the accepted V0.4.6 production unchanged.
+Before coding, inspect `git status`, HEAD, and recent commits; verify the accepted production below is an ancestor and inspect any implementation changes since it. Start from the current agreed checkout, not an obsolete planning SHA. Do not assume HEAD must equal a particular documentation commit, and do not overwrite newer work.
 
 Accepted V0.4.6 production remains exactly:
 
@@ -104,7 +100,7 @@ Accepted B6.4 boundaries include:
 
 ## V0.4.7 acceptance contract
 
-Concrete scope is frozen in:
+Concrete scope and checkpoint exit gates are maintained in:
 
 ```text
 docs/v0.4.7-acceptance-plan.md
@@ -159,10 +155,10 @@ The acceptance plan defines R7.1-R7.13. The intended implementation order is:
 
 ```text
 V0.4.7-A
-backend cross-entity lineage
-+ exact symbol/dataflow identity
-+ same-name collision negative
-+ snapshot vs dynamic semantics
+backend origin/copy timing in workflow knowledge
++ exact assignment, receiver/path and storage proof
++ collision and false-composition negatives
++ snapshot vs dynamic positives
 
 V0.4.7-B
 derivation
@@ -179,12 +175,14 @@ frontend result binding/composition
 + joint backend/frontend explanation
 
 V0.4.7-E
-portable rendering
-+ blind PO-question review
-+ cross-benchmark final gates
+final knowledge-only acceptance
++ full portable parity/no-leak
++ cross-benchmark exact-SHA gates
 ```
 
 Do not jump ahead to later slices while an earlier identity/semantics gate is red.
+
+Every checkpoint renders its new answers; E is not the first rendering step. The acceptance plan owns the full gate definitions rather than this summary.
 
 ## Version semantics — do not conflate
 
@@ -227,7 +225,7 @@ Queryable names remain in old safe-operation sets but are unreachable behind the
 
 Only address them when the touched V0.4.7 scope makes doing so coherent and regression-safe.
 
-## Documentation reconciliation completed by this planning checkpoint
+## Documentation ownership and current delivery
 
 Current-state documents must agree that:
 
@@ -237,9 +235,9 @@ V0.4.7 CURRENT
 V0.5 LOCKED
 ```
 
-`README.md` no longer describes V0.4.4 as current development.
+`docs/vision.md` defines product success; `docs/status.md` records implementation/evidence state; `docs/milestones.md` defines delivery order; `docs/v0.4.7-acceptance-plan.md` owns detailed checkpoint gates. Keep README and this handoff as consistent summaries. Preserve historical reviews and benchmark evidence rather than relabeling them as current proof.
 
-`docs/real-project-trial.md` keeps V0.4.4/V0.4.5 acceptance evidence as historical material, while its current-state and next-action sections now point to V0.4.7 and keep V0.5 locked until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes.
+Current step is the first copy/snapshot slice within A, not completed A. Every checkpoint must reach generated PO-readable knowledge; rendering starts in A. E is the final knowledge-only, parity/no-leak and generalization acceptance. Do not use a growing raw fact count or all-unknown answers as evidence of success.
 
 ## Accepted V0.4.6 gate evidence
 
@@ -266,13 +264,13 @@ These gates close V0.4.6; they do not replace new V0.4.7 regression proof.
 
 Start **V0.4.7-A**, regression-first.
 
-Add a compile-valid focused C# fixture proving:
+Add a compile-valid, executable, endpoint-backed C# fixture proving:
 
 ```text
 ProductGroup.Price → Product.Price → Service.Price
 ```
 
-as exact symbol/dataflow-backed direct-copy snapshot edges.
+as exact project-backed direct-copy snapshot edges that survive scanner → candidate → synthesis → workflow Markdown. The generated workflow must explain both edges, their source locations, and why an upstream scalar change alone leaves the stored copies unchanged.
 
 In the same regression checkpoint add unrelated same-name members:
 
@@ -283,13 +281,13 @@ Dto.Price
 Component.price
 ```
 
-and assert that no lineage edge is created without explicit deterministic dataflow.
+and assert that no lineage edge is created without explicit deterministic dataflow. Apply the acceptance plan's A proof boundary: distinct receivers, incompatible branches, intervening writes, setter/conversion effects, shared-reference content, and unresolved semantic context must not create false composed/copy/snapshot claims. Existing mutation metadata and display names are not fresh assignment proof.
 
-First prove the regression is red against current behavior. Then implement the minimum generic backend lineage evidence/model required to pass R7.1-R7.4.
+First prove meaningful semantic/output RED against current behavior. Then implement only the proof, retention, synthesis and workflow rendering needed for the supported slice. Keep unsupported cases as qualified observations/unknowns. A's separate dynamic-read positive remains required; do not mark A complete from the first snapshot slice alone.
 
-Run focused tests locally, then related/full C# tests and Release build. Review the complete diff. Commit/push once for the coherent implementation checkpoint. Use CI only as final verification.
+Run focused tests locally, then the relevant full tests and Release build sequentially. Review the complete diff and the generated answer. Save a coherent commit, publish through an authorized remote action, and verify the existing exact-SHA checkpoint gates. CI is final verification, not the edit loop. Record any pending remote gate honestly; a documentation review is not implementation acceptance.
 
-Do **not** begin DTO/API/frontend lineage until the backend lineage identity, collision and snapshot-vs-dynamic gates are green.
+Do **not** begin B/C/D until A's identity, collision, snapshot/dynamic and portable delivery gates are green. Do not introduce unrelated refactors, new inputs, or a general alias/path solver to expand the supported slice.
 
 Do not start Azure DevOps ingestion:
 

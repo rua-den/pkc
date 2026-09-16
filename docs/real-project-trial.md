@@ -596,14 +596,16 @@ Matching names alone must never create lineage.
 Current implementation sequence:
 
 ```text
-V0.4.7-A backend lineage identity + collision + snapshot/dynamic
-V0.4.7-B derivation + terminal source + mutation/override
-V0.4.7-C DTO/projection + API
-V0.4.7-D frontend composition + joint visibility
-V0.4.7-E portable rendering + blind review + cross-benchmark gates
+V0.4.7-A origin/copy timing + snapshot/dynamic, rendered in workflow knowledge
+V0.4.7-B computation + terminal source + later change, rendered with provenance
+V0.4.7-C DTO/projection + API output, rendered with exact mapping
+V0.4.7-D frontend binding + joint visibility, rendered with distinct authorities
+V0.4.7-E final knowledge-only review + portable parity/no-leak + exact-SHA gates
 ```
 
 No V0.4.7 compiler behavior is implemented by the planning checkpoint itself.
+
+The next deliverable is the first A copy/snapshot slice through scanner, candidate, synthesis, and workflow Markdown. Apply the [acceptance plan](v0.4.7-acceptance-plan.md)'s receiver/path/storage/semantic negatives, then complete the dynamic-read positive before closing A. Rendering is part of every checkpoint; E validates the completed pack. Preserve pinned acceptance targets and the separate Loren-main canary role. Existing V0.4.6 results are historical baseline evidence, not proof that these new V0.4.7 answers work.
 
 ---
 
@@ -688,17 +690,17 @@ Do not mechanically change `0.4.4`, `0.4.4-csharp-raw`, `0.4.6` or other schema 
 
 ```text
 V0.4.7-A
-→ add compile-valid ProductGroup.Price → Product.Price → Service.Price regression
-→ require exact symbol/dataflow-backed direct-copy snapshot edges
-→ add Product.Price / Service.Price / Dto.Price / Component.price same-name collision negatives
-→ prove the regression red
-→ implement the minimum generic backend lineage evidence/model
+→ add executable endpoint-backed ProductGroup.Price → Product.Price → Service.Price regression
+→ require both scoped copy/snapshot edges in generated workflow Markdown
+→ apply the acceptance plan's identity/path/storage/project-semantic negatives
+→ prove meaningful semantic/output RED
+→ implement the minimum proof, retention, synthesis and rendering for the supported slice
 → run focused + full relevant local tests/build
-→ review diff
-→ one coherent commit/push
+→ review diff and generated PO answers
+→ save a coherent commit; publish when authorized and verify checkpoint gates
 ```
 
-Do not begin DTO/frontend composition until the backend lineage identity/collision/snapshot-vs-dynamic gate is green.
+The first snapshot slice does not complete A without its separate dynamic positive. Do not begin B/C/D until A's identity, semantics and portable delivery gates are green.
 
 Do not bump the accepted tool package as part of the planning checkpoint.
 

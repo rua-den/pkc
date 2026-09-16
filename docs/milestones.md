@@ -227,36 +227,27 @@ No lineage edge may be inferred merely from matching member/property names.
 
 #### V0.4.7 implementation checkpoints
 
-```text
-V0.4.7-A
-backend cross-entity lineage
-+ exact symbol/dataflow edge identity
-+ same-name collision negative
-+ snapshot vs dynamic distinction
+| Checkpoint | PO question | Deliverable and completion boundary |
+| --- | --- | --- |
+| A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | Two proven backend edges in workflow Markdown, source traceability, snapshot and dynamic positives, and identity/path/storage negatives. |
+| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before return/persistence? | Portable explanation of derivation, original origin, later mutation/override, and supported terminal-source proof. |
+| C — Backend to API | What backend value supplies this response field? | Proven entity/DTO/API mapping rendered with source locations. |
+| D — API to UI | What feeds the displayed value and controls its visibility? | Proven frontend binding/composition and joint backend/frontend explanation with separate authorities. |
+| E — Product acceptance | Can an AI answer the agreed questions using only the knowledge pack? | Blind knowledge-only review, full folder/bundle/ZIP parity and no-leak checks, and exact-SHA cross-benchmark gates. |
 
-V0.4.7-B
-derivation
-+ last source before persist/return
-+ later mutation/override causality
+Portable explanations start in A and grow with each checkpoint. E is final product verification, not the first rendering work. Detailed proof and regression requirements live in [the acceptance plan](v0.4.7-acceptance-plan.md), including the incorporated [readiness findings](reviews/2026-09-16-v0.4.7-plan-readiness-review.md).
 
-V0.4.7-C
-DTO/projection
-+ API output lineage
-
-V0.4.7-D
-frontend result binding/composition
-+ frontend visibility/filter conditions
-+ joint backend/frontend explanation
-
-V0.4.7-E
-portable rendering
-+ blind PO-question review
-+ cross-benchmark exact-SHA gates
-```
+Current next step is the first A copy/snapshot slice through scanner → candidate → synthesis → workflow Markdown. Completing that slice does not complete A until dynamic-read coverage also passes.
 
 Do not advance past an earlier checkpoint while its regression gate is red.
 
 V0.4.7 must preserve every accepted V0.4.6 authority and evidence-retention guardrail.
+
+#### Delivery discipline
+
+Each change must serve a named PO question and an assertion on generated knowledge. Supported positive cases must produce useful answers; all-unknown output is not acceptance. Unsupported cases may retain observations without stronger claims.
+
+Limit analysis to proven supported shapes. Do not add unrelated refactoring, frameworks, evidence sources, or a general alias/path solver. Broaden a checkpoint only for its acceptance failure or a concrete counterexample. Run focused/local checks while editing; use the existing benchmark gates and independent review at coherent checkpoints, not as an endless edit loop. Preserve accepted history unless a new compile-valid, behavior-valid contradiction requires reopening it.
 
 #### Version semantics during V0.4.7
 
