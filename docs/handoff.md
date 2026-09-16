@@ -11,6 +11,7 @@ Use this file when continuing PKC in another coding or review thread.
 5. `docs/v0.4.7-acceptance-plan.md`
 6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
 7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md`
+8. `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md` — subsequent runtime-proven composition blocker
 
 Before changing code, inspect `git status`, current `main` HEAD and recent commits. Work from current `main`; do not reset to an older planning or production SHA.
 
@@ -84,6 +85,8 @@ Implementation ancestry:
 ```
 
 This is a coherent **first snapshot slice within checkpoint A**. It is not A-complete and not V0.4.7-complete.
+
+Subsequent review found one concrete composition blocker: receiver reassignment and an opaque mutating helper leave stale predecessor proof. See the review and reproduction patch above. The individual scalar copy/storage boundary is not challenged; repair the composition invalidation only, then continue dynamic/reference.
 
 ## What the snapshot slice now proves
 
@@ -171,8 +174,8 @@ artifact size:           9,162,455 bytes
 ## Current checkpoint disposition
 
 ```text
-V0.4.7-A snapshot slice             GREEN
-V0.4.7-A dynamic/reference slice    NEXT / NOT IMPLEMENTED
+V0.4.7-A snapshot composition       BLOCK — stale predecessor proof
+V0.4.7-A dynamic/reference slice    AFTER targeted repair / NOT IMPLEMENTED
 V0.4.7-A overall                    IN PROGRESS
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
@@ -184,7 +187,9 @@ The acceptance plan requires a separate positive proof for **reference/dynamic-r
 
 ## Exact next implementation action
 
-Stay in V0.4.7-A and implement the dynamic/reference positive regression-first.
+Stay in V0.4.7-A. First apply `docs/reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch`, repair the generic predecessor-invalidation boundary, and verify both new negatives plus existing snapshot coverage. The review reproduced the defect against exact production `82fac01e...`; this is not a speculative reopening. Keep independently valid transfer evidence and avoid a general alias/path solver.
+
+After closing that specific blocker, implement the dynamic/reference positive regression-first.
 
 Required shape:
 

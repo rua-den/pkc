@@ -75,7 +75,9 @@ Accepted B6.4 hardening includes:
 
 ## V0.4.7-A checkpoint state
 
-The first **copy/snapshot** implementation slice is now implementation-green on current production code:
+The first **copy/snapshot** slice was reported implementation-green on this code checkpoint, but the subsequent [snapshot review](reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md) found one runtime-proven chain-composition blocker. Direct scalar copy/storage proof is not reopened by that finding.
+
+Reviewed production code:
 
 ```text
 82fac01e669bce0a35dafde80f54c8f0baa595e5
@@ -130,8 +132,8 @@ reference / dynamic-read semantics
 The acceptance plan requires both snapshot and dynamic/reference positives before A can be marked complete. Current state is therefore:
 
 ```text
-V0.4.7-A snapshot slice             GREEN
-V0.4.7-A dynamic/reference slice    NOT IMPLEMENTED / NEXT
+V0.4.7-A snapshot composition       BLOCK — stale predecessor after receiver/helper changes
+V0.4.7-A dynamic/reference slice    NOT IMPLEMENTED / AFTER targeted repair
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
 ```
@@ -208,7 +210,9 @@ Do not mechanically bump package or schema versions because the roadmap mileston
 
 Stay in **V0.4.7-A**.
 
-Implement the separate dynamic/reference positive regression-first. It must deterministically distinguish a live/reference read from a stored scalar snapshot and render the PO-facing answer through scanner → candidate → synthesis → workflow Markdown.
+First resolve the single concrete predecessor-invalidation blocker in the [snapshot review](reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md), using its [reproduction patch](reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch). Both receiver reassignment and a mutating helper were compiled, executed, and shown to retain a false proven chain. Preserve the existing direct-copy proof and positive/negative suite; no broad redesign is required.
+
+After that targeted repair and verification, implement the separate dynamic/reference positive regression-first. It must distinguish a live/reference read from a stored scalar snapshot and render the PO-facing answer through scanner → candidate → synthesis → workflow Markdown.
 
 Keep the current snapshot proof and all its fail-closed negatives green. Do not broaden into general alias/path analysis. Do not begin V0.4.7-B/C/D until A's snapshot + dynamic/reference + portable delivery gates are all green.
 
