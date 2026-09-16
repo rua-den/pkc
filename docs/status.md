@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## Current milestone state
 
@@ -12,11 +12,7 @@ V0.4.7 cross-layer PO-question readiness         IN PROGRESS
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-V0.4.7 acceptance is defined in:
-
-```text
-docs/v0.4.7-acceptance-plan.md
-```
+V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`.
 
 Accepted V0.4.6 production remains:
 
@@ -30,7 +26,6 @@ Final independent V0.4.6 review:
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
 verdict: PASS / COMPLETE
-reviewed production: c310e893762997f34562a6b3a62dbab2b05c0c93
 ```
 
 V0.4.6 is closed. Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
@@ -58,41 +53,33 @@ B6.3 PASS — module-qualified Angular service ownership; keep closed
 B6.4 PASS — Queryable/provider-mediated authority fails closed without provider-semantics proof; keep closed
 ```
 
-Accepted B6.4 hardening includes:
+Accepted B6.4 hardening includes discarded/local predicate downgrade, transformed/polarity-changing return-context fail-closed behavior, arbitrary `Select` rejection and identity projection proof, complete supported predicate-dependency proof, safe direct defensive-clone member copies, custom setter/initializer effect fail-closed behavior, callback/comparer-bearing ordering/equality fail-closed behavior, audited callback-free Enumerable preservation, inert-constructor requirements, Queryable observed-only behavior without provider-semantics proof, Enumerable authority loss after a Queryable hop, and retained downgraded evidence through `observes-predicate`.
 
-- discarded/local predicate downgrade;
-- transformed/polarity-changing return-context fail-closed behavior;
-- arbitrary `Select` rejection and identity projection proof;
-- complete supported predicate-dependency proof;
-- safe direct defensive-clone member copies;
-- custom setter / initializer effect fail-closed behavior;
-- callback/comparer-bearing ordering/equality pipeline fail-closed behavior;
-- exact-shape callback-free Enumerable pipeline preservation;
-- inert-constructor requirement for same-type defensive clones;
-- Queryable predicates are observed-only unless provider semantics are proven;
-- an Enumerable `Where` path loses returned-item authority when it crosses any Queryable pipeline hop;
-- downgraded predicates remain deterministic Evidence through `observes-predicate` rather than being deleted.
+## V0.4.7-A snapshot checkpoint
 
-## V0.4.7-A checkpoint state
+The first copy/snapshot slice is now **GREEN**, including the predecessor-invalidation repair required by the 2026-09-16 snapshot review.
 
-The first **copy/snapshot** slice was reported implementation-green on this code checkpoint, but the subsequent [snapshot review](reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md) found one runtime-proven chain-composition blocker. Direct scalar copy/storage proof is not reopened by that finding.
-
-Reviewed production code:
+Latest verified code checkpoint:
 
 ```text
-82fac01e669bce0a35dafde80f54c8f0baa595e5
-fix: compile lineage regressions
+bc938823b46802a4d2c32300a1b6de692f5866ad
+fix: invalidate stale lineage composition
 ```
 
-Implementation ancestry for this slice:
+Relevant implementation history:
 
 ```text
 350ba2468e0d1b011936695fc48c1a970650d647  feat: prove scalar snapshot value lineage
 0bd5f823b7ebdfa8d0a54ff25d079d2056be4a81  fix: compile scalar lineage proof
 82fac01e669bce0a35dafde80f54c8f0baa595e5  fix: compile lineage regressions
+fd5d8311c38b0463f54ad8f45d12222ea5d24a8b  docs: record stale lineage review blocker
+f35901692060e511461a28fa94a1abe5400ce0bd  noop (zero-tree-diff connector commit)
+bc938823b46802a4d2c32300a1b6de692f5866ad  fix: invalidate stale lineage composition
 ```
 
-This checkpoint proves the bounded supported shape:
+`f359016` changes no repository content; it is retained in history rather than force-resetting `main`.
+
+The snapshot slice proves the bounded supported shape:
 
 ```text
 ProductGroup.Price
@@ -100,67 +87,89 @@ ProductGroup.Price
 → Service.Price
 ```
 
-as deterministic direct scalar stored-copy lineage with snapshot timing. Generated workflow knowledge can explain that changing `ProductGroup.Price` later does not retroactively change the already stored `Product.Price` / `Service.Price` copies.
+as deterministic direct scalar auto-property copies with stored snapshot timing. Generated workflow knowledge can explain that changing `ProductGroup.Price` later does not retroactively change already stored `Product.Price` / `Service.Price` copies.
 
-The implementation keeps value lineage separate from mutation semantics and renders a dedicated `Value lineage` section instead of promoting lineage into business Rules.
+The implementation keeps value lineage separate from business Rules and mutation semantics and renders a dedicated `Value lineage` section.
 
-Focused regression coverage includes:
+### Closed stale-predecessor blocker
 
-- executable snapshot behavior matching generated knowledge;
+Review artifact:
+
+```text
+docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md
+docs/reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch
+```
+
+The review proved two false-chain cases against `82fac01e...`:
+
+```text
+receiver reassignment between copies
+opaque helper mutation between copies
+```
+
+`bc938823...` fixes the generic composition boundary by processing relevant top-level statements in execution order and conservatively invalidating predecessor state when a tracked receiver is reassigned, an opaque invocation may mutate tracked state, or a tracked unary write changes the value. Independently valid direct transfer evidence is retained; only unsupported chain composition is blocked. No general alias/path solver was added.
+
+Permanent focused regressions now cover both runtime-valid counterexamples and require the later direct transfer to remain observable while the stale predecessor link and false proven-chain prose are absent.
+
+Existing snapshot coverage remains green for:
+
+- executable canonical snapshot behavior;
 - exact source/target occurrence and semantic identity metadata;
-- two-edge chain composition through the same stored location;
-- distinct-receiver collision fail-closed behavior;
-- intervening overwrite breaks prior lineage composition;
-- incompatible branch shapes fail closed;
-- custom setter effects fail closed;
-- shared mutable-reference content is not labeled a scalar snapshot;
-- unresolved/no-project semantic context does not produce proven lineage;
-- same display members in distinct projects retain project/assembly-qualified identity;
-- generated candidate → synthesis → Markdown delivery;
-- lineage is absent from authoritative business Rules.
+- valid two-edge chain composition through the same stored value version;
+- unrelated same-name collision fail-closed behavior;
+- distinct receiver identities;
+- intervening overwrite invalidation;
+- incompatible branches;
+- custom setters;
+- shared mutable-reference content;
+- unresolved/no-project semantic context;
+- cross-project member identity;
+- candidate → synthesis → Markdown delivery;
+- lineage/business-rule separation.
 
-### Important: A is NOT complete
+### A is still NOT complete
 
-Do **not** advance to V0.4.7-B yet.
-
-Checkpoint A still requires its separate positive proof for:
+The acceptance plan requires a separate positive proof for:
 
 ```text
 reference / dynamic-read semantics
 ```
 
-The acceptance plan requires both snapshot and dynamic/reference positives before A can be marked complete. Current state is therefore:
+Current disposition:
 
 ```text
-V0.4.7-A snapshot composition       BLOCK — stale predecessor after receiver/helper changes
-V0.4.7-A dynamic/reference slice    NOT IMPLEMENTED / AFTER targeted repair
+V0.4.7-A snapshot composition       GREEN
+V0.4.7-A dynamic/reference slice    NEXT / NOT IMPLEMENTED
+V0.4.7-A overall                    IN PROGRESS
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
 ```
 
-## Exact-SHA verification for snapshot slice
+Do not begin B/C/D until A's snapshot + dynamic/reference + portable delivery gates are green.
 
-All existing final verification gates passed on exact code SHA `82fac01e669bce0a35dafde80f54c8f0baa595e5`:
+## Exact-SHA verification for stale-composition repair
+
+All current checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`:
 
 ```text
-CI + PKC tests + WorkPlay + PokeTrade   35113764215 — PASS
-pinned Loren                            35113764207 — PASS
-Loren-main canary                       35113764095 — PASS
-pinned Jellyfin                         35113764184 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35128897392 — PASS
+pinned Loren                                35128897399 — PASS
+Loren-main canary                           35128897380 — PASS
+pinned Jellyfin                             35128897797 — PASS
 ```
 
-Core CI evidence:
+Core CI:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            92 / 92 PASS
+C# tests:            94 / 94 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
 PokeTrade:           PASS
 ```
 
-Pinned Jellyfin evidence:
+Pinned Jellyfin:
 
 ```text
 commit:                  1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
@@ -176,12 +185,22 @@ ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
 src/ source-tree leak:   none
-artifact id:             10454295890
-artifact digest:         sha256:2ac8778a3366767e344c0bf4bdc2403037b900eddb338a89c03d0cf5d77554cc
+artifact id:             10460043943
+artifact digest:         sha256:3053a33b3abdb0acd16e66f85bc83f15c405295a0c9305965aeb4734497452c3
 artifact size:           9,162,455 bytes
 ```
 
-The small Jellyfin fact/relation increase versus accepted V0.4.6 is expected from the new deterministic value-transfer evidence; benchmark portability and source-build gates remain green.
+## V0.4.6 warnings carried forward
+
+```text
+W10.1
+Observed-only predicate Evidence is separated from Rules but does not explicitly render the `observed-only` label.
+
+W10.2
+Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
+```
+
+These remain non-blocking V0.4.7 considerations. Do not reopen V0.4.6 for them.
 
 ## Version semantics
 
@@ -204,19 +223,25 @@ cross-stack candidate schema: 0.4.6
 frontend schema:     0.4.3-frontend
 ```
 
-Do not mechanically bump package or schema versions because the roadmap milestone advances. Schema versions change only when that serialized contract/schema changes.
+Do not mechanically bump package or schema versions because the roadmap milestone advances.
 
 ## Exact next action
 
-Stay in **V0.4.7-A**.
+Stay in **V0.4.7-A** and implement the separate **reference/dynamic-read positive** regression-first.
 
-First resolve the single concrete predecessor-invalidation blocker in the [snapshot review](reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md), using its [reproduction patch](reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch). Both receiver reassignment and a mutating helper were compiled, executed, and shown to retain a false proven chain. Preserve the existing direct-copy proof and positive/negative suite; no broad redesign is required.
+Use a compile-valid executable supported shape where a downstream property resolves an upstream property at read time, mutate the upstream value, then prove a later downstream read observes the new value without another scalar copy. The analysis must prove receiver/member identity and the observable dependency through scanner → candidate → synthesis → workflow Markdown.
 
-After that targeted repair and verification, implement the separate dynamic/reference positive regression-first. It must distinguish a live/reference read from a stored scalar snapshot and render the PO-facing answer through scanner → candidate → synthesis → workflow Markdown.
+The generated PO answer must clearly distinguish:
 
-Keep the current snapshot proof and all its fail-closed negatives green. Do not broaden into general alias/path analysis. Do not begin V0.4.7-B/C/D until A's snapshot + dynamic/reference + portable delivery gates are all green.
+```text
+stored scalar snapshot
+vs
+reference/dynamic read-time dependency
+```
 
-Astra/reviewer should review the snapshot checkpoint at `82fac01e...` as a bounded V0.4.7-A slice, **not** as completion of checkpoint A or V0.4.7.
+Unsupported aliasing, receiver reassignment, opaque effects, custom getter behavior outside the modeled shape, branch ambiguity, or unresolved semantic context must fail closed rather than guess. Preserve every snapshot regression, including the two stale-predecessor counterexamples now fixed.
+
+Do not broaden into a general alias/path solver. Do not begin V0.4.7-B/C/D until both A positives and A's portable delivery/identity negatives are green.
 
 ```text
 V0.4.7 IN PROGRESS

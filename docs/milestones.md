@@ -158,7 +158,7 @@ src/ leak:       NONE
 
 V0.4.6 is closed.
 
-### V0.4.7 — Cross-layer PO question readiness — CURRENT / NEXT MILESTONE
+### V0.4.7 — Cross-layer PO question readiness — CURRENT / IN PROGRESS
 
 Purpose: compile cross-entity and cross-layer evidence strongly enough that portable knowledge can answer where values came from, how they change, how they reach the UI, and what backend/frontend conditions jointly determine observable outcomes.
 
@@ -237,7 +237,9 @@ No lineage edge may be inferred merely from matching member/property names.
 
 Portable explanations start in A and grow with each checkpoint. E is final product verification, not the first rendering work. Detailed proof and regression requirements live in [the acceptance plan](v0.4.7-acceptance-plan.md), including the incorporated [readiness findings](reviews/2026-09-16-v0.4.7-plan-readiness-review.md).
 
-Current next step is the first A copy/snapshot slice through scanner → candidate → synthesis → workflow Markdown. Completing that slice does not complete A until dynamic-read coverage also passes.
+Checkpoint A snapshot/copy support is now green through exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`, including the stale-predecessor repair required by `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md`. The snapshot regressions cover receiver reassignment and opaque helper mutation without deleting independently valid direct-transfer evidence.
+
+The current next step is A's separate **reference/dynamic-read positive**. A remains incomplete until dynamic-read coverage and its portable PO-facing answer pass. B/C/D/E remain locked behind A.
 
 Do not advance past an earlier checkpoint while its regression gate is red.
 

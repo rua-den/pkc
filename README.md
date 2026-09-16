@@ -28,7 +28,7 @@ Important claims are grounded in source evidence. PKC does not silently invent U
 
 ```text
 V0.4.6 business logic reconstruction       PASS / COMPLETE
-V0.4.7 cross-layer PO-question readiness   CURRENT / NEXT MILESTONE
+V0.4.7 cross-layer PO-question readiness   IN PROGRESS
 V0.5 Azure DevOps input evidence           LOCKED
 ```
 
@@ -48,13 +48,13 @@ PASS / COMPLETE
 
 V0.4.6 is closed. V0.4.7 is current. Azure DevOps ingestion remains locked until the V0.4.7 / V0.4.x Product Owner question-readiness exit gate passes.
 
-The V0.4.7 acceptance contract is defined before implementation in:
+The V0.4.7 acceptance contract is defined in:
 
 ```text
 docs/v0.4.7-acceptance-plan.md
 ```
 
-Current next deliverable is a small backend workflow explanation of `ProductGroup.Price → Product.Price → Service.Price`: both proven copy/snapshot edges, traceable sources, and no false links across different objects or incompatible paths. This is the first slice of A; dynamic-read coverage is also required before A is complete.
+Checkpoint A's direct scalar copy/snapshot slice is implemented and exact-SHA verified through `bc938823b46802a4d2c32300a1b6de692f5866ad`. It proves `ProductGroup.Price → Product.Price → Service.Price` for the bounded supported shape, preserves source traceability, and fails closed on stale chain composition after receiver reassignment or opaque mutation. The current next deliverable is A's separate **reference/dynamic-read positive**; A is not complete until that behavior and its portable PO-facing answer pass.
 
 Every V0.4.7 checkpoint must deliver knowledge that answers its PO questions. A covers origin/copy timing, B computation/later changes, C DTO/API output, D frontend binding/visibility, and E final knowledge-only acceptance and portable parity. Rendering starts in A. Fact counts or all-unknown answers do not establish success. See [the roadmap](docs/milestones.md) for completion boundaries and [current status](docs/status.md) for accepted versus pending work.
 
@@ -104,6 +104,9 @@ Current accepted/development scope includes:
 - conservative business-predicate extraction and Product Owner authority filtering;
 - provider-aware Queryable fail-closed behavior: exact Queryable predicates are observed-only unless provider semantics are independently proven;
 - retention of downgraded predicate evidence through `observes-predicate` rather than deletion;
+- bounded project-semantic scalar value-transfer evidence for direct auto-property copies;
+- stored snapshot lineage rendering with exact receiver/member/value-version composition checks;
+- conservative stale-composition invalidation for receiver reassignment, opaque invocation barriers and tracked unary writes;
 - Angular TypeScript structure/routes/HTTP-call shapes through the project-local TypeScript syntactic AST when available;
 - Angular template actions through an explicit conservative template-regex fallback;
 - React/TypeScript through an explicit conservative regex fallback;
@@ -118,7 +121,7 @@ Current accepted/development scope includes:
 
 Runtime browser confirmation is not implemented yet.
 
-V0.4.7 compiler behavior for generalized cross-entity value lineage, snapshot/dynamic semantics, DTO/API/frontend lineage and joint cross-layer visibility is **not yet implemented by this planning checkpoint**. Its regression contract is defined in `docs/v0.4.7-acceptance-plan.md`.
+V0.4.7 generalized reference/dynamic dependencies, derivations, later override/mutation causality, DTO/API/frontend value lineage and joint cross-layer visibility remain pending. The regression contract is defined in `docs/v0.4.7-acceptance-plan.md`.
 
 ## V0.4.7 acceptance focus
 
@@ -359,8 +362,7 @@ These are V0.4.7 maintenance/clarity considerations. They do not reopen V0.4.6.
 
 ## Planned, not implemented yet
 
-- generalized V0.4.7 cross-entity lineage and source/origin reconstruction;
-- generalized copy/snapshot vs dynamic/reference semantics;
+- V0.4.7 reference/dynamic-read dependency proof and temporal explanation;
 - generalized derived/computed lineage and later override/mutation causality;
 - generalized backend → DTO/projection → API → frontend value composition;
 - generalized joint backend/frontend visibility explanation;

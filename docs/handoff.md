@@ -11,7 +11,7 @@ Use this file when continuing PKC in another coding or review thread.
 5. `docs/v0.4.7-acceptance-plan.md`
 6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
 7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md`
-8. `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md` — subsequent runtime-proven composition blocker
+8. `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md`
 
 Before changing code, inspect `git status`, current `main` HEAD and recent commits. Work from current `main`; do not reset to an older planning or production SHA.
 
@@ -69,24 +69,27 @@ Conservative business-rule downgrade must not erase deterministic lower-authorit
 
 ## Current V0.4.7-A code checkpoint
 
-Current snapshot-slice code checkpoint:
+Latest verified implementation checkpoint:
 
 ```text
-82fac01e669bce0a35dafde80f54c8f0baa595e5
-fix: compile lineage regressions
+bc938823b46802a4d2c32300a1b6de692f5866ad
+fix: invalidate stale lineage composition
 ```
 
-Implementation ancestry:
+Relevant history:
 
 ```text
 350ba2468e0d1b011936695fc48c1a970650d647  feat: prove scalar snapshot value lineage
 0bd5f823b7ebdfa8d0a54ff25d079d2056be4a81  fix: compile scalar lineage proof
 82fac01e669bce0a35dafde80f54c8f0baa595e5  fix: compile lineage regressions
+fd5d8311c38b0463f54ad8f45d12222ea5d24a8b  docs: record stale lineage review blocker
+f35901692060e511461a28fa94a1abe5400ce0bd  noop (zero-tree-diff connector commit)
+bc938823b46802a4d2c32300a1b6de692f5866ad  fix: invalidate stale lineage composition
 ```
 
-This is a coherent **first snapshot slice within checkpoint A**. It is not A-complete and not V0.4.7-complete.
+`f359016` is an accidental connector-created no-op commit with the same tree as its parent. It was intentionally left in history rather than force-resetting `main`.
 
-Subsequent review found one concrete composition blocker: receiver reassignment and an opaque mutating helper leave stale predecessor proof. See the review and reproduction patch above. The individual scalar copy/storage boundary is not challenged; repair the composition invalidation only, then continue dynamic/reference.
+Checkpoint A is **not complete**. The snapshot half is green; the dynamic/reference half is still pending.
 
 ## What the snapshot slice now proves
 
@@ -98,52 +101,82 @@ ProductGroup.Price
 → Service.Price
 ```
 
-For direct scalar auto-property assignment in a proven project semantic context, PKC now emits deterministic `value-transfer` evidence and renders PO-facing `Value lineage` explanations that distinguish stored snapshot copies from later upstream changes.
+For direct scalar auto-property assignment in proven project-semantic context, PKC emits deterministic `value-transfer` evidence and PO-facing `Value lineage` explanations that distinguish stored snapshot copies from later upstream changes.
 
 The supported explanation includes:
 
 - `ProductGroup.Price → Product.Price` as a stored scalar snapshot copy;
 - `Product.Price → Service.Price` as a stored scalar snapshot copy;
-- proven chain composition only when the second edge reads the exact stored target identity from the first edge;
+- chain composition only when the second edge reads the exact still-valid stored target/value version from the first edge;
 - source traceability into generated Markdown;
-- an explicit explanation that changing `ProductGroup.Price` later does not retroactively update the existing stored downstream scalar copies.
+- an explicit explanation that changing `ProductGroup.Price` later does not retroactively update existing stored downstream scalar copies.
 
 Value lineage remains separate from business Rules and mutation semantics.
 
-## Regression boundary already covered
+## Closed snapshot-review blocker
 
-Keep all of these green while continuing A:
+The snapshot review against `82fac01e...` found a runtime-proven false-chain blocker:
 
-1. positive executable runtime fixture matches generated snapshot knowledge;
-2. unrelated same-name members do not create lineage by name matching;
-3. distinct receiver identities do not compose merely because member names match;
-4. intervening writes break prior chain composition;
-5. incompatible branch shapes fail closed;
-6. custom setter effects fail closed;
-7. shared mutable-reference content is not claimed to be a scalar snapshot;
-8. unresolved/no-project semantic context does not create proven lineage;
-9. same display members in distinct projects retain project/assembly-qualified identity;
-10. candidate → synthesis → workflow Markdown delivery is asserted;
-11. lineage is not promoted into authoritative business Rules.
+```text
+receiver reassignment between copies
+opaque helper mutation between copies
+```
 
-Do not weaken any accepted V0.4.6 authority/filtering behavior while extending lineage.
+Review and repro:
+
+```text
+docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md
+docs/reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch
+```
+
+The repro executed both fixtures and proved that runtime values contradicted the old composed origin chain.
+
+`bc938823...` repairs only that generic composition boundary:
+
+- relevant top-level statements are processed in execution order;
+- receiver local/parameter reassignment invalidates tracked slots for that receiver;
+- an opaque invocation conservatively invalidates predecessor composition state;
+- tracked unary writes invalidate their slot;
+- unsupported assignment targets create a conservative barrier;
+- independently valid direct transfer facts remain available even when composition is blocked;
+- no general alias/path or helper-body solver was introduced.
+
+Permanent regression coverage now includes both stale-predecessor cases. Each asserts runtime behavior, retains the immediate later direct-copy evidence, marks composition blocked, removes the predecessor link, and forbids false `Proven stored lineage chain` prose.
+
+## Snapshot regression boundary to keep green
+
+1. positive executable canonical snapshot fixture;
+2. unrelated same-name members do not create lineage;
+3. distinct receiver identities do not compose;
+4. intervening writes break composition;
+5. receiver reassignment breaks stale composition;
+6. opaque helper mutation breaks stale composition;
+7. incompatible branch shapes fail closed;
+8. custom setter effects fail closed;
+9. shared mutable-reference content is not a scalar snapshot;
+10. unresolved/no-project semantic context does not produce proven lineage;
+11. same display members in distinct projects retain project/assembly-qualified identity;
+12. candidate → synthesis → workflow Markdown delivery remains proven;
+13. lineage is not promoted into authoritative business Rules.
+
+Do not weaken accepted V0.4.6 authority/filtering behavior while extending lineage.
 
 ## Exact-SHA final verification
 
-All final verification gates passed on exact code SHA `82fac01e669bce0a35dafde80f54c8f0baa595e5`:
+All current checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35113764215 — PASS
-pinned Loren                                35113764207 — PASS
-Loren-main canary                           35113764095 — PASS
-pinned Jellyfin                             35113764184 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35128897392 — PASS
+pinned Loren                                35128897399 — PASS
+Loren-main canary                           35128897380 — PASS
+pinned Jellyfin                             35128897797 — PASS
 ```
 
-Core verification:
+Core:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            92 / 92 PASS
+C# tests:            94 / 94 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
@@ -166,64 +199,47 @@ ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
 src/ source-tree leak:   none
-artifact id:             10454295890
-artifact digest:         sha256:2ac8778a3366767e344c0bf4bdc2403037b900eddb338a89c03d0cf5d77554cc
+artifact id:             10460043943
+artifact digest:         sha256:3053a33b3abdb0acd16e66f85bc83f15c405295a0c9305965aeb4734497452c3
 artifact size:           9,162,455 bytes
 ```
 
 ## Current checkpoint disposition
 
 ```text
-V0.4.7-A snapshot composition       BLOCK — stale predecessor proof
-V0.4.7-A dynamic/reference slice    AFTER targeted repair / NOT IMPLEMENTED
+V0.4.7-A snapshot composition       GREEN
+V0.4.7-A dynamic/reference slice    NEXT / NOT IMPLEMENTED
 V0.4.7-A overall                    IN PROGRESS
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
 ```
 
-Do not call checkpoint A complete from the snapshot slice alone.
-
-The acceptance plan requires a separate positive proof for **reference/dynamic-read semantics** before A can close.
+Do not call checkpoint A complete until the separate reference/dynamic-read positive and its portable answer pass.
 
 ## Exact next implementation action
 
-Stay in V0.4.7-A. First apply `docs/reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch`, repair the generic predecessor-invalidation boundary, and verify both new negatives plus existing snapshot coverage. The review reproduced the defect against exact production `82fac01e...`; this is not a speculative reopening. Keep independently valid transfer evidence and avoid a general alias/path solver.
+Stay in V0.4.7-A and implement the **reference/dynamic-read positive** regression-first.
 
-After closing that specific blocker, implement the dynamic/reference positive regression-first.
-
-Required shape:
-
-- compile-valid and executable;
-- demonstrates a value whose later upstream/source mutation is observed dynamically rather than preserved as a stored scalar snapshot;
-- proves receiver/member identity and the observable read path deterministically;
-- survives scanner → candidate → synthesis → workflow Markdown;
-- generated PO answer must clearly distinguish dynamic/reference behavior from the already supported snapshot behavior;
-- unsupported aliasing, setter effects, branch ambiguity or unresolved semantic context must fail closed rather than guessing.
-
-Keep scope bounded. Do not introduce a general alias/path solver merely to broaden the fixture.
-
-Do not begin B/C/D until both A positives — snapshot and dynamic/reference — plus A's portable delivery/identity negatives are green.
-
-## Review instruction for Astra
-
-If Astra is acting as reviewer, review exact code checkpoint:
+Use a narrow compile-valid executable shape where a downstream property resolves an upstream property at read time, for example an expression-bodied/otherwise explicitly modeled getter equivalent to:
 
 ```text
-82fac01e669bce0a35dafde80f54c8f0baa595e5
+Service.CurrentGroupPrice → reads ProductGroup.Price dynamically
 ```
 
-Review this as **V0.4.7-A snapshot-slice readiness**, not as acceptance of all A or all V0.4.7.
+The fixture must mutate the upstream value after establishing the reference and prove a later downstream read observes the new upstream value without another scalar-copy assignment.
 
-Primary review questions:
+Required proof:
 
-1. Is the emitted snapshot claim deterministically justified by the assignment/storage proof?
-2. Can any compile-valid counterexample make the current `copy` / `snapshot` / chain-composition claim false?
-3. Are receiver/project/member identities strong enough to prevent same-name or cross-project false joins?
-4. Are custom setters, shared mutable references, control-flow ambiguity and intervening writes conservatively rejected?
-5. Does the generated portable Markdown answer the PO question without conflating value lineage with business Rules or mutation causality?
-6. Does any new evidence leak benchmark-specific special casing?
+- exact project semantic context;
+- exact receiver/member identity for the dynamic dependency;
+- executable before/after behavior;
+- deterministic read path rather than name similarity;
+- scanner → candidate → synthesis → workflow Markdown delivery;
+- PO-facing wording that says the value is resolved dynamically/read-time and contrasts it with stored snapshot behavior.
 
-If a concrete blocker is found, add a focused regression first and fix the generic boundary. Otherwise leave the snapshot slice closed and continue only with A's dynamic/reference slice.
+Fail closed for unsupported aliasing, receiver reassignment, opaque effects, custom getter behavior outside the modeled shape, branch ambiguity, unresolved semantics, or any dependency the compiler cannot prove. Do not add a general alias/path solver merely to support more shapes.
+
+Keep every snapshot positive and negative above green. Do not begin B/C/D until both A positives and A's identity/portable gates are green.
 
 ## Version semantics
 
@@ -250,8 +266,6 @@ Roadmap progress does not mechanically bump package or schema versions.
 
 ## V0.4.6 warnings carried forward
 
-These remain non-blocking V0.4.7 considerations:
-
 ```text
 W10.1
 Observed-only predicate Evidence is separated from Rules but does not explicitly render the `observed-only` label.
@@ -260,7 +274,7 @@ W10.2
 Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
 ```
 
-Only address them when the touched V0.4.7 scope makes doing so coherent and regression-safe.
+Only address them when touched V0.4.7 scope makes doing so coherent and regression-safe.
 
 Do not start Azure DevOps ingestion:
 
