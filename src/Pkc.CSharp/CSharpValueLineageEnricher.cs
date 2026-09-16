@@ -177,20 +177,17 @@ internal sealed class CSharpValueLineageEnricher
             versions[target.Key] = targetVersion;
 
             var sourceExpression = UnwrapParentheses(assignment.Right);
-            var isSafeTransfer =
-                assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) &&
-                TryResolveSlot(
+            if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) ||
+                !TryResolveSlot(
                     sourceExpression,
                     semanticModel,
                     projectPath,
                     cancellationToken,
-                    out var source) &&
-                !string.Equals(source.Key, target.Key, StringComparison.Ordinal) &&
-                IsSupportedStoredScalarAutoProperty(source.Property) &&
-                IsSupportedStoredScalarAutoProperty(target.Property) &&
-                SymbolEqualityComparer.Default.Equals(source.Property.Type, target.Property.Type);
-
-            if (!isSafeTransfer)
+                    out var source) ||
+                string.Equals(source.Key, target.Key, StringComparison.Ordinal) ||
+                !IsSupportedStoredScalarAutoProperty(source.Property) ||
+                !IsSupportedStoredScalarAutoProperty(target.Property) ||
+                !SymbolEqualityComparer.Default.Equals(source.Property.Type, target.Property.Type))
             {
                 currentWriter.Remove(target.Key);
                 continue;
