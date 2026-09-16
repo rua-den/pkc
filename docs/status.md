@@ -8,21 +8,15 @@ Last updated: 2026-09-16
 V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
 V0.4.6 business logic reconstruction             PASS / COMPLETE
-V0.4.7 cross-layer PO-question readiness         CURRENT / NEXT MILESTONE
+V0.4.7 cross-layer PO-question readiness         IN PROGRESS
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
-V0.4.7 planning/acceptance is now defined in:
+V0.4.7 acceptance is defined in:
 
 ```text
 docs/v0.4.7-acceptance-plan.md
 ```
-
-No V0.4.7 analyzer/compiler behavior has been implemented by this planning checkpoint.
-
-Current implementation step: **V0.4.7-A, first copy/snapshot slice — NOT IMPLEMENTED**. The next deliverable is an endpoint workflow that explains both `ProductGroup.Price → Product.Price → Service.Price` edges and why changing the upstream scalar alone does not change the stored copies.
-
-The [plan-readiness review](reviews/2026-09-16-v0.4.7-plan-readiness-review.md), committed as `edf59ed`, identified proof and delivery gaps. They are incorporated into the [acceptance plan](v0.4.7-acceptance-plan.md); this review is not a V0.4.7 implementation or acceptance result. Dynamic-read coverage is required before all of A can be marked complete.
 
 Accepted V0.4.6 production remains:
 
@@ -79,62 +73,113 @@ Accepted B6.4 hardening includes:
 - an Enumerable `Where` path loses returned-item authority when it crosses any Queryable pipeline hop;
 - downgraded predicates remain deterministic Evidence through `observes-predicate` rather than being deleted.
 
-## V0.4.7 acceptance scope
+## V0.4.7-A checkpoint state
 
-V0.4.7 must make portable knowledge answer practical PO questions across value flow and layers, including:
-
-```text
-Where did this value originally come from?
-If the upstream value changes later, does the existing downstream value change automatically?
-What code path can change this value after creation?
-Was this value directly copied or computed?
-What was the last observed source before the value was persisted or returned?
-What backend conditions and frontend conditions jointly determine whether an item is visible?
-How did the value move through backend → DTO/projection → API → frontend composition?
-If authority is incomplete, what lineage or causal evidence is still deterministically known?
-```
-
-Canonical lineage acceptance includes:
+The first **copy/snapshot** implementation slice is now implementation-green on current production code:
 
 ```text
-ProductGroup.Price → Product.Price → Service.Price
+82fac01e669bce0a35dafde80f54c8f0baa595e5
+fix: compile lineage regressions
 ```
 
-with each edge classified from proof as applicable:
+Implementation ancestry for this slice:
 
 ```text
-copy
-snapshot
-derivation
-reference/dynamic
-override
-mutation
+350ba2468e0d1b011936695fc48c1a970650d647  feat: prove scalar snapshot value lineage
+0bd5f823b7ebdfa8d0a54ff25d079d2056be4a81  fix: compile scalar lineage proof
+82fac01e669bce0a35dafde80f54c8f0baa595e5  fix: compile lineage regressions
 ```
 
-A blocking collision regression must prove that unrelated same-name members such as:
+This checkpoint proves the bounded supported shape:
 
 ```text
-Product.Price
-Service.Price
-Dto.Price
-Component.price
+ProductGroup.Price
+→ Product.Price
+→ Service.Price
 ```
 
-are never connected merely because names match.
+as deterministic direct scalar stored-copy lineage with snapshot timing. Generated workflow knowledge can explain that changing `ProductGroup.Price` later does not retroactively change the already stored `Product.Price` / `Service.Price` copies.
 
-See `docs/v0.4.7-acceptance-plan.md` for the complete regression matrix and implementation sequence.
+The implementation keeps value lineage separate from mutation semantics and renders a dedicated `Value lineage` section instead of promoting lineage into business Rules.
 
-## V0.4.6 warnings carried forward as non-blocking V0.4.7 considerations
+Focused regression coverage includes:
+
+- executable snapshot behavior matching generated knowledge;
+- exact source/target occurrence and semantic identity metadata;
+- two-edge chain composition through the same stored location;
+- distinct-receiver collision fail-closed behavior;
+- intervening overwrite breaks prior lineage composition;
+- incompatible branch shapes fail closed;
+- custom setter effects fail closed;
+- shared mutable-reference content is not labeled a scalar snapshot;
+- unresolved/no-project semantic context does not produce proven lineage;
+- same display members in distinct projects retain project/assembly-qualified identity;
+- generated candidate → synthesis → Markdown delivery;
+- lineage is absent from authoritative business Rules.
+
+### Important: A is NOT complete
+
+Do **not** advance to V0.4.7-B yet.
+
+Checkpoint A still requires its separate positive proof for:
 
 ```text
-W10.1
-Observed-only predicate evidence is separated from Rules but rendered Evidence does not explicitly print `observed-only`.
-
-W10.2
-Queryable names remain in old safe-operation sets but are currently unreachable behind the Queryable fail-closed guard.
+reference / dynamic-read semantics
 ```
 
-Do not reopen V0.4.6 for these warnings.
+The acceptance plan requires both snapshot and dynamic/reference positives before A can be marked complete. Current state is therefore:
+
+```text
+V0.4.7-A snapshot slice             GREEN
+V0.4.7-A dynamic/reference slice    NOT IMPLEMENTED / NEXT
+V0.4.7-B/C/D/E                      LOCKED behind A
+V0.5                                LOCKED
+```
+
+## Exact-SHA verification for snapshot slice
+
+All existing final verification gates passed on exact code SHA `82fac01e669bce0a35dafde80f54c8f0baa595e5`:
+
+```text
+CI + PKC tests + WorkPlay + PokeTrade   35113764215 — PASS
+pinned Loren                            35113764207 — PASS
+Loren-main canary                       35113764095 — PASS
+pinned Jellyfin                         35113764184 — PASS
+```
+
+Core CI evidence:
+
+```text
+Release build:       0 warnings / 0 errors
+C# tests:            92 / 92 PASS
+frontend tests:      13 / 13 PASS
+tool pack/install:   PASS
+WorkPlay:            PASS
+PokeTrade:           PASS
+```
+
+Pinned Jellyfin evidence:
+
+```text
+commit:                  1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+source build:            0 warnings / 0 errors
+facts:                   43,365
+relations:               195,316
+workflow candidates:     386
+product features:        116
+canonical Markdown:      504
+project-semantic:        43,365 / 43,365
+portable bundle parity:  PASS
+ZIP file-set parity:     PASS
+ZIP byte parity:         PASS
+raw .pkc leak:           none
+src/ source-tree leak:   none
+artifact id:             10454295890
+artifact digest:         sha256:2ac8778a3366767e344c0bf4bdc2403037b900eddb338a89c03d0cf5d77554cc
+artifact size:           9,162,455 bytes
+```
+
+The small Jellyfin fact/relation increase versus accepted V0.4.6 is expected from the new deterministic value-transfer evidence; benchmark portability and source-build gates remain green.
 
 ## Version semantics
 
@@ -149,7 +194,7 @@ evidence/schema version
 Current examples:
 
 ```text
-roadmap:             V0.4.7 CURRENT
+roadmap:             V0.4.7 IN PROGRESS
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
@@ -159,69 +204,17 @@ frontend schema:     0.4.3-frontend
 
 Do not mechanically bump package or schema versions because the roadmap milestone advances. Schema versions change only when that serialized contract/schema changes.
 
-This planning checkpoint does not change package or schema versions.
-
-## Exact accepted-production automation
-
-All exact-SHA gates remain accepted on `c310e893762997f34562a6b3a62dbab2b05c0c93`:
-
-```text
-CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
-pinned Loren                            34990080707 — PASS
-Loren-main canary                       34990080551 — PASS
-pinned Jellyfin                         34990080546 — PASS
-```
-
-Core CI:
-
-```text
-Release build:       0 warnings / 0 errors
-C# tests:            88 / 88 PASS
-frontend tests:      13 / 13 PASS
-tool pack/install:   PASS
-WorkPlay:            PASS
-```
-
-Pinned Jellyfin:
-
-```text
-commit:                  1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
-source build:            0 warnings / 0 errors
-facts:                   43,363
-relations:               195,314
-workflow candidates:     386
-product features:        116
-canonical Markdown:      504
-project-semantic:        43,363 / 43,363
-portable bundle parity:  PASS
-ZIP file-set parity:     PASS
-ZIP byte parity:         PASS
-raw .pkc leak:           none
-src/ source-tree leak:   none
-artifact id:             10405810551
-artifact digest:         sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
-artifact size:           9,159,880 bytes
-```
-
 ## Exact next action
 
-Stay in V0.4.7. Do not start Azure DevOps ingestion.
+Stay in **V0.4.7-A**.
 
-Start the first V0.4.7 implementation checkpoint regression-first:
+Implement the separate dynamic/reference positive regression-first. It must deterministically distinguish a live/reference read from a stored scalar snapshot and render the PO-facing answer through scanner → candidate → synthesis → workflow Markdown.
 
-```text
-ProductGroup.Price
-→ Product.Price
-→ Service.Price
-```
+Keep the current snapshot proof and all its fail-closed negatives green. Do not broaden into general alias/path analysis. Do not begin V0.4.7-B/C/D until A's snapshot + dynamic/reference + portable delivery gates are all green.
 
-Require the positive fixture to compile and execute, then require both edges to survive scanner → candidate → synthesis → workflow Markdown. Assert useful PO answers and source traceability, not just raw fact presence.
-
-The same slice must fail closed on same-name collisions, different receivers of one member, incompatible branches, intervening writes, custom setter effects, shared mutable-reference content, and unresolved project semantic context. Use the acceptance plan's bounded proof requirements; do not build general alias/path analysis to handle unsupported cases.
-
-First obtain meaningful failing regressions, then implement the minimum generic backend proof and portable explanation. Do not mark all of A complete on the first snapshot slice. Do not begin B/C/D until A's snapshot/dynamic and portable delivery gates are green. V0.4.6 remains closed; V0.5 remains locked.
+Astra/reviewer should review the snapshot checkpoint at `82fac01e...` as a bounded V0.4.7-A slice, **not** as completion of checkpoint A or V0.4.7.
 
 ```text
-V0.4.7 CURRENT / NEXT MILESTONE
+V0.4.7 IN PROGRESS
 V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
 ```
