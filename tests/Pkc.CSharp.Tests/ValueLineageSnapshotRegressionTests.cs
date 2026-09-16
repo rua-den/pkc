@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Pkc.Core;
 using Pkc.CSharp;
 using Pkc.Knowledge;
 using Xunit;
@@ -40,12 +41,12 @@ public sealed class ValueLineageSnapshotRegressionTests
                 .ToArray();
 
             Assert.Equal(2, transfers.Length);
-            var groupToProduct = Assert.Single(transfers.Where(fact =>
+            var groupToProduct = Assert.Single(transfers, fact =>
                 fact.Metadata.GetValueOrDefault("sourceOccurrence") == "group.Price" &&
-                fact.Metadata.GetValueOrDefault("targetOccurrence") == "product.Price"));
-            var productToService = Assert.Single(transfers.Where(fact =>
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "product.Price");
+            var productToService = Assert.Single(transfers, fact =>
                 fact.Metadata.GetValueOrDefault("sourceOccurrence") == "product.Price" &&
-                fact.Metadata.GetValueOrDefault("targetOccurrence") == "service.Price"));
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "service.Price");
 
             Assert.Equal("copy", groupToProduct.Metadata["mechanism"]);
             Assert.Equal("snapshot", groupToProduct.Metadata["temporalSemantics"]);
@@ -185,8 +186,14 @@ public sealed class ValueLineageSnapshotRegressionTests
             Directory.CreateDirectory(projectA);
             Directory.CreateDirectory(projectB);
 
-            await WriteProjectAsync(projectA, "AssemblyA", ProjectCollisionSource.Replace("__CONTROLLER__", "AController", StringComparison.Ordinal));
-            await WriteProjectAsync(projectB, "AssemblyB", ProjectCollisionSource.Replace("__CONTROLLER__", "BController", StringComparison.Ordinal));
+            await WriteProjectAsync(
+                projectA,
+                "AssemblyA",
+                ProjectCollisionSource.Replace("__CONTROLLER__", "AController", StringComparison.Ordinal));
+            await WriteProjectAsync(
+                projectB,
+                "AssemblyB",
+                ProjectCollisionSource.Replace("__CONTROLLER__", "BController", StringComparison.Ordinal));
 
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
             var transfers = facts.Facts
@@ -194,9 +201,18 @@ public sealed class ValueLineageSnapshotRegressionTests
                 .ToArray();
 
             Assert.Equal(2, transfers.Length);
-            Assert.All(transfers, transfer => Assert.Equal("Shared.ProductGroup.Price", transfer.Metadata["sourceMember"]));
-            Assert.Equal(2, transfers.Select(transfer => transfer.Metadata["sourceMemberIdentity"]).Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal(2, transfers.Select(transfer => transfer.Metadata["semanticProject"]).Distinct(StringComparer.Ordinal).Count());
+            Assert.All(transfers, transfer =>
+                Assert.Equal("Shared.ProductGroup.Price", transfer.Metadata["sourceMember"]));
+            Assert.Equal(
+                2,
+                transfers.Select(transfer => transfer.Metadata["sourceMemberIdentity"])
+                    .Distinct(StringComparer.Ordinal)
+                    .Count());
+            Assert.Equal(
+                2,
+                transfers.Select(transfer => transfer.Metadata["semanticProject"])
+                    .Distinct(StringComparer.Ordinal)
+                    .Count());
         }
         finally
         {
@@ -213,11 +229,11 @@ public sealed class ValueLineageSnapshotRegressionTests
     private static FeatureCandidate FindCandidate(FactDocument facts, string endpointName)
     {
         var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
-        return Assert.Single(candidates.Candidates.Where(candidate =>
+        return Assert.Single(candidates.Candidates, candidate =>
             candidate.Facts.Any(fact =>
                 fact.Id == candidate.SeedFactId &&
                 fact.Kind == "endpoint" &&
-                fact.Name == endpointName)));
+                fact.Name == endpointName));
     }
 
     private static string CreateRoot(string name)
@@ -245,7 +261,7 @@ public sealed class ValueLineageSnapshotRegressionTests
                                 throw new InvalidOperationException("Trusted platform assemblies are unavailable.");
         var references = trustedAssemblies
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Select(MetadataReference.CreateFromFile)
+            .Select(path => MetadataReference.CreateFromFile(path))
             .ToArray();
         var compilation = CSharpCompilation.Create(
             $"PkcV047Runtime_{Guid.NewGuid():N}",
@@ -257,7 +273,9 @@ public sealed class ValueLineageSnapshotRegressionTests
         var emit = compilation.Emit(stream);
         Assert.True(
             emit.Success,
-            string.Join(Environment.NewLine, emit.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
+            string.Join(
+                Environment.NewLine,
+                emit.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)));
 
         stream.Position = 0;
         var context = new AssemblyLoadContext($"pkc-v047-{Guid.NewGuid():N}", isCollectible: true);
@@ -299,15 +317,16 @@ public sealed class ValueLineageSnapshotRegressionTests
         namespace Demo;
 
         [AttributeUsage(AttributeTargets.Class)]
-        public sealed class RouteAttribute(string template) : Attribute
+        public sealed class RouteAttribute : Attribute
         {
-            public string Template { get; } = template;
+            public RouteAttribute(string template) { }
         }
 
         [AttributeUsage(AttributeTargets.Method)]
-        public sealed class HttpGetAttribute(string template) : Attribute
+        public sealed class HttpGetAttribute : Attribute
         {
-            public string Template { get; } = template;
+            public HttpGetAttribute() { }
+            public HttpGetAttribute(string template) { }
         }
 
         public sealed class ProductGroup
@@ -343,6 +362,7 @@ public sealed class ValueLineageSnapshotRegressionTests
         public sealed class AdjustedPrice
         {
             private decimal _stored;
+
             public decimal Price
             {
                 get => _stored;
@@ -361,7 +381,12 @@ public sealed class ValueLineageSnapshotRegressionTests
         }
 
         public sealed record SnapshotResult(decimal GroupPrice, decimal ProductPrice, decimal ServicePrice);
-        public sealed record CollisionResult(decimal ProductAPrice, decimal ProductBPrice, decimal ServicePrice, decimal DtoPrice, decimal ComponentPrice);
+        public sealed record CollisionResult(
+            decimal ProductAPrice,
+            decimal ProductBPrice,
+            decimal ServicePrice,
+            decimal DtoPrice,
+            decimal ComponentPrice);
         public sealed record OverwriteResult(decimal ProductPrice, decimal ServicePrice);
         public sealed record BranchResult(decimal ProductPrice, decimal ServicePrice);
 
@@ -396,7 +421,12 @@ public sealed class ValueLineageSnapshotRegressionTests
                 component.price = 66m;
                 productA.Price = group.Price;
                 service.Price = productB.Price;
-                return new CollisionResult(productA.Price, productB.Price, service.Price, dto.Price, component.price);
+                return new CollisionResult(
+                    productA.Price,
+                    productB.Price,
+                    service.Price,
+                    dto.Price,
+                    component.price);
             }
 
             [HttpGet("overwritten")]
@@ -419,6 +449,7 @@ public sealed class ValueLineageSnapshotRegressionTests
                 var product = new Product();
                 var service = new Service();
                 group.Price = 100m;
+
                 if (flag)
                 {
                     product.Price = group.Price;
@@ -427,6 +458,7 @@ public sealed class ValueLineageSnapshotRegressionTests
                 {
                     service.Price = product.Price;
                 }
+
                 return new BranchResult(product.Price, service.Price);
             }
 
