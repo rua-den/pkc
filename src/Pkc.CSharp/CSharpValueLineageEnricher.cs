@@ -159,9 +159,35 @@ internal sealed class CSharpValueLineageEnricher
         var facts = new List<EvidenceFact>();
         var relations = new List<EvidenceRelation>();
 
-        foreach (var assignment in topLevelAssignments.OrderBy(item => item.SpanStart))
+        foreach (var statement in method.Body.Statements)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (statement.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any())
+            {
+                InvalidateAllTrackedState(versions, currentWriter);
+            }
+
+            if (statement is not ExpressionStatementSyntax expressionStatement)
+            {
+                continue;
+            }
+
+            if (TryInvalidateUnaryWrite(
+                    expressionStatement.Expression,
+                    semanticModel,
+                    projectPath,
+                    cancellationToken,
+                    versions,
+                    currentWriter))
+            {
+                continue;
+            }
+
+            if (expressionStatement.Expression is not AssignmentExpressionSyntax assignment)
+            {
+                continue;
+            }
 
             if (!TryResolveSlot(
                     assignment.Left,
@@ -170,6 +196,23 @@ internal sealed class CSharpValueLineageEnricher
                     cancellationToken,
                     out var target))
             {
+                if (TryResolveReceiverSymbol(
+                        assignment.Left,
+                        semanticModel,
+                        cancellationToken,
+                        out var reassignedReceiver))
+                {
+                    InvalidateReceiver(
+                        reassignedReceiver,
+                        projectPath,
+                        versions,
+                        currentWriter);
+                }
+                else
+                {
+                    InvalidateAllTrackedState(versions, currentWriter);
+                }
+
                 continue;
             }
 
@@ -264,6 +307,107 @@ internal sealed class CSharpValueLineageEnricher
         }
 
         return new ExtractionResult(facts, relations);
+    }
+
+    private static bool TryInvalidateUnaryWrite(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        string projectPath,
+        CancellationToken cancellationToken,
+        Dictionary<string, int> versions,
+        Dictionary<string, WriterInfo> currentWriter)
+    {
+        ExpressionSyntax? operand = expression switch
+        {
+            PrefixUnaryExpressionSyntax prefix
+                when prefix.IsKind(SyntaxKind.PreIncrementExpression) ||
+                     prefix.IsKind(SyntaxKind.PreDecrementExpression) =>
+                prefix.Operand,
+            PostfixUnaryExpressionSyntax postfix
+                when postfix.IsKind(SyntaxKind.PostIncrementExpression) ||
+                     postfix.IsKind(SyntaxKind.PostDecrementExpression) =>
+                postfix.Operand,
+            _ => null
+        };
+
+        if (operand is null)
+        {
+            return false;
+        }
+
+        if (TryResolveSlot(
+                operand,
+                semanticModel,
+                projectPath,
+                cancellationToken,
+                out var slot))
+        {
+            InvalidateSlot(slot.Key, versions, currentWriter);
+        }
+        else
+        {
+            InvalidateAllTrackedState(versions, currentWriter);
+        }
+
+        return true;
+    }
+
+    private static bool TryResolveReceiverSymbol(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken,
+        out ISymbol receiverSymbol)
+    {
+        expression = UnwrapParentheses(expression);
+        var symbol = semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol;
+        if (symbol is ILocalSymbol or IParameterSymbol)
+        {
+            receiverSymbol = symbol;
+            return true;
+        }
+
+        receiverSymbol = default!;
+        return false;
+    }
+
+    private static void InvalidateReceiver(
+        ISymbol receiverSymbol,
+        string projectPath,
+        Dictionary<string, int> versions,
+        Dictionary<string, WriterInfo> currentWriter)
+    {
+        var receiverIdentity = BuildReceiverIdentity(receiverSymbol);
+        var keyPrefix = $"{projectPath}|{receiverIdentity}|";
+        var affectedKeys = versions.Keys
+            .Where(key => key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            .ToArray();
+
+        foreach (var key in affectedKeys)
+        {
+            InvalidateSlot(key, versions, currentWriter);
+        }
+    }
+
+    private static void InvalidateAllTrackedState(
+        Dictionary<string, int> versions,
+        Dictionary<string, WriterInfo> currentWriter)
+    {
+        foreach (var key in versions.Keys.ToArray())
+        {
+            versions[key] = versions[key] + 1;
+        }
+
+        currentWriter.Clear();
+    }
+
+    private static void InvalidateSlot(
+        string key,
+        Dictionary<string, int> versions,
+        Dictionary<string, WriterInfo> currentWriter)
+    {
+        versions.TryGetValue(key, out var currentVersion);
+        versions[key] = currentVersion + 1;
+        currentWriter.Remove(key);
     }
 
     private static bool HasUnsupportedControlFlow(BlockSyntax body)
