@@ -18,7 +18,10 @@ public sealed record FeatureKnowledge(
     IReadOnlyList<string> SideEffects,
     IReadOnlyList<string> Flow,
     IReadOnlyList<string> Unknowns,
-    IReadOnlyList<KnowledgeEvidence> Evidence);
+    IReadOnlyList<KnowledgeEvidence> Evidence)
+{
+    public IReadOnlyList<string> ValueLineage { get; init; } = [];
+}
 
 public sealed record KnowledgeEvidence(
     string FactId,

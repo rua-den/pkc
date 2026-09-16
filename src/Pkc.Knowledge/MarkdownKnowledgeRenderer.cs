@@ -45,6 +45,10 @@ public sealed partial class MarkdownKnowledgeRenderer
         AppendListSection(builder, "Backend entry point", knowledge.EntryPoints);
         AppendListSection(builder, "Permissions", knowledge.Permissions);
         AppendListSection(builder, "Observed business rules", knowledge.Rules);
+        if (knowledge.ValueLineage.Count > 0)
+        {
+            AppendListSection(builder, "Value lineage", knowledge.ValueLineage);
+        }
         AppendListSection(builder, "State changes", knowledge.StateChanges);
         AppendListSection(builder, "Side effects", knowledge.SideEffects);
         AppendListSection(builder, "Backend flow", knowledge.Flow);

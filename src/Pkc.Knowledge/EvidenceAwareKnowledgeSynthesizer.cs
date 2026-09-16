@@ -39,6 +39,12 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         var consistencyFacts = candidate.Facts
             .Where(fact => fact.Kind == "ui-backend-validation")
             .ToArray();
+        var valueTransferFacts = candidate.Facts
+            .Where(fact => fact.Kind == "value-transfer")
+            .OrderBy(fact => fact.Source.Path, StringComparer.Ordinal)
+            .ThenBy(fact => fact.Source.StartLine)
+            .ThenBy(fact => fact.Id, StringComparer.Ordinal)
+            .ToArray();
 
         var rules = knowledge.Rules
             .Concat(responseFacts.Select(DescribeResponseRule))
@@ -72,6 +78,11 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
                 fact.Kind,
                 DescribeValidationConsistencyRule(fact),
                 fact.Source)))
+            .Concat(valueTransferFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeValueTransferEvidence(fact),
+                fact.Source)))
             .GroupBy(item => item.FactId, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(item => item.Source.Path, StringComparer.Ordinal)
@@ -81,6 +92,7 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         return knowledge with
         {
             Rules = rules,
+            ValueLineage = BuildValueLineage(valueTransferFacts),
             SideEffects = sideEffects,
             Evidence = evidence
         };
@@ -206,6 +218,105 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return $"UI/backend validation comparison for `{ui}` → `{backend}` remains unknown because requiredness was not observed on both sides.";
+    }
+
+    private static IReadOnlyList<string> BuildValueLineage(IReadOnlyList<EvidenceFact> transfers)
+    {
+        if (transfers.Count == 0)
+        {
+            return [];
+        }
+
+        var byId = transfers.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
+        var predecessorIds = transfers
+            .Select(fact => fact.Metadata.TryGetValue("predecessorTransferFactId", out var predecessor)
+                ? predecessor
+                : null)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToHashSet(StringComparer.Ordinal);
+
+        var result = new List<string>();
+        foreach (var leaf in transfers.Where(fact => !predecessorIds.Contains(fact.Id)))
+        {
+            var chain = BuildTransferChain(leaf, byId);
+            if (chain.Count < 2)
+            {
+                continue;
+            }
+
+            var nodes = new List<string>();
+            if (chain[0].Metadata.TryGetValue("sourceOccurrence", out var firstSource))
+            {
+                nodes.Add(firstSource);
+            }
+
+            nodes.AddRange(chain.Select(fact =>
+                fact.Metadata.TryGetValue("targetOccurrence", out var target)
+                    ? target
+                    : fact.Name));
+
+            var proofLocations = string.Join(
+                ", ",
+                chain.Select(fact => $"`{fact.Source.Path}:L{fact.Source.StartLine}`"));
+            result.Add($"Proven stored lineage chain: {string.Join(" → ", nodes.Select(node => $"`{node}`"))}. Each edge is a direct scalar auto-property copy stored as a snapshot. Edge proof: {proofLocations}.");
+        }
+
+        result.AddRange(transfers.Select(DescribeValueTransfer));
+        return result.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static IReadOnlyList<EvidenceFact> BuildTransferChain(
+        EvidenceFact leaf,
+        IReadOnlyDictionary<string, EvidenceFact> byId)
+    {
+        var reversed = new List<EvidenceFact>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var current = leaf;
+
+        while (seen.Add(current.Id))
+        {
+            reversed.Add(current);
+            if (!current.Metadata.TryGetValue("predecessorTransferFactId", out var predecessorId) ||
+                !byId.TryGetValue(predecessorId, out var predecessor))
+            {
+                break;
+            }
+
+            current = predecessor;
+        }
+
+        reversed.Reverse();
+        return reversed;
+    }
+
+    private static string DescribeValueTransfer(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("sourceOccurrence", out var source);
+        fact.Metadata.TryGetValue("targetOccurrence", out var target);
+        fact.Metadata.TryGetValue("compositionStatus", out var compositionStatus);
+
+        var sourceText = source ?? "source value";
+        var targetText = target ?? fact.Name;
+        var location = $"`{fact.Source.Path}:L{fact.Source.StartLine}`";
+
+        if (string.Equals(compositionStatus, "blocked-by-intervening-or-unproven-write", StringComparison.Ordinal))
+        {
+            return $"Immediate stored snapshot copy: `{sourceText}` → `{targetText}` at {location}. This edge is not composed with an earlier `{sourceText}` lineage because an intervening or otherwise unproven write changed that source slot before this assignment.";
+        }
+
+        return $"Stored snapshot copy: `{sourceText}` → `{targetText}` at {location}. For this observed direct scalar auto-property assignment, changing `{sourceText}` later does not automatically update the stored target without another write.";
+    }
+
+    private static string DescribeValueTransferEvidence(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("sourceOccurrence", out var source);
+        fact.Metadata.TryGetValue("targetOccurrence", out var target);
+        fact.Metadata.TryGetValue("mechanism", out var mechanism);
+        fact.Metadata.TryGetValue("temporalSemantics", out var temporal);
+        fact.Metadata.TryGetValue("semanticProject", out var project);
+
+        return $"Value lineage transfer: `{source ?? "source"}` → `{target ?? fact.Name}` ({mechanism ?? "transfer"}; {temporal ?? "temporal semantics unknown"}; target-project proof `{project ?? "unknown"}`).";
     }
 
     private static IEnumerable<string> BuildSemanticSideEffects(FeatureCandidate candidate)
