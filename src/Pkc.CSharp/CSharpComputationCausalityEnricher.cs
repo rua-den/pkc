@@ -622,7 +622,7 @@ internal sealed class CSharpComputationCausalityEnricher
             operation = operation switch
             {
                 IParenthesizedOperation parenthesized => parenthesized.Operand,
-                IConversionOperation conversion => conversion.Operand,
+                IConversionOperation conversionOperation => conversionOperation.Operand,
                 _ => operation
             };
         }
