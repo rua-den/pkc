@@ -433,6 +433,12 @@ internal sealed class CSharpValueLineageEnricher
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
+        var contextualConversion = semanticModel.GetConversion(expression, cancellationToken);
+        if (contextualConversion.IsUserDefined)
+        {
+            return false;
+        }
+
         var operation = semanticModel.GetOperation(expression, cancellationToken);
         while (operation is IParenthesizedOperation or IConversionOperation)
         {
