@@ -35,7 +35,6 @@ internal sealed class CSharpComputationCausalityEnricher
         }
 
         EnsureMsBuildRegistered();
-
         var facts = document.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
         var relations = document.Relations.ToList();
 
@@ -44,7 +43,6 @@ internal sealed class CSharpComputationCausalityEnricher
                      StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
-
             var projectPath = projectGroup.Key;
             var fullProjectPath = Path.GetFullPath(Path.Combine(
                 rootPath,
@@ -67,7 +65,6 @@ internal sealed class CSharpComputationCausalityEnricher
                 foreach (var endpoint in projectGroup)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
                     var fullSourcePath = Path.GetFullPath(Path.Combine(
                         rootPath,
                         endpoint.Source.Path.Replace('/', Path.DirectorySeparatorChar)));
@@ -124,9 +121,7 @@ internal sealed class CSharpComputationCausalityEnricher
 
         return document with
         {
-            Facts = facts.Values
-                .OrderBy(fact => fact.Id, StringComparer.Ordinal)
-                .ToArray(),
+            Facts = facts.Values.OrderBy(fact => fact.Id, StringComparer.Ordinal).ToArray(),
             Relations = relations
                 .GroupBy(RelationKey, StringComparer.Ordinal)
                 .Select(group => group.First())
@@ -152,7 +147,8 @@ internal sealed class CSharpComputationCausalityEnricher
                 .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
                 .OfType<IParameterSymbol>()
                 .Any(parameter => parameter.Type.IsReferenceType) ||
-            HasReferenceAmbiguity(body, semanticModel, cancellationToken))
+            HasReferenceAmbiguity(body, semanticModel, cancellationToken) ||
+            HasUnsupportedScalarWrite(body, semanticModel, projectPath, cancellationToken))
         {
             return ExtractionResult.Empty;
         }
@@ -185,11 +181,7 @@ internal sealed class CSharpComputationCausalityEnricher
                         terminalValue,
                         knownFacts);
                     emittedFacts.Add(terminal);
-                    relations.Add(new EvidenceRelation(
-                        endpoint.Id,
-                        "mutates",
-                        terminal.Id,
-                        terminal.Source));
+                    relations.Add(new EvidenceRelation(endpoint.Id, "mutates", terminal.Id, terminal.Source));
                     knownFacts[terminal.Id] = terminal;
                 }
 
@@ -197,12 +189,8 @@ internal sealed class CSharpComputationCausalityEnricher
             }
 
             if (statement is not ExpressionStatementSyntax expressionStatement ||
-                expressionStatement.Expression is not AssignmentExpressionSyntax assignment)
-            {
-                continue;
-            }
-
-            if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) ||
+                expressionStatement.Expression is not AssignmentExpressionSyntax assignment ||
+                !assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) ||
                 !TryResolveSlot(
                     assignment.Left,
                     semanticModel,
@@ -214,11 +202,7 @@ internal sealed class CSharpComputationCausalityEnricher
                 continue;
             }
 
-            var directCopy = FindMatchingDirectCopy(
-                endpoint,
-                assignment,
-                target,
-                scopeFacts);
+            var directCopy = FindMatchingDirectCopy(endpoint, assignment, target, scopeFacts);
             if (directCopy is not null)
             {
                 currentValues[target.Key] = new ProvenValue(
@@ -243,11 +227,7 @@ internal sealed class CSharpComputationCausalityEnricher
                     target,
                     derivation);
                 emittedFacts.Add(derivationFact);
-                relations.Add(new EvidenceRelation(
-                    endpoint.Id,
-                    "mutates",
-                    derivationFact.Id,
-                    derivationFact.Source));
+                relations.Add(new EvidenceRelation(endpoint.Id, "mutates", derivationFact.Id, derivationFact.Source));
                 knownFacts[derivationFact.Id] = derivationFact;
                 currentValues[target.Key] = new ProvenValue(derivationFact.Id, "derivation");
                 continue;
@@ -264,11 +244,7 @@ internal sealed class CSharpComputationCausalityEnricher
                     priorValue,
                     knownFacts);
                 emittedFacts.Add(causalityFact);
-                relations.Add(new EvidenceRelation(
-                    endpoint.Id,
-                    "mutates",
-                    causalityFact.Id,
-                    causalityFact.Source));
+                relations.Add(new EvidenceRelation(endpoint.Id, "mutates", causalityFact.Id, causalityFact.Source));
                 knownFacts[causalityFact.Id] = causalityFact;
                 currentValues[target.Key] = new ProvenValue(causalityFact.Id, "override");
                 continue;
@@ -327,9 +303,7 @@ internal sealed class CSharpComputationCausalityEnricher
             return false;
         }
 
-        var distinctInputs = inputs
-            .DistinctBy(input => input.Key, StringComparer.Ordinal)
-            .ToArray();
+        var distinctInputs = inputs.DistinctBy(input => input.Key, StringComparer.Ordinal).ToArray();
         if (distinctInputs.Length < 2 ||
             distinctInputs.Any(input =>
                 !IsSupportedStoredScalarAutoProperty(input.Property) ||
@@ -574,8 +548,9 @@ internal sealed class CSharpComputationCausalityEnricher
                 continue;
             }
 
-            var operation = model.GetOperation(variable.Initializer.Value, cancellationToken);
-            if (!IsFreshReferenceAllocation(operation))
+            var contextualConversion = model.GetConversion(variable.Initializer.Value, cancellationToken);
+            if (contextualConversion.IsUserDefined ||
+                !IsFreshReferenceAllocation(model.GetOperation(variable.Initializer.Value, cancellationToken)))
             {
                 return true;
             }
@@ -589,6 +564,50 @@ internal sealed class CSharpComputationCausalityEnricher
                 return symbol is ILocalSymbol or IParameterSymbol &&
                        model.GetTypeInfo(assignment.Left, cancellationToken).Type is { IsReferenceType: true };
             });
+    }
+
+    private static bool HasUnsupportedScalarWrite(
+        BlockSyntax body,
+        SemanticModel model,
+        string projectPath,
+        CancellationToken cancellationToken)
+    {
+        foreach (var assignment in body.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
+            if (assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+            {
+                continue;
+            }
+
+            if (TryResolveSlot(assignment.Left, model, projectPath, cancellationToken, out var slot) &&
+                IsSupportedStoredScalarAutoProperty(slot.Property))
+            {
+                return true;
+            }
+        }
+
+        foreach (var expression in body.DescendantNodes().OfType<ExpressionSyntax>())
+        {
+            ExpressionSyntax? operand = expression switch
+            {
+                PrefixUnaryExpressionSyntax prefix
+                    when prefix.IsKind(SyntaxKind.PreIncrementExpression) ||
+                         prefix.IsKind(SyntaxKind.PreDecrementExpression) => prefix.Operand,
+                PostfixUnaryExpressionSyntax postfix
+                    when postfix.IsKind(SyntaxKind.PostIncrementExpression) ||
+                         postfix.IsKind(SyntaxKind.PostDecrementExpression) => postfix.Operand,
+                _ => null
+            };
+
+            if (operand is not null &&
+                TryResolveSlot(operand, model, projectPath, cancellationToken, out var slot) &&
+                IsSupportedStoredScalarAutoProperty(slot.Property))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsFreshReferenceAllocation(IOperation? operation)
@@ -776,9 +795,7 @@ internal sealed class CSharpComputationCausalityEnricher
         string MemberIdentity,
         IPropertySymbol Property);
 
-    private sealed record DerivationProof(
-        string Expression,
-        IReadOnlyList<MemberSlot> Inputs);
+    private sealed record DerivationProof(string Expression, IReadOnlyList<MemberSlot> Inputs);
 
     private sealed record ProvenValue(string FactId, string Mechanism);
 
