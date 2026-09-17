@@ -227,8 +227,11 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
             return [];
         }
 
-        var byId = transfers.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
-        var predecessorIds = transfers
+        var snapshotTransfers = transfers
+            .Where(IsStoredSnapshotTransfer)
+            .ToArray();
+        var byId = snapshotTransfers.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
+        var predecessorIds = snapshotTransfers
             .Select(fact => fact.Metadata.TryGetValue("predecessorTransferFactId", out var predecessor)
                 ? predecessor
                 : null)
@@ -237,7 +240,7 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
             .ToHashSet(StringComparer.Ordinal);
 
         var result = new List<string>();
-        foreach (var leaf in transfers.Where(fact => !predecessorIds.Contains(fact.Id)))
+        foreach (var leaf in snapshotTransfers.Where(fact => !predecessorIds.Contains(fact.Id)))
         {
             var chain = BuildTransferChain(leaf, byId);
             if (chain.Count < 2)
@@ -265,6 +268,12 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         result.AddRange(transfers.Select(DescribeValueTransfer));
         return result.Distinct(StringComparer.Ordinal).ToArray();
     }
+
+    private static bool IsStoredSnapshotTransfer(EvidenceFact fact) =>
+        fact.Metadata.TryGetValue("mechanism", out var mechanism) &&
+        string.Equals(mechanism, "copy", StringComparison.Ordinal) &&
+        fact.Metadata.TryGetValue("temporalSemantics", out var temporal) &&
+        string.Equals(temporal, "snapshot", StringComparison.Ordinal);
 
     private static IReadOnlyList<EvidenceFact> BuildTransferChain(
         EvidenceFact leaf,
@@ -295,10 +304,20 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         fact.Metadata.TryGetValue("sourceOccurrence", out var source);
         fact.Metadata.TryGetValue("targetOccurrence", out var target);
         fact.Metadata.TryGetValue("compositionStatus", out var compositionStatus);
+        fact.Metadata.TryGetValue("temporalSemantics", out var temporalSemantics);
 
         var sourceText = source ?? "source value";
         var targetText = target ?? fact.Name;
         var location = $"`{fact.Source.Path}:L{fact.Source.StartLine}`";
+
+        if (string.Equals(temporalSemantics, "dynamic", StringComparison.Ordinal))
+        {
+            fact.Metadata.TryGetValue("getterOccurrence", out var getterOccurrence);
+            var getterProof = string.IsNullOrWhiteSpace(getterOccurrence)
+                ? string.Empty
+                : $" The modeled getter reads `{getterOccurrence}`.";
+            return $"Dynamic read-time dependency: `{sourceText}` → `{targetText}` at {location}.{getterProof} Reading `{targetText}` resolves the upstream value through the retained reference at read time, so a later change to `{sourceText}` can affect a later read without another scalar-copy assignment.";
+        }
 
         if (string.Equals(compositionStatus, "blocked-by-intervening-or-unproven-write", StringComparison.Ordinal))
         {
@@ -315,6 +334,11 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         fact.Metadata.TryGetValue("mechanism", out var mechanism);
         fact.Metadata.TryGetValue("temporalSemantics", out var temporal);
         fact.Metadata.TryGetValue("semanticProject", out var project);
+
+        if (string.Equals(temporal, "dynamic", StringComparison.Ordinal))
+        {
+            return $"Value lineage dynamic dependency: `{source ?? "source"}` → `{target ?? fact.Name}` ({mechanism ?? "reference"}; dynamic read-time semantics; target-project proof `{project ?? "unknown"}`).";
+        }
 
         return $"Value lineage transfer: `{source ?? "source"}` → `{target ?? fact.Name}` ({mechanism ?? "transfer"}; {temporal ?? "temporal semantics unknown"}; target-project proof `{project ?? "unknown"}`).";
     }
