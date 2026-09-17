@@ -302,7 +302,7 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
 
         if (string.Equals(compositionStatus, "blocked-by-intervening-or-unproven-write", StringComparison.Ordinal))
         {
-            return $"Immediate stored snapshot copy: `{sourceText}` → `{targetText}` at {location}. This edge is not composed with an earlier `{sourceText}` lineage because an intervening or otherwise unproven write changed that source slot before this assignment.";
+            return $"Immediate stored snapshot copy: `{sourceText}` → `{targetText}` at {location}. This edge is not composed with an earlier `{sourceText}` lineage because the source value could not be proven unchanged before this assignment.";
         }
 
         return $"Stored snapshot copy: `{sourceText}` → `{targetText}` at {location}. For this observed direct scalar auto-property assignment, changing `{sourceText}` later does not automatically update the stored target without another write.";
