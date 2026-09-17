@@ -57,9 +57,9 @@ Accepted B6.4 hardening includes discarded/local predicate downgrade, transforme
 
 ## V0.4.7-A snapshot checkpoint
 
-The first copy/snapshot slice is now **GREEN**, including the predecessor-invalidation repair required by the 2026-09-16 snapshot review.
+The receiver-reassignment and opaque-helper repair passes its focused regressions. A 2026-09-17 independent review found a new runtime-valid **P1 alias-write composition blocker**; snapshot composition is not yet green for that boundary. See `docs/reviews/2026-09-17-v0.4.7-alias-composition-review.md` and its adjacent reproduction patch.
 
-Latest verified code checkpoint:
+Reviewed code checkpoint (existing gates passed; new alias regression is RED):
 
 ```text
 bc938823b46802a4d2c32300a1b6de692f5866ad
@@ -138,8 +138,8 @@ reference / dynamic-read semantics
 Current disposition:
 
 ```text
-V0.4.7-A snapshot composition       GREEN
-V0.4.7-A dynamic/reference slice    NEXT / NOT IMPLEMENTED
+V0.4.7-A snapshot composition       BLOCKED: alias-write predecessor invalidation
+V0.4.7-A dynamic/reference slice    NEXT FEATURE / after bounded repair
 V0.4.7-A overall                    IN PROGRESS
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
@@ -149,7 +149,7 @@ Do not begin B/C/D until A's snapshot + dynamic/reference + portable delivery ga
 
 ## Exact-SHA verification for stale-composition repair
 
-All current checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`:
+Previously recorded checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`. These gates did not include the new alias-write counterexample:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   35128897392 — PASS
@@ -227,7 +227,7 @@ Do not mechanically bump package or schema versions because the roadmap mileston
 
 ## Exact next action
 
-Stay in **V0.4.7-A** and implement the separate **reference/dynamic-read positive** regression-first.
+Stay in **V0.4.7-A**. First close the reproduced alias-write composition gap described in the 2026-09-17 review, retaining valid immediate copies and the six existing lineage regressions. Then implement the already agreed **reference/dynamic-read positive** regression-first: upstream `100 → 120`, downstream read-time property observes `120`.
 
 Use a compile-valid executable supported shape where a downstream property resolves an upstream property at read time, mutate the upstream value, then prove a later downstream read observes the new value without another scalar copy. The analysis must prove receiver/member identity and the observable dependency through scanner → candidate → synthesis → workflow Markdown.
 

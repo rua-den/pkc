@@ -12,6 +12,7 @@ Use this file when continuing PKC in another coding or review thread.
 6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
 7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md`
 8. `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md`
+9. `docs/reviews/2026-09-17-v0.4.7-alias-composition-review.md`
 
 Before changing code, inspect `git status`, current `main` HEAD and recent commits. Work from current `main`; do not reset to an older planning or production SHA.
 
@@ -69,7 +70,7 @@ Conservative business-rule downgrade must not erase deterministic lower-authorit
 
 ## Current V0.4.7-A code checkpoint
 
-Latest verified implementation checkpoint:
+Reviewed implementation checkpoint (prior gates passed; new alias regression is RED):
 
 ```text
 bc938823b46802a4d2c32300a1b6de692f5866ad
@@ -89,7 +90,7 @@ bc938823b46802a4d2c32300a1b6de692f5866ad  fix: invalidate stale lineage composit
 
 `f359016` is an accidental connector-created no-op commit with the same tree as its parent. It was intentionally left in history rather than force-resetting `main`.
 
-Checkpoint A is **not complete**. The snapshot half is green; the dynamic/reference half is still pending.
+Checkpoint A is **not complete**. The two old snapshot blockers are fixed, but the 2026-09-17 review reproduces a remaining alias-write composition blocker. Dynamic/reference remains the next feature after that bounded repair.
 
 ## What the snapshot slice now proves
 
@@ -163,7 +164,7 @@ Do not weaken accepted V0.4.6 authority/filtering behavior while extending linea
 
 ## Exact-SHA final verification
 
-All current checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`:
+Previously recorded checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`. They did not include the new alias-write counterexample:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   35128897392 — PASS
@@ -207,8 +208,8 @@ artifact size:           9,162,455 bytes
 ## Current checkpoint disposition
 
 ```text
-V0.4.7-A snapshot composition       GREEN
-V0.4.7-A dynamic/reference slice    NEXT / NOT IMPLEMENTED
+V0.4.7-A snapshot composition       BLOCKED: alias-write predecessor invalidation
+V0.4.7-A dynamic/reference slice    NEXT FEATURE / after bounded repair
 V0.4.7-A overall                    IN PROGRESS
 V0.4.7-B/C/D/E                      LOCKED behind A
 V0.5                                LOCKED
@@ -218,7 +219,9 @@ Do not call checkpoint A complete until the separate reference/dynamic-read posi
 
 ## Exact next implementation action
 
-Stay in V0.4.7-A and implement the **reference/dynamic-read positive** regression-first.
+Stay in V0.4.7-A. Apply the 2026-09-17 alias reproduction patch, make its runtime/Markdown negative pass through a bounded composition repair, and retain valid immediate copy evidence. The alias exists before the first tracked copy, so merely clearing predecessor state at alias declaration is insufficient. Keep all six existing lineage regressions green; no general alias solver is required.
+
+Then implement the agreed **reference/dynamic-read positive** regression-first. The executable fixture must show downstream `100`, upstream mutation `100 → 120`, then downstream read-time `120` without another scalar copy. Every code/test implementation must be delegated to Luna and independently reviewed and verified afterward.
 
 Use a narrow compile-valid executable shape where a downstream property resolves an upstream property at read time, for example an expression-bodied/otherwise explicitly modeled getter equivalent to:
 

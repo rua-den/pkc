@@ -1,0 +1,68 @@
+diff --git a/tests/Pkc.CSharp.Tests/ValueLineageStaleCompositionRegressionTests.cs b/tests/Pkc.CSharp.Tests/ValueLineageStaleCompositionRegressionTests.cs
+index ad833d4..00f0754 100644
+--- a/tests/Pkc.CSharp.Tests/ValueLineageStaleCompositionRegressionTests.cs
++++ b/tests/Pkc.CSharp.Tests/ValueLineageStaleCompositionRegressionTests.cs
+@@ -37,6 +37,42 @@ public sealed class ValueLineageStaleCompositionRegressionTests
+             });
+     }
+ 
++    [Fact]
++    public async Task Alias_write_does_not_preserve_stale_lineage()
++    {
++        var root = CreateRoot("alias-write");
++        try
++        {
++            await WriteProjectAsync(root, "DemoLineage", FixtureSource);
++
++            var runtime = CompileFixture(FixtureSource);
++            try
++            {
++                var result = Invoke(runtime.Assembly, "GetAliasWrite");
++                Assert.Equal(100m, ReadDecimal(result, "GroupPrice"));
++                Assert.Equal(50m, ReadDecimal(result, "ProductPrice"));
++                Assert.Equal(50m, ReadDecimal(result, "ServicePrice"));
++            }
++            finally
++            {
++                runtime.Context.Unload();
++            }
++
++            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
++            var knowledge = await SynthesizeAsync(facts, "GetAliasWrite");
++
++            var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
++            Assert.DoesNotContain("Proven stored lineage chain", markdown, StringComparison.Ordinal);
++
++            Assert.DoesNotContain(knowledge.ValueLineage, item =>
++                item.Contains("Proven stored lineage chain", StringComparison.Ordinal));
++        }
++        finally
++        {
++            Directory.Delete(root, recursive: true);
++        }
++    }
++
+     private static async Task AssertNoStaleLineageAsync(
+         string endpointName,
+         IReadOnlyDictionary<string, decimal> expectedValues)
+@@ -223,6 +259,20 @@ public sealed class ValueLineageStaleCompositionRegressionTests
+                 return new Result(group.Price, product.Price, service.Price);
+             }
+ 
++            [HttpGet]
++            public Result GetAliasWrite()
++            {
++                var group = new ProductGroup();
++                var product = new Product();
++                var alias = product;
++                var service = new Service();
++                group.Price = 100m;
++                product.Price = group.Price;
++                alias.Price = 50m;
++                service.Price = product.Price;
++                return new Result(group.Price, product.Price, service.Price);
++            }
++
+             private static void Mutate(Product product)
+             {
+                 product.Price = 50m;
