@@ -152,6 +152,8 @@ public sealed class ValueLineageComputationCausalityRegressionTests
     [InlineData("GetInvocationDerivation")]
     [InlineData("GetBranchDerivation")]
     [InlineData("GetAliasedDerivation")]
+    [InlineData("GetCompoundWriteAfterCopy")]
+    [InlineData("GetUnaryWriteAfterCopy")]
     public async Task Unsupported_computation_shapes_fail_closed(string endpointName)
     {
         var root = CreateRoot("computation-negative");
@@ -373,6 +375,32 @@ public sealed class ValueLineageComputationCausalityRegressionTests
                 alias.Discount = 10m;
                 service.NetPrice = service.Price - service.Discount;
                 return service.NetPrice;
+            }
+
+            [HttpGet]
+            public decimal GetCompoundWriteAfterCopy()
+            {
+                var group = new ProductGroup();
+                var product = new Product();
+                var service = new Service();
+                group.Price = 100m;
+                product.Price = group.Price;
+                service.Price = product.Price;
+                service.Price += 5m;
+                return service.Price;
+            }
+
+            [HttpGet]
+            public decimal GetUnaryWriteAfterCopy()
+            {
+                var group = new ProductGroup();
+                var product = new Product();
+                var service = new Service();
+                group.Price = 100m;
+                product.Price = group.Price;
+                service.Price = product.Price;
+                service.Price++;
+                return service.Price;
             }
 
             private static decimal Compute(decimal price, decimal discount) => price - discount;
