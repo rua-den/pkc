@@ -237,9 +237,9 @@ No lineage edge may be inferred merely from matching member/property names.
 
 Portable explanations start in A and grow with each checkpoint. E is final product verification, not the first rendering work. Detailed proof and regression requirements live in [the acceptance plan](v0.4.7-acceptance-plan.md), including the incorporated [readiness findings](reviews/2026-09-16-v0.4.7-plan-readiness-review.md).
 
-Checkpoint A snapshot/copy support is now green through exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`, including the stale-predecessor repair required by `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md`. The snapshot regressions cover receiver reassignment and opaque helper mutation without deleting independently valid direct-transfer evidence.
+Checkpoint A's receiver-reassignment and opaque-helper snapshot regressions pass at code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`. The [2026-09-17 review](reviews/2026-09-17-v0.4.7-alias-composition-review.md) reproduces one remaining P1: an alias write leaves a false composed origin in generated knowledge. Repair that bounded composition gap while retaining independently valid direct-transfer evidence and the six existing lineage regressions.
 
-The current next step is A's separate **reference/dynamic-read positive**. A remains incomplete until dynamic-read coverage and its portable PO-facing answer pass. B/C/D/E remain locked behind A.
+The agreed next feature remains A's separate **reference/dynamic-read positive**, after the reproduced alias gap is closed: upstream `100 → 120`, downstream read-time property reads `120`, and Markdown explicitly says dynamic/reference. A remains incomplete until this coverage and its portable PO-facing answer pass. B/C/D/E remain locked behind A.
 
 Do not advance past an earlier checkpoint while its regression gate is red.
 

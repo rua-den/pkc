@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.CodeAnalysis.Operations;
 using Pkc.Core;
 
 namespace Pkc.CSharp;
@@ -156,6 +157,12 @@ internal sealed class CSharpValueLineageEnricher
         var versions = new Dictionary<string, int>(StringComparer.Ordinal);
         var currentWriter = new Dictionary<string, WriterInfo>(StringComparer.Ordinal);
         var hadProvenWriter = new HashSet<string>(StringComparer.Ordinal);
+        // Local/parameter symbol identity does not prove distinct reference identity.
+        // Keep this as a persistent endpoint boundary once a reference alias is seen.
+        var hasUnprovenReferenceAlias = method.ParameterList.Parameters
+            .Select(parameter => semanticModel.GetDeclaredSymbol(parameter, cancellationToken))
+            .OfType<IParameterSymbol>()
+            .Any(parameter => parameter.Type.IsReferenceType);
         var facts = new List<EvidenceFact>();
         var relations = new List<EvidenceRelation>();
 
@@ -170,6 +177,16 @@ internal sealed class CSharpValueLineageEnricher
 
             if (statement is not ExpressionStatementSyntax expressionStatement)
             {
+                if (statement is LocalDeclarationStatementSyntax declaration &&
+                    declaration.Declaration.Variables.Any(variable =>
+                        IsUnprovenReferenceBinding(
+                            variable,
+                            semanticModel,
+                            cancellationToken)))
+                {
+                    hasUnprovenReferenceAlias = true;
+                }
+
                 continue;
             }
 
@@ -187,6 +204,18 @@ internal sealed class CSharpValueLineageEnricher
             if (expressionStatement.Expression is not AssignmentExpressionSyntax assignment)
             {
                 continue;
+            }
+
+            if (IsReferenceLocalOrParameter(
+                    assignment.Left,
+                    semanticModel,
+                    cancellationToken) &&
+                !IsFreshReferenceAllocation(
+                    assignment.Right,
+                    semanticModel,
+                    cancellationToken))
+            {
+                hasUnprovenReferenceAlias = true;
             }
 
             if (!TryResolveSlot(
@@ -239,11 +268,12 @@ internal sealed class CSharpValueLineageEnricher
             var sourceVersion = versions.GetValueOrDefault(source.Key);
             currentWriter.TryGetValue(source.Key, out var predecessor);
             var hasMatchingPredecessor =
+                !hasUnprovenReferenceAlias &&
                 predecessor is not null &&
                 predecessor.TargetVersion == sourceVersion;
             var compositionBlocked =
                 !hasMatchingPredecessor &&
-                hadProvenWriter.Contains(source.Key);
+                (hadProvenWriter.Contains(source.Key) || hasUnprovenReferenceAlias);
 
             var location = GetLocation(assignment, endpoint.Source.Path);
             var id = $"cs-lineage:{endpoint.Source.Path}:{assignment.SpanStart}:value-transfer";
@@ -368,6 +398,64 @@ internal sealed class CSharpValueLineageEnricher
 
         receiverSymbol = default!;
         return false;
+    }
+
+    private static bool IsUnprovenReferenceBinding(
+        VariableDeclaratorSyntax variable,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        var symbol = semanticModel.GetDeclaredSymbol(variable, cancellationToken);
+        return symbol is ILocalSymbol local &&
+               local.Type.IsReferenceType &&
+               variable.Initializer is not null &&
+               !IsFreshReferenceAllocation(variable.Initializer.Value, semanticModel, cancellationToken);
+    }
+
+    private static bool IsReferenceLocalOrParameter(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        expression = UnwrapParentheses(expression);
+        var symbol = semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol;
+        if (symbol is not (ILocalSymbol or IParameterSymbol) ||
+            semanticModel.GetTypeInfo(expression, cancellationToken).Type is not { IsReferenceType: true })
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsFreshReferenceAllocation(
+        ExpressionSyntax expression,
+        SemanticModel semanticModel,
+        CancellationToken cancellationToken)
+    {
+        var contextualConversion = semanticModel.GetConversion(expression, cancellationToken);
+        if (contextualConversion.IsUserDefined)
+        {
+            return false;
+        }
+
+        var operation = semanticModel.GetOperation(expression, cancellationToken);
+        while (operation is IParenthesizedOperation or IConversionOperation)
+        {
+            if (operation is IConversionOperation userConversion && userConversion.OperatorMethod is not null)
+            {
+                return false;
+            }
+
+            operation = operation switch
+            {
+                IParenthesizedOperation parenthesized => parenthesized.Operand,
+                IConversionOperation conversion => conversion.Operand,
+                _ => operation
+            };
+        }
+
+        return operation is IObjectCreationOperation;
     }
 
     private static void InvalidateReceiver(

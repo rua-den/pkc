@@ -37,6 +37,73 @@ public sealed class ValueLineageStaleCompositionRegressionTests
             });
     }
 
+    [Fact]
+    public async Task Alias_write_does_not_preserve_stale_lineage()
+    {
+        var root = CreateRoot("alias-write");
+        try
+        {
+            await WriteProjectAsync(root, "DemoLineage", FixtureSource);
+
+            var runtime = CompileFixture(FixtureSource);
+            try
+            {
+                var result = Invoke(runtime.Assembly, "GetAliasWrite");
+                Assert.Equal(100m, ReadDecimal(result, "GroupPrice"));
+                Assert.Equal(50m, ReadDecimal(result, "ProductPrice"));
+                Assert.Equal(50m, ReadDecimal(result, "ServicePrice"));
+            }
+            finally
+            {
+                runtime.Context.Unload();
+            }
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var transfers = facts.Facts
+                .Where(fact => fact.Kind == "value-transfer" &&
+                               fact.Metadata.GetValueOrDefault("scopeName") == "GetAliasWrite")
+                .OrderBy(fact => fact.Source.StartLine)
+                .ToArray();
+
+            Assert.Equal(2, transfers.Length);
+            Assert.Contains(transfers, fact =>
+                fact.Metadata.GetValueOrDefault("sourceOccurrence") == "group.Price" &&
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "product.Price");
+            var serviceTransfer = Assert.Single(transfers, fact =>
+                fact.Metadata.GetValueOrDefault("sourceOccurrence") == "product.Price" &&
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "service.Price");
+            Assert.Equal("blocked-by-intervening-or-unproven-write", serviceTransfer.Metadata["compositionStatus"]);
+            Assert.False(serviceTransfer.Metadata.ContainsKey("predecessorTransferFactId"));
+
+            var knowledge = await SynthesizeAsync(facts, "GetAliasWrite");
+            var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+            Assert.DoesNotContain("Proven stored lineage chain", markdown, StringComparison.Ordinal);
+            Assert.DoesNotContain(knowledge.ValueLineage, item =>
+                item.Contains("Proven stored lineage chain", StringComparison.Ordinal));
+            Assert.Contains(knowledge.ValueLineage, item =>
+                item.Contains("Immediate stored snapshot copy: `product.Price` → `service.Price`", StringComparison.Ordinal));
+            Assert.Contains(knowledge.ValueLineage, item =>
+                item.Contains("the source value could not be proven unchanged", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task User_defined_conversion_allocation_does_not_count_as_fresh_reference()
+    {
+        await AssertNoStaleLineageAsync(
+            "GetUserConversionAlias",
+            new Dictionary<string, decimal>
+            {
+                ["GroupPrice"] = 100m,
+                ["ProductPrice"] = 50m,
+                ["ServicePrice"] = 50m
+            });
+    }
+
     private static async Task AssertNoStaleLineageAsync(
         string endpointName,
         IReadOnlyDictionary<string, decimal> expectedValues)
@@ -192,6 +259,17 @@ public sealed class ValueLineageStaleCompositionRegressionTests
         public sealed class ProductGroup { public decimal Price { get; set; } }
         public sealed class Product { public decimal Price { get; set; } }
         public sealed class Service { public decimal Price { get; set; } }
+        public sealed class ProductAlias
+        {
+            private readonly Product _product;
+
+            public ProductAlias(Product product)
+            {
+                _product = product;
+            }
+
+            public static explicit operator Product(ProductAlias alias) => alias._product;
+        }
         public sealed record Result(decimal GroupPrice, decimal ProductPrice, decimal ServicePrice);
 
         public sealed class PricesController
@@ -219,6 +297,35 @@ public sealed class ValueLineageStaleCompositionRegressionTests
                 group.Price = 100m;
                 product.Price = group.Price;
                 Mutate(product);
+                service.Price = product.Price;
+                return new Result(group.Price, product.Price, service.Price);
+            }
+
+            [HttpGet]
+            public Result GetAliasWrite()
+            {
+                var group = new ProductGroup();
+                var product = new Product();
+                var alias = (object)product;
+                var castAlias = alias as Product ?? product;
+                var service = new Service();
+                group.Price = 100m;
+                product.Price = group.Price;
+                castAlias.Price = 50m;
+                service.Price = product.Price;
+                return new Result(group.Price, product.Price, service.Price);
+            }
+
+            [HttpGet]
+            public Result GetUserConversionAlias()
+            {
+                var group = new ProductGroup();
+                var product = new Product();
+                Product alias = (Product)new ProductAlias(product);
+                var service = new Service();
+                group.Price = 100m;
+                product.Price = group.Price;
+                alias.Price = 50m;
                 service.Price = product.Price;
                 return new Result(group.Price, product.Price, service.Price);
             }

@@ -64,9 +64,13 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             normalized,
             cancellationToken);
-        var lineage = await new CSharpValueLineageEnricher().EnrichAsync(
+        var snapshotLineage = await new CSharpValueLineageEnricher().EnrichAsync(
             repositoryPath,
             semantic,
+            cancellationToken);
+        var lineage = await new CSharpDynamicValueLineageEnricher().EnrichAsync(
+            repositoryPath,
+            snapshotLineage,
             cancellationToken);
         var predicates = await new CSharpBusinessPredicateEnricher().EnrichAsync(
             repositoryPath,
