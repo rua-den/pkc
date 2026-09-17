@@ -461,7 +461,7 @@ internal sealed class CSharpDynamicValueLineageEnricher
         IOperation? operation = model.GetOperation(expression, cancellationToken);
         while (operation is IParenthesizedOperation or IConversionOperation)
         {
-            if (operation is IConversionOperation conversion && conversion.OperatorMethod is not null)
+            if (operation is IConversionOperation userConversion && userConversion.OperatorMethod is not null)
             {
                 creation = default!;
                 return false;
@@ -470,7 +470,7 @@ internal sealed class CSharpDynamicValueLineageEnricher
             operation = operation switch
             {
                 IParenthesizedOperation parenthesized => parenthesized.Operand,
-                IConversionOperation conversion => conversion.Operand,
+                IConversionOperation conversionOperation => conversionOperation.Operand,
                 _ => operation
             };
         }
