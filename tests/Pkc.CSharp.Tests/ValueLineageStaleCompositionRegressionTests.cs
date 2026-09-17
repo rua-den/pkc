@@ -91,6 +91,19 @@ public sealed class ValueLineageStaleCompositionRegressionTests
         }
     }
 
+    [Fact]
+    public async Task User_defined_conversion_allocation_does_not_count_as_fresh_reference()
+    {
+        await AssertNoStaleLineageAsync(
+            "GetUserConversionAlias",
+            new Dictionary<string, decimal>
+            {
+                ["GroupPrice"] = 100m,
+                ["ProductPrice"] = 50m,
+                ["ServicePrice"] = 50m
+            });
+    }
+
     private static async Task AssertNoStaleLineageAsync(
         string endpointName,
         IReadOnlyDictionary<string, decimal> expectedValues)
@@ -246,6 +259,17 @@ public sealed class ValueLineageStaleCompositionRegressionTests
         public sealed class ProductGroup { public decimal Price { get; set; } }
         public sealed class Product { public decimal Price { get; set; } }
         public sealed class Service { public decimal Price { get; set; } }
+        public sealed class ProductAlias
+        {
+            private readonly Product _product;
+
+            public ProductAlias(Product product)
+            {
+                _product = product;
+            }
+
+            public static explicit operator Product(ProductAlias alias) => alias._product;
+        }
         public sealed record Result(decimal GroupPrice, decimal ProductPrice, decimal ServicePrice);
 
         public sealed class PricesController
@@ -288,6 +312,20 @@ public sealed class ValueLineageStaleCompositionRegressionTests
                 group.Price = 100m;
                 product.Price = group.Price;
                 castAlias.Price = 50m;
+                service.Price = product.Price;
+                return new Result(group.Price, product.Price, service.Price);
+            }
+
+            [HttpGet]
+            public Result GetUserConversionAlias()
+            {
+                var group = new ProductGroup();
+                var product = new Product();
+                Product alias = (Product)new ProductAlias(product);
+                var service = new Service();
+                group.Price = 100m;
+                product.Price = group.Price;
+                alias.Price = 50m;
                 service.Price = product.Price;
                 return new Result(group.Price, product.Price, service.Price);
             }
