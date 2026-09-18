@@ -24,7 +24,7 @@ React/TypeScript static evidence adds routes, screens, actions, permission guard
 
 V0.4 is complete only when generated portable knowledge is sufficiently rich for an AI to answer practical Product Owner questions about observable behavior, business conditions, value origin, mutation causality and cross-layer outcomes without re-reading source code.
 
-PKC must preserve three distinct knowledge classes:
+PKC must keep these knowledge classes distinct:
 
 ```text
 business conditions
@@ -33,14 +33,6 @@ mutation / causality
 ```
 
 Conservative downgrade must prevent false business claims without deleting deterministic lower-authority evidence. See `docs/product-knowledge-contract.md`.
-
-Representative V0.4.x exit questions include:
-
-> When is entity X sellable/visible on the web, and what exact backend/frontend conditions must be true for it to appear?
-
-> Where did field X come from, was it copied or computed, and what can change it later?
-
-> If an upstream value changes, does an existing downstream value update automatically or is it a stored snapshot?
 
 ### V0.4.1 — Frontend adapter architecture — COMPLETE
 
@@ -54,7 +46,7 @@ The runnable `.NET 10 + Angular 22` PokeTrade application is the known-answer be
 
 Completed semantic/fallback provenance and frontend/backend analyzer fidelity hardening.
 
-Last accepted tool package:
+Last accepted tool package remains:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
@@ -70,9 +62,7 @@ Final independent review:
 docs/reviews/2026-09-14-v0.4.4-external-rereview-4.md
 ```
 
-The detailed Loren readiness execution steps remain preserved as historical evidence in `docs/real-project-trial.md`.
-
-### V0.4.5 — Independent real-repository generalization gate — COMPLETE / INDEPENDENT REVIEW PASS
+### V0.4.5 — Independent real-repository generalization — COMPLETE / INDEPENDENT REVIEW PASS
 
 Accepted benchmark:
 
@@ -81,11 +71,9 @@ repository: jellyfin/jellyfin
 pinned commit: 1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
 ```
 
-V0.4.5 remains accepted with non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion and large-pack signal/noise.
+V0.4.5 remains accepted with historical non-blocking warnings around duplicate HTTP verb extraction, feature-level promotion and large-pack signal/noise.
 
 ### V0.4.6 — Business logic reconstruction — COMPLETE / INDEPENDENT REVIEW PASS
-
-Purpose: compile deterministic business-decision evidence strongly enough that an AI can answer practical `when`, `why`, `which conditions` and `what makes this visible/eligible` questions from generated knowledge.
 
 Accepted production checkpoint:
 
@@ -98,45 +86,21 @@ Final independent review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
-reviewed production: c310e893762997f34562a6b3a62dbab2b05c0c93
-verdict: PASS / COMPLETE
+PASS / COMPLETE
 ```
 
-Final disposition:
+Accepted boundary remains closed:
 
 ```text
-B6.1 PASS — exact C# invocation semantic identity; keep closed
-B6.2 PASS — conservative configured-item ownership; keep closed
-B6.3 PASS — active module-qualified Angular service ownership; keep closed
-B6.4 PASS — observable predicate authority is conservative across projection, callback, constructor and Queryable-provider boundaries; keep closed
+B6.1 PASS — exact C# invocation semantic identity
+B6.2 PASS — conservative configured-item ownership
+B6.3 PASS — module-qualified Angular service ownership
+B6.4 PASS — observable predicate authority conservative across projection/callback/constructor/Queryable boundaries
 ```
 
-Accepted B6.4 hardening covers:
+Do not reopen V0.4.6 without a new compile-valid and behavior-valid contradiction.
 
-1. local/discarded predicates do not become observable rules merely because a LINQ call exists;
-2. transformed/polarity-changing return contexts fail closed unless modeled;
-3. arbitrary `Select` is not an unconditional preserving operation;
-4. direct identity `Select(card => card)` is proven by symbol identity;
-5. unsupported whole-item/unmodeled predicate dependencies cause conservative downgrade;
-6. same-type method-group projection requires safe stored same-member copies;
-7. custom setter, nested initializer and rewritten output effects fail closed;
-8. callback/comparer-bearing ordering/equality operations do not preserve authority merely from LINQ target identity;
-9. callback-free Enumerable pipeline preservation is limited to an audited exact-shape subset;
-10. same-type clone construction must be proven inert;
-11. exact `System.Linq.Queryable` predicate targets are observed-only without provider-semantics proof;
-12. an Enumerable `Where` authority path fails closed after any Queryable pipeline hop;
-13. downgraded predicate evidence is retained through `observes-predicate` instead of being deleted.
-
-Non-blocking rereview-10 warnings carried into V0.4.7:
-
-```text
-W10.1 rendered Evidence does not yet print an explicit `observed-only` label.
-W10.2 unreachable Queryable names remain in old internal safe-operation sets behind the fail-closed guard.
-```
-
-Do not reopen V0.4.6 solely for those warnings.
-
-Accepted exact-production gates:
+Historical exact-production gates:
 
 ```text
 CI + PKC tests + WorkPlay + PokeTrade   34990080620 — PASS
@@ -145,18 +109,12 @@ Loren-main canary                       34990080551 — PASS
 pinned Jellyfin                         34990080546 — PASS
 ```
 
-Pinned Jellyfin artifact:
+Non-blocking rereview-10 warnings carried into V0.4.7:
 
 ```text
-artifact id:     10405810551
-digest:          sha256:8664945310d5fd0da3a0c838b001cc5fa343174410dc1ac6d05b1335e41b0257
-size:            9,159,880 bytes
-portable parity: PASS
-raw .pkc leak:   NONE
-src/ leak:       NONE
+W10.1 rendered Evidence does not explicitly print `observed-only`.
+W10.2 unreachable Queryable names remain in old safe-operation sets behind the fail-closed guard.
 ```
-
-V0.4.6 is closed.
 
 ### V0.4.7 — Cross-layer PO question readiness — CURRENT / IN PROGRESS
 
@@ -181,21 +139,7 @@ How did the value move through backend → DTO/projection → API → frontend c
 If authority is incomplete, what lineage or causal evidence is still deterministically known?
 ```
 
-Required semantic coverage includes:
-
-```text
-cross-entity value lineage
-source/origin of values
-copy/snapshot vs reference/dynamic semantics
-derived/computed values
-later mutation and override causality
-DTO/projection and API output
-frontend result binding/composition
-frontend visibility/filter conditions
-authority downgrade with evidence retention
-```
-
-Canonical lineage fixture:
+Canonical value-lineage fixture begins with:
 
 ```text
 ProductGroup.Price
@@ -203,18 +147,7 @@ ProductGroup.Price
 → Service.Price
 ```
 
-Each proven edge must distinguish as applicable:
-
-```text
-copy
-snapshot
-derivation
-reference/dynamic
-override
-mutation
-```
-
-Blocking same-name collision regression:
+No lineage may be inferred merely from matching names such as:
 
 ```text
 Product.Price
@@ -223,51 +156,147 @@ Dto.Price
 Component.price
 ```
 
-No lineage edge may be inferred merely from matching member/property names.
-
 #### V0.4.7 implementation checkpoints
 
-| Checkpoint | PO question | Deliverable and completion boundary |
-| --- | --- | --- |
-| A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | Two proven backend edges in workflow Markdown, source traceability, snapshot and dynamic positives, and identity/path/storage negatives. |
-| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before return/persistence? | Portable explanation of derivation, original origin, later mutation/override, and supported terminal-source proof. |
-| C — Backend to API | What backend value supplies this response field? | Proven entity/DTO/API mapping rendered with source locations. |
-| D — API to UI | What feeds the displayed value and controls its visibility? | Proven frontend binding/composition and joint backend/frontend explanation with separate authorities. |
-| E — Product acceptance | Can an AI answer the agreed questions using only the knowledge pack? | Blind knowledge-only review, full folder/bundle/ZIP parity and no-leak checks, and exact-SHA cross-benchmark gates. |
+| Checkpoint | PO question | Current state | Completion boundary |
+| --- | --- | --- | --- |
+| A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | **PASS / COMPLETE** | Snapshot + dynamic positives, exact identity/path/storage negatives, source traceability and PO-facing Markdown. |
+| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before return/persistence? | **IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED** | Portable derivation, original origin, later mutation/override and supported terminal-source proof, plus fail-closed negatives. |
+| C — Backend to API | What backend value supplies this response field? | **LOCKED behind B review** | Proven entity/domain → DTO/projection → API mapping rendered with source locations. |
+| D — API to UI | What feeds the displayed value and controls its visibility? | **LOCKED** | Proven frontend binding/composition and joint backend/frontend explanation with separate authorities. |
+| E — Product acceptance | Can an AI answer the agreed questions using only the knowledge pack? | **LOCKED** | Blind knowledge-only review, portable folder/bundle/ZIP parity/no-leak, and exact-SHA cross-benchmark gates. |
 
-Portable explanations start in A and grow with each checkpoint. E is final product verification, not the first rendering work. Detailed proof and regression requirements live in [the acceptance plan](v0.4.7-acceptance-plan.md), including the incorporated [readiness findings](reviews/2026-09-16-v0.4.7-plan-readiness-review.md).
+#### Checkpoint A — accepted
 
-Checkpoint A's receiver-reassignment and opaque-helper snapshot regressions pass at code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`. The [2026-09-17 review](reviews/2026-09-17-v0.4.7-alias-composition-review.md) reproduces one remaining P1: an alias write leaves a false composed origin in generated knowledge. Repair that bounded composition gap while retaining independently valid direct-transfer evidence and the six existing lineage regressions.
+Accepted A code checkpoint:
 
-The agreed next feature remains A's separate **reference/dynamic-read positive**, after the reproduced alias gap is closed: upstream `100 → 120`, downstream read-time property reads `120`, and Markdown explicitly says dynamic/reference. A remains incomplete until this coverage and its portable PO-facing answer pass. B/C/D/E remain locked behind A.
+```text
+09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429
+feat: prove bounded reference dynamic lineage
+```
 
-Do not advance past an earlier checkpoint while its regression gate is red.
+A proves both:
 
-V0.4.7 must preserve every accepted V0.4.6 authority and evidence-retention guardrail.
+```text
+stored scalar snapshot
+ProductGroup.Price → Product.Price → Service.Price
+
+reference / dynamic read-time dependency
+ProductGroup.Price → Service.CurrentGroupPrice
+```
+
+It retains deterministic lower-authority evidence when composition authority is lost and fails closed across the accepted receiver/alias/effect/control-flow hazards.
+
+Exact-main A gates all passed:
+
+```text
+CI + WorkPlay + PokeTrade   35232224202
+pinned Loren                35232224014
+Loren-main                  35232224029
+pinned Jellyfin             35232223958
+```
+
+A is closed.
+
+#### Checkpoint B — implementation green, review pending
+
+Exact B implementation checkpoint on `main`:
+
+```text
+e5b0d47c82b6db99f5184292730919421a6d2a06
+feat: prove V0.4.7-B computation and causality
+```
+
+Delivery/review note:
+
+```text
+docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
+```
+
+The bounded supported proof now covers:
+
+```text
+multi-input scalar arithmetic derivation
+later constant override after a proven current value
+original origin retained separately from override causality
+last proven source before a supported direct return
+```
+
+Knowledge-class separation is required and currently implemented:
+
+```text
+Value lineage → derivation/origin/terminal source
+State changes  → later override/causality
+Rules          → no automatic B promotion
+```
+
+B fails closed on branch/loop/try/conditional shapes, opaque invocation, reference parameters, non-fresh alias/reassignment, custom/non-auto scalar accessors, unsupported expression operations, compound/unary scalar writes, and unresolved target-project semantics. This is not a general expression/dataflow/alias solver.
+
+Permanent B regressions include runtime derivation (`100 - 10 = 90`), runtime override (`120`), candidate/synthesis/Markdown delivery, custom getter/invocation/branch/alias negatives, stale-terminal compound/unary negatives, and no-project-semantic fail-closed behavior.
+
+Exact-main B gates all passed:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35339292475 — PASS
+pinned Loren                                35339292546 — PASS
+Loren-main canary                           35339292501 — PASS
+pinned Jellyfin                             35339292495 — PASS
+```
+
+Core:
+
+```text
+Release build:       0 warnings / 0 errors
+C# tests:            114 / 114 PASS
+frontend tests:      13 / 13 PASS
+tool pack/install:   PASS
+WorkPlay:            PASS
+PokeTrade:           PASS
+```
+
+Pinned Jellyfin portable gate remains green:
+
+```text
+facts:               43,365
+relations:           195,316
+workflow candidates: 386
+product features:    116
+Markdown files:      504
+project-semantic:    43,365 / 43,365
+portable parity:     PASS
+raw .pkc/src leak:   none
+artifact id:         10544800985
+artifact digest:     sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b041c276106cc
+artifact size:       9,162,486 bytes
+```
+
+**B is not COMPLETE until independent review passes.** Astra must review the exact current main checkpoint before C begins. A review blocker must be reproduced regression-first and fixed generically; a PASS permits docs to close B and unlock C.
+
+#### Next only after B PASS — checkpoint C
+
+C must answer:
+
+> What backend value supplies this response field, and how did it travel through domain/entity state → DTO/projection → API output?
+
+Start C regression-first only after B is explicitly marked PASS / COMPLETE. Require deterministic target-project identity, source locations, portable Markdown delivery and fail-closed behavior for unsupported projection/alias/conversion/custom-accessor/effect shapes.
+
+Do not advance past an earlier checkpoint while its review or regression gate is red.
 
 #### Delivery discipline
 
-Each change must serve a named PO question and an assertion on generated knowledge. Supported positive cases must produce useful answers; all-unknown output is not acceptance. Unsupported cases may retain observations without stronger claims.
+Each change must serve a named PO question and an assertion on generated knowledge. Supported positive cases must produce useful PO-facing answers; all-unknown output is not acceptance. Unsupported cases may retain observations without stronger claims.
 
-Limit analysis to proven supported shapes. Do not add unrelated refactoring, frameworks, evidence sources, or a general alias/path solver. Broaden a checkpoint only for its acceptance failure or a concrete counterexample. Run focused/local checks while editing; use the existing benchmark gates and independent review at coherent checkpoints, not as an endless edit loop. Preserve accepted history unless a new compile-valid, behavior-valid contradiction requires reopening it.
+Do not opportunistically refactor unrelated areas or build a general solver. Use local focused/full validation when available and CI as the clean-environment final gate for coherent checkpoints.
 
 #### Version semantics during V0.4.7
 
-Do not conflate:
-
-```text
-roadmap milestone version
-tool/package version
-evidence/schema version
-```
-
-Current accepted package remains:
+Roadmap, package and serialized schema versions are independent. The accepted package remains:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current schema examples include:
+Current schema examples remain:
 
 ```text
 0.4.4-csharp-raw
@@ -276,17 +305,13 @@ Current schema examples include:
 0.4.3-frontend
 ```
 
-Milestone progress does not mechanically bump package or schema versions. Schema versions change only when their serialized contract/semantics change and that change has explicit compatibility/regression coverage.
+Do not mechanically bump package or schema versions because a roadmap checkpoint advances.
 
 ### V0.5 — Azure DevOps input evidence — LOCKED
 
-Azure DevOps is planned as an additional compiler input for requirement intent, Epic/Feature/PBI history, status and traceability. ADO must not compensate for missing code-derived business logic.
-
-Until ADO is integrated, its absence should be declared as a global knowledge boundary rather than repeated in every feature/workflow file.
+Azure DevOps is planned as an additional compiler input for requirement intent, Epic/Feature/PBI history, status and traceability. It must not compensate for missing code-derived business logic.
 
 V0.5 may start only after the V0.4.7 / V0.4.x PO-question-readiness exit gate independently passes.
-
-The older V0.4.4/V0.4.5 real-project unlock checks are historical accepted prerequisites, not the complete current unlock condition. V0.4.7 cross-layer PO-question readiness is now the remaining V0.4.x gate.
 
 ## V0.6 — Incremental compilation
 

@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## Current milestone state
 
@@ -9,8 +9,8 @@ V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
 V0.4.6 business logic reconstruction             PASS / COMPLETE
 V0.4.7-A origin and copy timing                  PASS / COMPLETE
-V0.4.7-B computation and later change            CURRENT / NEXT CHECKPOINT
-V0.4.7-C backend to API                          LOCKED behind B
+V0.4.7-B computation and later change            IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED
+V0.4.7-C backend to API                          LOCKED behind B review
 V0.4.7-D API to UI                               LOCKED behind C
 V0.4.7-E product acceptance                      LOCKED behind D
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -20,7 +20,7 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`.
 
 ## Closed V0.4.6 baseline
 
-Accepted V0.4.6 production remains:
+Accepted V0.4.6 production remains exactly:
 
 ```text
 c310e893762997f34562a6b3a62dbab2b05c0c93
@@ -34,7 +34,7 @@ docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
 PASS / COMPLETE
 ```
 
-Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
+Do not reopen V0.4.6 without a new compile-valid and behavior-valid contradiction.
 
 Permanent product contract: `docs/product-knowledge-contract.md`.
 
@@ -46,16 +46,18 @@ value lineage / provenance
 mutation / causality
 ```
 
+Conservative authority downgrade must not erase deterministic lower-authority evidence.
+
 ## V0.4.7-A — PASS / COMPLETE
 
-Accepted A implementation checkpoint on `main`:
+Accepted A implementation checkpoint:
 
 ```text
 09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429
 feat: prove bounded reference dynamic lineage
 ```
 
-A now proves both required temporal shapes through scanner → candidate → synthesis → workflow Markdown:
+A proves both required temporal shapes through scanner → candidate → synthesis → workflow Markdown:
 
 ```text
 stored scalar snapshot
@@ -65,21 +67,9 @@ reference / dynamic read-time dependency
 ProductGroup.Price → Service.CurrentGroupPrice
 ```
 
-The dynamic fixture executes downstream `100`, changes upstream `100 → 120`, then executes a later downstream read returning `120` without another scalar copy.
+The snapshot boundary fails closed for receiver reassignment, opaque mutation, alias writes, cast/`as` aliases and user-defined conversion aliases. The dynamic fixture proves an upstream `100 → 120` change is observed by a later downstream read without another scalar copy.
 
-The snapshot boundary remains conservative for receiver reassignment, opaque helper mutation, alias writes, cast/`as` aliasing and user-defined conversion alias construction. Unsupported shapes fail closed without deleting independently valid direct-transfer evidence. Same-name/property-name similarity is never lineage proof.
-
-Relevant review/history:
-
-```text
-docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md
-docs/reviews/2026-09-17-v0.4.7-alias-composition-review.md
-docs/reviews/2026-09-17-v0.4.7-reference-dynamic-delivery.md
-```
-
-### Exact-main final verification for A
-
-All required gates passed on exact code SHA `09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429`:
+Exact-main A gates:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   35232224202 — PASS
@@ -88,73 +78,149 @@ Loren-main canary                           35232224029 — PASS
 pinned Jellyfin                             35232223958 — PASS
 ```
 
+A is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
+
+## V0.4.7-B — implementation GREEN, review pending
+
+Exact implementation checkpoint on `main`:
+
+```text
+e5b0d47c82b6db99f5184292730919421a6d2a06
+feat: prove V0.4.7-B computation and causality
+```
+
+Delivery/review note:
+
+```text
+docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
+```
+
+B currently proves the bounded straight-line target-project-semantic shape required by R7.5–R7.7:
+
+```text
+multi-input stored scalar derivation
+service.Price + service.Discount → service.NetPrice
+
+original origin retained
+ProductGroup.Price → Product.Price → Service.Price
+
+later constant write after a proven value
+→ separate mutation/causality fact with causalRole=override
+
+supported direct return
+→ last proven source immediately before return
+```
+
+Generated PO-facing knowledge keeps the classes separate:
+
+- derivation and terminal-source proof render in `Value lineage`;
+- later override renders in `State changes`;
+- original origin facts remain intact after the override;
+- none of the B facts become authoritative business Rules merely because the implementation proof is strong.
+
+### B fail-closed boundary
+
+The implementation rejects stronger B claims for unsupported shapes including:
+
+- branch/loop/try/conditional control flow;
+- opaque invocations;
+- reference-type parameters;
+- non-fresh aliases or reference reassignment;
+- custom/non-auto scalar accessors;
+- unsupported expression operations;
+- unsupported compound writes such as `+=` to modeled scalar state;
+- unary scalar writes such as `++` / `--` after a proven value;
+- unresolved target-project semantic context.
+
+The compound/unary negatives permanently guard against stale terminal-source authority after an unmodeled write.
+
+This is intentionally not a general expression, alias, effect or dataflow solver.
+
+### Exact-main verification for B
+
+All final gates passed on exact code SHA `e5b0d47c82b6db99f5184292730919421a6d2a06`:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35339292475 — PASS
+pinned Loren                                35339292546 — PASS
+Loren-main canary                           35339292501 — PASS
+pinned Jellyfin                             35339292495 — PASS
+```
+
 Core CI:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            105 / 105 PASS
+C# tests:            114 / 114 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
 PokeTrade:           PASS
 ```
 
-Pinned Jellyfin portable gate:
+Pinned Jellyfin:
 
 ```text
-portable parity/no-leak: PASS
-artifact id:            10501038912
-artifact digest:        sha256:41d90fbe3951d85474eb37121d2e5d04442fdb447aba5db56db7da755d66c129
-artifact size:          9,162,486 bytes
+commit:                  1d7b6d97844c8cc848ed3fb5c4b48bb9cdd5b139
+source build:            0 warnings / 0 errors
+facts:                   43,365
+relations:               195,316
+workflow candidates:     386
+product features:        116
+canonical Markdown:      504
+project-semantic:        43,365 / 43,365
+portable bundle parity:  PASS
+ZIP file-set parity:     PASS
+ZIP byte parity:         PASS
+raw .pkc leak:           none
+src/ source-tree leak:   none
+artifact id:             10544800985
+artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b041c276106cc
+artifact size:           9,162,486 bytes
 ```
 
-Checkpoint A is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
+Passing implementation gates do **not** by themselves close B. Independent review is still required before C unlocks.
 
-## Current checkpoint — V0.4.7-B
+## Independent review gate for B
 
-PO questions:
+Astra must review exact current `main` first. Expected code checkpoint at this handoff is `e5b0d47...`, but never reset a newer `main` back to this SHA.
+
+Primary review targets:
+
+1. false derivation from unsupported/custom operators or accessors;
+2. whether original origin survives a later override without being rewritten;
+3. stale terminal-source state after an unmodeled write/effect;
+4. receiver/member/project identity collisions;
+5. mutation/causality accidentally promoted into business Rules;
+6. terminal-source wording overclaiming persistence/general dataflow beyond the supported direct-return shape;
+7. any compile-valid, runtime-valid counterexample inside the documented straight-line proof boundary.
+
+Required verdict:
 
 ```text
-Was this value directly copied or computed?
-What code path can change it after creation?
-What was the last deterministically observed source before return/persistence?
+PASS V0.4.7-B
+or
+FAIL V0.4.7-B with a concrete reproducible blocker
 ```
 
-Acceptance gates are R7.5–R7.7 plus applicable evidence-retention and workflow-rendering checks.
+If FAIL: add a focused regression, implement the minimum generic repair, rerun the relevant/full gates, and keep C locked.
 
-The first bounded supported shape should prove:
-
-```text
-Service.Price + Service.Discount → Service.NetPrice
-mechanism: derivation
-
-initial Product.Price → Service.Price origin
-later write → Service.Price
-causal role: mutation / override
-
-return boundary
-→ retain the last proven source/derivation immediately before return
-```
-
-Required behavior:
-
-- retain every supported derivation input and exact source location;
-- keep original origin distinct from later override/mutation history;
-- a later override must not rewrite history as though it were the original source;
-- terminal-source proof must distinguish earliest origin from the last source before return/persistence;
-- keep value lineage separate from mutation/causality and business Rules;
-- fail closed on unsupported operators, alias/effect ambiguity, custom accessors, control-flow ambiguity or unresolved project semantics;
-- deliver the answer through generated workflow Markdown, not raw facts only;
-- preserve all V0.4.6 and V0.4.7-A regressions.
-
-Do not broaden the first B slice into a general expression/dataflow solver.
+If PASS: update status/handoff/milestones to B PASS / COMPLETE. Only then may V0.4.7-C begin.
 
 ## Version semantics
 
-Do not conflate roadmap, package and schema versions.
+These are independent domains:
 
 ```text
-roadmap:             V0.4.7-B CURRENT
+roadmap milestone
+tool/package version
+evidence/schema version
+```
+
+Current values remain:
+
+```text
+roadmap:             V0.4.7-B review pending
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
@@ -162,7 +228,7 @@ cross-stack candidate schema: 0.4.6
 frontend schema:     0.4.3-frontend
 ```
 
-No package/schema bump is implied by starting B.
+No package or schema bump is implied by B.
 
 ## V0.4.6 warnings carried forward
 
@@ -178,6 +244,9 @@ These remain non-blocking unless touched scope makes a regression-safe cleanup c
 
 ## Exact next action
 
-Start **V0.4.7-B regression-first**. Implement the minimum generic backend proof for R7.5–R7.7: multi-input scalar derivation, later override/mutation causality that preserves the original origin, and exact terminal source before a supported return boundary. Render all three at PO-readable workflow level and keep unsupported shapes fail-closed.
+**Do not code V0.4.7-C yet.** Independent-review `e5b0d47...` as the V0.4.7-B checkpoint. If the review passes, close B in docs and then start C regression-first for deterministic backend entity/value → DTO/projection → API response mapping and portable source traceability.
 
-Do not begin C/D/E or V0.5 until B passes its focused/full/cross-benchmark gates and review.
+```text
+V0.4.7-C/D/E LOCKED until their predecessor checkpoint passes review
+V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
+```

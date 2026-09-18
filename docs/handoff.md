@@ -4,6 +4,8 @@ Use this file when continuing PKC in another coding or review thread.
 
 ## Read first
 
+Read in this exact order before changing production code:
+
 1. `docs/status.md`
 2. this handoff
 3. `docs/milestones.md`
@@ -13,8 +15,21 @@ Use this file when continuing PKC in another coding or review thread.
 7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md`
 8. `docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md`
 9. `docs/reviews/2026-09-17-v0.4.7-alias-composition-review.md`
+10. `docs/reviews/2026-09-17-v0.4.7-reference-dynamic-delivery.md`
+11. `docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md`
 
-Before changing code, inspect `git status`, current `main` HEAD and recent commits. Work from current `main`; do not reset to an older planning or production SHA.
+Then inspect `git status`, current `main` HEAD and recent commits. Never assume or reset to an older SHA if `main` has advanced.
+
+## Current main checkpoint
+
+At this handoff the latest verified production-code checkpoint on `main` is:
+
+```text
+e5b0d47c82b6db99f5184292730919421a6d2a06
+feat: prove V0.4.7-B computation and causality
+```
+
+This SHA has passed every exact-main implementation gate. V0.4.7-B is **implementation GREEN but not independently accepted yet**. Astra review is the next action. Do not begin V0.4.7-C until that review returns PASS and B is explicitly closed in docs.
 
 ## Closed production baseline
 
@@ -29,24 +44,14 @@ Final independent V0.4.6 review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
-verdict: PASS / COMPLETE
+PASS / COMPLETE
 ```
 
-Do not reopen B6.1-B6.4 without a new compile-valid and behavior-valid contradiction.
-
-## Current milestone state
-
-```text
-V0.4.4  Loren knowledge readiness              PASS / COMPLETE
-V0.4.5  Jellyfin generalization               PASS / COMPLETE
-V0.4.6  business logic reconstruction         PASS / COMPLETE
-V0.4.7  cross-layer PO-question readiness     IN PROGRESS
-V0.5    Azure DevOps input evidence           LOCKED
-```
+V0.4.6 is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
 
 ## Permanent product contract
 
-PKC is a deterministic Product/System Knowledge Compiler. Preserve this architecture:
+PKC is a deterministic Product/System Knowledge Compiler:
 
 ```text
 source inputs
@@ -58,7 +63,9 @@ source inputs
 → portable rendering
 ```
 
-Keep distinct and retain:
+Do not introduce direct source-to-freeform-AI generation.
+
+Keep these knowledge classes distinct and retained:
 
 ```text
 business conditions
@@ -66,118 +73,165 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative business-rule downgrade must not erase deterministic lower-authority lineage, mutation or causal evidence.
+Conservative authority downgrade must not erase deterministic lower-authority lineage or causal evidence.
 
-## Current V0.4.7-A code checkpoint
+## V0.4.7-A — closed
 
-Reviewed implementation checkpoint (prior gates passed; new alias regression is RED):
+Accepted A checkpoint:
 
 ```text
-bc938823b46802a4d2c32300a1b6de692f5866ad
-fix: invalidate stale lineage composition
+09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429
+feat: prove bounded reference dynamic lineage
 ```
 
-Relevant history:
+A proves:
 
 ```text
-350ba2468e0d1b011936695fc48c1a970650d647  feat: prove scalar snapshot value lineage
-0bd5f823b7ebdfa8d0a54ff25d079d2056be4a81  fix: compile scalar lineage proof
-82fac01e669bce0a35dafde80f54c8f0baa595e5  fix: compile lineage regressions
-fd5d8311c38b0463f54ad8f45d12222ea5d24a8b  docs: record stale lineage review blocker
-f35901692060e511461a28fa94a1abe5400ce0bd  noop (zero-tree-diff connector commit)
-bc938823b46802a4d2c32300a1b6de692f5866ad  fix: invalidate stale lineage composition
+stored snapshot
+ProductGroup.Price → Product.Price → Service.Price
+
+reference / dynamic read
+ProductGroup.Price → Service.CurrentGroupPrice
 ```
 
-`f359016` is an accidental connector-created no-op commit with the same tree as its parent. It was intentionally left in history rather than force-resetting `main`.
+It preserves exact project/member/receiver identity, fails closed across known alias/effect/control-flow hazards, retains direct evidence when composition authority is lost, and renders PO-facing lineage separately from business Rules.
 
-Checkpoint A is **not complete**. The two old snapshot blockers are fixed, but the 2026-09-17 review reproduces a remaining alias-write composition blocker. Dynamic/reference remains the next feature after that bounded repair.
-
-## What the snapshot slice now proves
-
-Canonical supported fixture:
+Exact A gates passed:
 
 ```text
-ProductGroup.Price
-→ Product.Price
-→ Service.Price
+CI + WorkPlay + PokeTrade   35232224202
+pinned Loren                35232224014
+Loren-main                  35232224029
+pinned Jellyfin             35232223958
 ```
 
-For direct scalar auto-property assignment in proven project-semantic context, PKC emits deterministic `value-transfer` evidence and PO-facing `Value lineage` explanations that distinguish stored snapshot copies from later upstream changes.
+Do not reopen A without a new concrete contradiction.
 
-The supported explanation includes:
+## V0.4.7-B — implementation delivered, independent review pending
 
-- `ProductGroup.Price → Product.Price` as a stored scalar snapshot copy;
-- `Product.Price → Service.Price` as a stored scalar snapshot copy;
-- chain composition only when the second edge reads the exact still-valid stored target/value version from the first edge;
-- source traceability into generated Markdown;
-- an explicit explanation that changing `ProductGroup.Price` later does not retroactively update existing stored downstream scalar copies.
-
-Value lineage remains separate from business Rules and mutation semantics.
-
-## Closed snapshot-review blocker
-
-The snapshot review against `82fac01e...` found a runtime-proven false-chain blocker:
+Delivery note:
 
 ```text
-receiver reassignment between copies
-opaque helper mutation between copies
+docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
 ```
 
-Review and repro:
+Exact implementation checkpoint:
 
 ```text
-docs/reviews/2026-09-16-v0.4.7-snapshot-checkpoint-review.md
-docs/reviews/2026-09-16-v0.4.7-snapshot-stale-lineage-repro.patch
+e5b0d47c82b6db99f5184292730919421a6d2a06
+feat: prove V0.4.7-B computation and causality
 ```
 
-The repro executed both fixtures and proved that runtime values contradicted the old composed origin chain.
+### What B now proves
 
-`bc938823...` repairs only that generic composition boundary:
-
-- relevant top-level statements are processed in execution order;
-- receiver local/parameter reassignment invalidates tracked slots for that receiver;
-- an opaque invocation conservatively invalidates predecessor composition state;
-- tracked unary writes invalidate their slot;
-- unsupported assignment targets create a conservative barrier;
-- independently valid direct transfer facts remain available even when composition is blocked;
-- no general alias/path or helper-body solver was introduced.
-
-Permanent regression coverage now includes both stale-predecessor cases. Each asserts runtime behavior, retains the immediate later direct-copy evidence, marks composition blocked, removes the predecessor link, and forbids false `Proven stored lineage chain` prose.
-
-## Snapshot regression boundary to keep green
-
-1. positive executable canonical snapshot fixture;
-2. unrelated same-name members do not create lineage;
-3. distinct receiver identities do not compose;
-4. intervening writes break composition;
-5. receiver reassignment breaks stale composition;
-6. opaque helper mutation breaks stale composition;
-7. incompatible branch shapes fail closed;
-8. custom setter effects fail closed;
-9. shared mutable-reference content is not a scalar snapshot;
-10. unresolved/no-project semantic context does not produce proven lineage;
-11. same display members in distinct projects retain project/assembly-qualified identity;
-12. candidate → synthesis → workflow Markdown delivery remains proven;
-13. lineage is not promoted into authoritative business Rules.
-
-Do not weaken accepted V0.4.6 authority/filtering behavior while extending lineage.
-
-## Exact-SHA final verification
-
-Previously recorded checkpoint gates passed on exact code SHA `bc938823b46802a4d2c32300a1b6de692f5866ad`. They did not include the new alias-write counterexample:
+For the bounded supported straight-line endpoint shape in exact target-project semantic context, PKC can distinguish:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35128897392 — PASS
-pinned Loren                                35128897399 — PASS
-Loren-main canary                           35128897380 — PASS
-pinned Jellyfin                             35128897797 — PASS
+direct copy
+vs
+multi-input scalar derivation
+vs
+later override/mutation causality
+vs
+last proven source before a direct return boundary
+```
+
+Positive derivation fixture:
+
+```text
+service.Price = 100m
+service.Discount = 10m
+service.NetPrice = service.Price - service.Discount
+return service.NetPrice
+```
+
+Runtime result is `90m`. PKC emits a stored `mechanism=derivation` fact with both input occurrences/member identities, exact expression, exact target and source location. Candidate retention, synthesis and workflow Markdown are covered.
+
+Positive override fixture retains the accepted A origin:
+
+```text
+group.Price → product.Price → service.Price
+```
+
+then observes:
+
+```text
+service.Price = 120m
+return service.Price
+```
+
+PKC retains the original lineage facts, emits a separate `value-causality` fact with `causalRole=override`, references the prior proven value/source, and identifies the override as the last proven source before the supported return.
+
+The generated knowledge intentionally separates:
+
+```text
+Value lineage
+  derivation
+  original origin
+  terminal source
+
+State changes
+  later override / causality
+
+Rules
+  no automatic promotion from B lineage/causality
+```
+
+### Fail-closed B boundary
+
+B does not claim authority for unsupported shapes including:
+
+- branch/loop/try/conditional control flow;
+- opaque invocations;
+- reference-type parameters;
+- non-fresh aliases or reference reassignment;
+- custom/non-auto modeled scalar accessors;
+- unsupported expression operations;
+- compound writes such as `+=` to modeled scalar state;
+- unary writes such as `++` / `--` after a proven value;
+- unresolved target-project semantics.
+
+A static adversarial pass found and fixed the stale-terminal case for compound/unary writes before final acceptance. Permanent regressions require B proof to fail closed there.
+
+No general expression, alias, helper-body, effect or path solver was added.
+
+## B regression coverage
+
+`tests/Pkc.CSharp.Tests/ValueLineageComputationCausalityRegressionTests.cs` covers:
+
+1. executable multi-input derivation `100 - 10 = 90`;
+2. scanner fact metadata for all derivation inputs and target;
+3. candidate retention → synthesis → workflow Markdown;
+4. executable later override returning `120`;
+5. retained original A origin after override;
+6. separate override causality;
+7. exact terminal-source linkage;
+8. custom getter fail-closed;
+9. invocation-based computation fail-closed;
+10. branch computation fail-closed;
+11. alias computation fail-closed;
+12. compound-write stale-terminal fail-closed;
+13. unary-write stale-terminal fail-closed;
+14. no project-semantic context => no authoritative B claim.
+
+All accepted V0.4.6 and V0.4.7-A regressions remain green.
+
+## Exact-main verification for B
+
+All required gates passed on exact SHA `e5b0d47c82b6db99f5184292730919421a6d2a06`:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35339292475 — PASS
+pinned Loren                                35339292546 — PASS
+Loren-main canary                           35339292501 — PASS
+pinned Jellyfin                             35339292495 — PASS
 ```
 
 Core:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            94 / 94 PASS
+C# tests:            114 / 114 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
@@ -194,93 +248,79 @@ relations:               195,316
 workflow candidates:     386
 product features:        116
 canonical Markdown:      504
-project-semantic:        43,365 / 43,365
+project-semantic facts:  43,365 / 43,365
 portable bundle parity:  PASS
 ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
-src/ source-tree leak:   none
-artifact id:             10460043943
-artifact digest:         sha256:3053a33b3abdb0acd16e66f85bc83f15c405295a0c9305965aeb4734497452c3
-artifact size:           9,162,455 bytes
+src/ leak:               none
+artifact id:             10544800985
+artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b041c276106cc
+artifact size:           9,162,486 bytes
 ```
 
-## Current checkpoint disposition
+## Instructions for Astra independent review
+
+Start from current `main`; verify HEAD first. The expected code checkpoint at this handoff is `e5b0d47...`, but if main is newer, inspect the newer ancestry instead of resetting.
+
+Review B **before making C changes**. Primary questions:
+
+1. Can a compile-valid supported expression produce a false derivation claim?
+2. Can a custom/operator/conversion/accessor effect slip through the supported arithmetic proof?
+3. Can a later write make terminal-source evidence stale without invalidation?
+4. Does a later override preserve original origin instead of rewriting history?
+5. Can same-name or cross-project/member/receiver collisions create a false join?
+6. Can `value-causality` or derivation evidence leak into authoritative business Rules?
+7. Does Markdown overclaim persistence/general dataflow when only a direct supported return is proven?
+8. Is there any compile-valid, runtime-valid contradiction inside the documented straight-line proof boundary?
+
+Required final verdict:
 
 ```text
-V0.4.7-A snapshot composition       BLOCKED: alias-write predecessor invalidation
-V0.4.7-A dynamic/reference slice    NEXT FEATURE / after bounded repair
-V0.4.7-A overall                    IN PROGRESS
-V0.4.7-B/C/D/E                      LOCKED behind A
-V0.5                                LOCKED
+PASS V0.4.7-B
+or
+FAIL V0.4.7-B
 ```
 
-Do not call checkpoint A complete until the separate reference/dynamic-read positive and its portable answer pass.
+For FAIL, provide the exact file/line, a compile-valid counterexample and the false fact/knowledge output. Fix regression-first and keep C locked.
 
-## Exact next implementation action
+For PASS, update `docs/status.md`, this handoff and `docs/milestones.md` to mark B PASS / COMPLETE. Only then start C.
 
-Stay in V0.4.7-A. Apply the 2026-09-17 alias reproduction patch, make its runtime/Markdown negative pass through a bounded composition repair, and retain valid immediate copy evidence. The alias exists before the first tracked copy, so merely clearing predecessor state at alias declaration is insufficient. Keep all six existing lineage regressions green; no general alias solver is required.
+## What comes next after a B PASS
 
-Then implement the agreed **reference/dynamic-read positive** regression-first. The executable fixture must show downstream `100`, upstream mutation `100 → 120`, then downstream read-time `120` without another scalar copy. Every code/test implementation must be delegated to Luna and independently reviewed and verified afterward.
+V0.4.7-C answers:
 
-Use a narrow compile-valid executable shape where a downstream property resolves an upstream property at read time, for example an expression-bodied/otherwise explicitly modeled getter equivalent to:
+> What backend value supplies this response field, and how did it travel through entity/domain state → DTO/projection → API output?
 
-```text
-Service.CurrentGroupPrice → reads ProductGroup.Price dynamically
-```
+C should be regression-first and bounded. It must prove exact target-project semantic identity and source traceability through the supported backend-to-API path, render the mapping in workflow Markdown, and fail closed on ambiguous projection/alias/conversion/custom accessor/effect shapes.
 
-The fixture must mutate the upstream value after establishing the reference and prove a later downstream read observes the new upstream value without another scalar-copy assignment.
-
-Required proof:
-
-- exact project semantic context;
-- exact receiver/member identity for the dynamic dependency;
-- executable before/after behavior;
-- deterministic read path rather than name similarity;
-- scanner → candidate → synthesis → workflow Markdown delivery;
-- PO-facing wording that says the value is resolved dynamically/read-time and contrasts it with stored snapshot behavior.
-
-Fail closed for unsupported aliasing, receiver reassignment, opaque effects, custom getter behavior outside the modeled shape, branch ambiguity, unresolved semantics, or any dependency the compiler cannot prove. Do not add a general alias/path solver merely to support more shapes.
-
-Keep every snapshot positive and negative above green. Do not begin B/C/D until both A positives and A's identity/portable gates are green.
+Do not start D until C passes. Do not start E until D passes. Do not start V0.5 until the V0.4.7/V0.4.x exit gate independently passes.
 
 ## Version semantics
 
 Do not conflate:
 
 ```text
-roadmap milestone version
+roadmap milestone
 tool/package version
 evidence/schema version
 ```
 
-Current examples:
+Current package remains:
 
 ```text
-roadmap milestone:        V0.4.7 IN PROGRESS
-tool/package:             RuaDen.Pkc.Tool 0.4.3-preview.2
-raw C# evidence schema:   0.4.4-csharp-raw
-merged facts schema:      0.4.4
-cross-stack candidates:   0.4.6
-frontend evidence schema: 0.4.3-frontend
+RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Roadmap progress does not mechanically bump package or schema versions.
+Current schema identifiers remain unchanged unless a serialized-contract change is deliberately reviewed and tested.
 
-## V0.4.6 warnings carried forward
-
-```text
-W10.1
-Observed-only predicate Evidence is separated from Rules but does not explicitly render the `observed-only` label.
-
-W10.2
-Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
-```
-
-Only address them when touched V0.4.7 scope makes doing so coherent and regression-safe.
-
-Do not start Azure DevOps ingestion:
+## Locked state
 
 ```text
-V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
+V0.4.7-A          PASS / COMPLETE
+V0.4.7-B          IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED
+V0.4.7-C          LOCKED pending B PASS
+V0.4.7-D          LOCKED
+V0.4.7-E          LOCKED
+V0.5 Azure DevOps LOCKED
 ```
