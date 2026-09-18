@@ -79,6 +79,76 @@ public sealed class ValueLineageComputationCausalityRegressionTests
     }
 
     [Fact]
+    public async Task Nested_assignment_after_derivation_does_not_keep_stale_terminal_source()
+    {
+        var root = CreateRoot("nested-assignment-return");
+        try
+        {
+            await WriteProjectAsync(root, FixtureSource);
+
+            var runtime = CompileFixture(FixtureSource);
+            try
+            {
+                Assert.Equal(5m, InvokeDecimal(runtime.Assembly, "GetNestedAssignmentAfterDerivation"));
+            }
+            finally
+            {
+                runtime.Context.Unload();
+            }
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var derivation = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-transfer" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetNestedAssignmentAfterDerivation" &&
+                fact.Metadata.GetValueOrDefault("mechanism") == "derivation");
+            Assert.Equal("service.Price - service.Discount", derivation.Metadata["expression"]);
+            Assert.Equal("service.NetPrice", derivation.Metadata["targetOccurrence"]);
+            Assert.DoesNotContain(facts.Facts, fact =>
+                fact.Kind == "value-terminal-source" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetNestedAssignmentAfterDerivation");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Top_level_deconstruction_write_does_not_keep_stale_terminal_source()
+    {
+        var root = CreateRoot("deconstruction-write-return");
+        try
+        {
+            await WriteProjectAsync(root, FixtureSource);
+
+            var runtime = CompileFixture(FixtureSource);
+            try
+            {
+                Assert.Equal(5m, InvokeDecimal(runtime.Assembly, "GetTopLevelDeconstructionWrite"));
+            }
+            finally
+            {
+                runtime.Context.Unload();
+            }
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var derivation = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-transfer" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetTopLevelDeconstructionWrite" &&
+                fact.Metadata.GetValueOrDefault("mechanism") == "derivation");
+            Assert.Equal("service.Price - service.Discount", derivation.Metadata["expression"]);
+            Assert.Equal("service.NetPrice", derivation.Metadata["targetOccurrence"]);
+            Assert.DoesNotContain(facts.Facts, fact =>
+                fact.Kind == "value-terminal-source" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetTopLevelDeconstructionWrite");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Later_override_preserves_original_origin_and_becomes_terminal_source()
     {
         var root = CreateRoot("override-return");
@@ -317,6 +387,28 @@ public sealed class ValueLineageComputationCausalityRegressionTests
                 service.Price = product.Price;
                 service.Discount = 10m;
                 service.NetPrice = service.Price - service.Discount;
+                return service.NetPrice;
+            }
+
+            [HttpGet]
+            public decimal GetNestedAssignmentAfterDerivation()
+            {
+                var service = new Service();
+                service.Price = 100m;
+                service.Discount = 10m;
+                service.NetPrice = service.Price - service.Discount;
+                var observed = (service.NetPrice = 5m);
+                return service.NetPrice;
+            }
+
+            [HttpGet]
+            public decimal GetTopLevelDeconstructionWrite()
+            {
+                var service = new Service();
+                service.Price = 100m;
+                service.Discount = 10m;
+                service.NetPrice = service.Price - service.Discount;
+                (service.NetPrice, var observed) = (5m, 0m);
                 return service.NetPrice;
             }
 
