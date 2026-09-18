@@ -162,6 +162,44 @@ internal sealed class CSharpComputationCausalityEnricher
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            foreach (var nestedAssignment in statement.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+            {
+                var isTopLevelAssignment = statement is ExpressionStatementSyntax
+                    {
+                        Expression: AssignmentExpressionSyntax topLevelAssignment
+                    } &&
+                    ReferenceEquals(nestedAssignment, topLevelAssignment);
+                if (isTopLevelAssignment &&
+                    TryResolveSlot(
+                        nestedAssignment.Left,
+                        semanticModel,
+                        projectPath,
+                        cancellationToken,
+                        out _))
+                {
+                    continue;
+                }
+
+                if (nestedAssignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+                {
+                    foreach (var writeTarget in nestedAssignment.Left
+                                 .DescendantNodesAndSelf()
+                                 .OfType<MemberAccessExpressionSyntax>())
+                    {
+                        if (TryResolveSlot(
+                                writeTarget,
+                                semanticModel,
+                                projectPath,
+                                cancellationToken,
+                                out var nestedTarget) &&
+                            IsSupportedStoredScalarAutoProperty(nestedTarget.Property))
+                        {
+                            currentValues.Remove(nestedTarget.Key);
+                        }
+                    }
+                }
+            }
+
             if (statement is ReturnStatementSyntax returnStatement)
             {
                 if (returnStatement.Expression is not null &&

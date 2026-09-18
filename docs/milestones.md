@@ -161,8 +161,8 @@ Component.price
 | Checkpoint | PO question | Current state | Completion boundary |
 | --- | --- | --- | --- |
 | A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | **PASS / COMPLETE** | Snapshot + dynamic positives, exact identity/path/storage negatives, source traceability and PO-facing Markdown. |
-| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before return/persistence? | **IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED** | Portable derivation, original origin, later mutation/override and supported terminal-source proof, plus fail-closed negatives. |
-| C — Backend to API | What backend value supplies this response field? | **LOCKED behind B review** | Proven entity/domain → DTO/projection → API mapping rendered with source locations. |
+| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before return/persistence? | **REVIEW BLOCKER FIXED LOCALLY / REMOTE GATES REQUIRED** | Portable derivation, original origin, later mutation/override and supported terminal-source proof, plus fail-closed negatives. |
+| C — Backend to API | What backend value supplies this response field? | **LOCKED behind repaired B acceptance** | Proven entity/domain → DTO/projection → API mapping rendered with source locations. |
 | D — API to UI | What feeds the displayed value and controls its visibility? | **LOCKED** | Proven frontend binding/composition and joint backend/frontend explanation with separate authorities. |
 | E — Product acceptance | Can an AI answer the agreed questions using only the knowledge pack? | **LOCKED** | Blind knowledge-only review, portable folder/bundle/ZIP parity/no-leak, and exact-SHA cross-benchmark gates. |
 
@@ -198,7 +198,7 @@ pinned Jellyfin             35232223958
 
 A is closed.
 
-#### Checkpoint B — implementation green, review pending
+#### Checkpoint B — review blocker fixed locally, acceptance pending
 
 Exact B implementation checkpoint on `main`:
 
@@ -270,7 +270,7 @@ artifact digest:     sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b
 artifact size:       9,162,486 bytes
 ```
 
-**B is not COMPLETE until independent review passes.** Astra must review the exact current main checkpoint before C begins. A review blocker must be reproduced regression-first and fixed generically; a PASS permits docs to close B and unlock C.
+Independent review of `e5b0d47...` found stale terminal authority after unsupported nested/deconstruction writes. The regression-first repair is local commit `30e87df`, followed by point-in-time derivation coverage `76d9bb1`; local Release build, 117 C# tests and 13 frontend tests pass. **B is not COMPLETE** until both commits are integrated and their exact-SHA remote/cross-benchmark/portable gates pass. C remains locked.
 
 #### Next only after B PASS — checkpoint C
 
