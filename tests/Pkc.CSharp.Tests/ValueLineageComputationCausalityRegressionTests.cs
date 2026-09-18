@@ -149,6 +149,74 @@ public sealed class ValueLineageComputationCausalityRegressionTests
     }
 
     [Fact]
+    public async Task Stored_derivation_remains_snapshot_when_input_is_overridden_later()
+    {
+        var root = CreateRoot("derivation-input-override");
+        try
+        {
+            await WriteProjectAsync(root, FixtureSource);
+
+            var runtime = CompileFixture(FixtureSource);
+            try
+            {
+                Assert.Equal(90m, InvokeDecimal(runtime.Assembly, "GetDerivedPriceThenInputOverride"));
+            }
+            finally
+            {
+                runtime.Context.Unload();
+            }
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var derivation = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-transfer" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetDerivedPriceThenInputOverride" &&
+                fact.Metadata.GetValueOrDefault("mechanism") == "derivation");
+            var serviceCopy = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-transfer" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetDerivedPriceThenInputOverride" &&
+                fact.Metadata.GetValueOrDefault("sourceOccurrence") == "group.Price" &&
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "service.Price");
+            var causality = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-causality" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetDerivedPriceThenInputOverride" &&
+                fact.Metadata.GetValueOrDefault("targetOccurrence") == "service.Price" &&
+                fact.Metadata.GetValueOrDefault("valueExpression") == "120m");
+            Assert.Equal("service.Price", causality.Metadata["targetOccurrence"]);
+            Assert.Equal("120m", causality.Metadata["valueExpression"]);
+            Assert.Equal(serviceCopy.Id, causality.Metadata["priorValueFactId"]);
+
+            var terminal = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "value-terminal-source" &&
+                fact.Metadata.GetValueOrDefault("scopeName") == "GetDerivedPriceThenInputOverride");
+            Assert.Equal(derivation.Id, terminal.Metadata["sourceFactId"]);
+            Assert.Equal("derivation", terminal.Metadata["sourceMechanism"]);
+
+            var candidate = FindCandidate(facts, "GetDerivedPriceThenInputOverride");
+            var knowledge = await new EvidenceAwareKnowledgeSynthesizer().SynthesizeAsync(candidate);
+            Assert.Contains(knowledge.ValueLineage, item =>
+                item.Contains("Stored derivation", StringComparison.Ordinal) &&
+                item.Contains("snapshot", StringComparison.Ordinal) &&
+                item.Contains("later input changes do not update", StringComparison.Ordinal));
+            Assert.DoesNotContain(knowledge.ValueLineage, item =>
+                item.Contains("dynamic", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(knowledge.StateChanges, item =>
+                item.Contains("Later override", StringComparison.Ordinal) &&
+                item.Contains("service.Price", StringComparison.Ordinal) &&
+                item.Contains("120m", StringComparison.Ordinal));
+
+            var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+            Assert.Contains("Stored derivation", markdown, StringComparison.Ordinal);
+            Assert.Contains("snapshot", markdown, StringComparison.Ordinal);
+            Assert.Contains("Later override", markdown, StringComparison.Ordinal);
+            Assert.DoesNotContain("dynamic", markdown, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Later_override_preserves_original_origin_and_becomes_terminal_source()
     {
         var root = CreateRoot("override-return");
@@ -409,6 +477,19 @@ public sealed class ValueLineageComputationCausalityRegressionTests
                 service.Discount = 10m;
                 service.NetPrice = service.Price - service.Discount;
                 (service.NetPrice, var observed) = (5m, 0m);
+                return service.NetPrice;
+            }
+
+            [HttpGet]
+            public decimal GetDerivedPriceThenInputOverride()
+            {
+                var group = new ProductGroup();
+                var service = new Service();
+                group.Price = 100m;
+                service.Price = group.Price;
+                service.Discount = 10m;
+                service.NetPrice = service.Price - service.Discount;
+                service.Price = 120m;
                 return service.NetPrice;
             }
 
