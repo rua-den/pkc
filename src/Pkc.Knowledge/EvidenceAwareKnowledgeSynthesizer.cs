@@ -45,6 +45,18 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
             .ThenBy(fact => fact.Source.StartLine)
             .ThenBy(fact => fact.Id, StringComparer.Ordinal)
             .ToArray();
+        var causalityFacts = candidate.Facts
+            .Where(fact => fact.Kind == "value-causality")
+            .OrderBy(fact => fact.Source.Path, StringComparer.Ordinal)
+            .ThenBy(fact => fact.Source.StartLine)
+            .ThenBy(fact => fact.Id, StringComparer.Ordinal)
+            .ToArray();
+        var terminalSourceFacts = candidate.Facts
+            .Where(fact => fact.Kind == "value-terminal-source")
+            .OrderBy(fact => fact.Source.Path, StringComparer.Ordinal)
+            .ThenBy(fact => fact.Source.StartLine)
+            .ThenBy(fact => fact.Id, StringComparer.Ordinal)
+            .ToArray();
 
         var rules = knowledge.Rules
             .Concat(responseFacts.Select(DescribeResponseRule))
@@ -53,8 +65,16 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
             .Concat(consistencyFacts.Select(DescribeValidationConsistencyRule))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var stateChanges = knowledge.StateChanges
+            .Concat(causalityFacts.Select(DescribeValueCausality))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         var sideEffects = knowledge.SideEffects
             .Concat(BuildSemanticSideEffects(candidate))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var valueLineage = BuildValueLineage(valueTransferFacts)
+            .Concat(terminalSourceFacts.Select(DescribeTerminalSource))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var evidence = knowledge.Evidence
@@ -83,6 +103,16 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
                 fact.Kind,
                 DescribeValueTransferEvidence(fact),
                 fact.Source)))
+            .Concat(causalityFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeValueCausalityEvidence(fact),
+                fact.Source)))
+            .Concat(terminalSourceFacts.Select(fact => new KnowledgeEvidence(
+                fact.Id,
+                fact.Kind,
+                DescribeTerminalSourceEvidence(fact),
+                fact.Source)))
             .GroupBy(item => item.FactId, StringComparer.Ordinal)
             .Select(group => group.First())
             .OrderBy(item => item.Source.Path, StringComparer.Ordinal)
@@ -92,7 +122,8 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         return knowledge with
         {
             Rules = rules,
-            ValueLineage = BuildValueLineage(valueTransferFacts),
+            ValueLineage = valueLineage,
+            StateChanges = stateChanges,
             SideEffects = sideEffects,
             Evidence = evidence
         };
@@ -305,10 +336,24 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         fact.Metadata.TryGetValue("targetOccurrence", out var target);
         fact.Metadata.TryGetValue("compositionStatus", out var compositionStatus);
         fact.Metadata.TryGetValue("temporalSemantics", out var temporalSemantics);
+        fact.Metadata.TryGetValue("mechanism", out var mechanism);
 
         var sourceText = source ?? "source value";
         var targetText = target ?? fact.Name;
         var location = $"`{fact.Source.Path}:L{fact.Source.StartLine}`";
+
+        if (string.Equals(mechanism, "derivation", StringComparison.Ordinal))
+        {
+            fact.Metadata.TryGetValue("expression", out var expression);
+            fact.Metadata.TryGetValue("inputOccurrences", out var inputOccurrences);
+            var inputs = SplitMetadataList(inputOccurrences)
+                .Select(input => $"`{input}`")
+                .ToArray();
+            var inputText = inputs.Length == 0
+                ? "the proven inputs"
+                : string.Join(" and ", inputs);
+            return $"Stored derivation: `{targetText}` is computed as `{expression ?? fact.Name}` from {inputText} at {location}. The computed scalar is stored as a snapshot; later input changes do not update it without another write.";
+        }
 
         if (string.Equals(temporalSemantics, "dynamic", StringComparison.Ordinal))
         {
@@ -335,6 +380,13 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
         fact.Metadata.TryGetValue("temporalSemantics", out var temporal);
         fact.Metadata.TryGetValue("semanticProject", out var project);
 
+        if (string.Equals(mechanism, "derivation", StringComparison.Ordinal))
+        {
+            fact.Metadata.TryGetValue("inputOccurrences", out var inputOccurrences);
+            var inputs = string.Join(" + ", SplitMetadataList(inputOccurrences));
+            return $"Value lineage derivation: `{inputs}` → `{target ?? fact.Name}` (derivation; {temporal ?? "temporal semantics unknown"}; target-project proof `{project ?? "unknown"}`).";
+        }
+
         if (string.Equals(temporal, "dynamic", StringComparison.Ordinal))
         {
             return $"Value lineage dynamic dependency: `{source ?? "source"}` → `{target ?? fact.Name}` ({mechanism ?? "reference"}; dynamic read-time semantics; target-project proof `{project ?? "unknown"}`).";
@@ -342,6 +394,67 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
 
         return $"Value lineage transfer: `{source ?? "source"}` → `{target ?? fact.Name}` ({mechanism ?? "transfer"}; {temporal ?? "temporal semantics unknown"}; target-project proof `{project ?? "unknown"}`).";
     }
+
+    private static string DescribeValueCausality(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("targetOccurrence", out var target);
+        fact.Metadata.TryGetValue("valueExpression", out var value);
+        fact.Metadata.TryGetValue("priorSourceOccurrence", out var priorSource);
+
+        var targetText = target ?? fact.Name;
+        var valueText = value ?? "an observed value";
+        var priorText = string.IsNullOrWhiteSpace(priorSource)
+            ? "a prior proven value"
+            : $"the earlier observed source `{priorSource}`";
+        var location = $"`{fact.Source.Path}:L{fact.Source.StartLine}`";
+
+        return $"Later override: `{targetText}` is set to `{valueText}` at {location} after {priorText}. This changes the stored value but does not rewrite the earlier origin history.";
+    }
+
+    private static string DescribeTerminalSource(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("boundary", out var boundary);
+        fact.Metadata.TryGetValue("returnedOccurrence", out var returned);
+        fact.Metadata.TryGetValue("sourceMechanism", out var mechanism);
+        fact.Metadata.TryGetValue("sourceFactLocation", out var sourceLocation);
+        fact.Metadata.TryGetValue("sourceOccurrence", out var source);
+
+        var boundaryText = boundary ?? "output";
+        var returnedText = returned ?? fact.Name;
+        var mechanismText = mechanism ?? "proven source";
+        var sourceText = string.IsNullOrWhiteSpace(source)
+            ? string.Empty
+            : $" (`{source}`)";
+        var sourceLocationText = string.IsNullOrWhiteSpace(sourceLocation)
+            ? string.Empty
+            : $" at `{sourceLocation}`";
+        var boundaryLocation = $"`{fact.Source.Path}:L{fact.Source.StartLine}`";
+
+        return $"Last proven source before {boundaryText}: `{returnedText}` at {boundaryLocation} comes from the proven {mechanismText}{sourceLocationText}{sourceText}. This terminal source is distinct from any earlier origin history.";
+    }
+
+    private static string DescribeValueCausalityEvidence(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("targetOccurrence", out var target);
+        fact.Metadata.TryGetValue("valueExpression", out var value);
+        fact.Metadata.TryGetValue("priorValueFactId", out var priorFactId);
+        fact.Metadata.TryGetValue("semanticProject", out var project);
+        return $"Value causality override: `{target ?? fact.Name}` ← `{value ?? "value"}` after prior fact `{priorFactId ?? "unknown"}` (target-project proof `{project ?? "unknown"}`).";
+    }
+
+    private static string DescribeTerminalSourceEvidence(EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("returnedOccurrence", out var returned);
+        fact.Metadata.TryGetValue("sourceFactId", out var sourceFactId);
+        fact.Metadata.TryGetValue("sourceMechanism", out var mechanism);
+        fact.Metadata.TryGetValue("semanticProject", out var project);
+        return $"Terminal return source: `{returned ?? fact.Name}` ← `{sourceFactId ?? "unknown"}` ({mechanism ?? "source"}; target-project proof `{project ?? "unknown"}`).";
+    }
+
+    private static IEnumerable<string> SplitMetadataList(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? []
+            : value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static IEnumerable<string> BuildSemanticSideEffects(FeatureCandidate candidate)
     {
