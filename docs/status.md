@@ -9,8 +9,8 @@ V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
 V0.4.6 business logic reconstruction             PASS / COMPLETE
 V0.4.7-A origin and copy timing                  PASS / COMPLETE
-V0.4.7-B computation and later change            IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED
-V0.4.7-C backend to API                          LOCKED behind B review
+V0.4.7-B computation and later change            REVIEW BLOCKER FIXED LOCALLY / REMOTE GATES REQUIRED
+V0.4.7-C backend to API                          LOCKED behind repaired B acceptance
 V0.4.7-D API to UI                               LOCKED behind C
 V0.4.7-E product acceptance                      LOCKED behind D
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -80,7 +80,7 @@ pinned Jellyfin                             35232223958 — PASS
 
 A is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
 
-## V0.4.7-B — implementation GREEN, review pending
+## V0.4.7-B — review blocker fixed locally, acceptance pending
 
 Exact implementation checkpoint on `main`:
 
@@ -93,6 +93,7 @@ Delivery/review note:
 
 ```text
 docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
+docs/reviews/2026-09-18-v0.4.7-b-independent-review.md
 ```
 
 B currently proves the bounded straight-line target-project-semantic shape required by R7.5–R7.7:
@@ -179,11 +180,11 @@ artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504c
 artifact size:           9,162,486 bytes
 ```
 
-Passing implementation gates do **not** by themselves close B. Independent review is still required before C unlocks.
+Independent review found a compile-valid/runtime-valid stale terminal-source contradiction after nested and deconstruction writes. The bounded repair is committed locally at `30e87df`, followed by point-in-time derivation coverage at `76d9bb1`; Release build, 117 C# tests and 13 frontend tests pass locally. The earlier remote results below apply to `e5b0d47...`, not to the repaired branch. B remains open and C remains locked until the repair is integrated and exact-SHA remote gates pass.
 
-## Independent review gate for B
+## Independent review result for B
 
-Astra must review exact current `main` first. Expected code checkpoint at this handoff is `e5b0d47...`, but never reset a newer `main` back to this SHA.
+Astra reviewed exact current `main` and recorded the result in `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`.
 
 Primary review targets:
 
@@ -195,17 +196,7 @@ Primary review targets:
 6. terminal-source wording overclaiming persistence/general dataflow beyond the supported direct-return shape;
 7. any compile-valid, runtime-valid counterexample inside the documented straight-line proof boundary.
 
-Required verdict:
-
-```text
-PASS V0.4.7-B
-or
-FAIL V0.4.7-B with a concrete reproducible blocker
-```
-
-If FAIL: add a focused regression, implement the minimum generic repair, rerun the relevant/full gates, and keep C locked.
-
-If PASS: update status/handoff/milestones to B PASS / COMPLETE. Only then may V0.4.7-C begin.
+Verdict: **FAIL on `e5b0d47...`; repaired branch through `76d9bb1` is locally green.** Integrate both local commits, run exact-SHA CI/cross-benchmark/portable gates, then rereview only the repaired boundary. If those gates pass without a new contradiction, close B and unlock C.
 
 ## Version semantics
 
@@ -244,7 +235,7 @@ These remain non-blocking unless touched scope makes a regression-safe cleanup c
 
 ## Exact next action
 
-**Do not code V0.4.7-C yet.** Independent-review `e5b0d47...` as the V0.4.7-B checkpoint. If the review passes, close B in docs and then start C regression-first for deterministic backend entity/value → DTO/projection → API response mapping and portable source traceability.
+**Do not code V0.4.7-C yet.** Integrate repair commits `30e87df` and `76d9bb1`, then run exact-SHA CI, cross-benchmark and portable parity/no-leak gates. Rereview only the repaired terminal-source boundary. Close B and start C regression-first only after those gates pass without a new contradiction.
 
 ```text
 V0.4.7-C/D/E LOCKED until their predecessor checkpoint passes review

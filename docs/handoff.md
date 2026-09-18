@@ -17,6 +17,7 @@ Read in this exact order before changing production code:
 9. `docs/reviews/2026-09-17-v0.4.7-alias-composition-review.md`
 10. `docs/reviews/2026-09-17-v0.4.7-reference-dynamic-delivery.md`
 11. `docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md`
+12. `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`
 
 Then inspect `git status`, current `main` HEAD and recent commits. Never assume or reset to an older SHA if `main` has advanced.
 
@@ -29,7 +30,7 @@ e5b0d47c82b6db99f5184292730919421a6d2a06
 feat: prove V0.4.7-B computation and causality
 ```
 
-This SHA has passed every exact-main implementation gate. V0.4.7-B is **implementation GREEN but not independently accepted yet**. Astra review is the next action. Do not begin V0.4.7-C until that review returns PASS and B is explicitly closed in docs.
+This SHA passed its implementation gates, but independent review found a stale-terminal-source P1. The clean local repair is `30e87df`, followed by point-in-time derivation coverage `76d9bb1`, on `codex/v047-b-origin-audit`. Do not begin V0.4.7-C until both commits are integrated, exact-SHA gates pass and B is explicitly closed.
 
 ## Closed production baseline
 
@@ -107,7 +108,7 @@ pinned Jellyfin             35232223958
 
 Do not reopen A without a new concrete contradiction.
 
-## V0.4.7-B — implementation delivered, independent review pending
+## V0.4.7-B — review blocker repaired locally, acceptance pending
 
 Delivery note:
 
@@ -259,11 +260,11 @@ artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504c
 artifact size:           9,162,486 bytes
 ```
 
-## Instructions for Astra independent review
+## Independent review result and required continuation
 
-Start from current `main`; verify HEAD first. The expected code checkpoint at this handoff is `e5b0d47...`, but if main is newer, inspect the newer ancestry instead of resetting.
+Independent review of `e5b0d47...` is complete. It failed on stale terminal-source authority after unsupported nested and deconstruction writes. The review, executable counterexamples and verification are recorded in `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`.
 
-Review B **before making C changes**. Primary questions:
+Before making C changes:
 
 1. Can a compile-valid supported expression produce a false derivation claim?
 2. Can a custom/operator/conversion/accessor effect slip through the supported arithmetic proof?
@@ -274,17 +275,7 @@ Review B **before making C changes**. Primary questions:
 7. Does Markdown overclaim persistence/general dataflow when only a direct supported return is proven?
 8. Is there any compile-valid, runtime-valid contradiction inside the documented straight-line proof boundary?
 
-Required final verdict:
-
-```text
-PASS V0.4.7-B
-or
-FAIL V0.4.7-B
-```
-
-For FAIL, provide the exact file/line, a compile-valid counterexample and the false fact/knowledge output. Fix regression-first and keep C locked.
-
-For PASS, update `docs/status.md`, this handoff and `docs/milestones.md` to mark B PASS / COMPLETE. Only then start C.
+Integrate `30e87df` and `76d9bb1`, run the repaired exact-SHA remote/cross-benchmark/portable gates, and confirm the nested/deconstruction terminal regressions remain green. Only then mark B PASS / COMPLETE and start C.
 
 ## What comes next after a B PASS
 
@@ -318,8 +309,8 @@ Current schema identifiers remain unchanged unless a serialized-contract change 
 
 ```text
 V0.4.7-A          PASS / COMPLETE
-V0.4.7-B          IMPLEMENTATION GREEN / INDEPENDENT REVIEW REQUIRED
-V0.4.7-C          LOCKED pending B PASS
+V0.4.7-B          REVIEW BLOCKER FIXED LOCALLY / REMOTE GATES REQUIRED
+V0.4.7-C          LOCKED pending repaired B PASS
 V0.4.7-D          LOCKED
 V0.4.7-E          LOCKED
 V0.5 Azure DevOps LOCKED
