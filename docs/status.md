@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## Current milestone state
 
@@ -9,14 +9,15 @@ V0.4.4 Loren knowledge readiness                 PASS / COMPLETE
 V0.4.5 real-repository generalization            PASS / COMPLETE
 V0.4.6 business logic reconstruction             PASS / COMPLETE
 V0.4.7-A origin and copy timing                  PASS / COMPLETE
-V0.4.7-B computation and later change            REVIEW BLOCKER FIXED LOCALLY / REMOTE GATES REQUIRED
-V0.4.7-C backend to API                          LOCKED behind repaired B acceptance
+V0.4.7-B computation and later change            PASS / COMPLETE
+V0.4.7-C backend to API                          CURRENT / UNLOCKED
 V0.4.7-D API to UI                               LOCKED behind C
 V0.4.7-E product acceptance                      LOCKED behind D
 V0.5 Azure DevOps input evidence                 LOCKED
 ```
 
 V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`.
+The permanent product contract is `docs/product-knowledge-contract.md`.
 
 ## Closed V0.4.6 baseline
 
@@ -36,9 +37,9 @@ PASS / COMPLETE
 
 Do not reopen V0.4.6 without a new compile-valid and behavior-valid contradiction.
 
-Permanent product contract: `docs/product-knowledge-contract.md`.
+## Permanent product-knowledge invariants
 
-Keep distinct and retain:
+Keep these knowledge classes distinct and retain deterministic lower-authority evidence when stronger authority fails:
 
 ```text
 business conditions
@@ -46,7 +47,7 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative authority downgrade must not erase deterministic lower-authority evidence.
+Unsupported inference must fail closed rather than produce a false PO-facing claim.
 
 ## V0.4.7-A — PASS / COMPLETE
 
@@ -57,7 +58,7 @@ Accepted A implementation checkpoint:
 feat: prove bounded reference dynamic lineage
 ```
 
-A proves both required temporal shapes through scanner → candidate → synthesis → workflow Markdown:
+A proves the bounded supported forms of:
 
 ```text
 stored scalar snapshot
@@ -67,92 +68,101 @@ reference / dynamic read-time dependency
 ProductGroup.Price → Service.CurrentGroupPrice
 ```
 
-The snapshot boundary fails closed for receiver reassignment, opaque mutation, alias writes, cast/`as` aliases and user-defined conversion aliases. The dynamic fixture proves an upstream `100 → 120` change is observed by a later downstream read without another scalar copy.
-
 Exact-main A gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35232224202 — PASS
-pinned Loren                                35232224014 — PASS
-Loren-main canary                           35232224029 — PASS
-pinned Jellyfin                             35232223958 — PASS
+CI + WorkPlay + PokeTrade   35232224202 — PASS
+pinned Loren                35232224014 — PASS
+Loren-main                  35232224029 — PASS
+pinned Jellyfin             35232223958 — PASS
 ```
 
-A is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
+A is closed. Do not reopen it without a new concrete contradiction.
 
-## V0.4.7-B — review blocker fixed locally, acceptance pending
+## V0.4.7-B — PASS / COMPLETE
 
-Exact implementation checkpoint on `main`:
+Accepted final B production-code checkpoint:
 
 ```text
-e5b0d47c82b6db99f5184292730919421a6d2a06
-feat: prove V0.4.7-B computation and causality
+17fd30b3a4b8178208adabc12c40dee060bedb54
+fix: fail closed after opaque terminal effects
 ```
 
-Delivery/review note:
+Delivery/review trail:
 
 ```text
 docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
 docs/reviews/2026-09-18-v0.4.7-b-independent-review.md
+docs/reviews/2026-09-19-v0.4.7-b-final-rereview.md
 ```
 
-B currently proves the bounded straight-line target-project-semantic shape required by R7.5–R7.7:
+### What B proves
+
+Within the documented bounded, straight-line, target-project-semantic shape, PKC distinguishes:
 
 ```text
+direct copy
 multi-input stored scalar derivation
-service.Price + service.Discount → service.NetPrice
-
-original origin retained
-ProductGroup.Price → Product.Price → Service.Price
-
-later constant write after a proven value
-→ separate mutation/causality fact with causalRole=override
-
-supported direct return
-→ last proven source immediately before return
+later constant override / mutation causality
+original origin retained separately from later change
+last proven source before a supported direct return boundary
 ```
 
-Generated PO-facing knowledge keeps the classes separate:
+The generated PO-facing knowledge keeps the classes separate:
 
-- derivation and terminal-source proof render in `Value lineage`;
-- later override renders in `State changes`;
-- original origin facts remain intact after the override;
-- none of the B facts become authoritative business Rules merely because the implementation proof is strong.
+```text
+Value lineage
+  original origin
+  stored derivation
+  last proven source before return
 
-### B fail-closed boundary
+State changes
+  later override / mutation causality
 
-The implementation rejects stronger B claims for unsupported shapes including:
+Rules
+  no automatic promotion from lineage/causality
+```
 
-- branch/loop/try/conditional control flow;
-- opaque invocations;
-- reference-type parameters;
-- non-fresh aliases or reference reassignment;
-- custom/non-auto scalar accessors;
-- unsupported expression operations;
-- unsupported compound writes such as `+=` to modeled scalar state;
-- unary scalar writes such as `++` / `--` after a proven value;
+A stored derivation is a point-in-time snapshot. Later changes to its inputs do not rewrite the stored value unless a separately proven mutation executes.
+
+### Final B fail-closed boundary
+
+Permanent regressions now cover stale terminal authority after or through:
+
+- nested simple member assignment;
+- top-level deconstruction member write;
+- deconstruction reference reassignment and declaration aliases;
+- compound and unary scalar writes;
+- opaque invocation;
+- custom getter/setter effects;
+- custom constructor effects;
+- user-defined operator effects;
+- user-defined conversion effects;
+- reference-type parameters, non-fresh aliases and reference reassignment;
+- unsupported branch/loop/try/conditional control flow;
+- `goto`, labels and throw-driven control flow;
 - unresolved target-project semantic context.
 
-The compound/unary negatives permanently guard against stale terminal-source authority after an unmodeled write.
+The generic rule is conservative: once a current terminal value has been proven, an unsupported/opaque statement invalidates stronger terminal authority for the remaining suffix while already emitted historical derivation/origin evidence remains retained.
 
-This is intentionally not a general expression, alias, effect or dataflow solver.
+B intentionally does **not** claim a general expression solver, alias solver, effect solver, arbitrary path solver, or arbitrary persistence/API-call analysis. Its terminal-source acceptance is the supported direct-return boundary. Persistence beyond that remains unproven until a later explicit checkpoint requires it.
 
-### Exact-main verification for B
+### Exact-main verification for final B
 
-All final gates passed on exact code SHA `e5b0d47c82b6db99f5184292730919421a6d2a06`:
+All required exact-main gates passed on `17fd30b3a4b8178208adabc12c40dee060bedb54`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35339292475 — PASS
-pinned Loren                                35339292546 — PASS
-Loren-main canary                           35339292501 — PASS
-pinned Jellyfin                             35339292495 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35379750213 — PASS
+pinned Loren                                35379750276 — PASS
+Loren-main canary                           35379750231 — PASS
+pinned Jellyfin                             35379750251 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            114 / 114 PASS
+C# tests:            124 / 124 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
@@ -169,57 +179,60 @@ relations:               195,316
 workflow candidates:     386
 product features:        116
 canonical Markdown:      504
-project-semantic:        43,365 / 43,365
+project-semantic facts:  43,365 / 43,365
 portable bundle parity:  PASS
 ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
 src/ source-tree leak:   none
-artifact id:             10544800985
-artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b041c276106cc
+artifact id:             10561683704
+artifact digest:         sha256:7d148704af898f82ecfd23d23e3ceeca6936a36da074a225aa4bafd95c042827
 artifact size:           9,162,486 bytes
 ```
 
-Independent review found a compile-valid/runtime-valid stale terminal-source contradiction after nested and deconstruction writes. The bounded repair is committed locally at `30e87df`, followed by point-in-time derivation coverage at `76d9bb1`; Release build, 117 C# tests and 13 frontend tests pass locally. The earlier remote results below apply to `e5b0d47...`, not to the repaired branch. B remains open and C remains locked until the repair is integrated and exact-SHA remote gates pass.
+Independent rereview found no remaining compile-valid/runtime-valid contradiction inside the documented B proof boundary. B is closed.
 
-## Independent review result for B
+## V0.4.7-C — CURRENT / UNLOCKED
 
-Astra reviewed exact current `main` and recorded the result in `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`.
+C answers:
 
-Primary review targets:
+> What exact backend entity/domain property supplies this DTO/projection property and API response field?
 
-1. false derivation from unsupported/custom operators or accessors;
-2. whether original origin survives a later override without being rewritten;
-3. stale terminal-source state after an unmodeled write/effect;
-4. receiver/member/project identity collisions;
-5. mutation/causality accidentally promoted into business Rules;
-6. terminal-source wording overclaiming persistence/general dataflow beyond the supported direct-return shape;
-7. any compile-valid, runtime-valid counterexample inside the documented straight-line proof boundary.
+Start C regression-first. The first coherent C checkpoint must prove exact target-project semantic identity and source locations through:
 
-Verdict: **FAIL on `e5b0d47...`; repaired branch through `76d9bb1` is locally green.** Integrate both local commits, run exact-SHA CI/cross-benchmark/portable gates, then rereview only the repaired boundary. If those gates pass without a new contradiction, close B and unlock C.
+```text
+backend entity/domain property
+→ explicit DTO/projection property
+→ API response
+```
+
+Requirements:
+
+- use exact symbol/project identity, not member-name similarity;
+- preserve source and target locations in deterministic evidence;
+- support an explicit renamed DTO property when assignment proves the edge;
+- deliver the mapping through candidate/synthesis into PO-facing workflow Markdown;
+- use PokeTrade as the known-answer project without modifying PokeTrade merely to fit the analyzer;
+- use focused fixtures where an explicit DTO or renamed-property shape is required;
+- fail closed for same-name collisions, custom accessors, user-defined conversion, alias ambiguity and opaque effects;
+- retain independently proven lower-authority evidence when stronger C composition is unavailable.
+
+Do not start D until C passes its focused/full/cross-benchmark gates and review.
 
 ## Version semantics
 
-These are independent domains:
+Roadmap, package and serialized schema versions are independent:
 
 ```text
-roadmap milestone
-tool/package version
-evidence/schema version
-```
-
-Current values remain:
-
-```text
-roadmap:             V0.4.7-B review pending
+roadmap:             V0.4.7-C current
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
-cross-stack candidate schema: 0.4.6
+cross-stack schema:  0.4.6
 frontend schema:     0.4.3-frontend
 ```
 
-No package or schema bump is implied by B.
+No package or schema bump is implied by closing B.
 
 ## V0.4.6 warnings carried forward
 
@@ -235,9 +248,9 @@ These remain non-blocking unless touched scope makes a regression-safe cleanup c
 
 ## Exact next action
 
-**Do not code V0.4.7-C yet.** Integrate repair commits `30e87df` and `76d9bb1`, then run exact-SHA CI, cross-benchmark and portable parity/no-leak gates. Rereview only the repaired terminal-source boundary. Close B and start C regression-first only after those gates pass without a new contradiction.
+Implement **V0.4.7-C only**, regression-first, beginning with a focused exact entity/domain property → DTO/projection property → API response fixture and negative collisions/effects. Review and validate the coherent C checkpoint locally/clean-environment before one final push.
 
 ```text
-V0.4.7-C/D/E LOCKED until their predecessor checkpoint passes review
+V0.4.7-D/E LOCKED until their predecessor checkpoint passes
 V0.5 LOCKED until the V0.4.7 / V0.4.x PO-question-readiness exit gate passes
 ```

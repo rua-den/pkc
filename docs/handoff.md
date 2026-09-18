@@ -2,6 +2,8 @@
 
 Use this file when continuing PKC in another coding or review thread.
 
+Last updated: 2026-09-19
+
 ## Read first
 
 Read in this exact order before changing production code:
@@ -18,37 +20,51 @@ Read in this exact order before changing production code:
 10. `docs/reviews/2026-09-17-v0.4.7-reference-dynamic-delivery.md`
 11. `docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md`
 12. `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`
+13. `docs/reviews/2026-09-19-v0.4.7-b-final-rereview.md`
 
-Then inspect `git status`, current `main` HEAD and recent commits. Never assume or reset to an older SHA if `main` has advanced.
+Then inspect current `main`, recent commits and repository status before touching production code. Never reset to an older SHA because a handoff names a historical production checkpoint.
 
-## Current main checkpoint
+## Current accepted production-code checkpoint
 
-At this handoff the latest verified production-code checkpoint on `main` is:
+V0.4.7-B is accepted on exact production code:
 
 ```text
-e5b0d47c82b6db99f5184292730919421a6d2a06
-feat: prove V0.4.7-B computation and causality
+17fd30b3a4b8178208adabc12c40dee060bedb54
+fix: fail closed after opaque terminal effects
 ```
 
-This SHA passed its implementation gates, but independent review found a stale-terminal-source P1. The clean local repair is `30e87df`, followed by point-in-time derivation coverage `76d9bb1`, on `codex/v047-b-origin-audit`. Do not begin V0.4.7-C until both commits are integrated, exact-SHA gates pass and B is explicitly closed.
+The current `main` may also contain the docs-only B closure checkpoint that includes this handoff. Verify HEAD before work.
+
+## Current milestone state
+
+```text
+V0.4.7-A          PASS / COMPLETE
+V0.4.7-B          PASS / COMPLETE
+V0.4.7-C          CURRENT / UNLOCKED
+V0.4.7-D          LOCKED behind C
+V0.4.7-E          LOCKED behind D
+V0.5 Azure DevOps LOCKED
+```
+
+Do not start D, E or V0.5.
 
 ## Closed production baseline
 
-Accepted V0.4.6 production remains exactly:
+Accepted V0.4.6 remains:
 
 ```text
 c310e893762997f34562a6b3a62dbab2b05c0c93
 fix: fail closed on Queryable authority
 ```
 
-Final independent V0.4.6 review:
+Final V0.4.6 review:
 
 ```text
 docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
 PASS / COMPLETE
 ```
 
-V0.4.6 is closed. Do not reopen it without a new compile-valid and behavior-valid contradiction.
+V0.4.6 is closed unless a new compile-valid and behavior-valid contradiction is found.
 
 ## Permanent product contract
 
@@ -64,9 +80,7 @@ source inputs
 → portable rendering
 ```
 
-Do not introduce direct source-to-freeform-AI generation.
-
-Keep these knowledge classes distinct and retained:
+Keep these knowledge classes distinct:
 
 ```text
 business conditions
@@ -74,7 +88,7 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative authority downgrade must not erase deterministic lower-authority lineage or causal evidence.
+Conservative authority downgrade must not erase independently proven lower-authority evidence.
 
 ## V0.4.7-A — closed
 
@@ -85,154 +99,82 @@ Accepted A checkpoint:
 feat: prove bounded reference dynamic lineage
 ```
 
-A proves:
+A proves both stored scalar snapshot semantics and bounded reference/dynamic read-time dependency with exact target-project identities and PO-facing Markdown.
+
+Exact A gates:
 
 ```text
-stored snapshot
-ProductGroup.Price → Product.Price → Service.Price
-
-reference / dynamic read
-ProductGroup.Price → Service.CurrentGroupPrice
+CI + WorkPlay + PokeTrade   35232224202 — PASS
+pinned Loren                35232224014 — PASS
+Loren-main                  35232224029 — PASS
+pinned Jellyfin             35232223958 — PASS
 ```
 
-It preserves exact project/member/receiver identity, fails closed across known alias/effect/control-flow hazards, retains direct evidence when composition authority is lost, and renders PO-facing lineage separately from business Rules.
+## V0.4.7-B — PASS / COMPLETE
 
-Exact A gates passed:
+Final accepted B checkpoint:
 
 ```text
-CI + WorkPlay + PokeTrade   35232224202
-pinned Loren                35232224014
-Loren-main                  35232224029
-pinned Jellyfin             35232223958
+17fd30b3a4b8178208adabc12c40dee060bedb54
+fix: fail closed after opaque terminal effects
 ```
 
-Do not reopen A without a new concrete contradiction.
-
-## V0.4.7-B — review blocker repaired locally, acceptance pending
-
-Delivery note:
+B answers, for a bounded supported straight-line endpoint shape:
 
 ```text
-docs/reviews/2026-09-17-v0.4.7-b-computation-causality-delivery.md
+Was the value copied or calculated?
+What was its original observed origin?
+What later supported write overrode it?
+What was the last proven source before a supported direct return?
 ```
 
-Exact implementation checkpoint:
+B emits/retains separate evidence for:
 
 ```text
-e5b0d47c82b6db99f5184292730919421a6d2a06
-feat: prove V0.4.7-B computation and causality
+stored derivation
+original origin
+later override / mutation causality
+terminal source before direct return
 ```
 
-### What B now proves
+The derivation is explicitly a snapshot, not a dynamic dependency. A later input change does not rewrite an already stored derived value.
 
-For the bounded supported straight-line endpoint shape in exact target-project semantic context, PKC can distinguish:
+### B blocker history and final boundary
 
-```text
-direct copy
-vs
-multi-input scalar derivation
-vs
-later override/mutation causality
-vs
-last proven source before a direct return boundary
-```
+Independent review first found stale terminal authority after nested/deconstruction writes. Subsequent rereview found deconstruction reference-alias reassignment, then opaque/custom effects and `goto` control flow. The fixes are generic fail-closed boundaries, not fixture special cases.
 
-Positive derivation fixture:
+Permanent B negatives cover:
 
-```text
-service.Price = 100m
-service.Discount = 10m
-service.NetPrice = service.Price - service.Discount
-return service.NetPrice
-```
+- nested and deconstruction member writes;
+- deconstruction reference reassignment/declaration aliases;
+- compound/unary writes;
+- opaque invocation;
+- custom getter/setter/constructor effects;
+- user-defined operator/conversion effects;
+- reference aliases/reassignment/reference parameters;
+- branch/loop/try/conditional and `goto`/label/throw control flow;
+- unresolved project semantics.
 
-Runtime result is `90m`. PKC emits a stored `mechanism=derivation` fact with both input occurrences/member identities, exact expression, exact target and source location. Candidate retention, synthesis and workflow Markdown are covered.
+When an unsupported effect appears after a current value proof, current terminal authority is cleared for the remaining suffix while already emitted historical lineage/causality is retained.
 
-Positive override fixture retains the accepted A origin:
+B deliberately does not claim arbitrary persistence analysis or a general alias/effect/dataflow solver. The accepted terminal boundary is a supported direct return.
 
-```text
-group.Price → product.Price → service.Price
-```
+### Final exact-main B gates
 
-then observes:
+All passed on exact code SHA `17fd30b3a4b8178208adabc12c40dee060bedb54`:
 
 ```text
-service.Price = 120m
-return service.Price
-```
-
-PKC retains the original lineage facts, emits a separate `value-causality` fact with `causalRole=override`, references the prior proven value/source, and identifies the override as the last proven source before the supported return.
-
-The generated knowledge intentionally separates:
-
-```text
-Value lineage
-  derivation
-  original origin
-  terminal source
-
-State changes
-  later override / causality
-
-Rules
-  no automatic promotion from B lineage/causality
-```
-
-### Fail-closed B boundary
-
-B does not claim authority for unsupported shapes including:
-
-- branch/loop/try/conditional control flow;
-- opaque invocations;
-- reference-type parameters;
-- non-fresh aliases or reference reassignment;
-- custom/non-auto modeled scalar accessors;
-- unsupported expression operations;
-- compound writes such as `+=` to modeled scalar state;
-- unary writes such as `++` / `--` after a proven value;
-- unresolved target-project semantics.
-
-A static adversarial pass found and fixed the stale-terminal case for compound/unary writes before final acceptance. Permanent regressions require B proof to fail closed there.
-
-No general expression, alias, helper-body, effect or path solver was added.
-
-## B regression coverage
-
-`tests/Pkc.CSharp.Tests/ValueLineageComputationCausalityRegressionTests.cs` covers:
-
-1. executable multi-input derivation `100 - 10 = 90`;
-2. scanner fact metadata for all derivation inputs and target;
-3. candidate retention → synthesis → workflow Markdown;
-4. executable later override returning `120`;
-5. retained original A origin after override;
-6. separate override causality;
-7. exact terminal-source linkage;
-8. custom getter fail-closed;
-9. invocation-based computation fail-closed;
-10. branch computation fail-closed;
-11. alias computation fail-closed;
-12. compound-write stale-terminal fail-closed;
-13. unary-write stale-terminal fail-closed;
-14. no project-semantic context => no authoritative B claim.
-
-All accepted V0.4.6 and V0.4.7-A regressions remain green.
-
-## Exact-main verification for B
-
-All required gates passed on exact SHA `e5b0d47c82b6db99f5184292730919421a6d2a06`:
-
-```text
-CI + full PKC tests + WorkPlay + PokeTrade   35339292475 — PASS
-pinned Loren                                35339292546 — PASS
-Loren-main canary                           35339292501 — PASS
-pinned Jellyfin                             35339292495 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35379750213 — PASS
+pinned Loren                                35379750276 — PASS
+Loren-main canary                           35379750231 — PASS
+pinned Jellyfin                             35379750251 — PASS
 ```
 
 Core:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            114 / 114 PASS
+C# tests:            124 / 124 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
@@ -254,64 +196,95 @@ portable bundle parity:  PASS
 ZIP file-set parity:     PASS
 ZIP byte parity:         PASS
 raw .pkc leak:           none
-src/ leak:               none
-artifact id:             10544800985
-artifact digest:         sha256:c9884964e48daae5f3b511daf361dd2d0ceb25a06ba6504ca53b041c276106cc
+src/ source leak:        none
+artifact id:             10561683704
+artifact digest:         sha256:7d148704af898f82ecfd23d23e3ceeca6936a36da074a225aa4bafd95c042827
 artifact size:           9,162,486 bytes
 ```
 
-## Independent review result and required continuation
+Final rereview found no remaining compile-valid/runtime-valid contradiction inside the documented B proof boundary. B is closed.
 
-Independent review of `e5b0d47...` is complete. It failed on stale terminal-source authority after unsupported nested and deconstruction writes. The review, executable counterexamples and verification are recorded in `docs/reviews/2026-09-18-v0.4.7-b-independent-review.md`.
+## V0.4.7-C — exact next implementation
 
-Before making C changes:
+C answers:
 
-1. Can a compile-valid supported expression produce a false derivation claim?
-2. Can a custom/operator/conversion/accessor effect slip through the supported arithmetic proof?
-3. Can a later write make terminal-source evidence stale without invalidation?
-4. Does a later override preserve original origin instead of rewriting history?
-5. Can same-name or cross-project/member/receiver collisions create a false join?
-6. Can `value-causality` or derivation evidence leak into authoritative business Rules?
-7. Does Markdown overclaim persistence/general dataflow when only a direct supported return is proven?
-8. Is there any compile-valid, runtime-valid contradiction inside the documented straight-line proof boundary?
+> What exact backend value supplies this response field, and how did it travel through entity/domain state → DTO/projection → API output?
 
-Integrate `30e87df` and `76d9bb1`, run the repaired exact-SHA remote/cross-benchmark/portable gates, and confirm the nested/deconstruction terminal regressions remain green. Only then mark B PASS / COMPLETE and start C.
+Start regression-first from current main.
 
-## What comes next after a B PASS
+### Required first positive
 
-V0.4.7-C answers:
+Prove a bounded explicit chain equivalent to:
 
-> What backend value supplies this response field, and how did it travel through entity/domain state → DTO/projection → API output?
+```text
+DomainEntity.Price
+→ ResponseDto.DisplayPrice
+→ API response
+```
 
-C should be regression-first and bounded. It must prove exact target-project semantic identity and source traceability through the supported backend-to-API path, render the mapping in workflow Markdown, and fail closed on ambiguous projection/alias/conversion/custom accessor/effect shapes.
+The DTO property may be renamed; the edge must come from semantic assignment/projection evidence, never name matching.
 
-Do not start D until C passes. Do not start E until D passes. Do not start V0.5 until the V0.4.7/V0.4.x exit gate independently passes.
+Require metadata sufficient to prove:
+
+```text
+source project identity
+source type/member identity
+source occurrence and source location
+target DTO/projection type/member identity
+target occurrence and projection location
+endpoint/API response identity and return location
+analysisMode=project-semantic
+```
+
+Deliver the proven chain through scanner → candidate → synthesis → PO-facing workflow Markdown.
+
+### Required negatives
+
+C must fail closed for at least:
+
+- unrelated same-name entity/DTO properties;
+- same-name types/members across project/assembly context;
+- custom/non-auto source or target accessors where storage/value semantics are not proven;
+- user-defined conversion in the mapping path;
+- reference alias ambiguity/reassignment;
+- opaque invocation/effect between proven mapping and response;
+- unsupported control flow/path ambiguity;
+- missing target-project semantic context.
+
+Preserve independently proven lower-authority facts when C composition is unavailable.
+
+### PokeTrade role
+
+Use `samples/PokeTradeSystem` as the known-answer real project. Do **not** modify PokeTrade merely to manufacture a convenient analyzer shape. If PokeTrade lacks an explicit DTO or renamed projection needed for a blocking regression, create a focused fixture instead. Once the generic implementation is green, PokeTrade remains a cross-project regression gate.
+
+### C delivery discipline
+
+```text
+reproduce RED with focused fixture
+→ implement minimum generic semantic proof
+→ run focused C tests
+→ run related value-lineage tests
+→ run full C# tests + Release build
+→ review complete diff
+→ one coherent C implementation commit/push
+→ exact-SHA CI + PokeTrade + pinned Loren + Loren-main + Jellyfin
+→ independent C rereview
+```
+
+Do not use GitHub Actions as the edit/test loop.
+
+## What remains locked
+
+D will prove API → frontend binding/composition and joint backend/frontend explanations. E is final knowledge-only product acceptance and portable parity. Neither starts until its predecessor is explicitly PASS / COMPLETE.
+
+V0.5 Azure DevOps remains locked until the complete V0.4.7 / V0.4.x PO-question-readiness exit gate passes.
 
 ## Version semantics
 
-Do not conflate:
-
-```text
-roadmap milestone
-tool/package version
-evidence/schema version
-```
-
-Current package remains:
+Roadmap, package and schema versions remain independent. Current package is still:
 
 ```text
 RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Current schema identifiers remain unchanged unless a serialized-contract change is deliberately reviewed and tested.
-
-## Locked state
-
-```text
-V0.4.7-A          PASS / COMPLETE
-V0.4.7-B          REVIEW BLOCKER FIXED LOCALLY / REMOTE GATES REQUIRED
-V0.4.7-C          LOCKED pending repaired B PASS
-V0.4.7-D          LOCKED
-V0.4.7-E          LOCKED
-V0.5 Azure DevOps LOCKED
-```
+Do not bump package/schema versions merely because B closed or C started.

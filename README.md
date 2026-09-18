@@ -4,7 +4,7 @@ PKC turns implementation evidence into portable product knowledge that a Product
 
 The core success condition is not “the scanner found many facts”. It is:
 
-> Can an AI receive only the generated `knowledge/` pack and explain the product/system accurately, at the right abstraction level, without re-reading the source repository?
+> Can an AI receive only the generated knowledge pack and explain the product/system accurately, at the right abstraction level, without re-reading the source repository?
 
 PKC follows an evidence-first compiler model:
 
@@ -15,20 +15,24 @@ deterministic analyzers / adapters
   ↓
 .pkc/facts.json
   ↓
-workflow candidates
+workflow / feature candidates
   ↓
 canonical knowledge
   ↓
 portable Markdown
 ```
 
-Important claims are grounded in source evidence. PKC does not silently invent UI behavior, delivery history or requirements that were not analyzed.
+Important claims are grounded in source evidence. PKC does not silently invent UI behavior, delivery history, value lineage or requirements that were not proven.
 
 ## Current roadmap state
 
 ```text
 V0.4.6 business logic reconstruction       PASS / COMPLETE
-V0.4.7 cross-layer PO-question readiness   IN PROGRESS
+V0.4.7-A origin and copy timing            PASS / COMPLETE
+V0.4.7-B computation and later change      PASS / COMPLETE
+V0.4.7-C backend → DTO/API lineage         CURRENT / UNLOCKED
+V0.4.7-D API → UI composition              LOCKED behind C
+V0.4.7-E product acceptance                LOCKED behind D
 V0.5 Azure DevOps input evidence           LOCKED
 ```
 
@@ -39,24 +43,18 @@ c310e893762997f34562a6b3a62dbab2b05c0c93
 fix: fail closed on Queryable authority
 ```
 
-Final independent review:
+Accepted final V0.4.7-B production code:
 
 ```text
-docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md
-PASS / COMPLETE
+17fd30b3a4b8178208adabc12c40dee060bedb54
+fix: fail closed after opaque terminal effects
 ```
 
-V0.4.6 is closed. V0.4.7 is current. Azure DevOps ingestion remains locked until the V0.4.7 / V0.4.x Product Owner question-readiness exit gate passes.
+V0.4.7-C is current. Azure DevOps ingestion remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
 
-The V0.4.7 acceptance contract is defined in:
-
-```text
-docs/v0.4.7-acceptance-plan.md
-```
-
-Checkpoint A's direct scalar copy/snapshot slice is implemented and exact-SHA verified through `bc938823b46802a4d2c32300a1b6de692f5866ad`. It proves `ProductGroup.Price → Product.Price → Service.Price` for the bounded supported shape, preserves source traceability, and fails closed on stale chain composition after receiver reassignment or opaque mutation. The current next deliverable is A's separate **reference/dynamic-read positive**; A is not complete until that behavior and its portable PO-facing answer pass.
-
-Every V0.4.7 checkpoint must deliver knowledge that answers its PO questions. A covers origin/copy timing, B computation/later changes, C DTO/API output, D frontend binding/visibility, and E final knowledge-only acceptance and portable parity. Rendering starts in A. Fact counts or all-unknown answers do not establish success. See [the roadmap](docs/milestones.md) for completion boundaries and [current status](docs/status.md) for accepted versus pending work.
+Acceptance contract: `docs/v0.4.7-acceptance-plan.md`.
+Current source of truth: `docs/status.md`.
+Continuation state: `docs/handoff.md`.
 
 ## Product-knowledge contract
 
@@ -68,31 +66,11 @@ value lineage / provenance
 mutation / causality
 ```
 
-They can be connected in a PO-facing explanation, but one class must not be silently promoted into another.
+They may be connected in a PO-facing explanation, but one class must not be silently promoted into another.
 
 Conservative authority downgrade is preferred over a false product claim. Downgrading authority must not erase deterministic lower-authority lineage, mutation or causal evidence.
 
 Detailed contract: `docs/product-knowledge-contract.md`.
-
-## Knowledge hierarchy
-
-PKC preserves detailed evidence while presenting product knowledge in layers:
-
-```text
-knowledge/index.md
-  → orient the AI around observed capabilities and boundaries
-
-knowledge/features/**/*.md
-  → capability-level rules, permissions, outcomes and important failures
-
-knowledge/workflows/**/*.md
-  → operation-level behavior, validations, state changes, side effects, flow and evidence
-
-.pkc/facts.json
-  → detailed implementation evidence and analyzer provenance
-```
-
-A transitive helper guard/loop is not automatically a product rule. Detail should be promoted only when it materially affects observable behavior, constraints, outcomes or safety.
 
 ## What works today
 
@@ -100,64 +78,152 @@ Current accepted/development scope includes:
 
 - C#/.NET evidence with Roslyn, preferring the target project's real `MSBuildWorkspace` compilation;
 - explicit C# fallback when target-project semantic context is unavailable;
-- MVC-style and Minimal API backend evidence, including permissions, guards, throws, direct/failure responses, mutations and call relations;
+- MVC-style and Minimal API backend evidence including permissions, guards, throws, direct/failure responses, mutations and calls;
 - conservative business-predicate extraction and Product Owner authority filtering;
-- provider-aware Queryable fail-closed behavior: exact Queryable predicates are observed-only unless provider semantics are independently proven;
-- retention of downgraded predicate evidence through `observes-predicate` rather than deletion;
-- bounded project-semantic scalar value-transfer evidence for direct auto-property copies;
-- stored snapshot lineage rendering with exact receiver/member/value-version composition checks;
-- conservative stale-composition invalidation for receiver reassignment, opaque invocation barriers and tracked unary writes;
+- provider-aware Queryable fail-closed behavior;
+- retention of downgraded predicate evidence rather than deletion;
 - Angular TypeScript structure/routes/HTTP-call shapes through the project-local TypeScript syntactic AST when available;
-- Angular template actions through an explicit conservative template-regex fallback;
-- React/TypeScript through an explicit conservative regex fallback;
+- Angular template actions through explicit conservative fallback;
+- React/TypeScript through conservative fallback;
 - framework-agnostic frontend adapter boundary (`IFrontendAdapter`);
 - UI action → API call → backend endpoint linkage;
-- UI field, validation, visibility/list behavior and frontend/backend validation consistency for currently supported shapes;
 - workflow Markdown, product-feature Markdown and `knowledge/index.md`;
 - portable `PKC_KNOWLEDGE.md` and `PKC_KNOWLEDGE.zip` handoff artifacts;
 - PokeTrade known-answer runnable regression;
 - Loren pinned real-project acceptance plus Loren-main moving canary;
-- Jellyfin pinned independent generalization acceptance with portable parity/no-leak verification.
+- Jellyfin pinned independent generalization with portable parity/no-leak verification.
 
-Runtime browser confirmation is not implemented yet.
+### Accepted V0.4.7 value-lineage scope through B
 
-V0.4.7 generalized reference/dynamic dependencies, derivations, later override/mutation causality, DTO/API/frontend value lineage and joint cross-layer visibility remain pending. The regression contract is defined in `docs/v0.4.7-acceptance-plan.md`.
+PKC additionally supports bounded target-project-semantic evidence for:
 
-## V0.4.7 acceptance focus
+```text
+stored direct copy
+stored snapshot timing
+reference/dynamic read-time dependency
+multi-input scalar derivation
+later supported override / mutation causality
+last proven source before a supported direct return
+```
 
-The current milestone must make portable knowledge answer practical questions such as:
+Canonical examples:
+
+```text
+ProductGroup.Price
+→ Product.Price
+→ Service.Price
+
+ProductGroup.Price
+→ Service.CurrentGroupPrice  // supported dynamic/read-time dependency
+
+Service.Price + Service.Discount
+→ Service.NetPrice           // stored derivation
+```
+
+A stored derivation is a point-in-time snapshot. Later changes to its inputs do not rewrite the stored value without another proven mutation.
+
+B retains original lineage separately from later override/causality and prevents lineage/causality facts from being silently promoted into Rules.
+
+### Fail-closed behavior
+
+The accepted B boundary has permanent regressions for:
+
+- nested/deconstruction property writes;
+- deconstruction reference aliases;
+- compound/unary writes;
+- opaque invocation;
+- custom getter/setter/constructor effects;
+- user-defined operator/conversion effects;
+- reference aliases/reassignment/reference parameters;
+- unsupported branch/loop/try/conditional and `goto`/label/throw control flow;
+- unresolved target-project semantic context.
+
+If an unsupported opaque effect occurs after a current terminal source has been proven, stronger terminal authority is invalidated for the remaining suffix while already proven historical lineage remains available.
+
+This is deliberately **not** a general symbolic execution, alias, effect or arbitrary persistence solver. B's accepted terminal-source boundary is a supported direct return.
+
+## Final V0.4.7-B verification
+
+Exact-main gates on `17fd30b3a4b8178208adabc12c40dee060bedb54`:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35379750213 — PASS
+pinned Loren                                35379750276 — PASS
+Loren-main canary                           35379750231 — PASS
+pinned Jellyfin                             35379750251 — PASS
+```
+
+Core:
+
+```text
+Release build:       0 warnings / 0 errors
+C# tests:            124 / 124 PASS
+frontend tests:      13 / 13 PASS
+tool pack/install:   PASS
+WorkPlay:            PASS
+PokeTrade:           PASS
+```
+
+Pinned Jellyfin:
+
+```text
+facts:                   43,365
+relations:               195,316
+workflow candidates:     386
+product features:        116
+canonical Markdown:      504
+project-semantic facts:  43,365 / 43,365
+portable bundle parity:  PASS
+ZIP parity:              PASS
+raw .pkc/src leak:       none
+```
+
+Final review: `docs/reviews/2026-09-19-v0.4.7-b-final-rereview.md`.
+
+## Current V0.4.7-C focus
+
+C answers:
+
+> What exact backend value supplies this response field, and how did it travel through domain/entity state → DTO/projection → API output?
+
+The first C checkpoint is regression-first and bounded. It must prove an equivalent of:
+
+```text
+DomainEntity.Price
+→ ResponseDto.DisplayPrice
+→ API response
+```
+
+Required properties:
+
+- exact target-project/project-semantic identity;
+- exact source/target type + member identity;
+- source/projection/return locations;
+- renamed DTO mapping supported only when explicit assignment proves it;
+- candidate retention → synthesis → PO-facing workflow Markdown;
+- no lineage from same-name matching alone;
+- fail closed across custom accessors, user-defined conversions, alias ambiguity, opaque effects, unsupported control flow and missing project semantics.
+
+PokeTrade remains the known-answer real project and must not be changed merely to fit the analyzer. Focused fixtures are used for explicit DTO/renamed-property shapes when needed.
+
+D/E/V0.5 remain locked.
+
+## V0.4.7 acceptance questions
+
+The milestone is building toward portable answers for:
 
 ```text
 Where did this value originally come from?
 If the upstream value changes later, does the existing downstream value change automatically?
 What code path can change this value after creation?
 Was this value directly copied or computed?
-What was the last observed source before the value was persisted or returned?
-What backend conditions and frontend conditions jointly determine whether an item is visible?
+What was the last observed source before a supported terminal boundary?
 How did the value move through backend → DTO/projection → API → frontend composition?
-If authority is incomplete, what lineage or causal evidence is still deterministically known?
+What backend + frontend conditions jointly determine visibility?
+If authority is incomplete, what deterministic lineage/causal evidence survives?
 ```
 
-Canonical acceptance lineage starts with:
-
-```text
-ProductGroup.Price
-→ Product.Price
-→ Service.Price
-```
-
-Each proven edge must distinguish, as applicable:
-
-```text
-copy
-snapshot
-derivation
-reference/dynamic
-override
-mutation
-```
-
-A blocking negative regression also uses unrelated same-name members:
+Blocking same-name negatives include unrelated members such as:
 
 ```text
 Product.Price
@@ -166,94 +232,67 @@ Dto.Price
 Component.price
 ```
 
-PKC must never connect lineage merely because names match.
+PKC must never connect them merely because names match.
+
+## Knowledge hierarchy
+
+```text
+knowledge/index.md
+  → observed capabilities and boundaries
+
+knowledge/features/**/*.md
+  → capability-level rules, permissions, outcomes and important failures
+
+knowledge/workflows/**/*.md
+  → operation-level behavior, validations, state changes, side effects, lineage and evidence
+
+.pkc/facts.json
+  → detailed implementation evidence and analyzer provenance
+```
+
+Detailed evidence is preserved while PO-facing output promotes only what materially affects observable behavior or answers the supported question.
 
 ## Analyzer fidelity
 
-Analyzer fidelity is part of the evidence and is not hidden behind a generic "static analysis" label.
-
-Current modes include:
+Current analysis modes include:
 
 ```text
-project-semantic                  high/medium
-  C# target-project MSBuildWorkspace context. Declaration node matches are high confidence;
-  project-loaded-but-node-match-failed evidence is reduced to medium.
+project-semantic
+  C# target-project MSBuildWorkspace context; strongest supported C# authority.
 
-typescript-ast-syntactic          high/medium
-  Angular uses the target repo's local TypeScript parser via ts.createSourceFile.
-  Structural ui-screen/ui-route evidence is high confidence.
-  ui-api-call evidence is medium because receiver type is not checked by a TypeChecker.
+typescript-ast-syntactic
+  Angular project-local TypeScript parser without TypeChecker receiver proof.
 
-loose-roslyn-fallback             medium
-  C# source analyzed without the full target-project reference graph.
+loose-roslyn-fallback
+  C# source analyzed without full target-project reference graph.
 
-angular-template-regex-fallback   medium
-  Angular template action/visibility extraction.
+angular-template-regex-fallback
+  conservative Angular template action/visibility extraction.
 
-regex-fallback                    low
-  conservative text-pattern fallback, currently including React and Angular when the TS AST path is unavailable.
+regex-fallback
+  low-authority conservative text fallback, including currently supported React shapes.
 ```
 
-Angular `ui-api-call` facts additionally carry:
-
-```text
-typescriptSemanticContext: syntax-only-no-type-checker
-httpReceiverResolution: syntactic-unverified
-```
-
-### Angular AST runtime precondition
-
-The higher-fidelity Angular TypeScript path currently requires:
-
-1. `node` available on `PATH`;
-2. a project-local `node_modules/typescript/lib/typescript.js`, normally produced by the repository dependency-install step.
-
-If unavailable, PKC records an explicit fallback rather than hiding the downgrade.
+Angular `ui-api-call` facts explicitly record syntax-only receiver limitations. If required project-local TypeScript is unavailable, PKC records the fallback rather than hiding the downgrade.
 
 ## Version semantics
 
-PKC has independent version domains. They must not be mechanically synchronized.
-
-### Roadmap milestone version
-
-Examples:
+Roadmap milestone, tool/package and serialized schema versions are independent.
 
 ```text
-V0.4.6
-V0.4.7
-V0.5
+roadmap:             V0.4.7-C current
+tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
+C# raw schema:       0.4.4-csharp-raw
+merged facts schema: 0.4.4
+cross-stack schema:  0.4.6
+frontend schema:     0.4.3-frontend
 ```
 
-This tracks roadmap and acceptance progress.
-
-### Tool/package version
-
-The last accepted packaged checkpoint remains:
-
-```text
-RuaDen.Pkc.Tool 0.4.3-preview.2
-```
-
-This is the distributable .NET tool version. Moving the roadmap to V0.4.7 does not automatically bump it.
-
-### Evidence/schema version
-
-Serialized documents have their own contract identifiers. Existing examples include:
-
-```text
-0.4.4-csharp-raw
-0.4.4
-0.4.6
-0.4.3-frontend
-```
-
-These are schema/contract versions, not the current roadmap milestone.
-
-Do not mechanically change an existing schema string because V0.4.7 is current. A schema version changes only when the serialized contract or semantics for that artifact change, with explicit compatibility and regression coverage.
+Do not mechanically bump package or schema versions when a roadmap checkpoint advances.
 
 ## Quickstart from source
 
-Until a new public package/release is explicitly accepted, PKC can be packed and installed locally at the accepted package version:
+Until a new public package/release is explicitly accepted:
 
 ```bash
 dotnet pack src/Pkc.Cli/Pkc.Cli.csproj -c Release -o ./artifacts/tool
@@ -275,7 +314,7 @@ pkc scan <repository-path>
 
 ## Output and AI handoff
 
-`pkc build <repository-path>` keeps the structured knowledge pack and also produces portable handoff artifacts:
+`pkc build <repository-path>` produces:
 
 ```text
 .pkc/
@@ -287,11 +326,7 @@ knowledge/
   AI_INSTRUCTIONS.md
   index.md
   features/
-    <area>/
-      <feature>.md
   workflows/
-    <area>/
-      <workflow>.md
 
 PKC_KNOWLEDGE.md
 PKC_KNOWLEDGE.zip
@@ -301,97 +336,63 @@ Recommended usage:
 
 ```text
 single-file AI upload
-→ upload PKC_KNOWLEDGE.md
+→ PKC_KNOWLEDGE.md
 
-AI/workspace that supports multiple files
-→ provide the knowledge/ pack
-→ AI starts from AI_INSTRUCTIONS.md then index.md
+workspace supporting multiple files
+→ knowledge/ starting from AI_INSTRUCTIONS.md and index.md
 
-archive-capable destination or storage/sharing
-→ use PKC_KNOWLEDGE.zip
+archive/storage
+→ PKC_KNOWLEDGE.zip
 ```
 
-The ZIP is a transport convenience, not a required AI interface. Archive support varies by destination. `PKC_KNOWLEDGE.md` exists so a PO can use a one-file handoff without understanding PKC's internal folder layout.
+The ZIP is a transport convenience. It contains portable knowledge by default, not raw `.pkc/facts.json` or source code.
 
-The ZIP contains only the portable `knowledge/` files by default; it does not include source code or raw `.pkc/facts.json`.
-
-Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unknown until those evidence sources are explicitly added.
-
-Detailed handoff contract: `docs/ai-handoff.md`.
+Generated knowledge is currently `code-observed`. Requirement intent and delivery history remain unavailable until their evidence sources are integrated.
 
 ## Validation strategy
 
-PKC deliberately uses multiple benchmark roles:
-
 ```text
-PokeTrade
-→ known-answer runnable regression
-
-Loren pinned commit
-→ accepted V0.4.4 real-project knowledge-readiness benchmark
-
-Loren main
-→ moving non-blocking canary
-
-Jellyfin pinned commit
-→ accepted V0.4.5 independent anti-overfit/generalization benchmark
-
-V0.4.7 focused fixtures
-→ current cross-entity/cross-layer PO-question-readiness regression surface
+focused checkpoint fixtures
+→ full C# tests
+→ frontend tests when touched
+→ Release build
+→ PokeTrade known-answer
+→ Loren pinned
+→ Loren-main canary
+→ Jellyfin pinned
+→ portable parity/no-leak
+→ independent rereview
 ```
 
-V0.4.4 and V0.4.5 are historical accepted gates, not current unfinished work. V0.4.6 is also accepted and closed.
-
-A CI/grep suite is necessary but does not by itself prove V0.4.7 PO-question readiness. V0.4.7 must add focused semantic regressions, portable-answer validation and cross-benchmark verification before the V0.4.x exit gate can pass.
-
-V0.5 Azure DevOps remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
-
-Detailed historical/current exit plan: `docs/real-project-trial.md`.
-
-## V0.4.6 non-blocking warnings carried forward
-
-```text
-W10.1
-Observed-only predicate evidence is separated from Rules but rendered Evidence does not explicitly print `observed-only`.
-
-W10.2
-Queryable names remain in old safe-operation sets but are unreachable behind the Queryable fail-closed guard.
-```
-
-These are V0.4.7 maintenance/clarity considerations. They do not reopen V0.4.6.
+CI is the final clean-environment layer, not the normal edit/test loop.
 
 ## Planned, not implemented yet
 
-- V0.4.7 reference/dynamic-read dependency proof and temporal explanation;
-- generalized derived/computed lineage and later override/mutation causality;
-- generalized backend → DTO/projection → API → frontend value composition;
-- generalized joint backend/frontend visibility explanation;
-- TypeScript `Program` / `TypeChecker` semantic analysis for Angular receiver/type resolution unless required by a proven V0.4.7 gap;
+- C: generalized bounded backend entity/domain → DTO/projection → API response lineage;
+- D: API result → frontend binding/composition and joint backend/frontend visibility;
+- E: final knowledge-only V0.4.7 acceptance;
+- TypeScript `Program` / `TypeChecker` semantic analysis unless required by a proven gap;
 - React AST-backed analysis unless required by a proven gap;
 - full Angular template AST/compiler analysis unless required by a proven gap;
-- ASP.NET MVC / Razor Pages, Blazor and Vue frontend adapters;
+- additional frontend/backend framework adapters;
 - Azure DevOps Epic / Feature / PBI / Sprint evidence;
 - incremental compilation and PR knowledge diffs;
 - runtime UI confirmation;
 - product gap/drift analysis;
 - optional LLM-assisted synthesis where deterministic grouping is insufficient;
-- optional live delivery adapters such as MCP/connector/workspace synchronization after the portable knowledge contract is proven.
+- optional live delivery adapters after the portable knowledge contract is proven.
 
-These are roadmap items, not automatic V0.4.7 work. A new analyzer capability enters the milestone only when a concrete acceptance regression proves it is required.
+A new analyzer capability enters a milestone only when a concrete acceptance regression proves it is needed.
 
 ## Project status
 
-`docs/status.md` is the current source of truth. `docs/handoff.md` is the continuation state. `docs/v0.4.7-acceptance-plan.md` defines the current acceptance/regression contract. `docs/real-project-trial.md` preserves the V0.4.x real-project exit history and current V0.5 unlock gate. `docs/milestones.md` defines the roadmap gates.
+Authoritative project files:
 
-See also:
-
-- `docs/vision.md`
-- `docs/architecture.md`
-- `docs/product-knowledge-contract.md`
 - `docs/status.md`
 - `docs/handoff.md`
 - `docs/milestones.md`
 - `docs/v0.4.7-acceptance-plan.md`
+- `docs/product-knowledge-contract.md`
+- `docs/vision.md`
 - `docs/real-project-trial.md`
 - `docs/ai-handoff.md`
-- `docs/golden-output.md`
