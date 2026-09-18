@@ -157,10 +157,23 @@ internal sealed class CSharpComputationCausalityEnricher
         var currentValues = new Dictionary<string, ProvenValue>(StringComparer.Ordinal);
         var emittedFacts = new List<EvidenceFact>();
         var relations = new List<EvidenceRelation>();
+        var deconstructionReferenceAliasBlocked = false;
 
         foreach (var statement in body.Statements)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (deconstructionReferenceAliasBlocked)
+            {
+                continue;
+            }
+
+            if (HasUnsupportedDeconstructionReferenceAlias(statement, semanticModel, cancellationToken))
+            {
+                currentValues.Clear();
+                deconstructionReferenceAliasBlocked = true;
+                continue;
+            }
 
             foreach (var nestedAssignment in statement.DescendantNodes().OfType<AssignmentExpressionSyntax>())
             {
@@ -602,6 +615,52 @@ internal sealed class CSharpComputationCausalityEnricher
                 return symbol is ILocalSymbol or IParameterSymbol &&
                        model.GetTypeInfo(assignment.Left, cancellationToken).Type is { IsReferenceType: true };
             });
+    }
+
+    private static bool HasUnsupportedDeconstructionReferenceAlias(
+        StatementSyntax statement,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        foreach (var assignment in statement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>())
+        {
+            var target = UnwrapParentheses(assignment.Left);
+            if (target is TupleExpressionSyntax &&
+                WritesReferenceLocalOrParameter(target, model, cancellationToken))
+            {
+                return true;
+            }
+        }
+
+        return statement.DescendantNodesAndSelf()
+            .OfType<DeclarationExpressionSyntax>()
+            .Any(declaration => WritesReferenceLocalOrParameter(declaration, model, cancellationToken));
+    }
+
+    private static bool WritesReferenceLocalOrParameter(
+        ExpressionSyntax target,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        target = UnwrapParentheses(target);
+        return target switch
+        {
+            IdentifierNameSyntax identifier => model.GetSymbolInfo(identifier, cancellationToken).Symbol switch
+            {
+                ILocalSymbol local => local.Type.IsReferenceType,
+                IParameterSymbol parameter => parameter.Type.IsReferenceType,
+                _ => false
+            },
+            TupleExpressionSyntax tuple => tuple.Arguments.Any(argument =>
+                WritesReferenceLocalOrParameter(argument.Expression, model, cancellationToken)),
+            DeclarationExpressionSyntax declaration => declaration.Designation
+                .DescendantNodesAndSelf()
+                .OfType<SingleVariableDesignationSyntax>()
+                .Any(designation =>
+                    model.GetDeclaredSymbol(designation, cancellationToken) is ILocalSymbol local &&
+                    local.Type.IsReferenceType),
+            _ => false
+        };
     }
 
     private static bool HasUnsupportedScalarWrite(
