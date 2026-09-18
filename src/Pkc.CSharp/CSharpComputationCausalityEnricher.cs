@@ -157,21 +157,22 @@ internal sealed class CSharpComputationCausalityEnricher
         var currentValues = new Dictionary<string, ProvenValue>(StringComparer.Ordinal);
         var emittedFacts = new List<EvidenceFact>();
         var relations = new List<EvidenceRelation>();
-        var deconstructionReferenceAliasBlocked = false;
+        var terminalAuthorityBlocked = false;
 
         foreach (var statement in body.Statements)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (deconstructionReferenceAliasBlocked)
+            if (terminalAuthorityBlocked)
             {
                 continue;
             }
 
+            var hadCurrentValues = currentValues.Count > 0;
             if (HasUnsupportedDeconstructionReferenceAlias(statement, semanticModel, cancellationToken))
             {
                 currentValues.Clear();
-                deconstructionReferenceAliasBlocked = true;
+                terminalAuthorityBlocked = true;
                 continue;
             }
 
@@ -239,6 +240,11 @@ internal sealed class CSharpComputationCausalityEnricher
                 continue;
             }
 
+            if (statement is EmptyStatementSyntax)
+            {
+                continue;
+            }
+
             if (statement is not ExpressionStatementSyntax expressionStatement ||
                 expressionStatement.Expression is not AssignmentExpressionSyntax assignment ||
                 !assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) ||
@@ -250,6 +256,12 @@ internal sealed class CSharpComputationCausalityEnricher
                     out var target) ||
                 !IsSupportedStoredScalarAutoProperty(target.Property))
             {
+                if (hadCurrentValues)
+                {
+                    currentValues.Clear();
+                    terminalAuthorityBlocked = true;
+                }
+
                 continue;
             }
 
@@ -284,24 +296,37 @@ internal sealed class CSharpComputationCausalityEnricher
                 continue;
             }
 
-            if (currentValues.TryGetValue(target.Key, out var priorValue) &&
-                semanticModel.GetConstantValue(assignment.Right, cancellationToken) is { HasValue: true })
+            var constantValue = semanticModel.GetConstantValue(assignment.Right, cancellationToken);
+            if (constantValue.HasValue)
             {
-                var causalityFact = CreateOverrideFact(
-                    endpoint,
-                    projectPath,
-                    assignment,
-                    target,
-                    priorValue,
-                    knownFacts);
-                emittedFacts.Add(causalityFact);
-                relations.Add(new EvidenceRelation(endpoint.Id, "mutates", causalityFact.Id, causalityFact.Source));
-                knownFacts[causalityFact.Id] = causalityFact;
-                currentValues[target.Key] = new ProvenValue(causalityFact.Id, "override");
+                if (currentValues.TryGetValue(target.Key, out var priorValue))
+                {
+                    var causalityFact = CreateOverrideFact(
+                        endpoint,
+                        projectPath,
+                        assignment,
+                        target,
+                        priorValue,
+                        knownFacts);
+                    emittedFacts.Add(causalityFact);
+                    relations.Add(new EvidenceRelation(endpoint.Id, "mutates", causalityFact.Id, causalityFact.Source));
+                    knownFacts[causalityFact.Id] = causalityFact;
+                    currentValues[target.Key] = new ProvenValue(causalityFact.Id, "override");
+                }
+                else
+                {
+                    currentValues.Remove(target.Key);
+                }
+
                 continue;
             }
 
             currentValues.Remove(target.Key);
+            if (hadCurrentValues)
+            {
+                currentValues.Clear();
+                terminalAuthorityBlocked = true;
+            }
         }
 
         return new ExtractionResult(emittedFacts, relations);
@@ -744,7 +769,10 @@ internal sealed class CSharpComputationCausalityEnricher
             LocalFunctionStatementSyntax or
             UsingStatementSyntax or
             LockStatementSyntax or
-            FixedStatementSyntax);
+            FixedStatementSyntax or
+            GotoStatementSyntax or
+            LabeledStatementSyntax or
+            ThrowStatementSyntax);
         if (unsupported)
         {
             return true;
