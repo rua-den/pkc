@@ -8,8 +8,8 @@ Its goal is to turn implementation and delivery evidence into a portable knowled
 
 Long-term inputs:
 
-- backend/source code,
-- frontend/UI implementation and eventually runtime UI evidence,
+- backend/source code;
+- frontend/UI implementation and eventually runtime UI evidence;
 - eventually Azure DevOps Epics, Features, PBIs, Sprints and history.
 
 PKC should generate knowledge that explains:
@@ -49,7 +49,7 @@ Missing authority must not delete independently known evidence. Unsupported beha
 
 ## Current accepted scope
 
-Accepted scope through **V0.4.7-B** now includes:
+Accepted scope through **V0.4.7-C** includes:
 
 - C#/.NET project-semantic evidence with conservative fallback behavior;
 - supported static frontend evidence and backend/frontend workflow linkage;
@@ -60,17 +60,20 @@ Accepted scope through **V0.4.7-B** now includes:
 - bounded multi-input scalar derivation with snapshot semantics;
 - later supported override/mutation causality retained separately from original origin;
 - last proven source before a supported direct return boundary;
-- fail-closed terminal authority across nested/deconstruction writes, aliases, opaque effects, custom accessors/constructors/operators/conversions and unsupported control flow;
+- exact target-project-semantic backend entity/domain property → explicit DTO/response property → API-response lineage;
+- renamed DTO property support only when semantic assignment proves the edge;
+- exact project/assembly/type/member identity and source/projection/response locations for the supported C chain;
+- fail-closed authority across aliases, opaque/custom effects, unsupported control flow, same-name collisions and same full symbol names across assemblies;
 - PokeTrade known-answer, Loren pinned + moving canary and pinned Jellyfin generalization/parity gates.
 
-Accepted final B code:
+Accepted final C code:
 
 ```text
-17fd30b3a4b8178208adabc12c40dee060bedb54
-fix: fail closed after opaque terminal effects
+fbb64b9917da1f63362558355201ff7998384ba0
+feat: prove backend API projection lineage
 ```
 
-V0.4.7-C is the current checkpoint. It extends the proven backend value path through exact entity/domain property → DTO/projection property → API response lineage. D will then cover API → frontend composition and visibility. E is final knowledge-only product acceptance.
+V0.4.7-D is the current checkpoint. It extends the proven API value path through exact frontend HTTP/result → component/view-model state → rendered/displayed value, then composes backend/frontend visibility only for the same proven item/dataflow path. E is final knowledge-only product acceptance.
 
 See `docs/status.md`, `docs/milestones.md` and `docs/v0.4.7-acceptance-plan.md` for the authoritative checkpoint boundaries.
 
@@ -78,7 +81,9 @@ See `docs/status.md`, `docs/milestones.md` and `docs/v0.4.7-acceptance-plan.md` 
 
 PKC is not trying to become a general symbolic execution engine, alias solver or arbitrary effect/dataflow solver. Each accepted capability has an explicit supported proof boundary and fails closed outside it.
 
-Current B terminal-source support is a bounded supported **direct-return** proof; it is not a claim of arbitrary persistence or helper-call analysis.
+Accepted C support does not imply arbitrary helper projection analysis, custom accessor semantics, constructor mapping, response-wrapper unwrapping or name-based DTO matching.
+
+D must not silently promote syntax-only frontend evidence into semantic identity. If exact frontend receiver/result/binding identity cannot be proven inside the supported boundary, the stronger cross-layer edge must remain unknown while accepted backend evidence remains available.
 
 Azure DevOps history, incremental compilation, runtime UI confirmation and product insight/drift analysis are future capabilities. Do not describe them as available today. Delivery-history answers require the future Azure DevOps input.
 
@@ -94,7 +99,7 @@ A cross-layer value question should likewise become answerable from compiled kno
 
 > Which backend property supplies this API field, how was it computed or overridden, and where is it used in the UI?
 
-A and B now cover backend origin/timing/computation/change. C is current for DTO/API delivery; D will finish the frontend half.
+A and B cover backend origin/timing/computation/change. C now closes backend entity/domain → DTO/API delivery. D is current for API → frontend binding and joint visibility.
 
 ## Core principles
 

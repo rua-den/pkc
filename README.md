@@ -30,8 +30,8 @@ Important claims are grounded in source evidence. PKC does not silently invent U
 V0.4.6 business logic reconstruction       PASS / COMPLETE
 V0.4.7-A origin and copy timing            PASS / COMPLETE
 V0.4.7-B computation and later change      PASS / COMPLETE
-V0.4.7-C backend → DTO/API lineage         CURRENT / UNLOCKED
-V0.4.7-D API → UI composition              LOCKED behind C
+V0.4.7-C backend → DTO/API lineage         PASS / COMPLETE
+V0.4.7-D API → UI composition              CURRENT / UNLOCKED
 V0.4.7-E product acceptance                LOCKED behind D
 V0.5 Azure DevOps input evidence           LOCKED
 ```
@@ -43,14 +43,14 @@ c310e893762997f34562a6b3a62dbab2b05c0c93
 fix: fail closed on Queryable authority
 ```
 
-Accepted final V0.4.7-B production code:
+Accepted final V0.4.7-C production code:
 
 ```text
-17fd30b3a4b8178208adabc12c40dee060bedb54
-fix: fail closed after opaque terminal effects
+fbb64b9917da1f63362558355201ff7998384ba0
+feat: prove backend API projection lineage
 ```
 
-V0.4.7-C is current. Azure DevOps ingestion remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
+V0.4.7-D is current. Azure DevOps ingestion remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
 
 Acceptance contract: `docs/v0.4.7-acceptance-plan.md`.
 Current source of truth: `docs/status.md`.
@@ -74,7 +74,7 @@ Detailed contract: `docs/product-knowledge-contract.md`.
 
 ## What works today
 
-Current accepted/development scope includes:
+Current accepted scope includes:
 
 - C#/.NET evidence with Roslyn, preferring the target project's real `MSBuildWorkspace` compilation;
 - explicit C# fallback when target-project semantic context is unavailable;
@@ -93,7 +93,7 @@ Current accepted/development scope includes:
 - Loren pinned real-project acceptance plus Loren-main moving canary;
 - Jellyfin pinned independent generalization with portable parity/no-leak verification.
 
-### Accepted V0.4.7 value-lineage scope through B
+### Accepted V0.4.7 value-lineage scope through C
 
 PKC additionally supports bounded target-project-semantic evidence for:
 
@@ -104,6 +104,7 @@ reference/dynamic read-time dependency
 multi-input scalar derivation
 later supported override / mutation causality
 last proven source before a supported direct return
+backend entity/domain property → explicit DTO/response property → API response
 ```
 
 Canonical examples:
@@ -118,46 +119,52 @@ ProductGroup.Price
 
 Service.Price + Service.Discount
 → Service.NetPrice           // stored derivation
+
+ProductEntity.Price
+→ PriceResponse.DisplayPrice // explicit semantic DTO/API projection
 ```
 
 A stored derivation is a point-in-time snapshot. Later changes to its inputs do not rewrite the stored value without another proven mutation.
 
-B retains original lineage separately from later override/causality and prevents lineage/causality facts from being silently promoted into Rules.
+C's DTO/API edge is based on exact target-project semantic assignment and project/assembly/type/member identity. Renamed DTO properties are supported when assignment proves the mapping. Same/equivalent names alone never create lineage.
 
 ### Fail-closed behavior
 
-The accepted B boundary has permanent regressions for:
+Permanent accepted regressions through C include:
 
-- nested/deconstruction property writes;
-- deconstruction reference aliases;
+- nested/deconstruction property writes and deconstruction aliases;
 - compound/unary writes;
 - opaque invocation;
 - custom getter/setter/constructor effects;
 - user-defined operator/conversion effects;
 - reference aliases/reassignment/reference parameters;
 - unsupported branch/loop/try/conditional and `goto`/label/throw control flow;
-- unresolved target-project semantic context.
+- unresolved target-project semantic context;
+- unrelated same-name DTO/entity properties;
+- same-name namespace collisions;
+- same full type/member name across different assemblies;
+- custom source/target DTO accessors and unsupported projection effects.
 
-If an unsupported opaque effect occurs after a current terminal source has been proven, stronger terminal authority is invalidated for the remaining suffix while already proven historical lineage remains available.
+Unsupported shapes fail closed while independently proven lower-authority evidence remains available.
 
-This is deliberately **not** a general symbolic execution, alias, effect or arbitrary persistence solver. B's accepted terminal-source boundary is a supported direct return.
+This is deliberately **not** a general symbolic execution, alias, effect, arbitrary helper-projection or persistence solver.
 
-## Final V0.4.7-B verification
+## Final V0.4.7-C verification
 
-Exact-main gates on `17fd30b3a4b8178208adabc12c40dee060bedb54`:
+Exact-main gates on `fbb64b9917da1f63362558355201ff7998384ba0`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35379750213 — PASS
-pinned Loren                                35379750276 — PASS
-Loren-main canary                           35379750231 — PASS
-pinned Jellyfin                             35379750251 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35416169067 — PASS
+pinned Loren                                35416169091 — PASS
+Loren-main canary                           35416169051 — PASS
+pinned Jellyfin                             35416169039 — PASS
 ```
 
 Core:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            124 / 124 PASS
+C# tests:            136 / 136 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
@@ -176,37 +183,40 @@ project-semantic facts:  43,365 / 43,365
 portable bundle parity:  PASS
 ZIP parity:              PASS
 raw .pkc/src leak:       none
+artifact id:             10575663250
+artifact digest:         sha256:857d33020332f4a68a69177b6809136ebe24b9ea86b5576efc8dbc69d8266347
+artifact size:           9,162,486 bytes
 ```
 
-Final review: `docs/reviews/2026-09-19-v0.4.7-b-final-rereview.md`.
+Final C review: `docs/reviews/2026-09-19-v0.4.7-c-final-rereview.md`.
 
-## Current V0.4.7-C focus
+## Current V0.4.7-D focus
 
-C answers:
+D answers:
 
-> What exact backend value supplies this response field, and how did it travel through domain/entity state → DTO/projection → API output?
+> What frontend state/display does this proven API result feed, and what backend + frontend conditions jointly determine visibility for the same proven item path?
 
-The first C checkpoint is regression-first and bounded. It must prove an equivalent of:
+The first D checkpoint is regression-first and bounded. It must prove an equivalent of:
 
 ```text
-DomainEntity.Price
-→ ResponseDto.DisplayPrice
-→ API response
+API response field
+→ frontend HTTP/API result
+→ component/view-model assignment
+→ rendered/displayed value
 ```
 
 Required properties:
 
-- exact target-project/project-semantic identity;
-- exact source/target type + member identity;
-- source/projection/return locations;
-- renamed DTO mapping supported only when explicit assignment proves it;
+- exact backend response identity and frontend result/receiver/assignment identity;
+- backend and frontend source locations;
+- no normalized-name, route-label, casing or property-name join;
 - candidate retention → synthesis → PO-facing workflow Markdown;
-- no lineage from same-name matching alone;
-- fail closed across custom accessors, user-defined conversions, alias ambiguity, opaque effects, unsupported control flow and missing project semantics.
+- fail closed when receiver/result/binding identity is ambiguous or unsupported;
+- retain accepted backend lineage when frontend composition cannot be proven.
 
-PokeTrade remains the known-answer real project and must not be changed merely to fit the analyzer. Focused fixtures are used for explicit DTO/renamed-property shapes when needed.
+Joint backend/frontend visibility composition follows only after the same item/dataflow path is proven. Business-condition authority and frontend visibility evidence remain separate.
 
-D/E/V0.5 remain locked.
+E and V0.5 remain locked.
 
 ## V0.4.7 acceptance questions
 
@@ -223,17 +233,6 @@ What backend + frontend conditions jointly determine visibility?
 If authority is incomplete, what deterministic lineage/causal evidence survives?
 ```
 
-Blocking same-name negatives include unrelated members such as:
-
-```text
-Product.Price
-Service.Price
-Dto.Price
-Component.price
-```
-
-PKC must never connect them merely because names match.
-
 ## Knowledge hierarchy
 
 ```text
@@ -249,8 +248,6 @@ knowledge/workflows/**/*.md
 .pkc/facts.json
   → detailed implementation evidence and analyzer provenance
 ```
-
-Detailed evidence is preserved while PO-facing output promotes only what materially affects observable behavior or answers the supported question.
 
 ## Analyzer fidelity
 
@@ -273,14 +270,14 @@ regex-fallback
   low-authority conservative text fallback, including currently supported React shapes.
 ```
 
-Angular `ui-api-call` facts explicitly record syntax-only receiver limitations. If required project-local TypeScript is unavailable, PKC records the fallback rather than hiding the downgrade.
+D must not pretend a syntax-only frontend fact has semantic identity it does not actually prove.
 
 ## Version semantics
 
 Roadmap milestone, tool/package and serialized schema versions are independent.
 
 ```text
-roadmap:             V0.4.7-C current
+roadmap:             V0.4.7-D current
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
@@ -353,8 +350,7 @@ Generated knowledge is currently `code-observed`. Requirement intent and deliver
 
 ```text
 focused checkpoint fixtures
-→ full C# tests
-→ frontend tests when touched
+→ full C# / frontend tests as relevant
 → Release build
 → PokeTrade known-answer
 → Loren pinned
@@ -368,10 +364,9 @@ CI is the final clean-environment layer, not the normal edit/test loop.
 
 ## Planned, not implemented yet
 
-- C: generalized bounded backend entity/domain → DTO/projection → API response lineage;
 - D: API result → frontend binding/composition and joint backend/frontend visibility;
 - E: final knowledge-only V0.4.7 acceptance;
-- TypeScript `Program` / `TypeChecker` semantic analysis unless required by a proven gap;
+- TypeScript `Program` / `TypeChecker` semantic analysis unless required by a proven D gap;
 - React AST-backed analysis unless required by a proven gap;
 - full Angular template AST/compiler analysis unless required by a proven gap;
 - additional frontend/backend framework adapters;
