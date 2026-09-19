@@ -2,7 +2,7 @@
 
 Use this file when continuing PKC in another coding or review thread.
 
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
 ## Read first
 
@@ -34,7 +34,14 @@ fbb64b9917da1f63362558355201ff7998384ba0
 feat: prove backend API projection lineage
 ```
 
-The current `main` may also contain a later docs-only C closure checkpoint. Verify HEAD before work; do not reset to the production SHA.
+The D pre-implementation analysis described below was performed from docs-only `main` parent:
+
+```text
+f3ee356339ff718835801a3b52b1366e86ccf61f
+docs: close V0.4.7-C and open D [skip ci]
+```
+
+No D production implementation was committed in that analysis session. Verify current `main` before work; do not reset to either historical SHA.
 
 ## Current milestone state
 
@@ -220,6 +227,70 @@ Keep authorities separate. Frontend evidence must not upgrade an observed-only b
 Begin with a focused compile-valid backend/frontend fixture that has an exact API field → frontend result → component/view-model assignment. Add a collision with the same/equivalent frontend property name that must stay disconnected. Preserve both backend and frontend source locations in deterministic evidence and PO-facing Markdown.
 
 Then add joint-visibility composition only after the binding identity is proven.
+
+### D pre-implementation analysis handoff
+
+The current frontend pipeline already proves service/API-method/list flow at a coarser level:
+
+```text
+ui-api-call
+→ ui-result-binding
+→ ui-list-render
+```
+
+with service ownership qualified by TypeScript source module + class identity. Relevant seams are:
+
+```text
+src/Pkc.Frontend/AngularTypeScriptAstScanner.cs
+src/Pkc.Frontend/AngularListBehaviorScanner.cs
+src/Pkc.Frontend/AngularServiceIdentityEnricher.cs
+src/Pkc.Knowledge/CrossStackFeatureCandidateBuilder.cs
+src/Pkc.Knowledge/GroundedKnowledgeSynthesizer.cs
+```
+
+Do not weaken the existing service-identity regressions in `AngularServiceAwareListCorrelationRegressionTests`.
+
+The first D property-level proof must **not** connect backend `DisplayPrice` to frontend `displayPrice` merely because the names normalize or differ only by casing. That would violate R7.9's explicit no-name-similarity rule.
+
+Use an explicit wire-contract identity as the first supported boundary. A suitable focused fixture is equivalent to:
+
+```text
+backend:
+  PriceResponse.DisplayPrice
+  [JsonPropertyName("displayPrice")]
+  returned by exact GET endpoint already carrying C terminal evidence
+
+frontend service:
+  exact GET call for that endpoint
+  typed result whose property is `displayPrice`
+
+component:
+  exact subscribe/result receiver
+  explicit assignment such as `this.displayPrice = result.displayPrice`
+
+render:
+  exact Angular interpolation/binding that reads `displayPrice`
+```
+
+The cross-layer join should require explicit backend wire-name proof plus exact frontend receiver/member dataflow. Route matching may scope endpoint ↔ API-call correlation, but route/text/property similarity must never be sufficient to create the field-level edge.
+
+Recommended regression-first order for Codex:
+
+```text
+1. Add a focused D R7.9 test that currently fails because no property-level API→UI lineage fact exists.
+2. Positive fixture: C-proven response field with explicit JsonPropertyName wire identity → typed frontend response member → component assignment → rendered interpolation.
+3. Negative: same/equivalent frontend property name on an unrelated result/service remains disconnected.
+4. Negative: backend member and frontend member differ only by casing/name normalization but have no explicit wire contract; fail closed.
+5. Negative: ambiguous/unresolved service/result receiver or fallback-only frontend evidence; fail closed.
+6. Assert C `api-projection` and `API response field` facts remain present even when D composition fails.
+7. Preserve backend response location, frontend API-call location, result/member assignment location and render location in deterministic metadata/evidence.
+8. Deliver the proven chain through candidate → knowledge synthesis → PO-facing Markdown.
+9. Only after this R7.9 binding identity is green should R7.10 joint backend/frontend visibility be implemented.
+```
+
+Prefer a new narrow D enricher/fact kind over extending route/name heuristics. Keep production logic generic; do not modify PokeTrade merely to manufacture the first supported property-level shape.
+
+No production code from this pre-implementation analysis was committed, and no local test claim is recorded for D. The next coding session must reproduce the red regression and validate the implementation locally before any production commit/push.
 
 Required D gates remain:
 
