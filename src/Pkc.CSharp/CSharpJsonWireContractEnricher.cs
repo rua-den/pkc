@@ -93,7 +93,7 @@ internal sealed class CSharpJsonWireContractEnricher
                     var model = compilation.GetSemanticModel(tree, ignoreAccessibility: true);
                     var matchingProperties = syntaxRoot.DescendantNodes()
                         .OfType<PropertyDeclarationSyntax>()
-                        .Where(property => StartLine(property) == startLine)
+                        .Where(property => IdentifierStartLine(property) == startLine)
                         .Select(property => new
                         {
                             Syntax = property,
@@ -245,8 +245,8 @@ internal sealed class CSharpJsonWireContractEnricher
         return $"{relativePath}:L{span.StartLinePosition.Line + 1}";
     }
 
-    private static int StartLine(SyntaxNode node) =>
-        node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+    private static int IdentifierStartLine(PropertyDeclarationSyntax property) =>
+        property.Identifier.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
 
     private static void EnsureMsBuildRegistered()
     {
