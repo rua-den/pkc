@@ -69,6 +69,24 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Html_attribute_interpolation_is_not_an_authoritative_render()
+    {
+        await AssertNoAuthoritativeRenderAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <div data-price="{{ displayPrice }}"></div>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
     public async Task Bare_ng_template_interpolation_is_not_an_authoritative_render_or_visibility()
     {
         await AssertNoAuthoritativeRenderAsync("""

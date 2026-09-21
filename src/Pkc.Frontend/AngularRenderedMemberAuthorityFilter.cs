@@ -104,6 +104,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 var line = 1 + text.AsSpan(0, absoluteIndex).Count('\n');
                 if (line == sourceLine &&
                     !IsInsideHtmlComment(body.Value, memberMatch.Index) &&
+                    !IsInsideHtmlTag(body.Value, memberMatch.Index) &&
                     !IsInsideInertNgTemplate(body.Value, memberMatch.Index))
                 {
                     count++;
@@ -157,6 +158,18 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         }
 
         var close = text.LastIndexOf("-->", position, StringComparison.Ordinal);
+        return close < open;
+    }
+
+    private static bool IsInsideHtmlTag(string text, int position)
+    {
+        var open = text.LastIndexOf('<', position);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var close = text.LastIndexOf('>', position);
         return close < open;
     }
 
