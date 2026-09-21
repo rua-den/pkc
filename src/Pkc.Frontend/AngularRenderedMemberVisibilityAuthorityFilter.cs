@@ -26,28 +26,30 @@ internal sealed class AngularRenderedMemberVisibilityAuthorityFilter
         }
 
         var root = Path.GetFullPath(repositoryPath);
-        var linesByPath = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var textByPath = new Dictionary<string, string>(StringComparer.Ordinal);
         var rejected = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var visibility in visibilities)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!linesByPath.TryGetValue(visibility.Source.Path, out var lines))
+            if (!textByPath.TryGetValue(visibility.Source.Path, out var text))
             {
                 var fullPath = Path.Combine(
                     root,
                     visibility.Source.Path.Replace('/', Path.DirectorySeparatorChar));
-                lines = File.Exists(fullPath)
-                    ? await File.ReadAllLinesAsync(fullPath, cancellationToken)
-                    : [];
-                linesByPath[visibility.Source.Path] = lines;
+                text = File.Exists(fullPath)
+                    ? await File.ReadAllTextAsync(fullPath, cancellationToken)
+                    : string.Empty;
+                textByPath[visibility.Source.Path] = text;
             }
 
-            var lineIndex = visibility.Source.StartLine - 1;
-            if (lineIndex < 0 ||
-                lineIndex >= lines.Length ||
-                !AtIfStatementRegex.IsMatch(lines[lineIndex].TrimStart()))
+            if (!TryGetLineControlPosition(
+                    text,
+                    visibility.Source.StartLine,
+                    out var controlPosition) ||
+                IsInsideHtmlComment(text, controlPosition) ||
+                IsInsideHtmlTag(text, controlPosition))
             {
                 rejected.Add(visibility.Id);
             }
@@ -69,5 +71,70 @@ internal sealed class AngularRenderedMemberVisibilityAuthorityFilter
                     !rejected.Contains(relation.Target))
                 .ToArray()
         };
+    }
+
+    private static bool TryGetLineControlPosition(
+        string text,
+        int sourceLine,
+        out int controlPosition)
+    {
+        controlPosition = -1;
+        if (sourceLine <= 0 || string.IsNullOrEmpty(text))
+        {
+            return false;
+        }
+
+        var lineStart = 0;
+        for (var line = 1; line < sourceLine; line++)
+        {
+            var newline = text.IndexOf('\n', lineStart);
+            if (newline < 0)
+            {
+                return false;
+            }
+
+            lineStart = newline + 1;
+        }
+
+        var lineEnd = text.IndexOf('\n', lineStart);
+        if (lineEnd < 0)
+        {
+            lineEnd = text.Length;
+        }
+
+        var lineText = text[lineStart..lineEnd];
+        var leadingWhitespace = lineText.Length - lineText.TrimStart().Length;
+        var trimmed = lineText[leadingWhitespace..];
+        if (!AtIfStatementRegex.IsMatch(trimmed))
+        {
+            return false;
+        }
+
+        controlPosition = lineStart + leadingWhitespace;
+        return true;
+    }
+
+    private static bool IsInsideHtmlComment(string text, int position)
+    {
+        var open = text.LastIndexOf("<!--", position, StringComparison.Ordinal);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var close = text.LastIndexOf("-->", position, StringComparison.Ordinal);
+        return close < open;
+    }
+
+    private static bool IsInsideHtmlTag(string text, int position)
+    {
+        var open = text.LastIndexOf('<', position);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var close = text.LastIndexOf('>', position);
+        return close < open;
     }
 }

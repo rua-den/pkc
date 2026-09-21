@@ -6,7 +6,50 @@ namespace Pkc.CSharp.Tests;
 public sealed class JointVisibilityTemplateAuthorityRegressionTests
 {
     [Fact]
-    public async Task Html_comment_at_if_does_not_create_render_visibility()
+    public async Task Same_line_html_comment_at_if_does_not_create_render_visibility()
+    {
+        await AssertNoVisibilityAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <!-- @if (isAllowed) { -->
+                <strong>{{ displayPrice }}</strong>
+                <!-- } -->
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task Multiline_html_comment_at_if_does_not_create_render_visibility()
+    {
+        await AssertNoVisibilityAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <!--
+                @if (isAllowed) {
+                -->
+                <strong>{{ displayPrice }}</strong>
+                <!--
+                }
+                -->
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    private static async Task AssertNoVisibilityAsync(string componentSource)
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -22,7 +65,7 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
                 "{\"dependencies\":{\"@angular/core\":\"22.0.0\"}}");
             await File.WriteAllTextAsync(
                 Path.Combine(root, "price.component.ts"),
-                ComponentSource);
+                componentSource);
 
             var facts = await new FrontendScanner().ScanAsync(root);
 
@@ -39,20 +82,4 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
             Directory.Delete(root, recursive: true);
         }
     }
-
-    private const string ComponentSource = """
-        import { Component } from '@angular/core';
-
-        @Component({
-          selector: 'app-price',
-          template: `
-            <!-- @if (isAllowed) { -->
-            <strong>{{ displayPrice }}</strong>
-            <!-- } -->
-          `
-        })
-        export class PriceComponent {
-          displayPrice = 42;
-        }
-        """;
 }
