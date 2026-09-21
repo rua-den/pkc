@@ -36,24 +36,42 @@ internal sealed class CSharpMutationContextEnricher
             foreach (var fact in group)
             {
                 var assignment = FindAssignment(root, fact);
-                if (assignment is null ||
-                    !assignment.Ancestors().OfType<InitializerExpressionSyntax>().Any())
+                if (assignment is null)
+                {
+                    continue;
+                }
+
+                if (assignment.Ancestors().OfType<InitializerExpressionSyntax>().Any())
+                {
+                    var initializerMetadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal)
+                    {
+                        ["mutationContext"] = "initializer",
+                        ["stateMutationCandidate"] = "false",
+                        ["analysisCaveat"] = "assignment-builds-an-object-or-collection-value-not-observed-domain-state"
+                    };
+
+                    facts[fact.Id] = fact with
+                    {
+                        Kind = "initializer-assignment",
+                        Metadata = initializerMetadata
+                    };
+                    continue;
+                }
+
+                if (!TryGetRuntimePatternReceiver(assignment, out var receiver))
                 {
                     continue;
                 }
 
                 var metadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal)
                 {
-                    ["mutationContext"] = "initializer",
-                    ["stateMutationCandidate"] = "false",
-                    ["analysisCaveat"] = "assignment-builds-an-object-or-collection-value-not-observed-domain-state"
+                    ["mutationReceiver"] = receiver,
+                    ["mutationReceiverOrigin"] = "runtime-pattern-variable",
+                    ["mutationCausalityBoundary"] = "caller-object-unproven",
+                    ["analysisCaveat"] = "runtime-pattern-selected-receiver-requires-caller-object-proof"
                 };
 
-                facts[fact.Id] = fact with
-                {
-                    Kind = "initializer-assignment",
-                    Metadata = metadata
-                };
+                facts[fact.Id] = fact with { Metadata = metadata };
             }
         }
 
@@ -72,6 +90,62 @@ internal sealed class CSharpMutationContextEnricher
                 StartLine(assignment) == fact.Source.StartLine &&
                 (string.IsNullOrWhiteSpace(target) ||
                  string.Equals(assignment.Left.ToString(), target, StringComparison.Ordinal)));
+    }
+
+    private static bool TryGetRuntimePatternReceiver(
+        AssignmentExpressionSyntax assignment,
+        out string receiver)
+    {
+        receiver = GetRootReceiverIdentifier(assignment.Left) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(receiver) || string.Equals(receiver, "this", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var callable = assignment.Ancestors().FirstOrDefault(node =>
+            node is BaseMethodDeclarationSyntax or
+                LocalFunctionStatementSyntax or
+                AnonymousFunctionExpressionSyntax);
+        if (callable is null)
+        {
+            return false;
+        }
+
+        return callable.DescendantNodes()
+            .OfType<SingleVariableDesignationSyntax>()
+            .Where(designation => designation.SpanStart < assignment.SpanStart)
+            .Where(designation => string.Equals(
+                designation.Identifier.ValueText,
+                receiver,
+                StringComparison.Ordinal))
+            .Any(designation => designation.Ancestors().Any(ancestor => ancestor is PatternSyntax));
+    }
+
+    private static string? GetRootReceiverIdentifier(ExpressionSyntax expression)
+    {
+        ExpressionSyntax current = expression;
+
+        while (true)
+        {
+            switch (current)
+            {
+                case MemberAccessExpressionSyntax memberAccess:
+                    current = memberAccess.Expression;
+                    continue;
+                case ElementAccessExpressionSyntax elementAccess:
+                    current = elementAccess.Expression;
+                    continue;
+                case ParenthesizedExpressionSyntax parenthesized:
+                    current = parenthesized.Expression;
+                    continue;
+                case IdentifierNameSyntax identifier:
+                    return identifier.Identifier.ValueText;
+                case ThisExpressionSyntax:
+                    return "this";
+                default:
+                    return null;
+            }
+        }
     }
 
     private static int StartLine(SyntaxNode node) =>

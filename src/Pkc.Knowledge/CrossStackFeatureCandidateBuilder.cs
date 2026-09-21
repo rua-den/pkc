@@ -152,7 +152,7 @@ public sealed class CrossStackFeatureCandidateBuilder
                 continue;
             }
 
-            if (owners.Length == 1 && IsSelfOwnedTransitiveMutation(owners[0], mutation))
+            if (owners.Length == 1 && IsSupportedTransitiveMutation(mutation))
             {
                 continue;
             }
@@ -182,35 +182,9 @@ public sealed class CrossStackFeatureCandidateBuilder
         };
     }
 
-    private static bool IsSelfOwnedTransitiveMutation(EvidenceFact owner, EvidenceFact mutation)
-    {
-        if ((owner.Kind != "method" && owner.Kind != "constructor") ||
-            string.IsNullOrWhiteSpace(owner.Container) ||
-            !mutation.Metadata.TryGetValue("target", out var target) ||
-            string.IsNullOrWhiteSpace(target) ||
-            !mutation.Metadata.TryGetValue("targetSymbol", out var targetSymbol) ||
-            string.IsNullOrWhiteSpace(targetSymbol))
-        {
-            return false;
-        }
-
-        var isImplicitOrExplicitSelfTarget =
-            !target.Contains('.', StringComparison.Ordinal) ||
-            target.StartsWith("this.", StringComparison.Ordinal);
-        if (!isImplicitOrExplicitSelfTarget)
-        {
-            return false;
-        }
-
-        var lastDot = targetSymbol.LastIndexOf('.');
-        if (lastDot <= 0)
-        {
-            return false;
-        }
-
-        var targetOwner = targetSymbol[..lastDot];
-        return string.Equals(targetOwner, owner.Container, StringComparison.Ordinal);
-    }
+    private static bool IsSupportedTransitiveMutation(EvidenceFact mutation) =>
+        !mutation.Metadata.TryGetValue("mutationReceiverOrigin", out var origin) ||
+        !string.Equals(origin, "runtime-pattern-variable", StringComparison.Ordinal);
 
     private static void AddScreenBehavior(
         FactDocument document,

@@ -16,12 +16,19 @@ public sealed class TransitiveMutationCausalityRegressionTests
             await WriteProjectAsync(root, FixtureSource);
 
             var facts = await new CSharpEvidenceScanner().ScanAsync(root);
-            Assert.Contains(facts.Facts, fact =>
+            var userMutation = Assert.Single(facts.Facts, fact =>
                 fact.Kind == "mutation" &&
                 fact.Metadata.GetValueOrDefault("target") == "user.UpdatedAt");
-            Assert.Contains(facts.Facts, fact =>
+            var contactMutation = Assert.Single(facts.Facts, fact =>
                 fact.Kind == "mutation" &&
                 fact.Metadata.GetValueOrDefault("target") == "contact.UpdatedAt");
+
+            Assert.Equal("runtime-pattern-variable", userMutation.Metadata["mutationReceiverOrigin"]);
+            Assert.Equal("user", userMutation.Metadata["mutationReceiver"]);
+            Assert.Equal("caller-object-unproven", userMutation.Metadata["mutationCausalityBoundary"]);
+            Assert.Equal("runtime-pattern-variable", contactMutation.Metadata["mutationReceiverOrigin"]);
+            Assert.Equal("contact", contactMutation.Metadata["mutationReceiver"]);
+            Assert.Equal("caller-object-unproven", contactMutation.Metadata["mutationCausalityBoundary"]);
 
             var candidate = FindCandidate(facts, "CreateUser");
 
@@ -41,6 +48,39 @@ public sealed class TransitiveMutationCausalityRegressionTests
             var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
             Assert.DoesNotContain("Sets `user.UpdatedAt`", markdown, StringComparison.Ordinal);
             Assert.DoesNotContain("Sets `contact.UpdatedAt`", markdown, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Cross_stack_candidate_keeps_transitive_local_domain_object_mutation()
+    {
+        var root = CreateRoot("local-domain-object");
+
+        try
+        {
+            await WriteProjectAsync(root, FixtureSource);
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var rawMutation = Assert.Single(facts.Facts, fact =>
+                fact.Kind == "mutation" &&
+                fact.Metadata.GetValueOrDefault("target") == "item.Stock");
+            Assert.NotEqual(
+                "runtime-pattern-variable",
+                rawMutation.Metadata.GetValueOrDefault("mutationReceiverOrigin"));
+
+            var candidate = FindCandidate(facts, "Restock");
+            Assert.Contains(candidate.Facts, fact =>
+                fact.Kind == "mutation" &&
+                fact.Metadata.GetValueOrDefault("target") == "item.Stock");
+            Assert.DoesNotContain(candidate.Unknowns, item =>
+                item.Contains("transitive helper mutations", StringComparison.Ordinal));
+
+            var knowledge = await new EvidenceAwareKnowledgeSynthesizer().SynthesizeAsync(candidate);
+            Assert.Contains("Applies `+=` to `item.Stock` with `2`.", knowledge.StateChanges);
         }
         finally
         {
@@ -193,6 +233,33 @@ public sealed class TransitiveMutationCausalityRegressionTests
                 _db.Add(user);
                 await _db.SaveChangesAsync();
             }
+        }
+
+        public sealed class StockItem
+        {
+            public int Stock { get; set; }
+        }
+
+        public sealed class InventoryStore
+        {
+            private readonly List<StockItem> _items = [new()];
+
+            public void Restock() => ApplyRestock();
+
+            private void ApplyRestock()
+            {
+                var item = _items[0];
+                item.Stock += 2;
+            }
+        }
+
+        [Route("api/inventory")]
+        public sealed class InventoryController
+        {
+            private readonly InventoryStore _store = new();
+
+            [HttpPost("restock")]
+            public void Restock() => _store.Restock();
         }
 
         public enum WorkPlayStatus
