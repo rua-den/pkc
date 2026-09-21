@@ -398,7 +398,7 @@ internal sealed class CSharpSelectedApiProjectionLineageEnricher
             operation = operation switch
             {
                 IParenthesizedOperation parenthesized => parenthesized.Operand,
-                IConversionOperation conversion => conversion.Operand,
+                IConversionOperation safeConversion => safeConversion.Operand,
                 _ => operation
             };
         }
