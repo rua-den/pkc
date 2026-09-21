@@ -172,113 +172,245 @@ public sealed class CrossStackFeatureCandidateBuilder
                 .ToArray(),
             Relations = candidate.Relations
                 .Where(relation =>
-                    \™[[Э™Y]]][Ы’YЛђЫЫќZ[њК™[][Ы‹‘њ›ЫQXЭY
-H	‰‚€\™[[Э™Y]]][Ы’YЛђЫЫќZ[њК™[][Ы‹•\™Щ]
-JB€•Р\њ^J
-K€[љЫ›ЭЫњИHШ[™Y]K•[љЫ›ЭЫњВ€ђ\[™
-[њЪ]]™S]]][ЫђШ]\Ш[]UШ\›љ[™КB€‘\Э[Э
-Эљ[™РЫЫ\\™\‹“Ь™[[
-B€•Р\њ^J
-B€NВ€B‚€љ]]HЭ]XИ›ЫЫ\ФЩ[“ЭЫ™Y[њЪ]]™S]]][ЫЉ]љY[ЩQXЭЭЫ™\‹]љY[ЩQXЭ]]][ЫЉB€В€Y€
+                    !removedMutationIds.Contains(relation.FromFactId) &&
+                    !removedMutationIds.Contains(relation.Target))
+                .ToArray(),
+            Unknowns = candidate.Unknowns
+                .Append(TransitiveMutationCausalityWarning)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()
+        };
+    }
 
-ЭЫ™\‹’Ъ[™OH›Y]Щ€	‰€ЭЫ™\‹’Ъ[™OHЫЫњЭќXЭЬ€ЉH€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJЭЫ™\‹ђЫЫќZ[™\ЉH€[]]][Ы‹“Y]Y]K•ћQЩ][YJќ\™Щ]‹Э]\€\™Щ]
-H€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\™Щ]
-H€[]]][Ы‹“Y]Y]K•ћQЩ][YJќ\™Щ]Ю[X›Ы‹Э]\€\™Щ]Ю[X›Ы
-H€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\™Щ]Ю[X›Ы
-JB€В€™]\›€[ЩNВ€B‚€\€\Т[\XЪ]Ь‘^XЪ]Щ[•\™Щ]B€]\™Щ]ђЫЫќZ[њК	Л‰ЛЭљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-ќ\Л€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-NВ€Y€
-Z\Т[\XЪ]Ь‘^XЪ]Щ[•\™Щ]
-B€В€™]\›€[ЩNВ€B‚€\€\ЭЭH\™Щ]Ю[X›Ы“\Э[™^ЩЉ	Л‰КNВ€Y€
-\ЭЭH
-B€В€™]\›€[ЩNВ€B‚€\€\™Щ]ЭЫ™\€H\™Щ]Ю[X›ЫЛ‹›\ЭЭNВ€™]\›€Эљ[™Л‘\]X[К\™Щ]ЭЫ™\‹ЭЫ™\‹ђЫЫќZ[™\‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-NВ€B‚€љ]]HЭ]XИ›ЪYYШЬ™Y[ђ™Z]љ[ЬЉ€XЭШЭ[Y[ќШЭ[Y[ќ€]љY[ЩQXЭШЬ™Y[‹€QXЭ[Ы\ћOЭљ[™Л]љY[ЩQXЭ€XЭЛ€PЫЫXЭ[ЫЏ]љY[ЩT™[][ЫЏ€™[][ЫњЛ€TЩ]Эљ[™П€™[][Ы’Щ^\КB€В€›Ь™XXЪ
-\€™Z]љ[Ь€[€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€ШЬ™Y[ђ™Z]љ[Ь’Ъ[™ЛђЫЫќZ[њКXЭ’Ъ[™
-H	‰‚€
-Эљ[™Л‘\]X[КXЭђЫЫќZ[™\‹ШЬ™Y[‹“[YKЭљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€XЭ“Y]Y]K•ћQЩ][YJЫЫ\Ы™[ќ‹Э]\€ЫЫ\Ы™[ќ
-H	‰‚€Эљ[™Л‘\]X[КЫЫ\Ы™[ќШЬ™Y[‹“[YKЭљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JJJB€В€XЭЦШ™Z]љ[Ь‹’YHH™Z]љ[ЬЋВ€Y™[][ЫЉ€™]И]љY[ЩT™[][ЫЉШЬ™Y[‹’YЫЫќZ[њЛ]ZKX™Z]љ[Ь€‹™Z]љ[Ь‹’Y™Z]љ[Ь‹”ЫЭ\ЩJK€™[][ЫњЛ€™[][Ы’Щ^\КNВ€›Ь™XXЪ
-\€™[][Ы€[€ШЭ[Y[ќ”™[][ЫњЛ•Ъ\™J™[][Ы€O‚€™[][Ы‹‘њ›ЫQXЭYOH™Z]љ[Ь‹’Y	‰‚€™[][Ы‹’Ъ[™OH™™YYЛ[\ЭЉJB€В€Y™[][ЫЉ™[][Ы‹™[][ЫњЛ™[][Ы’Щ^\КNВ€\€\™Щ]HШЭ[Y[ќ‘XЭЛ‘љ\њЭЬ‘Y][
-XЭO€XЭ’YOH™[][Ы‹•\™Щ]
-NВ€Y€
-\™Щ]\И›Эќ[
-B€В€XЭЦЭ\™Щ]’YHH\™Щ]В€B€B€B€B‚€љ]]HЭ]XИ›ЪYYљ[™[™ЬС›Ьђ\PШ[
-€XЭШЭ[Y[ќШЭ[Y[ќ€]љY[ЩQXЭ\PШ[€QXЭ[Ы\ћOЭљ[™Л]љY[ЩQXЭ€XЭЛ€PЫЫXЭ[ЫЏ]љY[ЩT™[][ЫЏ€™[][ЫњЛ€TЩ]Эљ[™П€™[][Ы’Щ^\КB€В€Y€
-Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\PШ[ђЫЫќZ[™\ЉJB€В€™]\›ЋВ€B‚€›Ь™XXЪ
-\€љ[™[™И[€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€XЭ’Ъ[™OHќZKYљY[Xљ[™[™И€	‰‚€Эљ[™Л‘\]X[КXЭђЫЫќZ[™\‹\PШ[ђЫЫќZ[™\‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JJB€В€XЭЦШљ[™[™Л’YHHљ[™[™ОВ€Y™[][ЫЉ€™]И]љY[ЩT™[][ЫЉљ[™[™Л’Yљ[™ЛX\H‹\PШ[’Yљ[™[™Л”ЫЭ\ЩJK€™[][ЫњЛ€™[][Ы’Щ^\КNВ€B€B‚€љ]]HЭ]XИ›ЪYY™\Э[›ЭС›Ьђ\PШ[
-€XЭШЭ[Y[ќШЭ[Y[ќ€]љY[ЩQXЭ\PШ[€QXЭ[Ы\ћOЭљ[™Л]љY[ЩQXЭ€XЭЛ€PЫЫXЭ[ЫЏ]љY[ЩT™[][ЫЏ€™[][ЫњЛ€TЩ]Эљ[™П€™[][Ы’Щ^\КB€В€Y€
-Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\PШ[ђЫЫќZ[™\ЉJB€В€™]\›ЋВ€B‚€›Ь™XXЪ
-\€љ[™[™И[€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO€\Ф™\Э[љ[™[™С›Ьђ\PШ[
-XЭ\PШ[
-JJB€В€XЭЦШљ[™[™Л’YHHљ[™[™ОВ€Y™[][ЫЉ€™]И]љY[ЩT™[][ЫЉ\PШ[’Y™™YYЛ]ZKXљ[™[™И‹љ[™[™Л’Yљ[™[™Л”ЫЭ\ЩJK€™[][ЫњЛ€™[][Ы’Щ^\КNВ‚€›Ь™XXЪ
-\€™[][Ы€[€ШЭ[Y[ќ”™[][ЫњЛ•Ъ\™J™[][Ы€O‚€™[][Ы‹‘њ›ЫQXЭYOHљ[™[™Л’Y	‰€™[][Ы‹’Ъ[™OH™™YYЛ[\ЭЉJB€В€Y™[][ЫЉ™[][Ы‹™[][ЫњЛ™[][Ы’Щ^\КNВ€\€™[™\€HШЭ[Y[ќ‘XЭЛ‘љ\њЭЬ‘Y][
-XЭO€XЭ’YOH™[][Ы‹•\™Щ]
-NВ€Y€
-™[™\€\И›Эќ[
-B€В€XЭЦЬ™[™\‹’YHH™[™\ЋВ€B€B€B€B‚€љ]]HЭ]XИ›ЫЫ\Ф™\Э[љ[™[™С›Ьђ\PШ[
-]љY[ЩQXЭљ[™[™Л]љY[ЩQXЭ\PШ[
-B€В€Y€
-љ[™[™Л’Ъ[™OHќZK\™\Э[Xљ[™[™И€€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\PШ[ђЫЫќZ[™\ЉH€Xљ[™[™Л“Y]Y]K•ћQЩ][YJ\SY]Щ‹Э]\€\SY]Щ
-H€\Эљ[™Л‘\]X[К\SY]Щ\PШ[ђЫЫќZ[™\‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€Xљ[™[™Л“Y]Y]K•ћQЩ][YJњЩ\ќљXЩU\H‹Э]\€Щ\ќљXЩU\JH€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJЩ\ќљXЩU\JH€X\PШ[“Y]Y]K•ћQЩ][YJ›ЭЫ™\ђЫ\ЬИ‹Э]\€ЭЫ™\ђЫ\ЬКH€Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJЭЫ™\ђЫ\ЬКJB€В€™]\›€[ЩNВ€B‚€™]\›€Эљ[™Л‘\]X[КЩ\ќљXЩU\KЭЫ™\ђЫ\ЬЛЭљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-NВ€B‚€љ]]HЭ]XИ™X]\™PШ[™Y]Hљ[\‘›ЭУ›Ъ\ЩJ™X]\™PШ[™Y]HШ[™Y]JB€В€\€™[][ЫњИHШ[™Y]K”™[][ЫњВ€•Ъ\™J™[][Ы€O€™[][Ы‹’Ъ[™OHљ[ќ›ЪЩ\И€R\С›ЭУ›Ъ\ЩU\™Щ]
-™[][Ы‹•\™Щ]
-JB€•Р\њ^J
-NВ‚€™]\›€Ш[™Y]HЪ]И™[][ЫњИH™[][ЫњИNВ€B‚€љ]]HЭ]XИ›ЫЫ\С›ЭУ›Ъ\ЩU\™Щ]
-Эљ[™И\™Щ]
-HO‚€\™Щ]”Э\ќХЪ]
-”Ю\Э[K€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-њЭљ[™Л€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-Ъ\‹€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-›Шљ™XЭ€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-“ZXЬ›ЬЫЩќђ\Ь™]ЫЬ™K’”™\Э[Л€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€\™Щ]”Э\ќХЪ]
-“ZXЬ›ЬЫЩќ‘^[њЪ[ЫњЛ€‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-NВ‚€љ]]HЭ]XИ™X]\™PШ[™Y]HY[[\Ъ\ХШ\›љ[™ЬК™X]\™PШ[™Y]HШ[™Y]JB€В€\€[љЫ›ЭЫњИHШ[™Y]K•[љЫ›ЭЫњЛ•У\Э
+    private static bool IsSelfOwnedTransitiveMutation(EvidenceFact owner, EvidenceFact mutation)
+    {
+        if ((owner.Kind != "method" && owner.Kind != "constructor") ||
+            string.IsNullOrWhiteSpace(owner.Container) ||
+            !mutation.Metadata.TryGetValue("target", out var target) ||
+            string.IsNullOrWhiteSpace(target) ||
+            !mutation.Metadata.TryGetValue("targetSymbol", out var targetSymbol) ||
+            string.IsNullOrWhiteSpace(targetSymbol))
+        {
+            return false;
+        }
 
-NВ‚€Y€
-Ш[™Y]K‘XЭЛђ[ћJXЭO‚€XЭ“Y]Y]K•ћQЩ][YJ[[\Ъ\У[ЩH‹Э]\€[ЩJH	‰‚€Эљ[™Л‘\]X[К[ЩK›ЫЬЩK\›ЬЫ[‹Y[XЪИ‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JJB€В€[љЫ›ЭЫњЛђY
-ФЪ\њ[XЪХШ\›љ[™КNВ€B‚€Y€
-Ш[™Y]K‘XЭЛђ[ћJXЭO‚€XЭ“Y]Y]K•ћQЩ][YJ[[\Ъ\У[ЩH‹Э]\€[ЩJH	‰‚€
-[ЩKђЫЫќZ[њКњ™YЩ^Y[XЪИ‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-H€[ЩKђЫЫќZ[њКќ[\]K\™YЩ^Y[XЪИ‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JJJB€В€[љЫ›ЭЫњЛђY
-њ›Ыќ[™[XЪХШ\›љ[™КNВ€B‚€™]\›€Ш[™Y]HЪ]€В€[љЫ›ЭЫњИH[љЫ›ЭЫњЛ‘\Э[Э
-Эљ[™РЫЫ\\™\‹“Ь™[[
-K•Р\њ^J
-B€NВ€B‚€љ]]HЭ]XИQ[ќ[Y\X›O]љY[ЩQXЭ€љ[™ШЬ™Y[њС›ЬђXЭ[ЫЉXЭШЭ[Y[ќШЭ[Y[ќ]љY[ЩQXЭXЭ[ЫЉB€В€Y€
-\Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJXЭ[Ы‹ђЫЫќZ[™\ЉJB€В€\€ћS[YHHШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€XЭ’Ъ[™OHќZK\ШЬ™Y[€€	‰€Эљ[™Л‘\]X[КXЭ“[YKXЭ[Ы‹ђЫЫќZ[™\‹Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JK•Р\њ^J
-NВ€Y€
-ћS[YK“[™Э€
-B€В€™]\›€ћS[YNВ€B€B‚€™]\›€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€XЭ’Ъ[™OHќZK\ШЬ™Y[€€	‰€Эљ[™Л‘\]X[КXЭ”ЫЭ\ЩK”]XЭ[Ы‹”ЫЭ\ЩK”]Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JNВ€B‚€љ]]HЭ]XИQ[ќ[Y\X›O]љY[ЩQXЭ€љ[™ШЬ™Y[њС›Ьђ\PШ[
-XЭШЭ[Y[ќШЭ[Y[ќ]љY[ЩQXЭ\PШ[
-HO‚€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€XЭ’Ъ[™OHќZK\ШЬ™Y[€€	‰‚€Эљ[™Л‘\]X[КXЭ”ЫЭ\ЩK”]\PШ[”ЫЭ\ЩK”]Эљ[™РЫЫ\\љ\ЫЫ‹“Ь™[[
-JNВ‚€љ]]HЭ]XИQ[ќ[Y\X›O]љY[ЩQXЭ€љ[™ШЬ™Y[њС›Ь”™\Э[›ЭКXЭШЭ[Y[ќШЭ[Y[ќ]љY[ЩQXЭ\PШ[
-B€В€Y€
-Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJ\PШ[ђЫЫќZ[™\ЉJB€В€™]\›€ЧNВ€B‚€\€ЫЫ\Ы™[ќИHШЭ[Y[ќ‘XЭВ€•Ъ\™JXЭO€\Ф™\Э[љ[™[™С›Ьђ\PШ[
-XЭ\PШ[
-H	‰€\Эљ[™Л’\Уќ[Ь•Ъ]TЬXЩJXЭђЫЫќZ[™\ЉJB€”Щ[XЭ
-XЭO€XЭђЫЫќZ[™\€JB€•Т\ЪЩ]
-Эљ[™РЫЫ\\™\‹“Ь™[[
-NВ‚€™]\›€ШЭ[Y[ќ‘XЭЛ•Ъ\™JXЭO‚€XЭ’Ъ[™OHќZK\ШЬ™Y[€€	‰€ЫЫ\Ы™[ќЛђЫЫќZ[њКXЭ“[YJJNВ€B‚€љ]]HЭ]XИ›ЪYY™[][ЫЉ]љY[ЩT™[][Ы€™[][Ы‹PЫЫXЭ[ЫЏ]љY[ЩT™[][ЫЏ€™[][ЫњЛTЩ]Эљ[™П€Щ^\КB€В€Y€
-Щ^\ЛђY
-™[][Ы’Щ^J™[][ЫЉJJH™[][ЫњЛђY
-™[][ЫЉNВ€B‚€љ]]HЭ]XИЭљ[™И™[][Ы’Щ^J]љY[ЩT™[][Ы€™[][ЫЉHO€	ћЬ™[][Ы‹‘њ›ЫQXЭY_Ь™[][Ы‹’Ъ[™_Ь™[][Ы‹•\™Щ]HЋВ‚€љ]]HЭ]XИЭљ[™И›Ь›X[^™T›Э]RЩ^JЭљ[™И[YJB€В€\€›Э]HH[YK”Ь]
-	ПЙЛ	ИЙКVМK•љ[J
-NВ€›Э]HH[\]T\[Y]\”™YЩ^”™\XЩJ›Э]KћЬ\[_HЉNВ€›Э]HH›Э]T\[Y]\”™YЩ^”™\XЩJ›Э]KћЬ\[_HЉNВ€Y€
-\›Э]K”Э\ќХЪ]
-	ЛЙКJH›Э]HH‹И€
-И›Э]NВ€™]\›€›Э]K•љ[Q[™
-	ЛЙКK•УЭЩ\’[ќ\љX[ќ
+        var isImplicitOrExplicitSelfTarget =
+            !target.Contains('.', StringComparison.Ordinal) ||
+            target.StartsWith("this.", StringComparison.Ordinal);
+        if (!isImplicitOrExplicitSelfTarget)
+        {
+            return false;
+        }
 
-NВ€BџB
+        var lastDot = targetSymbol.LastIndexOf('.');
+        if (lastDot <= 0)
+        {
+            return false;
+        }
+
+        var targetOwner = targetSymbol[..lastDot];
+        return string.Equals(targetOwner, owner.Container, StringComparison.Ordinal);
+    }
+
+    private static void AddScreenBehavior(
+        FactDocument document,
+        EvidenceFact screen,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        foreach (var behavior in document.Facts.Where(fact =>
+                     ScreenBehaviorKinds.Contains(fact.Kind) &&
+                     (string.Equals(fact.Container, screen.Name, StringComparison.Ordinal) ||
+                      fact.Metadata.TryGetValue("component", out var component) &&
+                      string.Equals(component, screen.Name, StringComparison.Ordinal))))
+        {
+            facts[behavior.Id] = behavior;
+            AddRelation(
+                new EvidenceRelation(screen.Id, "contains-ui-behavior", behavior.Id, behavior.Source),
+                relations,
+                relationKeys);
+
+            foreach (var relation in document.Relations.Where(relation =>
+                         relation.FromFactId == behavior.Id &&
+                         relation.Kind == "feeds-list"))
+            {
+                AddRelation(relation, relations, relationKeys);
+                var target = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
+                if (target is not null)
+                {
+                    facts[target.Id] = target;
+                }
+            }
+        }
+    }
+
+    private static void AddBindingsForApiCall(
+        FactDocument document,
+        EvidenceFact apiCall,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return;
+        }
+
+        foreach (var binding in document.Facts.Where(fact =>
+                     fact.Kind == "ui-field-binding" &&
+                     string.Equals(fact.Container, apiCall.Container, StringComparison.Ordinal)))
+        {
+            facts[binding.Id] = binding;
+            AddRelation(
+                new EvidenceRelation(binding.Id, "binds-api", apiCall.Id, binding.Source),
+                relations,
+                relationKeys);
+        }
+    }
+
+    private static void AddResultFlowForApiCall(
+        FactDocument document,
+        EvidenceFact apiCall,
+        IDictionary<string, EvidenceFact> facts,
+        ICollection<EvidenceRelation> relations,
+        ISet<string> relationKeys)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return;
+        }
+
+        foreach (var binding in document.Facts.Where(fact => IsResultBindingForApiCall(fact, apiCall)))
+        {
+            facts[binding.Id] = binding;
+            AddRelation(
+                new EvidenceRelation(apiCall.Id, "feeds-ui-binding", binding.Id, binding.Source),
+                relations,
+                relationKeys);
+
+            foreach (var relation in document.Relations.Where(relation =>
+                         relation.FromFactId == binding.Id && relation.Kind == "feeds-list"))
+            {
+                AddRelation(relation, relations, relationKeys);
+                var render = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
+                if (render is not null)
+                {
+                    facts[render.Id] = render;
+                }
+            }
+        }
+    }
+
+    private static bool IsResultBindingForApiCall(EvidenceFact binding, EvidenceFact apiCall)
+    {
+        if (binding.Kind != "ui-result-binding" ||
+            string.IsNullOrWhiteSpace(apiCall.Container) ||
+            !binding.Metadata.TryGetValue("apiMethod", out var apiMethod) ||
+            !string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal) ||
+            !binding.Metadata.TryGetValue("serviceType", out var serviceType) ||
+            string.IsNullOrWhiteSpace(serviceType) ||
+            !apiCall.Metadata.TryGetValue("ownerClass", out var ownerClass) ||
+            string.IsNullOrWhiteSpace(ownerClass))
+        {
+            return false;
+        }
+
+        return string.Equals(serviceType, ownerClass, StringComparison.Ordinal);
+    }
+
+    private static FeatureCandidate FilterFlowNoise(FeatureCandidate candidate)
+    {
+        var relations = candidate.Relations
+            .Where(relation => relation.Kind != "invokes" || !IsFlowNoiseTarget(relation.Target))
+            .ToArray();
+
+        return candidate with { Relations = relations };
+    }
+
+    private static bool IsFlowNoiseTarget(string target) =>
+        target.StartsWith("System.", StringComparison.Ordinal) ||
+        target.StartsWith("string.", StringComparison.Ordinal) ||
+        target.StartsWith("char.", StringComparison.Ordinal) ||
+        target.StartsWith("object.", StringComparison.Ordinal) ||
+        target.StartsWith("Microsoft.AspNetCore.Http.Results.", StringComparison.Ordinal) ||
+        target.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal);
+
+    private static FeatureCandidate AddAnalysisWarnings(FeatureCandidate candidate)
+    {
+        var unknowns = candidate.Unknowns.ToList();
+
+        if (candidate.Facts.Any(fact =>
+                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
+                string.Equals(mode, "loose-roslyn-fallback", StringComparison.Ordinal)))
+        {
+            unknowns.Add(CSharpFallbackWarning);
+        }
+
+        if (candidate.Facts.Any(fact =>
+                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
+                (mode.Contains("regex-fallback", StringComparison.Ordinal) ||
+                 mode.Contains("template-regex-fallback", StringComparison.Ordinal))))
+        {
+            unknowns.Add(FrontendFallbackWarning);
+        }
+
+        return candidate with
+        {
+            Unknowns = unknowns.Distinct(StringComparer.Ordinal).ToArray()
+        };
+    }
+
+    private static IEnumerable<EvidenceFact> FindScreensForAction(FactDocument document, EvidenceFact action)
+    {
+        if (!string.IsNullOrWhiteSpace(action.Container))
+        {
+            var byName = document.Facts.Where(fact =>
+                fact.Kind == "ui-screen" && string.Equals(fact.Name, action.Container, StringComparison.Ordinal)).ToArray();
+            if (byName.Length > 0)
+            {
+                return byName;
+            }
+        }
+
+        return document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" && string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
+    }
+
+    private static IEnumerable<EvidenceFact> FindScreensForApiCall(FactDocument document, EvidenceFact apiCall) =>
+        document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" &&
+            string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal));
+
+    private static IEnumerable<EvidenceFact> FindScreensForResultFlow(FactDocument document, EvidenceFact apiCall)
+    {
+        if (string.IsNullOrWhiteSpace(apiCall.Container))
+        {
+            return [];
+        }
+
+        var components = document.Facts
+            .Where(fact => IsResultBindingForApiCall(fact, apiCall) && !string.IsNullOrWhiteSpace(fact.Container))
+            .Select(fact => fact.Container!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return document.Facts.Where(fact =>
+            fact.Kind == "ui-screen" && components.Contains(fact.Name));
+    }
+
+    private static void AddRelation(EvidenceRelation relation, ICollection<EvidenceRelation> relations, ISet<string> keys)
+    {
+        if (keys.Add(RelationKey(relation))) relations.Add(relation);
+    }
+
+    private static string RelationKey(EvidenceRelation relation) => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
+
+    private static string NormalizeRouteKey(string value)
+    {
+        var route = value.Split('?', '#')[0].Trim();
+        route = TemplateParameterRegex.Replace(route, "{param}");
+        route = RouteParameterRegex.Replace(route, "{param}");
+        if (!route.StartsWith('/')) route = "/" + route;
+        return route.TrimEnd('/').ToLowerInvariant();
+    }
+}
