@@ -111,12 +111,13 @@ internal sealed class CSharpMutationContextEnricher
             return false;
         }
 
+        var receiverName = receiver;
         return callable.DescendantNodes()
             .OfType<SingleVariableDesignationSyntax>()
             .Where(designation => designation.SpanStart < assignment.SpanStart)
             .Where(designation => string.Equals(
                 designation.Identifier.ValueText,
-                receiver,
+                receiverName,
                 StringComparison.Ordinal))
             .Any(designation => designation.Ancestors().Any(ancestor => ancestor is PatternSyntax));
     }
