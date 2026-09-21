@@ -103,6 +103,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 var absoluteIndex = body.Index + memberMatch.Index;
                 var line = 1 + text.AsSpan(0, absoluteIndex).Count('\n');
                 if (line == sourceLine &&
+                    !IsInsideHtmlComment(body.Value, memberMatch.Index) &&
                     !IsInsideInertNgTemplate(body.Value, memberMatch.Index))
                 {
                     count++;
