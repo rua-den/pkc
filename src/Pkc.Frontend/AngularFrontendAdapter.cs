@@ -12,6 +12,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularServiceIdentityEnricher _serviceIdentityEnricher = new();
     private readonly AngularRenderedMemberAuthorityFilter _renderedMemberAuthorityFilter = new();
     private readonly AngularRenderedMemberVisibilityEnricher _renderedMemberVisibilityEnricher = new();
+    private readonly AngularRenderedMemberVisibilityAuthorityFilter _renderedMemberVisibilityAuthorityFilter = new();
 
     public string Id => "angular";
 
@@ -73,9 +74,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             repositoryPath,
             identified,
             cancellationToken);
-        return await _renderedMemberVisibilityEnricher.EnrichAsync(
+        var renderedVisibility = await _renderedMemberVisibilityEnricher.EnrichAsync(
             repositoryPath,
             authoritativeRenders,
+            cancellationToken);
+        return await _renderedMemberVisibilityAuthorityFilter.FilterAsync(
+            repositoryPath,
+            renderedVisibility,
             cancellationToken);
     }
 
