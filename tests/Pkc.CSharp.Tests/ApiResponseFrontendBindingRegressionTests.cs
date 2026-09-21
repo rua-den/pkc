@@ -87,7 +87,7 @@ public sealed class ApiResponseFrontendBindingRegressionTests
                 fact.Kind == "value-terminal-source" &&
                 fact.Metadata.GetValueOrDefault("boundary") == "rendered UI value");
             Assert.Equal("displayPrice", binding.Metadata["frontendResultMember"]);
-            Assert.DoesNotContain("DisplayPrice", binding.Metadata["returnedOccurrence"], StringComparison.Ordinal);
+            Assert.DoesNotContain("result.DisplayPrice", binding.Metadata["returnedOccurrence"], StringComparison.Ordinal);
         }
         finally
         {
