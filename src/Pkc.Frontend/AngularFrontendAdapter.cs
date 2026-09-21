@@ -8,7 +8,9 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularTypeScriptAstScanner _astScanner = new();
     private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
     private readonly AngularListBehaviorScanner _listBehaviorScanner = new();
+    private readonly AngularResponseBindingScanner _responseBindingScanner = new();
     private readonly AngularServiceIdentityEnricher _serviceIdentityEnricher = new();
+    private readonly AngularRenderedMemberAuthorityFilter _renderedMemberAuthorityFilter = new();
 
     public string Id => "angular";
 
@@ -22,7 +24,9 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
         var fallbackDocument = await _regexFallback.ScanAsync(repositoryPath, cancellationToken);
         var formBehaviorDocument = await _formBehaviorScanner.ScanAsync(repositoryPath, cancellationToken);
         var listBehaviorDocument = await _listBehaviorScanner.ScanAsync(repositoryPath, cancellationToken);
+        var responseBindingDocument = await _responseBindingScanner.ScanAsync(repositoryPath, cancellationToken);
 
+        FactDocument merged;
         if (astAttempt.Document is null)
         {
             var fallback = TagDocument(
@@ -30,40 +34,43 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
                 "regex-fallback",
                 "low",
                 astAttempt.FailureReason ?? "typescript-ast-unavailable");
-            var mergedFallback = Merge(
-                [fallback, formBehaviorDocument, listBehaviorDocument],
+            merged = Merge(
+                [fallback, formBehaviorDocument, listBehaviorDocument, responseBindingDocument],
                 "0.4.6-angular");
-            return await _serviceIdentityEnricher.EnrichAsync(
-                repositoryPath,
-                mergedFallback,
-                cancellationToken);
+        }
+        else
+        {
+            var templateFacts = fallbackDocument.Facts
+                .Where(fact => fact.Kind == "ui-action")
+                .Select(fact => TagFact(
+                    fact,
+                    "angular-template-regex-fallback",
+                    "medium",
+                    "angular-template-actions-not-yet-ast-backed"))
+                .ToArray();
+
+            var templateFactIds = templateFacts.Select(fact => fact.Id).ToHashSet(StringComparer.Ordinal);
+            var templateRelations = fallbackDocument.Relations
+                .Where(relation => templateFactIds.Contains(relation.FromFactId))
+                .ToArray();
+
+            var templateDocument = new FactDocument(
+                "0.4.4-angular-template",
+                templateFacts,
+                templateRelations);
+
+            merged = Merge(
+                [astAttempt.Document, templateDocument, formBehaviorDocument, listBehaviorDocument, responseBindingDocument],
+                "0.4.6-angular");
         }
 
-        var templateFacts = fallbackDocument.Facts
-            .Where(fact => fact.Kind == "ui-action")
-            .Select(fact => TagFact(
-                fact,
-                "angular-template-regex-fallback",
-                "medium",
-                "angular-template-actions-not-yet-ast-backed"))
-            .ToArray();
-
-        var templateFactIds = templateFacts.Select(fact => fact.Id).ToHashSet(StringComparer.Ordinal);
-        var templateRelations = fallbackDocument.Relations
-            .Where(relation => templateFactIds.Contains(relation.FromFactId))
-            .ToArray();
-
-        var templateDocument = new FactDocument(
-            "0.4.4-angular-template",
-            templateFacts,
-            templateRelations);
-
-        var merged = Merge(
-            [astAttempt.Document, templateDocument, formBehaviorDocument, listBehaviorDocument],
-            "0.4.6-angular");
-        return await _serviceIdentityEnricher.EnrichAsync(
+        var identified = await _serviceIdentityEnricher.EnrichAsync(
             repositoryPath,
             merged,
+            cancellationToken);
+        return await _renderedMemberAuthorityFilter.FilterAsync(
+            repositoryPath,
+            identified,
             cancellationToken);
     }
 

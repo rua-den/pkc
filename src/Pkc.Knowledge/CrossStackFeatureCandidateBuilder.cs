@@ -29,7 +29,10 @@ public sealed class CrossStackFeatureCandidateBuilder
     {
         ArgumentNullException.ThrowIfNull(document);
         var baseline = new FeatureCandidateBuilder().Build(document);
-        return new FeatureCandidateDocument("0.4.6", baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+        var enriched = new FeatureCandidateDocument(
+            "0.4.6",
+            baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+        return new ApiFrontendBindingCandidateEnricher().Enrich(enriched, document);
     }
 
     private static FeatureCandidate Enrich(FeatureCandidate candidate, FactDocument document)

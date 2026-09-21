@@ -80,9 +80,13 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             lineage,
             cancellationToken);
-        var predicates = await new CSharpBusinessPredicateEnricher().EnrichAsync(
+        var wireContracts = await new CSharpJsonWireContractEnricher().EnrichAsync(
             repositoryPath,
             apiProjectionLineage,
+            cancellationToken);
+        var predicates = await new CSharpBusinessPredicateEnricher().EnrichAsync(
+            repositoryPath,
+            wireContracts,
             cancellationToken);
         return await new CSharpBusinessPredicateAuthorityFilter().FilterAsync(
             repositoryPath,
