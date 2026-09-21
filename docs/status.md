@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Current milestone state
 
@@ -12,6 +12,7 @@ V0.4.7-A origin and copy timing                  PASS / COMPLETE
 V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
+V0.4.7-D mutation-causality benchmark blocker    PASS / CLOSED
 V0.4.7-D API to UI / R7.10 joint visibility      CURRENT / UNLOCKED
 V0.4.7-E product acceptance                      LOCKED behind D
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -156,6 +157,63 @@ Pinned Jellyfin completed source build, PKC knowledge compilation, portable hand
 
 Local `.NET` execution was not available in the current agent environment, so these are clean-environment exact-SHA CI results; no unsupported local-test claim is recorded.
 
+## V0.4.7-D mutation-causality benchmark blocker — PASS / CLOSED
+
+The post-R7.9 real-repository benchmark exposed a false transitive mutation claim across `SaveChangesAsync() → SetTimestamps()` when the helper selected runtime entities through patterns such as `entry.Entity is User user`. PKC incorrectly promoted both `user.UpdatedAt` and `contact.UpdatedAt` into unrelated endpoint workflows.
+
+The generic repair preserves the raw mutation facts, marks runtime pattern-selected receivers with an unproven caller-object causality boundary, and fails closed only at workflow promotion. Ordinary local/domain-object transitive mutations and self-owned domain mutations remain eligible.
+
+Exact accepted implementation checkpoint:
+
+```text
+67624944da27ff1f1f5a1154018a255aae11d1fe
+fix: avoid capturing mutation receiver out parameter
+```
+
+Exact-SHA standard gates:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35632901150 — PASS
+pinned Loren                                35632901064 — PASS
+Loren-main canary                           35632901146 — PASS
+pinned Jellyfin + parity/provenance         35632901144 — PASS
+```
+
+Core verification:
+
+```text
+Release build:       0 warnings / 0 errors
+C# tests:            145 / 145 PASS
+frontend tests:      13 / 13 PASS
+tool pack/install:   PASS
+WorkPlay:            PASS
+PokeTrade:           PASS, including product-knowledge verification
+```
+
+Pinned three-repository benchmark rerun:
+
+```text
+base implementation: 67624944da27ff1f1f5a1154018a255aae11d1fe
+benchmark wrapper:   ea727bea808d79526f786d6092810ec368338c20
+run:                 35633768883 — PASS, 3 / 3 matrix jobs
+```
+
+The temporary wrapper differs from the accepted main checkpoint by one workflow-trigger line only. All PKC source/test logic is byte-identical to `67624944...`.
+
+Benchmark artifacts prove:
+
+- PKC exits `0` on all three unchanged repositories;
+- the original agentic-angular raw `user.UpdatedAt` and `contact.UpdatedAt` facts remain present;
+- both facts are labeled `runtime-pattern-variable` with `caller-object-unproven` causality;
+- those two AppDbContext timestamp mutations appear in **0** feature candidates;
+- PO-facing knowledge contains **0** false `UpdatedAt` timestamp claims;
+- affected workflows carry a transitive-mutation uncertainty warning instead;
+- legitimate PokeTrade transitive domain mutations remain intact.
+
+Real-repository R7.9 rendered-value positive yield remains `0 / 3`; R7.14 is therefore still **NOT YET PASS** and must not be claimed complete.
+
+Full details: `docs/benchmarks/2026-09-21-real-repo-r7.9-benchmark.md`.
+
 ## V0.4.7-D / R7.10 — CURRENT / UNLOCKED
 
 D is not complete yet. The next demo-critical checkpoint is joint backend/frontend visibility for the **same R7.9-proven item/dataflow path**:
@@ -186,7 +244,7 @@ cross-stack schema:  0.4.6
 frontend schema:     0.4.3-frontend
 ```
 
-No package/schema bump is implied by R7.9 completion.
+No package/schema bump is implied by R7.9 completion or the mutation-causality blocker repair.
 
 ## Carried non-blocking warnings
 
@@ -201,6 +259,8 @@ Queryable names remain in old safe-operation sets but are unreachable behind the
 ## Exact next action
 
 Continue **V0.4.7-D only** with R7.10 regression-first. Reuse the exact R7.9 item/dataflow identity as the composition key; prove joint backend/frontend visibility without weakening either authority boundary.
+
+Do not broaden the pre-demo scope merely to manufacture R7.14 real-project positive yield.
 
 ```text
 V0.4.7-E LOCKED until D passes

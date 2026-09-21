@@ -2,7 +2,7 @@
 
 Use this file when continuing PKC in another coding or review thread.
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Read first
 
@@ -16,30 +16,32 @@ Read in this exact order before changing production code:
 6. `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`
 7. `docs/reviews/2026-09-16-v0.4.7-plan-readiness-review.md`
 8. `docs/reviews/2026-09-19-v0.4.7-c-final-rereview.md`
+9. `docs/benchmarks/2026-09-21-real-repo-r7.9-benchmark.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
 ## Current production checkpoint
 
-The exact R7.9 code/test checkpoint that passed all required gates is:
+The latest production implementation/test checkpoint validated in clean CI is:
 
 ```text
-fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
-test: target frontend casing collision
+67624944da27ff1f1f5a1154018a255aae11d1fe
+fix: avoid capturing mutation receiver out parameter
 ```
 
-A docs-only `[skip ci]` handoff commit may sit on top of that SHA. Verify current `main` first and do not reset.
+A docs-only `[skip ci]` checkpoint may sit on top of that SHA. Continue from current `main`; do not reset.
 
 ## Current milestone state
 
 ```text
-V0.4.7-A          PASS / COMPLETE
-V0.4.7-B          PASS / COMPLETE
-V0.4.7-C          PASS / COMPLETE
-V0.4.7-D / R7.9   PASS / COMPLETE
-V0.4.7-D / R7.10  CURRENT / UNLOCKED
-V0.4.7-E          LOCKED behind D
-V0.5 Azure DevOps LOCKED
+V0.4.7-A                                PASS / COMPLETE
+V0.4.7-B                                PASS / COMPLETE
+V0.4.7-C                                PASS / COMPLETE
+V0.4.7-D / R7.9                         PASS / COMPLETE
+V0.4.7-D mutation-causality blocker     PASS / CLOSED
+V0.4.7-D / R7.10                        CURRENT / UNLOCKED
+V0.4.7-E                                LOCKED behind D
+V0.5 Azure DevOps                       LOCKED
 ```
 
 Do not start E or V0.5.
@@ -62,6 +64,14 @@ fix: fail closed after opaque terminal effects
 V0.4.7-C
 fbb64b9917da1f63362558355201ff7998384ba0
 feat: prove backend API projection lineage
+
+V0.4.7-D / R7.9
+fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
+test: target frontend casing collision
+
+Post-R7.9 mutation-causality blocker repair
+67624944da27ff1f1f5a1154018a255aae11d1fe
+fix: avoid capturing mutation receiver out parameter
 ```
 
 C final review: `docs/reviews/2026-09-19-v0.4.7-c-final-rereview.md`.
@@ -88,7 +98,7 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative authority downgrade must not erase independently proven lower-authority evidence. Unsupported inference fails closed.
+Conservative authority downgrade must not erase independently proven lower-authority evidence. Unsupported inference fails closed. Same/similar names are never sufficient proof.
 
 ## V0.4.7-C — accepted boundary
 
@@ -108,11 +118,11 @@ ProductEntity.Price
 → API response
 ```
 
-C retains exact project/assembly/type/member identity plus source-member, target-member, projection and response locations. C emits separate `api-projection` and `API response field` facts. Later D failure must not remove them.
+C retains exact project/assembly/type/member identity plus source-member, target-member, projection and response locations. Later D failure must not remove independently proven C evidence.
 
 ## V0.4.7-D / R7.9 — PASS / COMPLETE
 
-R7.9 now answers:
+R7.9 answers:
 
 > What exact frontend state/display does this proven API response field feed?
 
@@ -130,38 +140,7 @@ C-proven backend response property
 → rendered UI value
 ```
 
-### Proof boundary
-
-Property-level composition requires all of the following:
-
-- accepted C API-response terminal identity;
-- semantic `System.Text.Json.Serialization.JsonPropertyNameAttribute` with exactly one explicit string wire name;
-- exact frontend typed HTTP response contract/member;
-- exact resolved service identity and API method;
-- exact result-member access on the subscribe result parameter;
-- exact component/view-model assignment target;
-- exact authoritative rendered member in the same component.
-
-Route identity may scope endpoint ↔ API-call correlation only. It is never sufficient to create the property-level edge.
-
-No normalized-name, casing similarity, textual similarity, route-label matching, DTO naming convention or camelCase/PascalCase guessing may create R7.9 lineage.
-
-### Main implementation seams
-
-```text
-src/Pkc.CSharp/CSharpJsonWireContractEnricher.cs
-src/Pkc.Frontend/AngularResponseBindingScanner.cs
-src/Pkc.Frontend/AngularRenderedMemberAuthorityFilter.cs
-src/Pkc.Knowledge/ApiFrontendBindingCandidateEnricher.cs
-```
-
-Pipeline integration also touches:
-
-```text
-src/Pkc.CSharp/CSharpEvidenceScanner.cs
-src/Pkc.Frontend/AngularFrontendAdapter.cs
-src/Pkc.Knowledge/CrossStackFeatureCandidateBuilder.cs
-```
+Property-level composition requires accepted C API-response identity, explicit semantic wire identity, exact frontend typed response member, exact resolved service/API method, exact subscribe result-member use, exact state assignment, and exact authoritative render member. Route matching may scope endpoint correlation only; it cannot prove the property edge. No casing/name/convention fallback is allowed.
 
 Focused regressions:
 
@@ -170,57 +149,7 @@ tests/Pkc.CSharp.Tests/ApiResponseFrontendBindingRegressionTests.cs
 tests/Pkc.CSharp.Tests/ApiResponseFrontendBindingIsolationRegressionTests.cs
 ```
 
-### R7.9 regressions locked
-
-Positive proof retains deterministic evidence locations for:
-
-- backend projection;
-- API response boundary;
-- explicit JsonPropertyName declaration;
-- frontend typed API call;
-- frontend response-contract member;
-- subscribe result-member use and component assignment;
-- rendered UI member.
-
-Fail-closed coverage includes:
-
-1. `DisplayPrice` / `displayPrice` same-name/casing collision without explicit wire proof;
-2. unrelated resolved service/result exposing the identical member name;
-3. unresolved or ambiguous service receiver;
-4. wrong/unresolved subscribe result receiver/RHS;
-5. untyped/fallback-only HTTP evidence;
-6. missing `JsonPropertyName` with no naming-convention fallback;
-7. non-authoritative render evidence;
-8. C evidence retention when D composition fails.
-
-PokeTrade was not modified merely to fit the fixture.
-
-### Important implementation repairs discovered during validation
-
-The original candidate was not accepted blindly. Clean-environment verification exposed and fixed these generic defects:
-
-```text
-1. Roslyn declared-property symbol type was inferred as ISymbol.
-   Fix: preserve IPropertySymbol before wire-attribute inspection.
-
-2. C targetMemberLocation is based on the property identifier/source symbol line,
-   while an attributed PropertyDeclarationSyntax starts at the attribute line.
-   Fix: match the property identifier token line, preserving C's location contract.
-
-3. Accepted C API-response terminal scopes itself with scopeFactId,
-   not endpointFactId.
-   Fix: compose R7.9 from the accepted C scope identity.
-
-4. One collision regression incorrectly rejected backend `PriceResponse.DisplayPrice`
-   anywhere in the full lineage string.
-   Fix: assert specifically that frontend `result.DisplayPrice` is absent.
-```
-
-None of these repairs added naming heuristics or weakened the proof boundary.
-
-### Exact-SHA R7.9 gates
-
-All passed on exact SHA `fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a`:
+Accepted R7.9 exact-SHA gates on `fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a`:
 
 ```text
 CI + full PKC tests + WorkPlay + PokeTrade   35588410936 — PASS
@@ -229,20 +158,106 @@ Loren-main canary                           35588410930 — PASS
 pinned Jellyfin                             35588410939 — PASS
 ```
 
+## Post-R7.9 mutation-causality release blocker — PASS / CLOSED
+
+A pinned real-repository benchmark found a wrong PO-facing causality promotion in the modern Angular CRM:
+
+```text
+SaveChangesAsync()
+→ SetTimestamps()
+→ ChangeTracker.Entries().Where(State == Modified)
+→ entry.Entity is User user / Contact contact
+→ user.UpdatedAt / contact.UpdatedAt
+```
+
+Unrelated workflows such as Signup and Contact Store were incorrectly claiming both timestamp mutations merely because the helper was transitively reachable.
+
+The repaired generic boundary is:
+
+```text
+runtime pattern-selected receiver
+→ raw mutation evidence retained
+→ metadata: mutationReceiverOrigin = runtime-pattern-variable
+→ metadata: mutationCausalityBoundary = caller-object-unproven
+→ transitive workflow promotion denied unless causality is proven
+```
+
+Ordinary local/domain-object transitive mutations and self-owned domain mutations remain eligible. This prevents over-filtering legitimate PokeTrade stock/status mutations.
+
+Regression file:
+
+```text
+tests/Pkc.CSharp.Tests/TransitiveMutationCausalityRegressionTests.cs
+```
+
+It locks:
+
+1. runtime pattern-selected receiver is retained raw but not promoted;
+2. ordinary local/domain transitive mutation remains promoted;
+3. self-owned domain mutation remains promoted.
+
+Exact-SHA standard gates on `67624944da27ff1f1f5a1154018a255aae11d1fe`:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35632901150 — PASS
+pinned Loren                                35632901064 — PASS
+Loren-main canary                           35632901146 — PASS
+pinned Jellyfin + parity/provenance         35632901144 — PASS
+```
+
 Core verification:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            142 / 142 PASS
+C# tests:            145 / 145 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
-PokeTrade:           PASS
+PokeTrade:           PASS, including product-knowledge verification
 ```
 
-Pinned Jellyfin completed normal source build, PKC compile, portable handoff parity/provenance verification and artifact upload successfully.
+## Pinned real-repository blocker re-benchmark
 
-The current agent environment did not provide local `.NET` execution. Do not rewrite history to claim local .NET validation; exact-SHA clean-environment gates are the recorded validation evidence.
+The GitHub connector did not expose workflow dispatch, so the existing diagnostic matrix was rerun through a temporary evidence branch based exactly on the accepted implementation SHA:
+
+```text
+base implementation: 67624944da27ff1f1f5a1154018a255aae11d1fe
+branch:              benchmark/p0-mutation-causality-67624944
+wrapper commit:      ea727bea808d79526f786d6092810ec368338c20
+benchmark run:       35633768883 — PASS, 3 / 3 jobs
+```
+
+The wrapper changes one workflow trigger line only. PKC source/test logic is byte-identical to `67624944...`.
+
+Rerun summary:
+
+```text
+jin12-xyz/CRM
+PKC exit 0 | 415 facts | 1580 relations | 25 knowledge files
+
+hackersandwizards/agentic-engineering-training-angular
+PKC exit 0 | 441 facts | 660 relations | 26 knowledge files
+
+kesetovic/crm-system
+PKC exit 0 | 488 facts | 2054 relations | 28 knowledge files
+```
+
+Agentic-angular artifact cross-check:
+
+```text
+raw user.UpdatedAt mutation:       retained
+raw contact.UpdatedAt mutation:    retained
+receiver origin:                   runtime-pattern-variable
+causality boundary:                caller-object-unproven
+candidate inclusion count:         0 for both timestamp mutations
+PO-facing UpdatedAt false claims:  0
+```
+
+Affected workflows receive the transitive-mutation warning instead of fabricated state changes.
+
+The benchmark still yields `0 / 3` R7.9 `rendered UI value` chains. Therefore R7.14 real-project positive yield remains **NOT YET PASS**. Do not broaden syntax support pre-demo merely to force a positive benchmark.
+
+Full evidence: `docs/benchmarks/2026-09-21-real-repo-r7.9-benchmark.md`.
 
 ## V0.4.7-D / R7.10 — exact next implementation
 
@@ -263,7 +278,7 @@ frontend visibility/filter evidence
 → one PO-facing visibility explanation
 ```
 
-### R7.10 authority rules
+Authority rules:
 
 - Reuse the exact R7.9 identity/dataflow as the composition key; do not correlate predicates by names alone.
 - Backend business-condition authority and frontend visibility evidence remain distinct evidence classes.
@@ -272,7 +287,7 @@ frontend visibility/filter evidence
 - If joint composition fails, retain R7.9 lineage and all independently proven backend/frontend evidence.
 - Production logic remains generic; do not modify PokeTrade merely to manufacture the fixture.
 
-### R7.10 regression-first next action
+Regression-first next action:
 
 ```text
 1. Inspect existing backend predicate and frontend visibility/filter facts already available in the R7.9 candidate path.
@@ -300,14 +315,14 @@ cross-stack schema:  0.4.6
 frontend schema:     0.4.3-frontend
 ```
 
-Do not bump package/schema versions merely because R7.9 passed.
+Do not bump package/schema versions merely because R7.9 or the benchmark blocker repair passed.
 
 ## If another session takes over
 
-Verify current `main` and working state first. The last validated production/test SHA is:
+Verify current `main` first. The latest clean-environment validated implementation SHA is:
 
 ```text
-fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
+67624944da27ff1f1f5a1154018a255aae11d1fe
 ```
 
-If a docs-only `[skip ci]` commit is on top, continue from current main; do not reset. R7.9 is closed. Continue R7.10 only. E and V0.5 remain locked.
+If a docs-only `[skip ci]` commit is on top, continue from current main. The mutation-causality release blocker is closed. Continue R7.10 regression-first only. E and V0.5 remain locked.
