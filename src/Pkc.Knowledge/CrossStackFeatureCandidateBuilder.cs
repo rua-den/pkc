@@ -25,13 +25,19 @@ public sealed class CrossStackFeatureCandidateBuilder
     private const string FrontendFallbackWarning =
         "Some frontend evidence in this workflow comes from conservative regex/template fallback analysis. Treat exact UI structure and linkage as lower confidence than AST-backed evidence.";
 
+    private const string TransitiveMutationCausalityWarning =
+        "Some transitive helper mutations were not promoted into this workflow because PKC could not prove that the helper mutated the endpoint's affected object. The raw mutation evidence remains available in the compiled fact set.";
+
     public FeatureCandidateDocument Build(FactDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
         var baseline = new FeatureCandidateBuilder().Build(document);
         var enriched = new FeatureCandidateDocument(
             "0.4.6",
-            baseline.Candidates.Select(candidate => Enrich(candidate, document)).ToArray());
+            baseline.Candidates
+                .Select(candidate => Enrich(candidate, document))
+                .Select(FilterUnprovenTransitiveMutations)
+                .ToArray());
         return new ApiFrontendBindingCandidateEnricher().Enrich(enriched, document);
     }
 
@@ -126,205 +132,153 @@ public sealed class CrossStackFeatureCandidateBuilder
         return AddAnalysisWarnings(FilterFlowNoise(enriched));
     }
 
-    private static void AddScreenBehavior(
-        FactDocument document,
-        EvidenceFact screen,
-        IDictionary<string, EvidenceFact> facts,
-        ICollection<EvidenceRelation> relations,
-        ISet<string> relationKeys)
+    private static FeatureCandidate FilterUnprovenTransitiveMutations(FeatureCandidate candidate)
     {
-        foreach (var behavior in document.Facts.Where(fact =>
-                     ScreenBehaviorKinds.Contains(fact.Kind) &&
-                     (string.Equals(fact.Container, screen.Name, StringComparison.Ordinal) ||
-                      fact.Metadata.TryGetValue("component", out var component) &&
-                      string.Equals(component, screen.Name, StringComparison.Ordinal))))
-        {
-            facts[behavior.Id] = behavior;
-            AddRelation(
-                new EvidenceRelation(screen.Id, "contains-ui-behavior", behavior.Id, behavior.Source),
-                relations,
-                relationKeys);
+        var factsById = candidate.Facts.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
+        var removedMutationIds = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var relation in document.Relations.Where(relation =>
-                         relation.FromFactId == behavior.Id &&
-                         relation.Kind == "feeds-list"))
+        foreach (var mutation in candidate.Facts.Where(fact => fact.Kind == "mutation"))
+        {
+            var owners = candidate.Relations
+                .Where(relation => relation.Kind == "mutates" && relation.Target == mutation.Id)
+                .Select(relation => factsById.TryGetValue(relation.FromFactId, out var owner) ? owner : null)
+                .Where(owner => owner is not null)
+                .Cast<EvidenceFact>()
+                .DistinctBy(owner => owner.Id, StringComparer.Ordinal)
+                .ToArray();
+
+            if (owners.Any(owner => string.Equals(owner.Id, candidate.SeedFactId, StringComparison.Ordinal)))
             {
-                AddRelation(relation, relations, relationKeys);
-                var target = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
-                if (target is not null)
-                {
-                    facts[target.Id] = target;
-                }
+                continue;
             }
-        }
-    }
 
-    private static void AddBindingsForApiCall(
-        FactDocument document,
-        EvidenceFact apiCall,
-        IDictionary<string, EvidenceFact> facts,
-        ICollection<EvidenceRelation> relations,
-        ISet<string> relationKeys)
-    {
-        if (string.IsNullOrWhiteSpace(apiCall.Container))
-        {
-            return;
-        }
-
-        foreach (var binding in document.Facts.Where(fact =>
-                     fact.Kind == "ui-field-binding" &&
-                     string.Equals(fact.Container, apiCall.Container, StringComparison.Ordinal)))
-        {
-            facts[binding.Id] = binding;
-            AddRelation(
-                new EvidenceRelation(binding.Id, "binds-api", apiCall.Id, binding.Source),
-                relations,
-                relationKeys);
-        }
-    }
-
-    private static void AddResultFlowForApiCall(
-        FactDocument document,
-        EvidenceFact apiCall,
-        IDictionary<string, EvidenceFact> facts,
-        ICollection<EvidenceRelation> relations,
-        ISet<string> relationKeys)
-    {
-        if (string.IsNullOrWhiteSpace(apiCall.Container))
-        {
-            return;
-        }
-
-        foreach (var binding in document.Facts.Where(fact => IsResultBindingForApiCall(fact, apiCall)))
-        {
-            facts[binding.Id] = binding;
-            AddRelation(
-                new EvidenceRelation(apiCall.Id, "feeds-ui-binding", binding.Id, binding.Source),
-                relations,
-                relationKeys);
-
-            foreach (var relation in document.Relations.Where(relation =>
-                         relation.FromFactId == binding.Id && relation.Kind == "feeds-list"))
+            if (owners.Length == 1 && IsSelfOwnedTransitiveMutation(owners[0], mutation))
             {
-                AddRelation(relation, relations, relationKeys);
-                var render = document.Facts.FirstOrDefault(fact => fact.Id == relation.Target);
-                if (render is not null)
-                {
-                    facts[render.Id] = render;
-                }
+                continue;
             }
-        }
-    }
 
-    private static bool IsResultBindingForApiCall(EvidenceFact binding, EvidenceFact apiCall)
-    {
-        if (binding.Kind != "ui-result-binding" ||
-            string.IsNullOrWhiteSpace(apiCall.Container) ||
-            !binding.Metadata.TryGetValue("apiMethod", out var apiMethod) ||
-            !string.Equals(apiMethod, apiCall.Container, StringComparison.Ordinal) ||
-            !binding.Metadata.TryGetValue("serviceType", out var serviceType) ||
-            string.IsNullOrWhiteSpace(serviceType) ||
-            !apiCall.Metadata.TryGetValue("ownerClass", out var ownerClass) ||
-            string.IsNullOrWhiteSpace(ownerClass))
-        {
-            return false;
+            removedMutationIds.Add(mutation.Id);
         }
 
-        return string.Equals(serviceType, ownerClass, StringComparison.Ordinal);
-    }
-
-    private static FeatureCandidate FilterFlowNoise(FeatureCandidate candidate)
-    {
-        var relations = candidate.Relations
-            .Where(relation => relation.Kind != "invokes" || !IsFlowNoiseTarget(relation.Target))
-            .ToArray();
-
-        return candidate with { Relations = relations };
-    }
-
-    private static bool IsFlowNoiseTarget(string target) =>
-        target.StartsWith("System.", StringComparison.Ordinal) ||
-        target.StartsWith("string.", StringComparison.Ordinal) ||
-        target.StartsWith("char.", StringComparison.Ordinal) ||
-        target.StartsWith("object.", StringComparison.Ordinal) ||
-        target.StartsWith("Microsoft.AspNetCore.Http.Results.", StringComparison.Ordinal) ||
-        target.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal);
-
-    private static FeatureCandidate AddAnalysisWarnings(FeatureCandidate candidate)
-    {
-        var unknowns = candidate.Unknowns.ToList();
-
-        if (candidate.Facts.Any(fact =>
-                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
-                string.Equals(mode, "loose-roslyn-fallback", StringComparison.Ordinal)))
+        if (removedMutationIds.Count == 0)
         {
-            unknowns.Add(CSharpFallbackWarning);
-        }
-
-        if (candidate.Facts.Any(fact =>
-                fact.Metadata.TryGetValue("analysisMode", out var mode) &&
-                (mode.Contains("regex-fallback", StringComparison.Ordinal) ||
-                 mode.Contains("template-regex-fallback", StringComparison.Ordinal))))
-        {
-            unknowns.Add(FrontendFallbackWarning);
+            return candidate;
         }
 
         return candidate with
         {
-            Unknowns = unknowns.Distinct(StringComparer.Ordinal).ToArray()
-        };
-    }
+            Facts = candidate.Facts
+                .Where(fact => !removedMutationIds.Contains(fact.Id))
+                .ToArray(),
+            Relations = candidate.Relations
+                .Where(relation =>
+                    \™[[İ™Y]]][Û’YËÛÛZ[œÊ™[][Û‹‘œ›ÛQ˜XİY
+H	‰‚ˆ\™[[İ™Y]]][Û’YËÛÛZ[œÊ™[][Û‹•\™Ù]
+JBˆ•Ğ\œ˜^J
+Kˆ[šÛ›İÛœÈHØ[™Y]K•[šÛ›İÛœÂˆ\[™
+˜[œÚ]]™S]]][ÛØ]\Ø[]UØ\›š[™ÊBˆ‘\İ[˜İ
+İš[™ĞÛÛ\\™\‹“Ü™[˜[
+Bˆ•Ğ\œ˜^J
+BˆNÂˆB‚ˆš]˜]Hİ]XÈ›ÛÛ\ÔÙ[“İÛ™Y˜[œÚ]]™S]]][ÛŠ]šY[˜ÙQ˜XİİÛ™\‹]šY[˜ÙQ˜Xİ]]][ÛŠBˆÂˆYˆ
 
-    private static IEnumerable<EvidenceFact> FindScreensForAction(FactDocument document, EvidenceFact action)
-    {
-        if (!string.IsNullOrWhiteSpace(action.Container))
-        {
-            var byName = document.Facts.Where(fact =>
-                fact.Kind == "ui-screen" && string.Equals(fact.Name, action.Container, StringComparison.Ordinal)).ToArray();
-            if (byName.Length > 0)
-            {
-                return byName;
-            }
-        }
+İÛ™\‹’Ú[™OH›Y]Ùˆ	‰ˆİÛ™\‹’Ú[™OH˜ÛÛœİXİÜˆŠHˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJİÛ™\‹ÛÛZ[™\ŠHˆ[]]][Û‹“Y]Y]K•QÙ]˜[YJ\™Ù]‹İ]˜\ˆ\™Ù]
+Hˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJ\™Ù]
+Hˆ[]]][Û‹“Y]Y]K•QÙ]˜[YJ\™Ù]Ş[X›Û‹İ]˜\ˆ\™Ù]Ş[X›Û
+Hˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJ\™Ù]Ş[X›Û
+JBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ˜\ˆ\Ò[\XÚ]Ü‘^XÚ]Ù[•\™Ù]Bˆ]\™Ù]ÛÛZ[œÊ	Ë‰Ëİš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+\Ëˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+NÂˆYˆ
+Z\Ò[\XÚ]Ü‘^XÚ]Ù[•\™Ù]
+BˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ˜\ˆ\İİH\™Ù]Ş[X›Û“\İ[™^ÙŠ	Ë‰ÊNÂˆYˆ
+\İİH
+BˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ˜\ˆ\™Ù]İÛ™\ˆH\™Ù]Ş[X›ÛË‹›\İİNÂˆ™]\›ˆİš[™Ë‘\]X[Ê\™Ù]İÛ™\‹İÛ™\‹ÛÛZ[™\‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+NÂˆB‚ˆš]˜]Hİ]XÈ›ÚYYØÜ™Y[™Z]š[ÜŠˆ˜XİØİ[Y[Øİ[Y[ˆ]šY[˜ÙQ˜XİØÜ™Y[‹ˆQXİ[Û˜\Oİš[™Ë]šY[˜ÙQ˜Xİˆ˜XİËˆPÛÛXİ[Û]šY[˜ÙT™[][Ûˆ™[][ÛœËˆTÙ]İš[™Ïˆ™[][Û’Ù^\ÊBˆÂˆ›Ü™XXÚ
+˜\ˆ™Z]š[Üˆ[ˆØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆØÜ™Y[™Z]š[Ü’Ú[™ËÛÛZ[œÊ˜Xİ’Ú[™
+H	‰‚ˆ
+İš[™Ë‘\]X[Ê˜XİÛÛZ[™\‹ØÜ™Y[‹“˜[YKİš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ˜Xİ“Y]Y]K•QÙ]˜[YJ˜ÛÛ\Û™[‹İ]˜\ˆÛÛ\Û™[
+H	‰‚ˆİš[™Ë‘\]X[ÊÛÛ\Û™[ØÜ™Y[‹“˜[YKİš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JJJBˆÂˆ˜XİÖØ™Z]š[Ü‹’YHH™Z]š[ÜÂˆY™[][ÛŠˆ™]È]šY[˜ÙT™[][ÛŠØÜ™Y[‹’Y˜ÛÛZ[œË]ZKX™Z]š[Üˆ‹™Z]š[Ü‹’Y™Z]š[Ü‹”Ûİ\˜ÙJKˆ™[][ÛœËˆ™[][Û’Ù^\ÊNÂˆ›Ü™XXÚ
+˜\ˆ™[][Ûˆ[ˆØİ[Y[”™[][ÛœË•Ú\™J™[][ÛˆO‚ˆ™[][Û‹‘œ›ÛQ˜XİYOH™Z]š[Ü‹’Y	‰‚ˆ™[][Û‹’Ú[™OH™™YYË[\İŠJBˆÂˆY™[][ÛŠ™[][Û‹™[][ÛœË™[][Û’Ù^\ÊNÂˆ˜\ˆ\™Ù]HØİ[Y[‘˜XİË‘š\œİÜ‘Y˜][
+˜XİOˆ˜Xİ’YOH™[][Û‹•\™Ù]
+NÂˆYˆ
+\™Ù]\È›İ[
+BˆÂˆ˜XİÖİ\™Ù]’YHH\™Ù]ÂˆBˆBˆBˆB‚ˆš]˜]Hİ]XÈ›ÚYYš[™[™ÜÑ›Ü\PØ[
+ˆ˜XİØİ[Y[Øİ[Y[ˆ]šY[˜ÙQ˜Xİ\PØ[ˆQXİ[Û˜\Oİš[™Ë]šY[˜ÙQ˜Xİˆ˜XİËˆPÛÛXİ[Û]šY[˜ÙT™[][Ûˆ™[][ÛœËˆTÙ]İš[™Ïˆ™[][Û’Ù^\ÊBˆÂˆYˆ
+İš[™Ë’\Ó[Ü•Ú]TÜXÙJ\PØ[ÛÛZ[™\ŠJBˆÂˆ™]\›ÂˆB‚ˆ›Ü™XXÚ
+˜\ˆš[™[™È[ˆØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆ˜Xİ’Ú[™OHZKYšY[Xš[™[™Èˆ	‰‚ˆİš[™Ë‘\]X[Ê˜XİÛÛZ[™\‹\PØ[ÛÛZ[™\‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JJBˆÂˆ˜XİÖØš[™[™Ë’YHHš[™[™ÎÂˆY™[][ÛŠˆ™]È]šY[˜ÙT™[][ÛŠš[™[™Ë’Y˜š[™ËX\H‹\PØ[’Yš[™[™Ë”Ûİ\˜ÙJKˆ™[][ÛœËˆ™[][Û’Ù^\ÊNÂˆBˆB‚ˆš]˜]Hİ]XÈ›ÚYY™\İ[›İÑ›Ü\PØ[
+ˆ˜XİØİ[Y[Øİ[Y[ˆ]šY[˜ÙQ˜Xİ\PØ[ˆQXİ[Û˜\Oİš[™Ë]šY[˜ÙQ˜Xİˆ˜XİËˆPÛÛXİ[Û]šY[˜ÙT™[][Ûˆ™[][ÛœËˆTÙ]İš[™Ïˆ™[][Û’Ù^\ÊBˆÂˆYˆ
+İš[™Ë’\Ó[Ü•Ú]TÜXÙJ\PØ[ÛÛZ[™\ŠJBˆÂˆ™]\›ÂˆB‚ˆ›Ü™XXÚ
+˜\ˆš[™[™È[ˆØİ[Y[‘˜XİË•Ú\™J˜XİOˆ\Ô™\İ[š[™[™Ñ›Ü\PØ[
+˜Xİ\PØ[
+JJBˆÂˆ˜XİÖØš[™[™Ë’YHHš[™[™ÎÂˆY™[][ÛŠˆ™]È]šY[˜ÙT™[][ÛŠ\PØ[’Y™™YYË]ZKXš[™[™È‹š[™[™Ë’Yš[™[™Ë”Ûİ\˜ÙJKˆ™[][ÛœËˆ™[][Û’Ù^\ÊNÂ‚ˆ›Ü™XXÚ
+˜\ˆ™[][Ûˆ[ˆØİ[Y[”™[][ÛœË•Ú\™J™[][ÛˆO‚ˆ™[][Û‹‘œ›ÛQ˜XİYOHš[™[™Ë’Y	‰ˆ™[][Û‹’Ú[™OH™™YYË[\İŠJBˆÂˆY™[][ÛŠ™[][Û‹™[][ÛœË™[][Û’Ù^\ÊNÂˆ˜\ˆ™[™\ˆHØİ[Y[‘˜XİË‘š\œİÜ‘Y˜][
+˜XİOˆ˜Xİ’YOH™[][Û‹•\™Ù]
+NÂˆYˆ
+™[™\ˆ\È›İ[
+BˆÂˆ˜XİÖÜ™[™\‹’YHH™[™\ÂˆBˆBˆBˆB‚ˆš]˜]Hİ]XÈ›ÛÛ\Ô™\İ[š[™[™Ñ›Ü\PØ[
+]šY[˜ÙQ˜Xİš[™[™Ë]šY[˜ÙQ˜Xİ\PØ[
+BˆÂˆYˆ
+š[™[™Ë’Ú[™OHZK\™\İ[Xš[™[™Èˆˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJ\PØ[ÛÛZ[™\ŠHˆXš[™[™Ë“Y]Y]K•QÙ]˜[YJ˜\SY]Ù‹İ]˜\ˆ\SY]Ù
+Hˆ\İš[™Ë‘\]X[Ê\SY]Ù\PØ[ÛÛZ[™\‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+HˆXš[™[™Ë“Y]Y]K•QÙ]˜[YJœÙ\šXÙU\H‹İ]˜\ˆÙ\šXÙU\JHˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJÙ\šXÙU\JHˆX\PØ[“Y]Y]K•QÙ]˜[YJ›İÛ™\Û\ÜÈ‹İ]˜\ˆİÛ™\Û\ÜÊHˆİš[™Ë’\Ó[Ü•Ú]TÜXÙJİÛ™\Û\ÜÊJBˆÂˆ™]\›ˆ˜[ÙNÂˆB‚ˆ™]\›ˆİš[™Ë‘\]X[ÊÙ\šXÙU\KİÛ™\Û\ÜËİš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+NÂˆB‚ˆš]˜]Hİ]XÈ™X]\™PØ[™Y]Hš[\‘›İÓ›Ú\ÙJ™X]\™PØ[™Y]HØ[™Y]JBˆÂˆ˜\ˆ™[][ÛœÈHØ[™Y]K”™[][ÛœÂˆ•Ú\™J™[][ÛˆOˆ™[][Û‹’Ú[™OHš[›ÚÙ\ÈˆR\Ñ›İÓ›Ú\ÙU\™Ù]
+™[][Û‹•\™Ù]
+JBˆ•Ğ\œ˜^J
+NÂ‚ˆ™]\›ˆØ[™Y]HÚ]È™[][ÛœÈH™[][ÛœÈNÂˆB‚ˆš]˜]Hİ]XÈ›ÛÛ\Ñ›İÓ›Ú\ÙU\™Ù]
+İš[™È\™Ù]
+HO‚ˆ\™Ù]”İ\ÕÚ]
+”Ş\İ[Kˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+œİš[™Ëˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+˜Ú\‹ˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+›Øš™Xİˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+“ZXÜ›ÜÛÙ\Ü™]ÛÜ™K’”™\İ[Ëˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ\™Ù]”İ\ÕÚ]
+“ZXÜ›ÜÛÙ‘^[œÚ[ÛœËˆ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+NÂ‚ˆš]˜]Hİ]XÈ™X]\™PØ[™Y]HY[˜[\Ú\ÕØ\›š[™ÜÊ™X]\™PØ[™Y]HØ[™Y]JBˆÂˆ˜\ˆ[šÛ›İÛœÈHØ[™Y]K•[šÛ›İÛœË•Ó\İ
 
-        return document.Facts.Where(fact =>
-            fact.Kind == "ui-screen" && string.Equals(fact.Source.Path, action.Source.Path, StringComparison.Ordinal));
-    }
+NÂ‚ˆYˆ
+Ø[™Y]K‘˜XİË[J˜XİO‚ˆ˜Xİ“Y]Y]K•QÙ]˜[YJ˜[˜[\Ú\Ó[ÙH‹İ]˜\ˆ[ÙJH	‰‚ˆİš[™Ë‘\]X[Ê[ÙK›ÛÜÙK\›ÜÛ[‹Y˜[˜XÚÈ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JJBˆÂˆ[šÛ›İÛœËY
+ÔÚ\œ˜[˜XÚÕØ\›š[™ÊNÂˆB‚ˆYˆ
+Ø[™Y]K‘˜XİË[J˜XİO‚ˆ˜Xİ“Y]Y]K•QÙ]˜[YJ˜[˜[\Ú\Ó[ÙH‹İ]˜\ˆ[ÙJH	‰‚ˆ
+[ÙKÛÛZ[œÊœ™YÙ^Y˜[˜XÚÈ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+Hˆ[ÙKÛÛZ[œÊ[\]K\™YÙ^Y˜[˜XÚÈ‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JJJBˆÂˆ[šÛ›İÛœËY
+œ›Û[™˜[˜XÚÕØ\›š[™ÊNÂˆB‚ˆ™]\›ˆØ[™Y]HÚ]ˆÂˆ[šÛ›İÛœÈH[šÛ›İÛœË‘\İ[˜İ
+İš[™ĞÛÛ\\™\‹“Ü™[˜[
+K•Ğ\œ˜^J
+BˆNÂˆB‚ˆš]˜]Hİ]XÈQ[[Y\˜X›O]šY[˜ÙQ˜Xİˆš[™ØÜ™Y[œÑ›ÜXİ[ÛŠ˜XİØİ[Y[Øİ[Y[]šY[˜ÙQ˜XİXİ[ÛŠBˆÂˆYˆ
+\İš[™Ë’\Ó[Ü•Ú]TÜXÙJXİ[Û‹ÛÛZ[™\ŠJBˆÂˆ˜\ˆS˜[YHHØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆ˜Xİ’Ú[™OHZK\ØÜ™Y[ˆˆ	‰ˆİš[™Ë‘\]X[Ê˜Xİ“˜[YKXİ[Û‹ÛÛZ[™\‹İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JK•Ğ\œ˜^J
+NÂˆYˆ
+S˜[YK“[™İˆ
+BˆÂˆ™]\›ˆS˜[YNÂˆBˆB‚ˆ™]\›ˆØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆ˜Xİ’Ú[™OHZK\ØÜ™Y[ˆˆ	‰ˆİš[™Ë‘\]X[Ê˜Xİ”Ûİ\˜ÙK”]Xİ[Û‹”Ûİ\˜ÙK”]İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JNÂˆB‚ˆš]˜]Hİ]XÈQ[[Y\˜X›O]šY[˜ÙQ˜Xİˆš[™ØÜ™Y[œÑ›Ü\PØ[
+˜XİØİ[Y[Øİ[Y[]šY[˜ÙQ˜Xİ\PØ[
+HO‚ˆØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆ˜Xİ’Ú[™OHZK\ØÜ™Y[ˆˆ	‰‚ˆİš[™Ë‘\]X[Ê˜Xİ”Ûİ\˜ÙK”]\PØ[”Ûİ\˜ÙK”]İš[™ĞÛÛ\\š\ÛÛ‹“Ü™[˜[
+JNÂ‚ˆš]˜]Hİ]XÈQ[[Y\˜X›O]šY[˜ÙQ˜Xİˆš[™ØÜ™Y[œÑ›Ü”™\İ[›İÊ˜XİØİ[Y[Øİ[Y[]šY[˜ÙQ˜Xİ\PØ[
+BˆÂˆYˆ
+İš[™Ë’\Ó[Ü•Ú]TÜXÙJ\PØ[ÛÛZ[™\ŠJBˆÂˆ™]\›ˆ×NÂˆB‚ˆ˜\ˆÛÛ\Û™[ÈHØİ[Y[‘˜XİÂˆ•Ú\™J˜XİOˆ\Ô™\İ[š[™[™Ñ›Ü\PØ[
+˜Xİ\PØ[
+H	‰ˆ\İš[™Ë’\Ó[Ü•Ú]TÜXÙJ˜XİÛÛZ[™\ŠJBˆ”Ù[Xİ
+˜XİOˆ˜XİÛÛZ[™\ˆJBˆ•Ò\ÚÙ]
+İš[™ĞÛÛ\\™\‹“Ü™[˜[
+NÂ‚ˆ™]\›ˆØİ[Y[‘˜XİË•Ú\™J˜XİO‚ˆ˜Xİ’Ú[™OHZK\ØÜ™Y[ˆˆ	‰ˆÛÛ\Û™[ËÛÛZ[œÊ˜Xİ“˜[YJJNÂˆB‚ˆš]˜]Hİ]XÈ›ÚYY™[][ÛŠ]šY[˜ÙT™[][Ûˆ™[][Û‹PÛÛXİ[Û]šY[˜ÙT™[][Ûˆ™[][ÛœËTÙ]İš[™ÏˆÙ^\ÊBˆÂˆYˆ
+Ù^\ËY
+™[][Û’Ù^J™[][ÛŠJJH™[][ÛœËY
+™[][ÛŠNÂˆB‚ˆš]˜]Hİ]XÈİš[™È™[][Û’Ù^J]šY[˜ÙT™[][Ûˆ™[][ÛŠHOˆ	Ü™[][Û‹‘œ›ÛQ˜XİY_Ü™[][Û‹’Ú[™_Ü™[][Û‹•\™Ù]HÂ‚ˆš]˜]Hİ]XÈİš[™È›Ü›X[^™T›İ]RÙ^Jİš[™È˜[YJBˆÂˆ˜\ˆ›İ]HH˜[YK”Ü]
+	ÏÉË	ÈÉÊVÌK•š[J
+NÂˆ›İ]HH[\]T\˜[Y]\”™YÙ^”™\XÙJ›İ]KÜ\˜[_HŠNÂˆ›İ]HH›İ]T\˜[Y]\”™YÙ^”™\XÙJ›İ]KÜ\˜[_HŠNÂˆYˆ
+\›İ]K”İ\ÕÚ]
+	ËÉÊJH›İ]HH‹Èˆ
+È›İ]NÂˆ™]\›ˆ›İ]K•š[Q[™
+	ËÉÊK•ÓİÙ\’[˜\šX[
 
-    private static IEnumerable<EvidenceFact> FindScreensForApiCall(FactDocument document, EvidenceFact apiCall) =>
-        document.Facts.Where(fact =>
-            fact.Kind == "ui-screen" &&
-            string.Equals(fact.Source.Path, apiCall.Source.Path, StringComparison.Ordinal));
-
-    private static IEnumerable<EvidenceFact> FindScreensForResultFlow(FactDocument document, EvidenceFact apiCall)
-    {
-        if (string.IsNullOrWhiteSpace(apiCall.Container))
-        {
-            return [];
-        }
-
-        var components = document.Facts
-            .Where(fact => IsResultBindingForApiCall(fact, apiCall) && !string.IsNullOrWhiteSpace(fact.Container))
-            .Select(fact => fact.Container!)
-            .ToHashSet(StringComparer.Ordinal);
-
-        return document.Facts.Where(fact =>
-            fact.Kind == "ui-screen" && components.Contains(fact.Name));
-    }
-
-    private static void AddRelation(EvidenceRelation relation, ICollection<EvidenceRelation> relations, ISet<string> keys)
-    {
-        if (keys.Add(RelationKey(relation))) relations.Add(relation);
-    }
-
-    private static string RelationKey(EvidenceRelation relation) => $"{relation.FromFactId}|{relation.Kind}|{relation.Target}";
-
-    private static string NormalizeRouteKey(string value)
-    {
-        var route = value.Split('?', '#')[0].Trim();
-        route = TemplateParameterRegex.Replace(route, "{param}");
-        route = RouteParameterRegex.Replace(route, "{param}");
-        if (!route.StartsWith('/')) route = "/" + route;
-        return route.TrimEnd('/').ToLowerInvariant();
-    }
-}
+NÂˆBŸB
