@@ -44,7 +44,7 @@ internal sealed class ApiFrontendBindingCandidateEnricher
                 "API response field",
                 StringComparison.Ordinal))
             .Where(fact => string.Equals(
-                fact.Metadata.GetValueOrDefault("endpointFactId"),
+                fact.Metadata.GetValueOrDefault("scopeFactId"),
                 endpoint.Id,
                 StringComparison.Ordinal))
             .Where(fact => !string.IsNullOrWhiteSpace(fact.Metadata.GetValueOrDefault("wireName")))
