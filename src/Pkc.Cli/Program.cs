@@ -28,6 +28,7 @@ try
     var facts = Merge(csharpFacts, frontendFacts);
     var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
     candidates = new ValidationConsistencyCandidateEnricher().Enrich(candidates, facts);
+    candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
@@ -51,7 +52,7 @@ try
 
     if (command == "build")
     {
-        var synthesizer = new EvidenceAwareKnowledgeSynthesizer();
+        var synthesizer = new JointVisibilityKnowledgeSynthesizer();
         var workflowRenderer = new MarkdownKnowledgeRenderer();
         var workflows = new List<FeatureKnowledge>();
         var canonicalKnowledgeFiles = new Dictionary<string, string>(StringComparer.Ordinal);

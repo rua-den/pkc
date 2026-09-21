@@ -80,17 +80,22 @@ public sealed class CSharpEvidenceScanner
             repositoryPath,
             lineage,
             cancellationToken);
-        var wireContracts = await new CSharpJsonWireContractEnricher().EnrichAsync(
+        var selectedApiProjectionLineage = await new CSharpSelectedApiProjectionLineageEnricher().EnrichAsync(
             repositoryPath,
             apiProjectionLineage,
+            cancellationToken);
+        var wireContracts = await new CSharpJsonWireContractEnricher().EnrichAsync(
+            repositoryPath,
+            selectedApiProjectionLineage,
             cancellationToken);
         var predicates = await new CSharpBusinessPredicateEnricher().EnrichAsync(
             repositoryPath,
             wireContracts,
             cancellationToken);
-        return await new CSharpBusinessPredicateAuthorityFilter().FilterAsync(
+        var predicateAuthority = await new CSharpBusinessPredicateAuthorityFilter().FilterAsync(
             repositoryPath,
             predicates,
             cancellationToken);
+        return new CSharpSelectedApiPredicateAuthorityEnricher().Enrich(predicateAuthority);
     }
 }
