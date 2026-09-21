@@ -9,6 +9,10 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         @"@Component\s*\(\s*\{(?<before>[\s\S]*?)\btemplate\s*:\s*`(?<body>[\s\S]*?)`(?<after>[\s\S]*?)\}\s*\)\s*(?:export\s+)?class\s+(?<component>[A-Z][A-Za-z0-9_$]*Component)\b",
         RegexOptions.Compiled);
 
+    private static readonly Regex NgTemplateTagRegex = new(
+        @"<\s*(?<closing>/)?\s*ng-template\b[^>]*>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -98,7 +102,8 @@ internal sealed class AngularRenderedMemberAuthorityFilter
             {
                 var absoluteIndex = body.Index + memberMatch.Index;
                 var line = 1 + text.AsSpan(0, absoluteIndex).Count('\n');
-                if (line == sourceLine)
+                if (line == sourceLine &&
+                    !IsInsideInertNgTemplate(body.Value, memberMatch.Index))
                 {
                     count++;
                 }
@@ -106,6 +111,52 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         }
 
         return count;
+    }
+
+    private static bool IsInsideInertNgTemplate(string templateBody, int position)
+    {
+        var depth = 0;
+        foreach (Match tag in NgTemplateTagRegex.Matches(templateBody))
+        {
+            if (tag.Index >= position)
+            {
+                break;
+            }
+
+            if (IsInsideHtmlComment(templateBody, tag.Index))
+            {
+                continue;
+            }
+
+            if (tag.Groups["closing"].Success)
+            {
+                if (depth > 0)
+                {
+                    depth--;
+                }
+
+                continue;
+            }
+
+            if (!tag.Value.TrimEnd().EndsWith("/>", StringComparison.Ordinal))
+            {
+                depth++;
+            }
+        }
+
+        return depth > 0;
+    }
+
+    private static bool IsInsideHtmlComment(string text, int position)
+    {
+        var open = text.LastIndexOf("<!--", position, StringComparison.Ordinal);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var close = text.LastIndexOf("-->", position, StringComparison.Ordinal);
+        return close < open;
     }
 
     private static bool IsActiveCodePosition(string text, int position)

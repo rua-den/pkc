@@ -1,3 +1,4 @@
+using Pkc.Core;
 using Pkc.Frontend;
 using Xunit;
 
@@ -49,7 +50,55 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
             """);
     }
 
+    [Fact]
+    public async Task Bare_ng_template_interpolation_is_not_an_authoritative_render_or_visibility()
+    {
+        await AssertNoAuthoritativeRenderAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <ng-template>
+                  @if (displayPrice > 0) {
+                    <strong>{{ displayPrice }}</strong>
+                  }
+                </ng-template>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
     private static async Task AssertNoVisibilityAsync(string componentSource)
+    {
+        var facts = await ScanAsync(componentSource);
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
+    private static async Task AssertNoAuthoritativeRenderAsync(string componentSource)
+    {
+        var facts = await ScanAsync(componentSource);
+
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
+    private static async Task<FactDocument> ScanAsync(string componentSource)
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -67,15 +116,7 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
                 Path.Combine(root, "price.component.ts"),
                 componentSource);
 
-            var facts = await new FrontendScanner().ScanAsync(root);
-
-            Assert.Contains(facts.Facts, fact =>
-                fact.Kind == "ui-member-render" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-                fact.Metadata.ContainsKey("renderAuthority"));
-            Assert.DoesNotContain(facts.Facts, fact =>
-                fact.Kind == "ui-member-visibility" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+            return await new FrontendScanner().ScanAsync(root);
         }
         finally
         {
