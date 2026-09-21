@@ -31,16 +31,10 @@ V0.4.6 business logic reconstruction       PASS / COMPLETE
 V0.4.7-A origin and copy timing            PASS / COMPLETE
 V0.4.7-B computation and later change      PASS / COMPLETE
 V0.4.7-C backend → DTO/API lineage         PASS / COMPLETE
-V0.4.7-D API → UI composition              CURRENT / UNLOCKED
+V0.4.7-D / R7.9 API → rendered value       PASS / COMPLETE
+V0.4.7-D / R7.10 joint visibility          CURRENT / UNLOCKED
 V0.4.7-E product acceptance                LOCKED behind D
 V0.5 Azure DevOps input evidence           LOCKED
-```
-
-Accepted V0.4.6 production:
-
-```text
-c310e893762997f34562a6b3a62dbab2b05c0c93
-fix: fail closed on Queryable authority
 ```
 
 Accepted final V0.4.7-C production code:
@@ -50,7 +44,14 @@ fbb64b9917da1f63362558355201ff7998384ba0
 feat: prove backend API projection lineage
 ```
 
-V0.4.7-D is current. Azure DevOps ingestion remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
+Accepted R7.9 implementation/test checkpoint:
+
+```text
+fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
+test: target frontend casing collision
+```
+
+V0.4.7-D remains open only for R7.10 joint backend/frontend visibility and the remaining D review/gates. Azure DevOps ingestion remains locked until V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
 
 Acceptance contract: `docs/v0.4.7-acceptance-plan.md`.
 Current source of truth: `docs/status.md`.
@@ -82,20 +83,21 @@ Current accepted scope includes:
 - conservative business-predicate extraction and Product Owner authority filtering;
 - provider-aware Queryable fail-closed behavior;
 - retention of downgraded predicate evidence rather than deletion;
-- Angular TypeScript structure/routes/HTTP-call shapes through the project-local TypeScript syntactic AST when available;
-- Angular template actions through explicit conservative fallback;
+- Angular TypeScript structure/routes/HTTP-call shapes through project-local bounded analysis;
+- Angular template actions/visibility through explicit conservative fallback where stronger evidence is unavailable;
 - React/TypeScript through conservative fallback;
 - framework-agnostic frontend adapter boundary (`IFrontendAdapter`);
 - UI action → API call → backend endpoint linkage;
+- explicit-wire bounded API-response-field → typed frontend result → component state → rendered-value lineage;
 - workflow Markdown, product-feature Markdown and `knowledge/index.md`;
 - portable `PKC_KNOWLEDGE.md` and `PKC_KNOWLEDGE.zip` handoff artifacts;
 - PokeTrade known-answer runnable regression;
 - Loren pinned real-project acceptance plus Loren-main moving canary;
 - Jellyfin pinned independent generalization with portable parity/no-leak verification.
 
-### Accepted V0.4.7 value-lineage scope through C
+### Accepted V0.4.7 value-lineage scope through R7.9
 
-PKC additionally supports bounded target-project-semantic evidence for:
+PKC supports bounded evidence for:
 
 ```text
 stored direct copy
@@ -105,6 +107,7 @@ multi-input scalar derivation
 later supported override / mutation causality
 last proven source before a supported direct return
 backend entity/domain property → explicit DTO/response property → API response
+explicit API wire field → typed frontend result → component/view-model state → rendered value
 ```
 
 Canonical examples:
@@ -122,15 +125,21 @@ Service.Price + Service.Discount
 
 ProductEntity.Price
 → PriceResponse.DisplayPrice // explicit semantic DTO/API projection
+→ wire name displayPrice
+→ PriceResult.displayPrice
+→ PriceComponent.displayPrice
+→ rendered displayPrice
 ```
 
 A stored derivation is a point-in-time snapshot. Later changes to its inputs do not rewrite the stored value without another proven mutation.
 
-C's DTO/API edge is based on exact target-project semantic assignment and project/assembly/type/member identity. Renamed DTO properties are supported when assignment proves the mapping. Same/equivalent names alone never create lineage.
+C's DTO/API edge is based on exact target-project semantic assignment and project/assembly/type/member identity. R7.9 then requires an explicit semantic JSON wire contract plus exact bounded frontend service/result/assignment/render identity inside its supported proof grammar. Same/equivalent names alone never create lineage.
+
+R7.9 does **not** claim general TypeScript TypeChecker semantics. Its accepted evidence modes explicitly describe the bounded frontend proof used; unsupported shapes fail closed rather than being promoted by convention.
 
 ### Fail-closed behavior
 
-Permanent accepted regressions through C include:
+Permanent accepted regressions through R7.9 include:
 
 - nested/deconstruction property writes and deconstruction aliases;
 - compound/unary writes;
@@ -143,78 +152,63 @@ Permanent accepted regressions through C include:
 - unrelated same-name DTO/entity properties;
 - same-name namespace collisions;
 - same full type/member name across different assemblies;
-- custom source/target DTO accessors and unsupported projection effects.
+- custom source/target DTO accessors and unsupported projection effects;
+- frontend `DisplayPrice` / `displayPrice` collisions without explicit wire proof;
+- unrelated frontend services/results that expose the same member;
+- unresolved/ambiguous frontend service or result receivers;
+- untyped/fallback-only HTTP evidence;
+- non-authoritative render evidence.
 
 Unsupported shapes fail closed while independently proven lower-authority evidence remains available.
 
-This is deliberately **not** a general symbolic execution, alias, effect, arbitrary helper-projection or persistence solver.
+This is deliberately **not** a general symbolic execution, alias, effect, arbitrary helper-projection, persistence or TypeScript semantic solver.
 
-## Final V0.4.7-C verification
+## Final R7.9 verification
 
-Exact-main gates on `fbb64b9917da1f63362558355201ff7998384ba0`:
+Exact-SHA gates on `fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35416169067 — PASS
-pinned Loren                                35416169091 — PASS
-Loren-main canary                           35416169051 — PASS
-pinned Jellyfin                             35416169039 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35588410936 — PASS
+pinned Loren                                35588410941 — PASS
+Loren-main canary                           35588410930 — PASS
+pinned Jellyfin                             35588410939 — PASS
 ```
 
 Core:
 
 ```text
 Release build:       0 warnings / 0 errors
-C# tests:            136 / 136 PASS
+C# tests:            142 / 142 PASS
 frontend tests:      13 / 13 PASS
 tool pack/install:   PASS
 WorkPlay:            PASS
 PokeTrade:           PASS
 ```
 
-Pinned Jellyfin:
-
-```text
-facts:                   43,365
-relations:               195,316
-workflow candidates:     386
-product features:        116
-canonical Markdown:      504
-project-semantic facts:  43,365 / 43,365
-portable bundle parity:  PASS
-ZIP parity:              PASS
-raw .pkc/src leak:       none
-artifact id:             10575663250
-artifact digest:         sha256:857d33020332f4a68a69177b6809136ebe24b9ea86b5576efc8dbc69d8266347
-artifact size:           9,162,486 bytes
-```
-
-Final C review: `docs/reviews/2026-09-19-v0.4.7-c-final-rereview.md`.
-
 ## Current V0.4.7-D focus
 
-D answers:
+R7.10 now owns the only remaining D implementation question:
 
-> What frontend state/display does this proven API result feed, and what backend + frontend conditions jointly determine visibility for the same proven item path?
+> For the same R7.9-proven item/dataflow path, what backend selection/eligibility conditions and frontend visibility/filter conditions jointly determine whether it is visible?
 
-The first D checkpoint is regression-first and bounded. It must prove an equivalent of:
+Target composition:
 
 ```text
-API response field
-→ frontend HTTP/API result
-→ component/view-model assignment
-→ rendered/displayed value
+R7.9-proven API → frontend item/value identity
++
+backend business-condition evidence
++
+frontend visibility/filter evidence
+→ PO-facing joint visibility explanation
 ```
 
 Required properties:
 
-- exact backend response identity and frontend result/receiver/assignment identity;
-- backend and frontend source locations;
-- no normalized-name, route-label, casing or property-name join;
-- candidate retention → synthesis → PO-facing workflow Markdown;
-- fail closed when receiver/result/binding identity is ambiguous or unsupported;
-- retain accepted backend lineage when frontend composition cannot be proven.
-
-Joint backend/frontend visibility composition follows only after the same item/dataflow path is proven. Business-condition authority and frontend visibility evidence remain separate.
+- reuse exact R7.9 item/dataflow identity; do not join predicates by name/text similarity;
+- keep backend business-condition authority separate from frontend visibility evidence;
+- never let frontend evidence upgrade observed-only/lower-authority backend evidence;
+- fail closed on unrelated or ambiguous predicate/item paths;
+- retain accepted R7.9 lineage and independent evidence when joint visibility cannot be proven.
 
 E and V0.5 remain locked.
 
@@ -232,6 +226,8 @@ How did the value move through backend → DTO/projection → API → frontend c
 What backend + frontend conditions jointly determine visibility?
 If authority is incomplete, what deterministic lineage/causal evidence survives?
 ```
+
+Before E can close, at least one unchanged real repository must naturally produce a useful positive V0.4.7 cross-layer answer from the generated knowledge pack. Benchmarks must not be modified merely to manufacture the supported shape.
 
 ## Knowledge hierarchy
 
@@ -251,33 +247,14 @@ knowledge/workflows/**/*.md
 
 ## Analyzer fidelity
 
-Current analysis modes include:
-
-```text
-project-semantic
-  C# target-project MSBuildWorkspace context; strongest supported C# authority.
-
-typescript-ast-syntactic
-  Angular project-local TypeScript parser without TypeChecker receiver proof.
-
-loose-roslyn-fallback
-  C# source analyzed without full target-project reference graph.
-
-angular-template-regex-fallback
-  conservative Angular template action/visibility extraction.
-
-regex-fallback
-  low-authority conservative text fallback, including currently supported React shapes.
-```
-
-D must not pretend a syntax-only frontend fact has semantic identity it does not actually prove.
+Current analysis modes include strong C# project-semantic evidence plus explicitly bounded frontend and fallback modes. A high-confidence bounded frontend proof means the accepted grammar was matched exactly; it does not silently claim general TypeScript semantic resolution outside that boundary.
 
 ## Version semantics
 
 Roadmap milestone, tool/package and serialized schema versions are independent.
 
 ```text
-roadmap:             V0.4.7-D current
+roadmap:             V0.4.7-D / R7.10 current
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
@@ -364,30 +341,18 @@ CI is the final clean-environment layer, not the normal edit/test loop.
 
 ## Planned, not implemented yet
 
-- D: API result → frontend binding/composition and joint backend/frontend visibility;
-- E: final knowledge-only V0.4.7 acceptance;
-- TypeScript `Program` / `TypeChecker` semantic analysis unless required by a proven D gap;
+- D/R7.10: joint backend/frontend visibility on the same proven item path;
+- E: final knowledge-only V0.4.7 acceptance plus unchanged-real-project positive yield;
+- TypeScript `Program` / `TypeChecker` semantic analysis unless required by a proven gap;
 - React AST-backed analysis unless required by a proven gap;
 - full Angular template AST/compiler analysis unless required by a proven gap;
 - additional frontend/backend framework adapters;
-- Azure DevOps Epic / Feature / PBI / Sprint evidence;
+- Azure DevOps Epic / Feature / PBI / Sprint evidence with an explicit intent/history authority model;
 - incremental compilation and PR knowledge diffs;
+- cross-repository/system composition;
 - runtime UI confirmation;
 - product gap/drift analysis;
-- optional LLM-assisted synthesis where deterministic grouping is insufficient;
-- optional live delivery adapters after the portable knowledge contract is proven.
+- stable query/MCP projections over the canonical portable knowledge model;
+- optional LLM-assisted synthesis where deterministic grouping is insufficient.
 
 A new analyzer capability enters a milestone only when a concrete acceptance regression proves it is needed.
-
-## Project status
-
-Authoritative project files:
-
-- `docs/status.md`
-- `docs/handoff.md`
-- `docs/milestones.md`
-- `docs/v0.4.7-acceptance-plan.md`
-- `docs/product-knowledge-contract.md`
-- `docs/vision.md`
-- `docs/real-project-trial.md`
-- `docs/ai-handoff.md`
