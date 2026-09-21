@@ -97,7 +97,7 @@ internal sealed class CSharpJsonWireContractEnricher
                         .Select(property => new
                         {
                             Syntax = property,
-                            Symbol = model.GetDeclaredSymbol(property, cancellationToken)
+                            Symbol = model.GetDeclaredSymbol(property, cancellationToken) as IPropertySymbol
                         })
                         .Where(candidate => candidate.Symbol is not null)
                         .Where(candidate => string.Equals(
