@@ -21,6 +21,10 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         @"^none\s*(?:!important\s*)?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
+    private static readonly Regex StaticVisibilityHiddenRegex = new(
+        @"^hidden\s*(?:!important\s*)?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     private static readonly HashSet<string> VoidHtmlElements = new(StringComparer.OrdinalIgnoreCase)
     {
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
@@ -263,7 +267,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
             if (string.Equals(name, "style", StringComparison.OrdinalIgnoreCase) &&
                 hasValue &&
                 isStaticValue &&
-                HasStaticDisplayNone(value!))
+                HasStaticInlinePresentationSuppression(value!))
             {
                 return true;
             }
@@ -272,7 +276,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         return false;
     }
 
-    private static bool HasStaticDisplayNone(string style)
+    private static bool HasStaticInlinePresentationSuppression(string style)
     {
         foreach (var declaration in style.Split(';'))
         {
@@ -283,13 +287,15 @@ internal sealed class AngularRenderedMemberAuthorityFilter
             }
 
             var property = declaration[..separator].Trim();
-            if (!string.Equals(property, "display", StringComparison.OrdinalIgnoreCase))
+            var value = declaration[(separator + 1)..].Trim();
+            if (string.Equals(property, "display", StringComparison.OrdinalIgnoreCase) &&
+                StaticDisplayNoneRegex.IsMatch(value))
             {
-                continue;
+                return true;
             }
 
-            var value = declaration[(separator + 1)..].Trim();
-            if (StaticDisplayNoneRegex.IsMatch(value))
+            if (string.Equals(property, "visibility", StringComparison.OrdinalIgnoreCase) &&
+                StaticVisibilityHiddenRegex.IsMatch(value))
             {
                 return true;
             }

@@ -39,6 +39,36 @@ public sealed class StaticCssRenderAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Static_visibility_hidden_ancestor_is_not_an_authoritative_render_or_visibility()
+    {
+        var facts = await ScanFrontendAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <section style="visibility: hidden">
+                  @if (displayPrice > 0) {
+                    <strong>{{ displayPrice }}</strong>
+                  }
+                </section>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
+    [Fact]
     public async Task Static_display_block_does_not_remove_render_authority()
     {
         var facts = await ScanFrontendAsync("""
@@ -70,42 +100,107 @@ public sealed class StaticCssRenderAuthorityRegressionTests
     }
 
     [Fact]
+    public async Task Static_visibility_visible_does_not_remove_render_authority()
+    {
+        var facts = await ScanFrontendAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <section style="visibility: visible">
+                  @if (displayPrice > 0) {
+                    <strong>{{ displayPrice }}</strong>
+                  }
+                </section>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.GetValueOrDefault("condition") == "displayPrice > 0");
+    }
+
+    [Fact]
     public async Task Static_display_none_ancestor_blocks_r79_and_r710_authority()
     {
         var root = CreateRoot("end-to-end-display-none");
         try
         {
-            await WriteFullFixtureAsync(root);
+            await WriteFullFixtureAsync(root, DisplayNonePriceComponentSource);
 
             var csharp = await new CSharpEvidenceScanner().ScanAsync(root);
             var frontend = await new FrontendScanner().ScanAsync(root);
             var facts = Merge(csharp, frontend);
 
-            Assert.DoesNotContain(facts.Facts, fact =>
-                fact.Kind == "ui-member-render" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-                fact.Metadata.ContainsKey("renderAuthority"));
-            Assert.DoesNotContain(facts.Facts, fact =>
-                fact.Kind == "ui-member-visibility" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+            AssertNoRenderedVisibilityAuthority(facts);
 
             var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
             candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
-            var candidate = Assert.Single(candidates.Candidates, candidate =>
-                candidate.Facts.Any(fact =>
-                    fact.Id == candidate.SeedFactId &&
-                    fact.Kind == "endpoint" &&
-                    fact.Name == "GetVisiblePrice"));
-
-            Assert.DoesNotContain(candidate.Facts, fact =>
-                fact.Kind == "value-terminal-source" &&
-                fact.Metadata.GetValueOrDefault("boundary") == "rendered UI value");
-            Assert.DoesNotContain(candidate.Facts, fact => fact.Kind == "joint-visibility");
+            AssertNoCrossLayerVisibilityAuthority(candidates);
         }
         finally
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task Static_visibility_hidden_ancestor_blocks_r79_and_r710_authority()
+    {
+        var root = CreateRoot("end-to-end-visibility-hidden");
+        try
+        {
+            await WriteFullFixtureAsync(root, VisibilityHiddenPriceComponentSource);
+
+            var csharp = await new CSharpEvidenceScanner().ScanAsync(root);
+            var frontend = await new FrontendScanner().ScanAsync(root);
+            var facts = Merge(csharp, frontend);
+
+            AssertNoRenderedVisibilityAuthority(facts);
+
+            var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
+            candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
+            AssertNoCrossLayerVisibilityAuthority(candidates);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void AssertNoRenderedVisibilityAuthority(FactDocument facts)
+    {
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
+    private static void AssertNoCrossLayerVisibilityAuthority(FeatureCandidateDocument candidates)
+    {
+        var candidate = Assert.Single(candidates.Candidates, candidate =>
+            candidate.Facts.Any(fact =>
+                fact.Id == candidate.SeedFactId &&
+                fact.Kind == "endpoint" &&
+                fact.Name == "GetVisiblePrice"));
+
+        Assert.DoesNotContain(candidate.Facts, fact =>
+            fact.Kind == "value-terminal-source" &&
+            fact.Metadata.GetValueOrDefault("boundary") == "rendered UI value");
+        Assert.DoesNotContain(candidate.Facts, fact => fact.Kind == "joint-visibility");
     }
 
     private static async Task<FactDocument> ScanFrontendAsync(string componentSource)
@@ -126,7 +221,7 @@ public sealed class StaticCssRenderAuthorityRegressionTests
         }
     }
 
-    private static async Task WriteFullFixtureAsync(string root)
+    private static async Task WriteFullFixtureAsync(string root, string componentSource)
     {
         await File.WriteAllTextAsync(Path.Combine(root, "VisibilityApp.csproj"), ProjectSource);
         await File.WriteAllTextAsync(Path.Combine(root, "PricesController.cs"), BackendSource);
@@ -136,7 +231,7 @@ public sealed class StaticCssRenderAuthorityRegressionTests
             "{\"dependencies\":{\"@angular/core\":\"22.0.0\"}}");
         await File.WriteAllTextAsync(Path.Combine(root, "price-result.ts"), PriceResultSource);
         await File.WriteAllTextAsync(Path.Combine(root, "price-api.ts"), PriceApiSource);
-        await File.WriteAllTextAsync(Path.Combine(root, "price.component.ts"), DisplayNonePriceComponentSource);
+        await File.WriteAllTextAsync(Path.Combine(root, "price.component.ts"), componentSource);
     }
 
     private static FactDocument Merge(params FactDocument[] documents)
@@ -241,6 +336,30 @@ public sealed class StaticCssRenderAuthorityRegressionTests
           selector: 'app-price',
           template: `
             <section style="display: none">
+              @if (displayPrice > 0) {
+                <strong>{{ displayPrice }}</strong>
+              }
+            </section>
+          `
+        })
+        export class PriceComponent {
+          private readonly api = inject(PriceApi);
+          displayPrice = 0;
+
+          reload() {
+            this.api.getPrice().subscribe(result => this.displayPrice = result.displayPrice);
+          }
+        }
+        """;
+
+    private const string VisibilityHiddenPriceComponentSource = """
+        import { Component, inject } from '@angular/core';
+        import { PriceApi } from './price-api';
+
+        @Component({
+          selector: 'app-price',
+          template: `
+            <section style="visibility: hidden">
               @if (displayPrice > 0) {
                 <strong>{{ displayPrice }}</strong>
               }
