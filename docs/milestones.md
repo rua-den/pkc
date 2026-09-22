@@ -11,7 +11,7 @@ question / acceptance boundary
 → regression-first fixture
 → deterministic implementation
 → focused verification
-→ full relevant local/clean verification
+→ full relevant verification
 → diff review
 → coherent commit/push
 → exact-SHA cross-benchmark gates
@@ -38,10 +38,10 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #7** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #8** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
-### Accepted A/B/C/R7.9 baselines
+### Accepted baselines
 
 ```text
 A      09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429
@@ -53,73 +53,72 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — repaired, awaiting independent rereview #7
+### D / R7.10 — repaired, awaiting independent rereview #8
 
-The render-authority rereview sequence has now closed six false-positive classes:
+Seven adversarial false-positive classes have been closed so far:
 
-1. inert `<ng-template>`, HTML comments, HTML tag/attribute interpolation;
+1. inert template/comment/tag interpolation;
 2. static HTML `hidden` ancestry;
-3. static inline `display:none` ancestry;
-4. static inline `visibility:hidden` ancestry;
-5. legacy inert `<template>` fragments with `enableLegacyTemplate=true`;
-6. Angular native `hidden` bindings / dynamic hidden attributes.
+3. static inline `display:none`;
+4. static inline `visibility:hidden`;
+5. legacy inert `<template>` fragments;
+6. Angular native hidden bindings / ambiguous dynamic hidden forms;
+7. HTML-comment braces corrupting Angular `@if` scope association.
 
-Rereview #6 found the sixth class on production `e54b8444...`:
+Rereview #7 found this distinct blocker on production `5d43b180...`:
 
 ```html
-<section [hidden]="true">
-  @if (displayPrice > 0) {
-    <strong>{{ displayPrice }}</strong>
-  }
-</section>
+@if (isAllowed) {
+  <!-- { -->
+}
+<strong>{{ displayPrice }}</strong>
+<!-- } -->
 ```
+
+The interpolation is outside the real `@if`, but the previous brace matcher counted inert comment braces and could attach false visibility authority.
 
 Regression-first production repair:
 
 ```text
-5d43b180e09cc7026919a4dff2563f85e39e1b82
-fix: fail closed on Angular hidden bindings
+d785807dfa053a5abd1e3b6500a2fc1bd729d38a
+fix: ignore comment braces in Angular visibility scope
 ```
-
-The bounded render-authority parser now fails closed on native-hidden binding forms except exact lowercase property literal `false`, which is retained as a positive safeguard. Coverage includes `[hidden]`, `bind-hidden`, interpolated `hidden`, `[attr.hidden]`, `bind-attr.hidden`, and case-sensitive expression handling.
 
 Regression coverage:
 
-`tests/Pkc.CSharp.Tests/AngularHiddenBindingRenderAuthorityRegressionTests.cs`
+`tests/Pkc.CSharp.Tests/AngularIfCommentBraceVisibilityRegressionTests.cs`
 
 Exact repaired-candidate gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35702383031 — PASS
-pinned Loren                                35702383035 — PASS
-Loren-main canary                           35702383053 — PASS
-pinned Jellyfin + parity/provenance         35702383040 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35703893704 — PASS
+pinned Loren                                35703893679 — PASS
+Loren-main canary                           35703893712 — PASS
+pinned Jellyfin + parity/provenance         35703893678 — PASS
 
 Release build        0 warnings / 0 errors
-C# tests             178 / 178 PASS
+C# tests             180 / 180 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
-WorkPlay             PASS
-PokeTrade            PASS
 ```
 
 Repaired three-repository benchmark:
 
 ```text
-base production  5d43b180e09cc7026919a4dff2563f85e39e1b82
-wrapper           b22c846ecebb75c6f52533c280ba4acbbe453657
-run               35702503746 — PASS, 3 / 3 jobs
+base production  d785807dfa053a5abd1e3b6500a2fc1bd729d38a
+wrapper           d38ec071e3be6b26de5598e3a54ab06010f28a77
+run               35704017705 — PASS, 3 / 3 jobs
 ```
 
-All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 positives. The mutation-causality blocker remains closed.
+All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 positives. Mutation-causality remains closed.
 
-This implementation session cannot independently certify its own repair. Fresh request:
+Fresh independent request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-7-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-8-request.md`
 
 ### E — locked
 
-E remains locked until independent rereview #7 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until independent rereview #8 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
 R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
 
@@ -136,6 +135,6 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #7
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #8
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
