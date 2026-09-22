@@ -18,11 +18,6 @@ internal sealed class AngularSvgRenderedTextAuthorityFilter
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
     };
 
-    private static readonly HashSet<string> SvgTextRenderingElements = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "text", "tspan", "textPath"
-    };
-
     private static readonly HashSet<string> NonDirectSvgElements = new(StringComparer.OrdinalIgnoreCase)
     {
         "style",
@@ -261,7 +256,7 @@ internal sealed class AngularSvgRenderedTextAuthorityFilter
         {
             var frame = frames[index];
             if (frame.ElementNamespace == MarkupNamespace.Svg &&
-                SvgTextRenderingElements.Contains(frame.Name))
+                string.Equals(frame.Name, "text", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
