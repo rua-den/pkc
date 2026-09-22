@@ -10,6 +10,7 @@ public sealed class AngularHiddenBindingRenderAuthorityRegressionTests
     [InlineData("[hidden]=\"true\"")]
     [InlineData("bind-hidden=\"true\"")]
     [InlineData("[hidden]=\"isHidden\"")]
+    [InlineData("[hidden]=\"False\"")]
     public async Task Hidden_binding_that_can_suppress_presentation_fails_closed(string hiddenBinding)
     {
         var source = ComponentSource.Replace("__HIDDEN_BINDING__", hiddenBinding, StringComparison.Ordinal);
@@ -79,6 +80,7 @@ public sealed class AngularHiddenBindingRenderAuthorityRegressionTests
         export class PriceComponent {
           displayPrice = 42;
           isHidden = true;
+          False = true;
         }
         """;
 }
