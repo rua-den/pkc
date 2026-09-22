@@ -13,6 +13,14 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
         @"@if\s*\((?<condition>[^\r\n{}]+)\)\s*\{",
         RegexOptions.Compiled);
 
+    private static readonly Regex AngularControlBlockRegex = new(
+        @"@(?:(?<name>if|for|switch|case)\s*\([^{}\r\n]*\)|(?<name>defer|placeholder|loading|error)\b(?:\s*\([^{}\r\n]*\))?|(?<name>else)\b[^{}\r\n]*|(?<name>empty|default)\b)\s*\{",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex HtmlElementTagRegex = new(
+        @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     public async Task<FactDocument> EnrichAsync(
         string repositoryPath,
         FactDocument document,
@@ -154,7 +162,10 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
 
                 var containing = AtIfRegex.Matches(body.Value)
                     .Cast<Match>()
-                    .Where(atIf => atIf.Index < interpolation.Index)
+                    .Where(atIf =>
+                        atIf.Index < interpolation.Index &&
+                        !IsInsideHtmlComment(body.Value, atIf.Index) &&
+                        !IsInsideHtmlTag(body.Value, atIf.Index))
                     .Select(atIf => new
                     {
                         Match = atIf,
@@ -168,6 +179,36 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                     .ToArray();
 
                 if (containing.Length != 1)
+                {
+                    continue;
+                }
+
+                var enclosingControlBlocks = AngularControlBlockRegex.Matches(body.Value)
+                    .Cast<Match>()
+                    .Where(block =>
+                        block.Index < interpolation.Index &&
+                        !IsInsideHtmlComment(body.Value, block.Index) &&
+                        !IsInsideHtmlTag(body.Value, block.Index))
+                    .Select(block => new
+                    {
+                        Match = block,
+                        OpenBrace = block.Index + block.Value.LastIndexOf('{'),
+                        CloseBrace = FindMatchingBrace(
+                            body.Value,
+                            block.Index + block.Value.LastIndexOf('{'))
+                    })
+                    .Where(candidate =>
+                        candidate.CloseBrace >= 0 &&
+                        interpolation.Index > candidate.OpenBrace &&
+                        interpolation.Index < candidate.CloseBrace)
+                    .ToArray();
+
+                if (enclosingControlBlocks.Length != 1 ||
+                    enclosingControlBlocks[0].Match.Index != containing[0].Match.Index ||
+                    !string.Equals(
+                        enclosingControlBlocks[0].Match.Groups["name"].Value,
+                        "if",
+                        StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -203,9 +244,93 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
     private static int FindMatchingBrace(string text, int openBrace)
     {
         var depth = 0;
-        var quote = '\0';
 
         for (var index = openBrace; index < text.Length; index++)
+        {
+            if (index + 3 < text.Length &&
+                text[index] == '<' &&
+                text[index + 1] == '!' &&
+                text[index + 2] == '-' &&
+                text[index + 3] == '-')
+            {
+                var commentEnd = text.IndexOf("-->", index + 4, StringComparison.Ordinal);
+                if (commentEnd < 0)
+                {
+                    return -1;
+                }
+
+                index = commentEnd + 2;
+                continue;
+            }
+
+            if (text[index] == '<' && TryGetHtmlTagEnd(text, index, out var tagEnd))
+            {
+                index = tagEnd;
+                continue;
+            }
+
+            if (index + 1 < text.Length && text[index] == '{' && text[index + 1] == '{')
+            {
+                if (!TryGetInterpolationEnd(text, index, out var interpolationEnd))
+                {
+                    return -1;
+                }
+
+                index = interpolationEnd;
+                continue;
+            }
+
+            var current = text[index];
+            if (current == '{')
+            {
+                depth++;
+                continue;
+            }
+
+            if (current != '}')
+            {
+                continue;
+            }
+
+            depth--;
+            if (depth == 0)
+            {
+                return index;
+            }
+
+            if (depth < 0)
+            {
+                return -1;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool TryGetHtmlTagEnd(string text, int start, out int end)
+    {
+        end = -1;
+        var match = HtmlElementTagRegex.Match(text, start);
+        if (!match.Success || match.Index != start)
+        {
+            return false;
+        }
+
+        end = match.Index + match.Length - 1;
+        return true;
+    }
+
+    private static bool TryGetInterpolationEnd(string text, int start, out int end)
+    {
+        end = -1;
+        if (start + 1 >= text.Length || text[start] != '{' || text[start + 1] != '{')
+        {
+            return false;
+        }
+
+        var nestedBraceDepth = 0;
+        var quote = '\0';
+        for (var index = start + 2; index < text.Length; index++)
         {
             var current = text[index];
             if (quote != '\0')
@@ -224,23 +349,7 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                 continue;
             }
 
-            if (index + 3 < text.Length &&
-                text[index] == '<' &&
-                text[index + 1] == '!' &&
-                text[index + 2] == '-' &&
-                text[index + 3] == '-')
-            {
-                var commentEnd = text.IndexOf("-->", index + 4, StringComparison.Ordinal);
-                if (commentEnd < 0)
-                {
-                    return -1;
-                }
-
-                index = commentEnd + 2;
-                continue;
-            }
-
-            if (current is '\'' or '"')
+            if (current is '\'' or '"' or '`')
             {
                 quote = current;
                 continue;
@@ -248,7 +357,7 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
 
             if (current == '{')
             {
-                depth++;
+                nestedBraceDepth++;
                 continue;
             }
 
@@ -257,14 +366,50 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                 continue;
             }
 
-            depth--;
-            if (depth == 0)
+            if (nestedBraceDepth > 0)
             {
-                return index;
+                nestedBraceDepth--;
+                continue;
+            }
+
+            if (index + 1 < text.Length && text[index + 1] == '}')
+            {
+                end = index + 1;
+                return true;
             }
         }
 
-        return -1;
+        return false;
+    }
+
+    private static bool IsInsideHtmlComment(string text, int position)
+    {
+        var open = text.LastIndexOf("<!--", position, StringComparison.Ordinal);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var close = text.LastIndexOf("-->", position, StringComparison.Ordinal);
+        return close < open;
+    }
+
+    private static bool IsInsideHtmlTag(string text, int position)
+    {
+        foreach (Match tag in HtmlElementTagRegex.Matches(text))
+        {
+            if (tag.Index > position)
+            {
+                break;
+            }
+
+            if (position >= tag.Index && position < tag.Index + tag.Length)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static SourceLocation GetLocation(
