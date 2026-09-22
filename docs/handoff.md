@@ -13,9 +13,9 @@ Before changing production code, read:
 3. `docs/milestones.md`
 4. `docs/product-knowledge-contract.md`
 5. `docs/v0.4.7-acceptance-plan.md`
-6. R7.10 independent rereview records #1 through #11 plus the rereview #12 request/history
-7. `docs/benchmarks/2026-09-23-r7.10-native-svg-fail-closed-benchmark.md`
-8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-13-request.md`
+6. prior R7.10 rereview records through #13 request/history
+7. `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`
+8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
@@ -24,11 +24,18 @@ Then inspect current `main`, recent commits and repository status. Never reset t
 Exact production SHA for fresh independent rereview:
 
 ```text
-7818c7ed646b30cb7b8505f053572783e075af6f
-fix: fail closed on native SVG render authority
+3e6fa7749eb8ef47be4eedb72d1c159cd502692f
+fix: bound Angular direct text containers
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `7818c7ed...`; do not reset `main`.
+Direct predecessor in the same repaired authority boundary:
+
+```text
+34182e221df6cf50eaa0ac362a5f575e80236a64
+fix: reject unproven Angular content projection
+```
+
+A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `3e6fa774...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -38,8 +45,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #13
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #13
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #14
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #14
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -58,86 +65,102 @@ R7.10 answers, for the same exact R7.9-proven value path:
 
 > What backend selection condition and frontend visibility condition jointly determine whether this rendered value is visible?
 
-Supported backend remains target-project-semantic exact `System.Linq.Enumerable.Single/First(predicate)` → exact selected local → direct response property projection. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active directly-rendered text interpolation. R7.10 accepts exactly one supported enclosing Angular `@if` and composes only exact fact IDs. Unsupported raw-text, inert, structural, nested-control or unproven visibility/render paths fail closed.
+Supported backend remains target-project-semantic exact `System.Linq.Enumerable.Single/First(predicate)` → exact selected local → direct response property projection. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active directly-rendered text interpolation. R7.10 accepts exactly one supported enclosing Angular `@if` and composes only exact fact IDs.
 
 Frontend evidence cannot upgrade an `observed-only` backend condition.
 
-## Reconciliation of the stale rereview #12 handoff
+## Why rereview #13 is stale
 
-The prior handoff requested independent rereview #12 of:
-
-```text
-f9b20c27820a7ea9ac911222c613c2f9cdfb696f
-fix: reject SVG resource renders
-```
-
-No independent acceptance record for that exact candidate was committed before `main` advanced through additional R7.10 SVG authority changes:
-
-```text
-11b6b21315ac21f7b5f947c933b07bd9bb7a3298  fix: enforce SVG text render authority
-7dd00c1a960b8e85232d67b779e7906b4206cce6  fix: require SVG text ancestor
-3fe0d4452b49a6b4c2b16d422af3975afbda40a8  fix: reject transparent SVG renders
-d4416c4a13a04db46091bbffff1c71566c0d5d0c  fix: bound SVG text content authority
-```
-
-This continuation therefore treated `d4416c4a...` as an implementation candidate needing fresh challenge rather than assuming rereview #12 had passed.
-
-## New blocker found and repaired
-
-Concrete counterexample:
-
-```html
-@if (isAllowed) {
-  <svg>
-    <text fill="none" stroke="none">{{ displayPrice }}</text>
-  </svg>
-}
-```
-
-This is valid native SVG text structure but paints neither fill nor stroke. The predecessor could still treat the interpolation as authoritative directly-visible output because the bounded filters had accumulated structural, display, visibility and opacity checks without proving the full native SVG rendering model.
-
-The minimum generic repair is deliberately broader and simpler than adding another paint-property whitelist:
+Rereview #13 targeted:
 
 ```text
 7818c7ed646b30cb7b8505f053572783e075af6f
 fix: fail closed on native SVG render authority
 ```
 
-V0.4.7 now makes this authority boundary explicit:
+Before independent acceptance was recorded, implementation pre-challenge found two additional compile-valid/runtime-valid false-positive authority classes. #13 is therefore superseded; it must not be interpreted as PASS.
 
-- native SVG interpolation is unsupported for authoritative directly-visible render proof;
-- no SVG paint/layout/browser-engine model is claimed;
-- ordinary HTML rendering remains supported;
-- HTML descendants inside SVG `foreignObject` remain supported through the HTML namespace path;
-- lower-authority evidence survives the render-authority rejection.
+## Repair 1 — component content projection
 
-Regression coverage is concentrated in:
+Counterexample:
 
-```text
-tests/Pkc.CSharp.Tests/AngularSvgRenderedTextAuthorityRegressionTests.cs
-tests/Pkc.CSharp.Tests/AngularSvgTextChildPlacementRegressionTests.cs
-tests/Pkc.CSharp.Tests/AngularSvgOpacityRenderAuthorityRegressionTests.cs
-tests/Pkc.CSharp.Tests/AngularSvgTextContentModelAuthorityRegressionTests.cs
+```ts
+@Component({
+  selector: 'app-shell',
+  template: `<span>Shell</span>`
+})
+export class ShellComponent {}
+
+@Component({
+  imports: [ShellComponent],
+  template: `
+    @if (isAllowed) {
+      <app-shell>{{ displayPrice }}</app-shell>
+    }
+  `
+})
+export class PriceComponent {}
 ```
 
-The explicit `fill="none" stroke="none"` regression is included, and `foreignObject` HTML remains a positive authority path.
+Without matching `ng-content`, `displayPrice` is not projected/rendered by `app-shell`, but the predecessor could over-promote the lexical interpolation.
+
+Repair:
+
+```text
+34182e221df6cf50eaa0ac362a5f575e80236a64
+fix: reject unproven Angular content projection
+```
+
+`AngularComponentProjectionAuthorityFilter` now fails closed for custom-element/component-host projection boundaries. Product-source component selectors are recognized for element, attribute, class and combined selector forms. This is an authority downgrade only; lower-authority facts remain available.
+
+Focused regression:
+
+`tests/Pkc.CSharp.Tests/AngularComponentProjectionRenderAuthorityRegressionTests.cs`
+
+## Repair 2 — direct HTML text authority
+
+Compile-valid Angular templates can contain child text that is metadata, fallback content, or conditionally presented rather than directly page-visible:
+
+```html
+<title>{{ displayPrice }}</title>
+<canvas>{{ displayPrice }}</canvas>
+<dialog>{{ displayPrice }}</dialog>
+<details>{{ displayPrice }}</details>
+<object>{{ displayPrice }}</object>
+<noscript>{{ displayPrice }}</noscript>
+```
+
+Repair:
+
+```text
+3e6fa7749eb8ef47be4eedb72d1c159cd502692f
+fix: bound Angular direct text containers
+```
+
+`AngularHtmlDirectTextAuthorityFilter` rejects authoritative direct-text proof beneath the bounded unsupported container set covering metadata/raw/fallback/conditional browser surfaces. Ordinary HTML remains supported; a closed unsupported container does not suppress a later ordinary supported render.
+
+Focused regression:
+
+`tests/Pkc.CSharp.Tests/AngularHtmlDirectTextAuthorityRegressionTests.cs`
+
+Native SVG direct-render authority remains fail-closed from `7818c7ed...`. HTML inside supported SVG `foreignObject` remains eligible subject to the ordinary HTML and projection boundaries.
 
 ## Exact-SHA verification
 
-Exact production `7818c7ed646b30cb7b8505f053572783e075af6f`:
+Exact production `3e6fa7749eb8ef47be4eedb72d1c159cd502692f`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35765278584 — PASS
-pinned Loren                                35765278607 — PASS
-Loren-main canary                           35765278416 — PASS
-pinned Jellyfin + parity/provenance         35765278447 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35769202107 — PASS
+pinned Loren                                35769202115 — PASS
+Loren-main canary                           35769202043 — PASS
+pinned Jellyfin + parity/provenance         35769202074 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             231 / 231 PASS
+C# tests             241 / 241 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -152,71 +175,77 @@ source build          PASS, 0 warnings / 0 errors
 116 product features | 504 knowledge Markdown files
 43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10712181821
-sha256:281403635a62680c71640f0a839fdbeffdbcaf72d59b38407789c65037c59adb
+artifact 10713378704
+sha256:cca8adf6d31a4c0207eaea58e5935147d279a7e9e3db361ad6b32291a0807198
 ```
 
-Local clone/test execution was unavailable because the execution container could not resolve `github.com`; no local PASS claim is made. Exact-SHA GitHub gates above are the completed verification evidence.
+Local repository test execution is not claimed: the execution container could not resolve `github.com` while cloning and has no local .NET toolchain. Exact-SHA GitHub Actions are the validation evidence.
 
 ## Real-repository safety benchmark
 
-Wrapper based exactly on production `7818c7ed...`:
+Wrapper based exactly on production:
 
 ```text
-branch:         benchmark/r710-native-svg-7818c7ed
-wrapper commit: 87255ba6f5f012d82ee17f039d540db6bbdf01bf
-run:            35765659218 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-html-projection-3e6fa774
+wrapper commit: 28c9758ba5ae172bb0ee52e032a28fa24fb1f917
+run:            35769939151 — PASS, 3 / 3 jobs
 ```
 
-Compare confirms the wrapper differs from production by exactly one workflow branch-trigger line.
+Compare confirms the wrapper differs from production by exactly one branch-trigger line in `.github/workflows/real-repo-benchmark.yml`.
 
 Artifacts:
 
 ```text
 jin12-xyz/CRM
-artifact 10711409458
-sha256:15b9a85614984f05aef447bbfeb89cd08ad111d5ed1e531b869d809e481a1766
+artifact 10713667423
+sha256:10bb68b7e10714d6c217bce776c09737dfe0330279775840b4bd8b45c7387f72
 
 hackersandwizards/agentic-engineering-training-angular
-artifact 10711259746
-sha256:c3f2c77a4f3132431685d75bb5c56c8dbbfe5564f39ed10f795247c724907a74
+artifact 10713841164
+sha256:cbbbcc2b9dd42d1bf3b2978ed56e72d057a3452d9e7844cd4b6cc7e14a41863d
 
 kesetovic/crm-system
-artifact 10711519386
-sha256:4175f1171a61c9d9c95016c40f55a7c861b8c1b7762e4b9bcc44cf2b5b37224d
+artifact 10713209096
+sha256:d4f24200afff9a532514731ce93f18f802bfece6117a8f0b9fc386cc4d1a1d39
 ```
 
 Direct artifact inspection for every repository:
 
 ```text
-R7.9 rendered UI terminal: 0
-selected API projection:  0
-ui-member-visibility:     0
-joint-visibility:         0
-combined visibility rule: 0
+ui-member-render:           0
+ui-member-visibility:       0
+renderAuthority markers:    0
+selected API/R7.9 terminal: 0
+joint/combined visibility:  0
 ```
 
-Agentic retains exactly two raw `UpdatedAt` mutations with `runtime-pattern-variable / caller-object-unproven`; their exact fact IDs occur zero times in feature candidates, product features, `PKC_KNOWLEDGE.md` and canonical knowledge Markdown. Mutation-causality remains closed.
+Canonical benchmark outputs are byte-identical to the previous accepted safety benchmark except the generated nested ZIP archive bytes/timestamps. Agentic still has exactly two relevant raw `UpdatedAt` mutations with `runtime-pattern-variable / caller-object-unproven`, and their exact IDs occur zero times outside raw facts in candidates/features/generated Markdown.
 
-The benchmark proves fail-closed safety only. It does not satisfy R7.14; positive real-project yield remains NOT PASS.
+This proves fail-closed stability only. It does not satisfy R7.14; positive real-project yield remains NOT PASS.
 
 Detailed record:
 
-`docs/benchmarks/2026-09-23-r7.10-native-svg-fail-closed-benchmark.md`
+`docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`
 
-## Next action — independent rereview #13
+## Next action — independent rereview #14
 
 Review exact production:
 
 ```text
-7818c7ed646b30cb7b8505f053572783e075af6f
+3e6fa7749eb8ef47be4eedb72d1c159cd502692f
 ```
 
 Request:
 
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-13-request.md`
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`
 
-The reviewer must independently search for another compile-valid/runtime-valid false-positive. Native SVG is now intentionally unsupported for authoritative directly-visible render proof, so lack of native SVG positives is not itself a blocker. High-value review seams include HTML/SVG namespace transitions, `foreignObject`, malformed/ambiguous lexical scope that the bounded scanner might still over-promote, exact identity composition, unsupported nested/structural visibility and backend observed-only authority.
+The reviewer must independently search for another compile-valid/runtime-valid false-positive rather than merely replaying the new projection/container regressions. High-value seams now include:
+
+- projection across local/external component selectors, especially unresolved dependency selectors;
+- HTML/SVG namespace transitions and `foreignObject`;
+- exact control-block scope across unsupported containers/component hosts;
+- malformed or ambiguous structures only where Angular/runtime still accepts the input and PKC can over-promote authority;
+- exact fact-ID composition, observed-only backend authority, and mutation-causality closure.
 
 If no blocker exists:
 
@@ -225,28 +254,18 @@ mark R7.10 PASS / COMPLETE
 → mark all V0.4.7-D PASS / COMPLETE
 → unlock only V0.4.7-E
 → keep R7.14 NOT PASS and required for E
-→ keep V0.5 and future W/U work locked until V0.4.7 completes
+→ keep V0.5 and future W/U locked until V0.4.7 completes
 ```
 
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
 
-This implementation continuation must not self-certify `7818c7ed...`.
+This implementation continuation must not self-certify `3e6fa774...`.
 
 ## Prepared future execution packet — planning only
-
-Prepared files:
 
 ```text
 docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md
 docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md
 ```
 
-When V0.4.7 is explicitly PASS / COMPLETE, re-baseline the roadmap before implementation. Preferred order remains:
-
-```text
-AI workspace + run/verify
-→ continuous update/diff
-→ Azure DevOps intent/history evidence
-```
-
-Do not start that future initiative while D/E remain open.
+When V0.4.7 is explicitly PASS / COMPLETE, re-baseline the roadmap before implementation. Preferred order remains AI workspace + `run/verify` → continuous update/diff → Azure DevOps intent/history evidence.

@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #13
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #13
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #14
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #14
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -26,11 +26,18 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent 
 ## Exact production candidate under review
 
 ```text
-7818c7ed646b30cb7b8505f053572783e075af6f
-fix: fail closed on native SVG render authority
+3e6fa7749eb8ef47be4eedb72d1c159cd502692f
+fix: bound Angular direct text containers
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `7818c7ed...`; do not reset `main`.
+Its direct implementation predecessor is:
+
+```text
+34182e221df6cf50eaa0ac362a5f575e80236a64
+fix: reject unproven Angular content projection
+```
+
+A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `3e6fa774...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -45,52 +52,64 @@ mutation   67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a new real regression is demonstrated.
 
-## R7.10 reconciliation and native-SVG authority repair
+## Why rereview #13 is superseded
 
-The previous handoff requested independent rereview #12 of `f9b20c27...`, but `main` subsequently advanced through additional R7.10 SVG authority hardening without a recorded independent acceptance of that candidate:
+Rereview #13 requested an independent review of native-SVG fail-closed production `7818c7ed...`. Before an independent acceptance record was committed, this continuation pre-challenged that candidate and found two new compile-valid/runtime-valid Angular render-authority classes. Therefore #13 is historical/stale and must not be treated as PASS.
 
-```text
-11b6b21315ac21f7b5f947c933b07bd9bb7a3298  fix: enforce SVG text render authority
-7dd00c1a960b8e85232d67b779e7906b4206cce6  fix: require SVG text ancestor
-3fe0d4452b49a6b4c2b16d422af3975afbda40a8  fix: reject transparent SVG renders
-d4416c4a13a04db46091bbffff1c71566c0d5d0c  fix: bound SVG text content authority
-```
+### Blocker 1 — unproven component content projection
 
-This continuation reconciled that state and independently challenged `d4416c4a...`. A concrete compile-valid/runtime-valid false-positive remained:
+A child interpolation is not directly rendered merely because it is lexically inside a component host:
 
 ```html
-<svg>
-  <text fill="none" stroke="none">{{ displayPrice }}</text>
-</svg>
+@if (isAllowed) {
+  <app-shell>{{ displayPrice }}</app-shell>
+}
 ```
 
-The interpolation is structurally inside SVG text but no glyph is painted. Continuing to approximate native SVG visibility with a growing list of paint/layout conditions would exceed the bounded V0.4.7 authority contract.
+If `app-shell` does not project that child through a matching `ng-content`, the interpolation never becomes rendered DOM. The predecessor could still emit authoritative `ui-member-render` / `ui-member-visibility`.
 
-Regression-first generic repair:
+Generic repair `34182e22...` adds an authority filter that fails closed beneath component/custom-element projection boundaries unless direct rendering is independently established. Local product-source component selectors are recognized for element, attribute, class and combined selector forms; custom-element hosts also fail closed conservatively.
+
+### Blocker 2 — non-direct / conditional HTML text containers
+
+Ordinary HTML syntax is not sufficient proof that child text is directly page-visible. Examples include metadata, fallback and conditionally-presented containers such as:
+
+```html
+<title>{{ displayPrice }}</title>
+<canvas>{{ displayPrice }}</canvas>
+<dialog>{{ displayPrice }}</dialog>
+<details>{{ displayPrice }}</details>
+<object>{{ displayPrice }}</object>
+<noscript>{{ displayPrice }}</noscript>
+```
+
+Generic repair `3e6fa774...` rejects authoritative direct-text proof under the bounded unsupported container set while preserving later ordinary HTML positives after a closed unsupported container. This is deliberately a fail-closed authority boundary, not a browser/CSS/layout engine.
+
+Native SVG direct render remains unsupported from `7818c7ed...`; HTML under supported `foreignObject` namespace transition remains eligible subject to the new HTML/projection boundaries.
+
+## Regression coverage added
 
 ```text
-7818c7ed646b30cb7b8505f053572783e075af6f
-fix: fail closed on native SVG render authority
+tests/Pkc.CSharp.Tests/AngularComponentProjectionRenderAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularHtmlDirectTextAuthorityRegressionTests.cs
 ```
 
-V0.4.7 now intentionally treats native SVG interpolation as unsupported for authoritative directly-visible render proof. HTML remains supported, including HTML content inside SVG `foreignObject`. Native SVG may be revisited only in a later checkpoint with a rendering model strong enough to prove paint/layout authority.
-
-Regression coverage includes the explicit `fill="none" stroke="none"` case, native SVG text/tspan/content-model cases, presentation suppression, and a positive `foreignObject` HTML path.
+Coverage includes element-selector projection, attribute-selector projection, non-direct HTML containers, and positive later ordinary-HTML rendering after the unsupported boundary closes.
 
 ## Exact-SHA standard verification
 
-All standard gates passed on exact production `7818c7ed646b30cb7b8505f053572783e075af6f`:
+All required standard gates passed on exact production `3e6fa7749eb8ef47be4eedb72d1c159cd502692f`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35765278584 — PASS
-pinned Loren                                35765278607 — PASS
-Loren-main canary                           35765278416 — PASS
-pinned Jellyfin + parity/provenance         35765278447 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35769202107 — PASS
+pinned Loren                                35769202115 — PASS
+Loren-main canary                           35769202043 — PASS
+pinned Jellyfin + parity/provenance         35769202074 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             231 / 231 PASS
+C# tests             241 / 241 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -108,49 +127,49 @@ product features      116
 knowledge Markdown    504 files
 analysis modes        43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10712181821
-sha256:281403635a62680c71640f0a839fdbeffdbcaf72d59b38407789c65037c59adb
+artifact              10713378704
+sha256:cca8adf6d31a4c0207eaea58e5935147d279a7e9e3db361ad6b32291a0807198
 ```
 
-Local execution was not available in this session because the execution container could not resolve `github.com` while cloning the repository. No local-test claim is made; exact-SHA GitHub gates above are the validation evidence.
+Local repository execution is not claimed because the execution container could not resolve `github.com` when cloning and has no local .NET toolchain. Exact-SHA GitHub gates are the validation evidence.
 
 ## Final pinned three-repository safety benchmark
 
-A temporary wrapper branch based exactly on production `7818c7ed...` changed only one workflow branch-trigger line:
+A temporary wrapper branch based exactly on production `3e6fa774...` changed only the benchmark workflow branch-trigger line:
 
 ```text
-base production: 7818c7ed646b30cb7b8505f053572783e075af6f
-wrapper commit:  87255ba6f5f012d82ee17f039d540db6bbdf01bf
-run:             35765659218 — PASS, 3 / 3 jobs
+base production: 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
+wrapper commit:  28c9758ba5ae172bb0ee52e032a28fa24fb1f917
+run:             35769939151 — PASS, 3 / 3 jobs
 ```
 
-Direct artifact inspection for every pinned repository found:
+Direct artifact inspection found, for every pinned repository:
 
 ```text
-R7.9 rendered-value terminal: 0
-selected API projection:      0
-ui-member-visibility:         0
-joint-visibility candidate:   0
-combined visibility rule:     0
+ui-member-render:           0
+ui-member-visibility:       0
+renderAuthority markers:    0
+selected API/R7.9 terminal: 0
+joint/combined visibility:  0
 ```
 
-Artifact IDs / digests:
+The canonical benchmark evidence is byte-identical to the preceding safety benchmark for all three repositories except the nested generated ZIP archive bytes/timestamps. Counts remain:
 
 ```text
-jin12-xyz/CRM
-10711409458
-sha256:15b9a85614984f05aef447bbfeb89cd08ad111d5ed1e531b869d809e481a1766
-
-hackersandwizards/agentic-engineering-training-angular
-10711259746
-sha256:c3f2c77a4f3132431685d75bb5c56c8dbbfe5564f39ed10f795247c724907a74
-
-kesetovic/crm-system
-10711519386
-sha256:4175f1171a61c9d9c95016c40f55a7c861b8c1b7762e4b9bcc44cf2b5b37224d
+jin12-xyz/CRM                                      415 facts / 1,580 relations / 25 knowledge files
+hackersandwizards/agentic-engineering-training-angular 441 facts /   660 relations / 26 knowledge files
+kesetovic/crm-system                               488 facts / 2,054 relations / 28 knowledge files
 ```
 
-Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, and their exact fact IDs occur zero times in feature candidates, product features, the single-file bundle and canonical knowledge Markdown.
+Benchmark artifacts:
+
+```text
+jin12          10713667423  sha256:10bb68b7e10714d6c217bce776c09737dfe0330279775840b4bd8b45c7387f72
+agentic        10713841164  sha256:cbbbcc2b9dd42d1bf3b2978ed56e72d057a3452d9e7844cd4b6cc7e14a41863d
+kesetovic      10713209096  sha256:d4f24200afff9a532514731ce93f18f802bfece6117a8f0b9fc386cc4d1a1d39
+```
+
+Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, and their exact fact IDs occur zero times outside raw facts in feature candidates, product features and generated Markdown.
 
 Interpretation:
 
@@ -159,25 +178,23 @@ Safety / fail-closed: PASS
 R7.14 positive real-project yield: NOT PASS
 ```
 
-Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-native-svg-fail-closed-benchmark.md`.
+Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`.
 
 ## Current external gate
 
 Required next gate:
 
 ```text
-independent rereview #13 of exact 7818c7ed646b30cb7b8505f053572783e075af6f
+independent rereview #14 of exact 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
 ```
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-13-request.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`.
 
-If rereview #13 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 remains locked until E completes.
+If rereview #14 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
 
-This implementation continuation repaired the blocker and must not self-certify its own production candidate.
+This implementation continuation repaired the blockers and must not self-certify its own production candidate.
 
 ## Prepared future productization packet
-
-The future packet remains prepared but locked:
 
 ```text
 docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md
@@ -189,7 +206,7 @@ After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing is AI workspace
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #13
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #14
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
