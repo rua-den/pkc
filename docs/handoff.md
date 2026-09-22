@@ -13,9 +13,9 @@ Before changing production code, read:
 3. `docs/milestones.md`
 4. `docs/product-knowledge-contract.md`
 5. `docs/v0.4.7-acceptance-plan.md`
-6. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-1.md` through `...-7.md`
+6. independent R7.10 rereview records #1 through #8
 7. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
-8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-8-request.md`
+8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-9-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
@@ -24,11 +24,11 @@ Then inspect current `main`, recent commits and repository status. Never reset t
 Exact production SHA for fresh independent rereview:
 
 ```text
-d785807dfa053a5abd1e3b6500a2fc1bd729d38a
-fix: ignore comment braces in Angular visibility scope
+cd3b1d4b64168c4e95284299c5715b3db0e4da4b
+fix: fail closed on structural visibility directives
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `d785807d...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `cd3b1d4b...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -38,8 +38,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #8
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #8
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #9
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #9
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -49,7 +49,7 @@ Do not start E or V0.5 before the independent D outcome.
 
 ## Permanent contract
 
-Keep business conditions, value lineage/provenance, mutation/causality, and presentation authority distinct. Unsupported inference fails closed. Same/similar names are not proof. Stronger composition failure must preserve independently proven lower-authority evidence.
+Keep business conditions, value lineage/provenance, mutation/causality, render authority and visibility authority distinct. Unsupported inference fails closed. Same/similar names are not proof. Stronger composition failure must preserve independently proven lower-authority evidence.
 
 ## Accepted predecessors
 
@@ -72,59 +72,71 @@ R7.10 answers, for the same exact R7.9-proven value path:
 
 Supported backend remains target-project-semantic exact `System.Linq.Enumerable.Single/First(predicate)` → exact selected local → direct response property projection. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active rendered text interpolation. R7.10 accepts exactly one supported enclosing Angular `@if` and composes only exact fact IDs.
 
-Frontend evidence cannot upgrade an `observed-only` backend condition. Unsupported or ambiguous structure fails closed.
+Frontend evidence cannot upgrade an `observed-only` backend condition. Any extra unsupported visibility authority fails closed while retaining R7.9 evidence.
 
-## Rereview #7 finding
+## Rereview #8 outcome
 
-Independent rereview #7 challenged exact production `5d43b180e09cc7026919a4dff2563f85e39e1b82` and found a control-flow scope bug:
+Independent rereview #8 challenged predecessor production and found distinct render-authority false positives:
 
 ```html
 @if (isAllowed) {
-  <!-- { -->
+  <strong ngNonBindable>{{ displayPrice }}</strong>
 }
-<strong>{{ displayPrice }}</strong>
-<!-- } -->
 ```
 
-HTML-comment braces are inert at Angular runtime, so the interpolation is outside the real `@if`. The previous `FindMatchingBrace` counted those braces and could falsely attach `isAllowed` as `ui-member-visibility`, contaminating downstream R7.10 authority.
+`ngNonBindable` makes the interpolation literal text, so it cannot prove rendered member-value authority.
+
+It also found quoted-attribute boundary ambiguity such as:
+
+```html
+@if (isAllowed) {
+  <div title="price > {{ displayPrice }}"></div>
+}
+```
+
+The old `<` / `>` heuristic could treat the interpolation as text after the `>` inside the quoted value.
 
 Review record:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-7.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-8.md`
 
-## Repair completed
+## Repair and additional hardening
 
-Production checkpoint:
+The implementation session repaired the review blockers and then challenged the same boundary before handoff:
 
 ```text
-d785807dfa053a5abd1e3b6500a2fc1bd729d38a
-fix: ignore comment braces in Angular visibility scope
+a36fae917aa687d8b0240514b6144271e6d81b89  fix: harden Angular render authority
+e9e22cefc969a058114eee0cc443270d6f5d0900  fix: reject quoted attribute visibility controls
+3299e54a1bafdedd5146a86efd58df8e5c8dae99  fix: bound Angular visibility control flow
+cd3b1d4b64168c4e95284299c5715b3db0e4da4b  fix: fail closed on structural visibility directives
 ```
 
-The fix is limited to `AngularRenderedMemberVisibilityEnricher.FindMatchingBrace`: complete HTML comment regions are skipped while matching braces; an unterminated comment fails closed. Regression coverage is in:
+Final behavior:
 
-`tests/Pkc.CSharp.Tests/AngularIfCommentBraceVisibilityRegressionTests.cs`
-
-Coverage includes both a negative commented-opening-brace case and a positive commented-closing-brace case inside a genuinely enclosing `@if`.
-
-Final implementation compare from docs HEAD `e831bab74ebff50c68055996a46bc5bcd7f7ec62` contains exactly two changed files: the visibility enricher and this regression file.
+- `ngNonBindable` subtree cannot create R7.9 rendered-member authority.
+- HTML tag/attribute boundaries are quote-aware.
+- fake `@if` inside HTML comments/tags/quoted attributes cannot create R7.10 authority.
+- brace matching ignores HTML tags/interpolation/comment content rather than treating plain text quotes as code strings.
+- render under nested/extra Angular blocks (`@for`, `@defer`, etc.) does not create R7.10 visibility authority.
+- render under any `*structuralDirective` ancestor fails closed for R7.10 while preserving the R7.9 render fact.
+- the supported exact single-`@if` positive remains covered.
 
 ## Exact-SHA verification
 
-Exact production `d785807dfa053a5abd1e3b6500a2fc1bd729d38a`:
+Exact production `cd3b1d4b64168c4e95284299c5715b3db0e4da4b`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35703893704 — PASS
-pinned Loren                                35703893679 — PASS
-Loren-main canary                           35703893712 — PASS
-pinned Jellyfin + parity/provenance         35703893678 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35714413695 — PASS
+pinned Loren                                35714413680 — PASS
+Loren-main canary                           35714413696 — PASS
+pinned Jellyfin + parity/provenance         35714413688 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             180 / 180 PASS
+C# tests             194 / 194 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -139,63 +151,49 @@ source build          PASS, 0 warnings / 0 errors
 116 product features | 504 knowledge Markdown files
 43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10683608495
-sha256:3cee80dc7d827ce948cda1f6f23e9282bd8ac51debdbf671238c03792bea31fa
+artifact 10688588126
+sha256:140afc4cf9be4aa1c0961c4372a34d3c1d73abfbfabe805106adb839dab6c106
 ```
 
-## Real-repository benchmark
+## Real-repository benchmark — how to read it
 
-Wrapper based exactly on `d785807d...`:
+Final wrapper based on exact `cd3b1d4b...`:
 
 ```text
-branch:         benchmark/r710-comment-brace-d785807d
-wrapper commit: d38ec071e3be6b26de5598e3a54ab06010f28a77
-run:            35704017705 — PASS, 3 / 3 jobs
+wrapper commit: 41c73a4c6a16065c49981bbd59b3e6dbc022b3cc
+run:            35714494308 — PASS, 3 / 3 jobs
 ```
 
-Artifacts:
+Pinned repo outputs:
 
 ```text
-jin12-xyz/CRM
-artifact 10684026181
-sha256:8b313a95e3ed134b99ef1a144916ee6e50304c99d2931f7f8c1d183c14f1423c
-
-hackersandwizards/agentic-engineering-training-angular
-artifact 10684040991
-sha256:3c5f2cb85c7119ca2283ef08f9194f86fde8a45146a633cde4996318e34cacb5
-
-kesetovic/crm-system
-artifact 10683736502
-sha256:739086f68b806ac40c665c0876d15e70f7bfa4b02a5d3fb6ce6bbdf9a18b6610
+jin12 CRM       415 facts / 1,580 relations
+agentic Angular 441 facts /   660 relations
+kesetovic CRM   488 facts / 2,054 relations
 ```
 
-Direct artifact inspection for every repository:
+All three have zero current supported R7.9/R7.10 full positives. This means:
 
-```text
-R7.9 rendered UI terminal: 0
-selected API projection:  0
-ui-member-visibility:     0
-joint-visibility:         0
-combined visibility rule: 0
-```
+- **Safety benchmark PASS:** PKC runs successfully and does not manufacture unsupported cross-layer authority.
+- **R7.14 NOT PASS:** none of these three unchanged repos naturally demonstrates the exact full positive shape yet.
 
-Agentic retains exactly two raw `UpdatedAt` mutations with `runtime-pattern-variable` / `caller-object-unproven` and zero candidate mutation promotion. Mutation-causality remains closed.
+Zero here is a good safety result, not proof that PKC extracted nothing. R7.14 is the separate usefulness/positive-yield requirement.
 
-The benchmark is fail-closed stress evidence only and does not satisfy R7.14.
+Agentic still contains exactly two raw `UpdatedAt` mutations with `runtime-pattern-variable / caller-object-unproven` and zero candidate promotion; mutation-causality remains closed.
 
-## Next action — independent rereview #8
+## Next action — independent rereview #9
 
 Review exact production:
 
 ```text
-d785807dfa053a5abd1e3b6500a2fc1bd729d38a
+cd3b1d4b64168c4e95284299c5715b3db0e4da4b
 ```
 
 Request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-8-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-9-request.md`
 
-The reviewer must independently seek a new compile-valid/runtime-valid false-positive rather than merely re-confirming comment-brace handling.
+The reviewer must independently seek a new compile-valid/runtime-valid false-positive, especially across render suppression, tag/attribute lexical boundaries, Angular block nesting, structural directives, exact fact-ID composition and authority downgrade.
 
 If no blocker exists:
 
@@ -208,5 +206,3 @@ mark R7.10 PASS / COMPLETE
 ```
 
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
-
-This implementation session must not self-certify `d785807d...`.

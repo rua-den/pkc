@@ -38,7 +38,7 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #8** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #9** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### Accepted baselines
@@ -53,74 +53,63 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — repaired, awaiting independent rereview #8
+### D / R7.10 — repaired, awaiting independent rereview #9
 
-Seven adversarial false-positive classes have been closed so far:
+Rereviews #1–#7 repaired inert render containers, comments/tags/attributes, static and Angular hidden forms, static display/visibility suppression, legacy template fragments and comment-brace scope corruption.
 
-1. inert template/comment/tag interpolation;
-2. static HTML `hidden` ancestry;
-3. static inline `display:none`;
-4. static inline `visibility:hidden`;
-5. legacy inert `<template>` fragments;
-6. Angular native hidden bindings / ambiguous dynamic hidden forms;
-7. HTML-comment braces corrupting Angular `@if` scope association.
+Rereview #8 then found two further false-positive classes:
 
-Rereview #7 found this distinct blocker on production `5d43b180...`:
+- `ngNonBindable` could leave literal `{{ member }}` text while PKC claimed a rendered member value;
+- `>` inside quoted attributes could defeat the old tag-boundary heuristic and make attribute interpolation look like visible text.
 
-```html
-@if (isAllowed) {
-  <!-- { -->
-}
-<strong>{{ displayPrice }}</strong>
-<!-- } -->
-```
+The repair session also hardened visibility authority before handoff:
 
-The interpolation is outside the real `@if`, but the previous brace matcher counted inert comment braces and could attach false visibility authority.
+- quote-aware tag/attribute parsing for render and visibility boundaries;
+- fake `@if` inside tags/attributes rejected;
+- nested/extra Angular control blocks fail closed;
+- plain HTML text quotes no longer corrupt brace scope;
+- any `*structuralDirective` ancestor fails closed for R7.10 while preserving R7.9.
 
-Regression-first production repair:
+Final production candidate:
 
 ```text
-d785807dfa053a5abd1e3b6500a2fc1bd729d38a
-fix: ignore comment braces in Angular visibility scope
+cd3b1d4b64168c4e95284299c5715b3db0e4da4b
+fix: fail closed on structural visibility directives
 ```
 
-Regression coverage:
-
-`tests/Pkc.CSharp.Tests/AngularIfCommentBraceVisibilityRegressionTests.cs`
-
-Exact repaired-candidate gates:
+Exact final-candidate gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35703893704 — PASS
-pinned Loren                                35703893679 — PASS
-Loren-main canary                           35703893712 — PASS
-pinned Jellyfin + parity/provenance         35703893678 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35714413695 — PASS
+pinned Loren                                35714413680 — PASS
+Loren-main canary                           35714413696 — PASS
+pinned Jellyfin + parity/provenance         35714413688 — PASS
 
 Release build        0 warnings / 0 errors
-C# tests             180 / 180 PASS
+C# tests             194 / 194 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 ```
 
-Repaired three-repository benchmark:
+Final three-repository safety benchmark:
 
 ```text
-base production  d785807dfa053a5abd1e3b6500a2fc1bd729d38a
-wrapper           d38ec071e3be6b26de5598e3a54ab06010f28a77
-run               35704017705 — PASS, 3 / 3 jobs
+base production  cd3b1d4b64168c4e95284299c5715b3db0e4da4b
+wrapper           41c73a4c6a16065c49981bbd59b3e6dbc022b3cc
+run               35714494308 — PASS, 3 / 3 jobs
 ```
 
-All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 positives. Mutation-causality remains closed.
+All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 full positives. This passes the **safety/fail-closed benchmark**; it does not satisfy R7.14 positive yield.
 
 Fresh independent request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-8-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-9-request.md`
 
 ### E — locked
 
-E remains locked until independent rereview #8 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until independent rereview #9 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
-R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
+R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. At least one unchanged real repository must naturally emit a supported positive V0.4.7 cross-layer answer. Do not weaken authority or modify a benchmark merely to manufacture yield.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 
@@ -135,6 +124,6 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #8
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #9
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
