@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Pkc.Core;
 
@@ -352,10 +353,14 @@ internal sealed class AngularSvgRenderedTextAuthorityFilter
 
             var dynamicValue = value.Contains("{{", StringComparison.Ordinal) ||
                                value.Contains("}}", StringComparison.Ordinal);
-            if (string.Equals(name, "style", StringComparison.OrdinalIgnoreCase) &&
-                dynamicValue)
+            if (string.Equals(name, "style", StringComparison.OrdinalIgnoreCase))
             {
-                return true;
+                if (dynamicValue || HasStaticInlineSvgPresentationSuppression(value))
+                {
+                    return true;
+                }
+
+                continue;
             }
 
             if (string.Equals(name, "display", StringComparison.OrdinalIgnoreCase))
@@ -369,10 +374,20 @@ internal sealed class AngularSvgRenderedTextAuthorityFilter
                 continue;
             }
 
-            if (string.Equals(name, "visibility", StringComparison.OrdinalIgnoreCase) &&
-                (dynamicValue ||
-                 string.Equals(value.Trim(), "hidden", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(value.Trim(), "collapse", StringComparison.OrdinalIgnoreCase)))
+            if (string.Equals(name, "visibility", StringComparison.OrdinalIgnoreCase))
+            {
+                if (dynamicValue ||
+                    string.Equals(value.Trim(), "hidden", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value.Trim(), "collapse", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (string.Equals(name, "opacity", StringComparison.OrdinalIgnoreCase) &&
+                (dynamicValue || !ProvesPositiveOpacity(value)))
             {
                 return true;
             }
@@ -381,19 +396,76 @@ internal sealed class AngularSvgRenderedTextAuthorityFilter
         return false;
     }
 
+    private static bool HasStaticInlineSvgPresentationSuppression(string style)
+    {
+        foreach (var declaration in style.Split(';'))
+        {
+            var separator = declaration.IndexOf(':');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var property = declaration[..separator].Trim();
+            var value = declaration[(separator + 1)..].Trim();
+            if (string.Equals(property, "display", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(value, "none", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(property, "visibility", StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(value, "hidden", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(value, "collapse", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (string.Equals(property, "opacity", StringComparison.OrdinalIgnoreCase) &&
+                !ProvesPositiveOpacity(value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ProvesPositiveOpacity(string value)
+    {
+        var candidate = value.Trim();
+        if (candidate.EndsWith('%'))
+        {
+            candidate = candidate[..^1].Trim();
+        }
+
+        return double.TryParse(
+                   candidate,
+                   NumberStyles.Float,
+                   CultureInfo.InvariantCulture,
+                   out var opacity) &&
+               opacity > 0d;
+    }
+
     private static bool IsDynamicSvgPresentationBinding(string name) =>
         string.Equals(name, "[display]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-display", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[visibility]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-visibility", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "[opacity]", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "bind-opacity", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[attr.display]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-attr.display", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[attr.visibility]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-attr.visibility", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "[attr.opacity]", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "bind-attr.opacity", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[style.display]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-style.display", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[style.visibility]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-style.visibility", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "[style.opacity]", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "bind-style.opacity", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "[style]", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "bind-style", StringComparison.OrdinalIgnoreCase);
 
