@@ -2,7 +2,7 @@ name: real-repo-benchmark
 
 on:
   push:
-    branches: [main]
+    branches: [benchmark/r710-hidden-binding-5d43b180]
     paths:
       - '.github/workflows/real-repo-benchmark.yml'
   workflow_dispatch:
