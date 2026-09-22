@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #9
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #9
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #10
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #10
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -25,11 +25,11 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent 
 ## Exact production candidate under review
 
 ```text
-cd3b1d4b64168c4e95284299c5715b3db0e4da4b
-fix: fail closed on structural visibility directives
+1bc67e62f1099e4d580072682566c2d305e4db07
+fix: ignore Angular style raw text
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `cd3b1d4b...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `1bc67e62...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -42,7 +42,7 @@ R7.9       fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
 mutation   67624944da27ff1f1f5a1154018a255aae11d1fe
 ```
 
-Keep these closed unless a real regression is demonstrated.
+Keep these closed unless a new real regression is demonstrated.
 
 ## Permanent invariants
 
@@ -61,46 +61,47 @@ Enumerable.Single/First(predicate)
 → exact frontend result/member/state identity
 → authoritative active rendered Angular text interpolation
 → exactly one supported enclosing @if
-→ no additional unsupported control/structural visibility authority
+→ no unsupported raw-text/control/structural visibility authority
 → joint backend/frontend visibility evidence
 ```
 
 Frontend visibility cannot upgrade an `observed-only` backend predicate. Zero, multiple, nested or unsupported visibility paths fail closed.
 
-## Rereview #8 and hardening train
+## Rereview #9 finding and repair
 
-Independent rereview #8 found two distinct compile-valid/runtime-valid authority bypasses on predecessor production:
+Independent rereview #9 of predecessor `cd3b1d4b64168c4e95284299c5715b3db0e4da4b` found a new compile-valid/runtime-valid Angular raw-text authority class:
 
-1. `ngNonBindable` can make `{{ displayPrice }}` literal text, while the old render filter could still authorize the member value.
-2. A `>` inside a quoted HTML attribute could fool the old tag-boundary heuristic and promote attribute interpolation as visible text.
+1. `<style>` is valid inside a component template, but Angular does not evaluate interpolation bindings inside it. The old scanner/filter could still treat `{{ displayPrice }}` inside `<style>` as authoritative rendered member text.
+2. CSS braces inside `<style>` could corrupt the bounded `@if` brace matcher and falsely extend a closed condition over a later visible interpolation.
+3. `@if`-looking text inside CSS strings could be considered by visibility regexes even though it is raw style text.
 
-The implementation session then adversarially hardened the same boundary before handoff:
+Production repair:
 
 ```text
-a36fae917aa687d8b0240514b6144271e6d81b89  fix: harden Angular render authority
-e9e22cefc969a058114eee0cc443270d6f5d0900  fix: reject quoted attribute visibility controls
-3299e54a1bafdedd5146a86efd58df8e5c8dae99  fix: bound Angular visibility control flow
-cd3b1d4b64168c4e95284299c5715b3db0e4da4b  fix: fail closed on structural visibility directives
+1bc67e62f1099e4d580072682566c2d305e4db07
+fix: ignore Angular style raw text
 ```
 
-The final candidate additionally fails closed when a render is controlled by unsupported nested Angular blocks (`@for`, `@defer`, etc.) or any `*structuralDirective` ancestor such as `*ngIf` / `*ngFor`, while preserving the independently proven R7.9 render fact.
+The render-authority filter now treats `<style>` as non-bindable raw text. The visibility enricher excludes control matches inside `<style>`, skips complete style regions during brace matching, and fails closed on unterminated style regions. Positive coverage preserves a genuine `@if` following a closed style element.
 
-Review record: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-8.md`.
+Regression coverage: `tests/Pkc.CSharp.Tests/AngularStyleElementAuthorityRegressionTests.cs`.
+
+Review record: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-9.md`.
 
 ## Exact-SHA standard verification
 
-All standard gates passed on exact production `cd3b1d4b64168c4e95284299c5715b3db0e4da4b`:
+All standard gates passed on exact production `1bc67e62f1099e4d580072682566c2d305e4db07`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35714413695 — PASS
-pinned Loren                                35714413680 — PASS
-Loren-main canary                           35714413696 — PASS
-pinned Jellyfin + parity/provenance         35714413688 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35717515912 — PASS
+pinned Loren                                35717515881 — PASS
+Loren-main canary                           35717515909 — PASS
+pinned Jellyfin + parity/provenance         35717515901 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             194 / 194 PASS
+C# tests             198 / 198 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -118,16 +119,16 @@ product features      116
 knowledge Markdown    504 files
 analysis modes         43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10688588126
-sha256:140afc4cf9be4aa1c0961c4372a34d3c1d73abfbfabe805106adb839dab6c106
+artifact              10690353622
+sha256:5b82eb6b43aa4dedd223b6a0956367e2fe2b15bd03a887087143bee7c0ee112e
 ```
 
 ## Final pinned three-repository safety benchmark
 
 ```text
-base production: cd3b1d4b64168c4e95284299c5715b3db0e4da4b
-wrapper commit:  41c73a4c6a16065c49981bbd59b3e6dbc022b3cc
-run:             35714494308 — PASS, 3 / 3 jobs
+base production: 1bc67e62f1099e4d580072682566c2d305e4db07
+wrapper commit:  f16ffb91ca986f2230f9e6f232263210b6a0a6d5
+run:             35717582575 — PASS, 3 / 3 jobs
 ```
 
 Direct artifact inspection for every pinned repository:
@@ -143,31 +144,28 @@ combined visibility rule:     0
 Interpretation:
 
 ```text
-Safety question: can PKC run on unchanged real repositories without manufacturing unsupported cross-layer authority?
-Answer: YES — PASS 3/3.
-
-Positive-yield question: does at least one unchanged real repository naturally contain the exact supported full cross-layer shape?
-Answer: NOT YET — this is R7.14 and remains NOT PASS.
+Safety / fail-closed: PASS — PKC does not manufacture unsupported cross-layer authority.
+R7.14 positive real-project yield: NOT PASS — none of these three unchanged stress repos naturally contain the exact supported full shape.
 ```
 
-Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations, both `runtime-pattern-variable / caller-object-unproven`, with zero candidate promotion.
+Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations, both `runtime-pattern-variable / caller-object-unproven`, with zero candidate or Markdown promotion.
 
 ## Current external gate
 
 Required next gate:
 
 ```text
-independent rereview #9 of exact cd3b1d4b64168c4e95284299c5715b3db0e4da4b
+independent rereview #10 of exact 1bc67e62f1099e4d580072682566c2d305e4db07
 ```
 
-Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-9-request.md`.
+Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-10-request.md`.
 
-If rereview #9 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 remains locked until E completes.
+If rereview #10 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 remains locked until E completes.
 
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #9
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #10
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
