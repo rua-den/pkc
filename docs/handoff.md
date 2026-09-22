@@ -206,3 +206,66 @@ mark R7.10 PASS / COMPLETE
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
 
 This implementation continuation found and repaired rereview #11 and must not self-certify `f9b20c27...`.
+
+## Prepared future execution packet — planning only
+
+A future productization/update execution packet is now prepared:
+
+```text
+docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md
+docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md
+```
+
+It covers:
+
+- `pkc run` as the simple product command;
+- isolated Claude/Codex AI workspace bootstrap;
+- product/QA answer contract with no unsolicited code;
+- READY / PARTIAL / FAILED coverage semantics;
+- shared repository/project analysis context;
+- mixed MVC / Angular / JS repository discovery;
+- `pkc verify`;
+- safe semantic `pkc update`;
+- `pkc diff` product-impact preview;
+- canonical knowledge merge rather than Markdown merge;
+- CI/main as the accepted team baseline;
+- full-run versus incremental-update parity gates.
+
+This packet is **not an unlock**. Current V0.4.7 work remains authoritative and must finish first.
+
+### Current-main reconciliation warning
+
+During preparation of this packet, `main` advanced through new production commits after the current status/review handoff. The final observed HEAD before this planning commit was:
+
+```text
+7dd00c1a960b8e85232d67b779e7906b4206cce6
+fix: require SVG text ancestor
+```
+
+That is newer production code than the `f9b20c27...` candidate described by the current status/review handoff above. Therefore the next execution session must inspect and reconcile current HEAD, review records and gates before treating either SHA as accepted production or opening later work.
+
+Do not reset `main` to the older documented candidate.
+
+### Trigger behavior for future sessions
+
+If the user says only `start`, `continue`, or equivalent:
+
+```text
+read status + handoff + current main
+→ reconcile/finish the current V0.4.7 checkpoint
+→ do not ask the user to restate the prepared design
+→ once V0.4.7 is explicitly PASS / COMPLETE, read the execution plan + self-review
+→ formally open the next roadmap checkpoint
+→ implement regression-first
+→ keep moving until PASS, an external review gate, or a proven external blocker
+```
+
+The preferred future priority after V0.4.7 is complete is:
+
+```text
+AI workspace + run/verify
+→ continuous update/diff
+→ Azure DevOps intent/history evidence
+```
+
+Do not rewrite active milestone ordering before V0.4.7 closes.
