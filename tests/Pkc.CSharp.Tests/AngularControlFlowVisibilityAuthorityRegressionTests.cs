@@ -25,6 +25,24 @@ public sealed class AngularControlFlowVisibilityAuthorityRegressionTests
             fact.Metadata.GetValueOrDefault("member") == "displayPrice");
     }
 
+    [Theory]
+    [InlineData("*ngIf=\"isExtra\"")]
+    [InlineData("*ngFor=\"let item of items\"")]
+    public async Task Legacy_structural_directive_ancestor_fails_closed(string structuralDirective)
+    {
+        var source = StructuralDirectiveComponentSource
+            .Replace("__STRUCTURAL__", structuralDirective, StringComparison.Ordinal);
+        var facts = await ScanAsync(source);
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
     [Fact]
     public async Task Plain_text_apostrophe_cannot_extend_closed_if_over_later_render()
     {
@@ -99,7 +117,7 @@ public sealed class AngularControlFlowVisibilityAuthorityRegressionTests
             await File.WriteAllTextAsync(Path.Combine(root, "angular.json"), "{}");
             await File.WriteAllTextAsync(
                 Path.Combine(root, "package.json"),
-                "{\"dependencies\":{\"@angular/core\":\"22.0.0\"}}");
+                "{\"dependencies\":{\"@angular/core\":\"22.0.0\",\"@angular/common\":\"22.0.0\"}}");
             await File.WriteAllTextAsync(Path.Combine(root, "price.component.ts"), componentSource);
             return await new FrontendScanner().ScanAsync(root);
         }
@@ -108,6 +126,29 @@ public sealed class AngularControlFlowVisibilityAuthorityRegressionTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    private const string StructuralDirectiveComponentSource = """
+        import { Component } from '@angular/core';
+        import { NgFor, NgIf } from '@angular/common';
+
+        @Component({
+          selector: 'app-price',
+          standalone: true,
+          imports: [NgIf, NgFor],
+          template: `
+            @if (displayPrice > 0) {
+              <div __STRUCTURAL__>
+                <strong>{{ displayPrice }}</strong>
+              </div>
+            }
+          `
+        })
+        export class PriceComponent {
+          displayPrice = 42;
+          isExtra = true;
+          items = [1];
+        }
+        """;
 
     private const string ComponentSource = """
         import { Component } from '@angular/core';

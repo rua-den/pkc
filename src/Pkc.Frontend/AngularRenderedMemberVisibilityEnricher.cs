@@ -21,6 +21,11 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
         @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
+    private static readonly HashSet<string> VoidHtmlElements = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
+    };
+
     public async Task<FactDocument> EnrichAsync(
         string repositoryPath,
         FactDocument document,
@@ -178,7 +183,8 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                         interpolation.Index < candidate.CloseBrace)
                     .ToArray();
 
-                if (containing.Length != 1)
+                if (containing.Length != 1 ||
+                    HasUnsupportedStructuralDirectiveAncestor(body.Value, interpolation.Index))
                 {
                     continue;
                 }
@@ -239,6 +245,134 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
         conditionIndex = matches[0].Index;
         conditionLength = matches[0].Length;
         return true;
+    }
+
+    private static bool HasUnsupportedStructuralDirectiveAncestor(string templateBody, int position)
+    {
+        var ancestors = new Stack<HtmlElementFrame>();
+        foreach (Match tag in HtmlElementTagRegex.Matches(templateBody))
+        {
+            if (tag.Index >= position)
+            {
+                break;
+            }
+
+            if (IsInsideHtmlComment(templateBody, tag.Index))
+            {
+                continue;
+            }
+
+            var name = tag.Groups["name"].Value;
+            if (tag.Groups["closing"].Success)
+            {
+                if (VoidHtmlElements.Contains(name) ||
+                    ancestors.Count == 0 ||
+                    !string.Equals(ancestors.Peek().Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                ancestors.Pop();
+                continue;
+            }
+
+            var attrs = tag.Groups["attrs"].Value;
+            var selfClosing = attrs.TrimEnd().EndsWith("/", StringComparison.Ordinal);
+            if (selfClosing || VoidHtmlElements.Contains(name))
+            {
+                continue;
+            }
+
+            ancestors.Push(new HtmlElementFrame(
+                name,
+                HasUnsupportedStructuralDirectiveAttribute(attrs)));
+        }
+
+        return ancestors.Any(ancestor => ancestor.HasUnsupportedStructuralDirective);
+    }
+
+    private static bool HasUnsupportedStructuralDirectiveAttribute(string attributes)
+    {
+        var index = 0;
+        while (index < attributes.Length)
+        {
+            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+            {
+                index++;
+            }
+
+            if (index >= attributes.Length)
+            {
+                break;
+            }
+
+            if (attributes[index] == '/')
+            {
+                index++;
+                continue;
+            }
+
+            var nameStart = index;
+            while (index < attributes.Length &&
+                   !char.IsWhiteSpace(attributes[index]) &&
+                   attributes[index] is not '=' and not '/')
+            {
+                index++;
+            }
+
+            if (index == nameStart)
+            {
+                index++;
+                continue;
+            }
+
+            var name = attributes[nameStart..index];
+            if (name.StartsWith("*", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+            {
+                index++;
+            }
+
+            if (index >= attributes.Length || attributes[index] != '=')
+            {
+                continue;
+            }
+
+            index++;
+            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+            {
+                index++;
+            }
+
+            if (index < attributes.Length && attributes[index] is '\'' or '"')
+            {
+                var quote = attributes[index++];
+                while (index < attributes.Length && attributes[index] != quote)
+                {
+                    index++;
+                }
+
+                if (index < attributes.Length)
+                {
+                    index++;
+                }
+            }
+            else
+            {
+                while (index < attributes.Length &&
+                       !char.IsWhiteSpace(attributes[index]) &&
+                       attributes[index] != '/')
+                {
+                    index++;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static int FindMatchingBrace(string text, int openBrace)
@@ -478,6 +612,8 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
 
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}";
+
+    private sealed record HtmlElementFrame(string Name, bool HasUnsupportedStructuralDirective);
 
     private enum LexicalState
     {
