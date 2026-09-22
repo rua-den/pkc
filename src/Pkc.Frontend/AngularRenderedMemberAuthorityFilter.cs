@@ -169,11 +169,16 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 continue;
             }
 
-            ancestors.Push(new HtmlElementFrame(name, SuppressesRenderAuthority(attrs)));
+            ancestors.Push(new HtmlElementFrame(
+                name,
+                IsNonBindableRawTextElement(name) || SuppressesRenderAuthority(attrs)));
         }
 
         return ancestors.Any(ancestor => ancestor.SuppressesRenderAuthority);
     }
+
+    private static bool IsNonBindableRawTextElement(string name) =>
+        string.Equals(name, "style", StringComparison.OrdinalIgnoreCase);
 
     private static bool SuppressesRenderAuthority(string attributes)
     {

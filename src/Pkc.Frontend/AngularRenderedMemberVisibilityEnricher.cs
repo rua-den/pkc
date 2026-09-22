@@ -21,6 +21,10 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
         @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
+    private static readonly Regex StyleEndTagRegex = new(
+        @"<\s*/\s*style\s*>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     private static readonly HashSet<string> VoidHtmlElements = new(StringComparer.OrdinalIgnoreCase)
     {
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
@@ -170,7 +174,8 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                     .Where(atIf =>
                         atIf.Index < interpolation.Index &&
                         !IsInsideHtmlComment(body.Value, atIf.Index) &&
-                        !IsInsideHtmlTag(body.Value, atIf.Index))
+                        !IsInsideHtmlTag(body.Value, atIf.Index) &&
+                        !IsInsideStyleElement(body.Value, atIf.Index))
                     .Select(atIf => new
                     {
                         Match = atIf,
@@ -194,7 +199,8 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                     .Where(block =>
                         block.Index < interpolation.Index &&
                         !IsInsideHtmlComment(body.Value, block.Index) &&
-                        !IsInsideHtmlTag(body.Value, block.Index))
+                        !IsInsideHtmlTag(body.Value, block.Index) &&
+                        !IsInsideStyleElement(body.Value, block.Index))
                     .Select(block => new
                     {
                         Match = block,
@@ -397,6 +403,17 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                 continue;
             }
 
+            if (text[index] == '<' && TryGetStyleElementEnd(text, index, out var styleEnd))
+            {
+                if (styleEnd < 0)
+                {
+                    return -1;
+                }
+
+                index = styleEnd;
+                continue;
+            }
+
             if (text[index] == '<' && TryGetHtmlTagEnd(text, index, out var tagEnd))
             {
                 index = tagEnd;
@@ -439,6 +456,34 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
         }
 
         return -1;
+    }
+
+    private static bool TryGetStyleElementEnd(string text, int start, out int end)
+    {
+        end = -1;
+        var open = HtmlElementTagRegex.Match(text, start);
+        if (!open.Success ||
+            open.Index != start ||
+            open.Groups["closing"].Success ||
+            !string.Equals(open.Groups["name"].Value, "style", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var attrs = open.Groups["attrs"].Value;
+        if (attrs.TrimEnd().EndsWith("/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var close = StyleEndTagRegex.Match(text, open.Index + open.Length);
+        if (!close.Success)
+        {
+            return true;
+        }
+
+        end = close.Index + close.Length - 1;
+        return true;
     }
 
     private static bool TryGetHtmlTagEnd(string text, int start, out int end)
@@ -511,6 +556,49 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                 end = index + 1;
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private static bool IsInsideStyleElement(string text, int position)
+    {
+        var searchIndex = 0;
+        while (searchIndex < position)
+        {
+            var tag = HtmlElementTagRegex.Match(text, searchIndex);
+            if (!tag.Success || tag.Index >= position)
+            {
+                return false;
+            }
+
+            if (IsInsideHtmlComment(text, tag.Index))
+            {
+                searchIndex = tag.Index + tag.Length;
+                continue;
+            }
+
+            if (!tag.Groups["closing"].Success &&
+                string.Equals(tag.Groups["name"].Value, "style", StringComparison.OrdinalIgnoreCase))
+            {
+                var attrs = tag.Groups["attrs"].Value;
+                if (attrs.TrimEnd().EndsWith("/", StringComparison.Ordinal))
+                {
+                    searchIndex = tag.Index + tag.Length;
+                    continue;
+                }
+
+                var close = StyleEndTagRegex.Match(text, tag.Index + tag.Length);
+                if (!close.Success || close.Index >= position)
+                {
+                    return true;
+                }
+
+                searchIndex = close.Index + close.Length;
+                continue;
+            }
+
+            searchIndex = tag.Index + tag.Length;
         }
 
         return false;
