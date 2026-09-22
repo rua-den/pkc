@@ -16,8 +16,9 @@ Read in this order before changing production code:
 6. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-1.md`
 7. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-2.md`
 8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-3.md`
-9. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
-10. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-4-request.md`
+9. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-4.md`
+10. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
+11. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-5-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
@@ -26,11 +27,11 @@ Then inspect current `main`, recent commits and repository status. Never reset t
 Exact production SHA for fresh independent rereview:
 
 ```text
-dc69e44206942ffb0012e1994d6d39249d1db4be
-fix: reject static display none renders
+1fc4d212b9c7add2f012f51adf3eef0c16f34dae
+fix: reject static visibility hidden renders
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `dc69e442...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `1fc4d212...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -40,8 +41,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #4
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #4
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #5
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #5
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -76,78 +77,83 @@ Supported backend remains the narrow target-project-semantic `Enumerable.Single/
 
 Frontend evidence cannot upgrade an `observed-only` backend condition. Unsupported or ambiguous structure fails closed.
 
-## Rereview history
+## Rereview history through #4
 
-Rereview #1 found and repaired:
+Rereview #1 repaired false render authority for inert `<ng-template>`, HTML comments and HTML tag/attribute interpolation.
 
-```text
-inert <ng-template>
-HTML-comment interpolation
-HTML tag/attribute interpolation
-```
+Rereview #2 repaired static HTML `hidden` ancestry at `97161baa2d0aff9131a7acf9db752393ae913d64`.
 
-Rereview #2 found and repaired static HTML `hidden` ancestry at production SHA `97161baa2d0aff9131a7acf9db752393ae913d64`.
-
-Rereview #3 challenged that repair and found a distinct static presentation blocker:
-
-```html
-<section style="display: none">
-  @if (displayPrice > 0) {
-    <strong>{{ displayPrice }}</strong>
-  }
-</section>
-```
-
-`display:none` makes the subtree non-presented to the user, but the previous authority filter could still treat the interpolation as visible. That would allow false R7.9 rendered-terminal and R7.10 combined visibility claims.
-
-Review record:
-
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-3.md`
-
-## Static display-none repair completed
-
-Production checkpoint:
+Rereview #3 found static inline `display:none` remained over-authoritative and was repaired at:
 
 ```text
 dc69e44206942ffb0012e1994d6d39249d1db4be
 fix: reject static display none renders
 ```
 
-The repair stays at the R7.9 render-authority boundary. The bounded HTML-ancestor parser now treats a static inline `style` declaration containing `display:none` or `display:none !important` as presentation suppression. It is case-insensitive and preserves existing authority for static `display:block`.
+Independent rereview #4 then found another static presentation-suppression case:
 
-Deliberate non-claims:
+```html
+<section style="visibility: hidden">
+  @if (displayPrice > 0) {
+    <strong>{{ displayPrice }}</strong>
+  }
+</section>
+```
 
-- Angular `[style]` and `[style.display]` bindings;
-- interpolated/dynamic style values;
-- class-based or stylesheet CSS;
-- computed CSS / browser cascade;
-- other CSS properties such as `visibility`;
-- signals, outlets, structural directives or general runtime DOM semantics.
+At `dc69e442...`, `AngularRenderedMemberAuthorityFilter` only recognized static `display:none`. Therefore the interpolation under `visibility:hidden` could retain `renderAuthority`; `AngularRenderedMemberVisibilityEnricher` could still attach the exact `@if`; downstream exact-ID composition could then create a false R7.9 rendered terminal and R7.10 joint visibility fact.
+
+Full review record:
+
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-4.md`
+
+## Static visibility-hidden repair completed
+
+Production checkpoint:
+
+```text
+1fc4d212b9c7add2f012f51adf3eef0c16f34dae
+fix: reject static visibility hidden renders
+```
+
+The fix stays at the R7.9 render-authority boundary and extends the existing static inline declaration parser only:
+
+- static `display:none` / `display:none !important` remains rejected;
+- static `visibility:hidden` / `visibility:hidden !important` is now rejected;
+- property/value matching is case-insensitive;
+- static `display:block` and `visibility:visible` remain positive safeguards;
+- dynamic/interpolated style values remain unsupported rather than guessed.
+
+Deliberate non-claims remain:
+
+- Angular `[style]`, `[style.visibility]`, `[style.display]`;
+- class-based / stylesheet CSS and browser cascade;
+- computed CSS, opacity and runtime script mutation;
+- signals, outlets, structural directives and general DOM semantics.
 
 Regression file:
 
 `tests/Pkc.CSharp.Tests/StaticCssRenderAuthorityRegressionTests.cs`
 
-It includes frontend negative, end-to-end R7.9/R7.10 negative, and a `display:block` positive safeguard.
+It now includes frontend and end-to-end `visibility:hidden` negatives plus a `visibility:visible` positive safeguard, while retaining the prior `display:none` / `display:block` coverage.
 
-Local .NET execution was unavailable in the implementation environment. The complete two-file implementation/test diff was reviewed before one production push. Clean exact-SHA gates below provide executable verification.
+Local .NET execution was unavailable in the implementation environment. The production/test diff was reviewed before one implementation push. Exact-SHA gates below provide clean executable verification.
 
 ## Exact-SHA verification
 
-Exact `dc69e44206942ffb0012e1994d6d39249d1db4be`:
+Exact production `1fc4d212b9c7add2f012f51adf3eef0c16f34dae`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35687831689 — PASS
-pinned Loren                                35687831632 — PASS
-Loren-main canary                           35687831587 — PASS
-pinned Jellyfin + parity/provenance         35687831537 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35696272391 — PASS
+pinned Loren                                35696272323 — PASS
+Loren-main canary                           35696272328 — PASS
+pinned Jellyfin + parity/provenance         35696273519 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             164 / 164 PASS
+C# tests             167 / 167 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -160,57 +166,67 @@ Pinned Jellyfin:
 source build          PASS, 0 warnings / 0 errors
 43,365 facts | 195,316 relations | 386 workflow candidates
 116 product features | 504 knowledge Markdown files
-all facts project-semantic
+43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10677695966
-sha256:088353b7a1e30bf2aa68dce408246c2f88de50b843e88a7c57bb8fac595bdb60
+artifact 10680339386
+sha256:a31f2b97674c0a18fa4b3587a1d422dc1a7228e75ba67015f86791ca73467031
 ```
 
 ## Repaired real-repository benchmark
 
-Wrapper based exactly on `dc69e442...`:
+Wrapper based exactly on `1fc4d212...`:
 
 ```text
-branch:         benchmark/r710-css-dc69e442
-wrapper commit: b3b0c5b40c0d34cafe3e7a60c28341ea777dd2cf
-run:            35687951314 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-visibility-1fc4d212
+wrapper commit: 7101b4c911539821c7c368203e0b05d150cbea64
+run:            35696381103 — PASS, 3 / 3 jobs
 ```
+
+GitHub compare proves the wrapper changes only one branch-trigger line in `.github/workflows/real-repo-benchmark.yml`; production and tests are byte-identical to `1fc4d212...`.
 
 Artifacts:
 
 ```text
 jin12-xyz/CRM
-artifact 10676974702
-sha256:640cfe616ac523f6e868446b31ce467644b82920b7ba20044340cfd5b652ffcc
+artifact 10679924411
+sha256:723e597275aab0e116daa920ba62faec025f786c0572a2ca16176aa1498a98a4
 
 hackersandwizards/agentic-engineering-training-angular
-artifact 10676969751
-sha256:c9f3106843d14f368abb37da9d0b61e391d943567f2c45511f61ae1150ce4723
+artifact 10680915908
+sha256:f0477e13b6c91f88eed8f99485961fdc285922ff269a9fec4b79b29acb83fee5
 
 kesetovic/crm-system
-artifact 10677306261
-sha256:ef3e57e3138492b87d0e8c12c8204e63e977487f46a3ce3c20a6869f05ca1408
+artifact 10680019528
+sha256:0171e0091f4520adabbba43e3fa43add73bc07cf7e44f650615922a6e2fc79e0
 ```
 
-Every repository still emits zero supported R7.9 rendered terminal, selected API projection, UI-member visibility, joint visibility, and combined visibility rule. Agentic retains exactly two raw `UpdatedAt` mutations and zero candidate mutation promotion. R7.14 remains NOT PASS.
+Direct artifact inspection for every repository:
 
-Detailed record:
+```text
+R7.9 rendered UI terminal: 0
+selected API projection:  0
+ui-member-visibility:     0
+joint-visibility:         0
+combined visibility rule: 0
+```
 
-`docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
+Agentic still contains exactly two raw `UpdatedAt` mutations with `runtime-pattern-variable` / `caller-object-unproven`, and zero candidate mutation promotion. The mutation-causality blocker remains closed.
 
-## Next action — independent rereview #4
+This benchmark is fail-closed stress evidence only and does not satisfy R7.14. R7.14 remains **NOT PASS**.
+
+## Next action — independent rereview #5
 
 Review exact production SHA:
 
 ```text
-dc69e44206942ffb0012e1994d6d39249d1db4be
+1fc4d212b9c7add2f012f51adf3eef0c16f34dae
 ```
 
 Request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-4-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-5-request.md`
 
-The reviewer must independently search for another compile-valid/runtime-valid counterexample rather than merely re-confirm the display-none regression.
+The reviewer must independently search for a new compile-valid/runtime-valid counterexample rather than merely re-confirming `visibility:hidden`.
 
 If no blocker exists:
 
@@ -224,4 +240,4 @@ mark R7.10 PASS / COMPLETE
 
 If a blocker exists, keep E locked and require regression-first minimum generic repair.
 
-This implementation session must not self-certify `dc69e442...`.
+This implementation session must not self-certify `1fc4d212...`.
