@@ -9,8 +9,8 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         @"@Component\s*\(\s*\{(?<before>[\s\S]*?)\btemplate\s*:\s*`(?<body>[\s\S]*?)`(?<after>[\s\S]*?)\}\s*\)\s*(?:export\s+)?class\s+(?<component>[A-Z][A-Za-z0-9_$]*Component)\b",
         RegexOptions.Compiled);
 
-    private static readonly Regex NgTemplateTagRegex = new(
-        @"<\s*(?<closing>/)?\s*ng-template\b[^>]*>",
+    private static readonly Regex InertTemplateTagRegex = new(
+        @"<\s*(?<closing>/)?\s*(?:ng-template|template)\b[^>]*>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     private static readonly Regex HtmlElementTagRegex = new(
@@ -122,7 +122,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 if (line == sourceLine &&
                     !IsInsideHtmlComment(body.Value, memberMatch.Index) &&
                     !IsInsideHtmlTag(body.Value, memberMatch.Index) &&
-                    !IsInsideInertNgTemplate(body.Value, memberMatch.Index) &&
+                    !IsInsideInertTemplateFragment(body.Value, memberMatch.Index) &&
                     !IsInsideStaticallyNonRenderedHtmlAncestor(body.Value, memberMatch.Index))
                 {
                     count++;
@@ -304,10 +304,10 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         return false;
     }
 
-    private static bool IsInsideInertNgTemplate(string templateBody, int position)
+    private static bool IsInsideInertTemplateFragment(string templateBody, int position)
     {
         var depth = 0;
-        foreach (Match tag in NgTemplateTagRegex.Matches(templateBody))
+        foreach (Match tag in InertTemplateTagRegex.Matches(templateBody))
         {
             if (tag.Index >= position)
             {
