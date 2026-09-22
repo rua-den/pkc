@@ -38,7 +38,7 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #10** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #11** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### Accepted baselines
@@ -53,33 +53,33 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — repaired, awaiting independent rereview #10
+### D / R7.10 — repaired, awaiting independent rereview #11
 
-Nine independent/adversarial review rounds have successively closed concrete false-positive classes including inert templates/comments, static presentation suppression, Angular hidden bindings, control-flow brace corruption, `ngNonBindable`, quoted attributes, unsupported nested/structural visibility, and now Angular `<style>` raw-text semantics.
+Ten independent/adversarial review rounds have closed concrete false-positive classes including inert templates/comments, static presentation suppression, Angular hidden bindings, control-flow brace corruption, `ngNonBindable`, quoted attributes, unsupported nested/structural visibility, `<style>` raw text, and SVG definition containers.
 
-Rereview #9 found that valid `<style>` content could be mistaken for active Angular interpolation/control syntax. The same raw CSS could either manufacture render authority or corrupt `@if` scope matching.
+Rereview #10 found that interpolation below SVG `<defs>` / `<symbol>` could be mistaken for a directly visible rendered value even though those containers define reusable SVG content rather than directly presenting it.
 
 Regression-first production repair:
 
 ```text
-1bc67e62f1099e4d580072682566c2d305e4db07
-fix: ignore Angular style raw text
+a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+fix: reject SVG definition renders
 ```
 
 Regression coverage:
 
-`tests/Pkc.CSharp.Tests/AngularStyleElementAuthorityRegressionTests.cs`
+`tests/Pkc.CSharp.Tests/AngularSvgDefinitionRenderAuthorityRegressionTests.cs`
 
 Exact repaired-candidate gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35717515912 — PASS
-pinned Loren                                35717515881 — PASS
-Loren-main canary                           35717515909 — PASS
-pinned Jellyfin + parity/provenance         35717515901 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35740454910 — PASS
+pinned Loren                                35740454928 — PASS
+Loren-main canary                           35740454970 — PASS
+pinned Jellyfin + parity/provenance         35740454878 — PASS
 
 Release build        0 warnings / 0 errors
-C# tests             198 / 198 PASS
+C# tests             201 / 201 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 ```
@@ -87,20 +87,20 @@ tool pack/install    PASS
 Repaired three-repository benchmark:
 
 ```text
-base production  1bc67e62f1099e4d580072682566c2d305e4db07
-wrapper           f16ffb91ca986f2230f9e6f232263210b6a0a6d5
-run               35717582575 — PASS, 3 / 3 jobs
+base production  a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+wrapper           e01326c66fef67679b53af459e0bb9208b5dd3f4
+run               35740571925 — PASS, 3 / 3 jobs
 ```
 
 All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 positives. This is a safety PASS, not positive-yield completion. Mutation-causality remains closed.
 
 Fresh independent request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-10-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-11-request.md`
 
 ### E — locked
 
-E remains locked until independent rereview #10 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until independent rereview #11 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
 R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
 
@@ -117,6 +117,6 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #10
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #11
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

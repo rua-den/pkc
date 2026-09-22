@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #10
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #10
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #11
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #11
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -25,11 +25,11 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent 
 ## Exact production candidate under review
 
 ```text
-1bc67e62f1099e4d580072682566c2d305e4db07
-fix: ignore Angular style raw text
+a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+fix: reject SVG definition renders
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `1bc67e62...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `a3334bc...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -59,49 +59,47 @@ Enumerable.Single/First(predicate)
 → direct API response property projection
 → explicit wire identity
 → exact frontend result/member/state identity
-→ authoritative active rendered Angular text interpolation
+→ authoritative active directly rendered Angular text interpolation
 → exactly one supported enclosing @if
-→ no unsupported raw-text/control/structural visibility authority
+→ no unsupported raw-text / inert-definition / control / structural visibility authority
 → joint backend/frontend visibility evidence
 ```
 
 Frontend visibility cannot upgrade an `observed-only` backend predicate. Zero, multiple, nested or unsupported visibility paths fail closed.
 
-## Rereview #9 finding and repair
+## Rereview #10 finding and repair
 
-Independent rereview #9 of predecessor `cd3b1d4b64168c4e95284299c5715b3db0e4da4b` found a new compile-valid/runtime-valid Angular raw-text authority class:
+Independent rereview #10 of predecessor `1bc67e62f1099e4d580072682566c2d305e4db07` found a distinct SVG direct-render authority class.
 
-1. `<style>` is valid inside a component template, but Angular does not evaluate interpolation bindings inside it. The old scanner/filter could still treat `{{ displayPrice }}` inside `<style>` as authoritative rendered member text.
-2. CSS braces inside `<style>` could corrupt the bounded `@if` brace matcher and falsely extend a closed condition over a later visible interpolation.
-3. `@if`-looking text inside CSS strings could be considered by visibility regexes even though it is raw style text.
+Angular component templates can contain SVG and interpolation. However SVG definition containers such as `<defs>` and `<symbol>` do not directly render their child graphics/text to the user. The previous render-authority filter could still promote a simple interpolation under these containers as an authoritative `ui-member-render`, allowing false R7.9/R7.10 visible-render claims.
 
-Production repair:
+Regression-first repair:
 
 ```text
-1bc67e62f1099e4d580072682566c2d305e4db07
-fix: ignore Angular style raw text
+a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+fix: reject SVG definition renders
 ```
 
-The render-authority filter now treats `<style>` as non-bindable raw text. The visibility enricher excludes control matches inside `<style>`, skips complete style regions during brace matching, and fails closed on unterminated style regions. Positive coverage preserves a genuine `@if` following a closed style element.
+The bounded render-authority ancestor check now treats `style`, SVG `defs`, and SVG `symbol` as non-direct-render containers. A closed definition container does not suppress later genuine active text.
 
-Regression coverage: `tests/Pkc.CSharp.Tests/AngularStyleElementAuthorityRegressionTests.cs`.
+Regression coverage: `tests/Pkc.CSharp.Tests/AngularSvgDefinitionRenderAuthorityRegressionTests.cs`.
 
-Review record: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-9.md`.
+Review record: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-10.md`.
 
 ## Exact-SHA standard verification
 
-All standard gates passed on exact production `1bc67e62f1099e4d580072682566c2d305e4db07`:
+All standard gates passed on exact production `a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35717515912 — PASS
-pinned Loren                                35717515881 — PASS
-Loren-main canary                           35717515909 — PASS
-pinned Jellyfin + parity/provenance         35717515901 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35740454910 — PASS
+pinned Loren                                35740454928 — PASS
+Loren-main canary                           35740454970 — PASS
+pinned Jellyfin + parity/provenance         35740454878 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             198 / 198 PASS
+C# tests             201 / 201 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -119,19 +117,19 @@ product features      116
 knowledge Markdown    504 files
 analysis modes         43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10690353622
-sha256:5b82eb6b43aa4dedd223b6a0956367e2fe2b15bd03a887087143bee7c0ee112e
+artifact              10698544024
+sha256:dc679ba75f586ef7e7f0fd4b3ac8e0f79c70ab496132896b2c7bbdece9d50ef4
 ```
 
 ## Final pinned three-repository safety benchmark
 
 ```text
-base production: 1bc67e62f1099e4d580072682566c2d305e4db07
-wrapper commit:  f16ffb91ca986f2230f9e6f232263210b6a0a6d5
-run:             35717582575 — PASS, 3 / 3 jobs
+base production: a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+wrapper commit:  e01326c66fef67679b53af459e0bb9208b5dd3f4
+run:             35740571925 — PASS, 3 / 3 jobs
 ```
 
-Direct artifact inspection for every pinned repository:
+The wrapper differs from production by exactly one workflow branch-trigger line. Direct artifact inspection for every pinned repository found:
 
 ```text
 R7.9 rendered-value terminal: 0
@@ -148,24 +146,24 @@ Safety / fail-closed: PASS — PKC does not manufacture unsupported cross-layer 
 R7.14 positive real-project yield: NOT PASS — none of these three unchanged stress repos naturally contain the exact supported full shape.
 ```
 
-Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations, both `runtime-pattern-variable / caller-object-unproven`, with zero candidate or Markdown promotion.
+Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, with zero feature-candidate, product-feature, or Markdown promotion.
 
 ## Current external gate
 
 Required next gate:
 
 ```text
-independent rereview #10 of exact 1bc67e62f1099e4d580072682566c2d305e4db07
+independent rereview #11 of exact a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
 ```
 
-Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-10-request.md`.
+Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-11-request.md`.
 
-If rereview #10 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 remains locked until E completes.
+If rereview #11 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 remains locked until E completes.
 
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #10
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #11
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
