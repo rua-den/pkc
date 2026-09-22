@@ -17,8 +17,9 @@ Read in this order before changing production code:
 7. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-2.md`
 8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-3.md`
 9. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-4.md`
-10. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
-11. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-5-request.md`
+10. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-5.md`
+11. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
+12. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-6-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
@@ -27,11 +28,11 @@ Then inspect current `main`, recent commits and repository status. Never reset t
 Exact production SHA for fresh independent rereview:
 
 ```text
-1fc4d212b9c7add2f012f51adf3eef0c16f34dae
-fix: reject static visibility hidden renders
+e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
+fix: reject inert legacy template renders
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `1fc4d212...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `e54b8444...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -41,8 +42,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #5
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #5
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #6
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #6
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -52,7 +53,7 @@ Do not start E or V0.5 before the independent D outcome.
 
 ## Permanent contract
 
-Keep business conditions, value lineage/provenance, and mutation/causality distinct. Unsupported inference fails closed. Same/similar names are not proof. If stronger composition fails, preserve independently proven lower-authority evidence.
+Keep business conditions, value lineage/provenance, mutation/causality, and presentation authority distinct. Unsupported inference fails closed. Same/similar names are not proof. If stronger composition fails, preserve independently proven lower-authority evidence.
 
 ## Accepted predecessors
 
@@ -73,87 +74,78 @@ R7.10 answers, for the same exact R7.9-proven value path:
 
 > What backend selection condition and frontend visibility condition jointly determine whether this rendered value is visible?
 
-Supported backend remains the narrow target-project-semantic `Enumerable.Single/First(predicate)` → exact selected local → direct response property projection path. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active visible text interpolation. R7.10 accepts one supported enclosing Angular `@if` and composes only exact fact IDs.
+Supported backend remains the narrow target-project-semantic `Enumerable.Single/First(predicate)` → exact selected local → direct response property projection path. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active rendered text interpolation. R7.10 accepts one supported enclosing Angular `@if` and composes only exact fact IDs.
 
 Frontend evidence cannot upgrade an `observed-only` backend condition. Unsupported or ambiguous structure fails closed.
 
-## Rereview history through #4
+## Rereview #5 finding
 
-Rereview #1 repaired false render authority for inert `<ng-template>`, HTML comments and HTML tag/attribute interpolation.
-
-Rereview #2 repaired static HTML `hidden` ancestry at `97161baa2d0aff9131a7acf9db752393ae913d64`.
-
-Rereview #3 found static inline `display:none` remained over-authoritative and was repaired at:
-
-```text
-dc69e44206942ffb0012e1994d6d39249d1db4be
-fix: reject static display none renders
-```
-
-Independent rereview #4 then found another static presentation-suppression case:
+Independent rereview #5 challenged exact production `1fc4d212...` and found a distinct inert-fragment boundary:
 
 ```html
-<section style="visibility: hidden">
+<template>
   @if (displayPrice > 0) {
     <strong>{{ displayPrice }}</strong>
   }
-</section>
+</template>
 ```
 
-At `dc69e442...`, `AngularRenderedMemberAuthorityFilter` only recognized static `display:none`. Therefore the interpolation under `visibility:hidden` could retain `renderAuthority`; `AngularRenderedMemberVisibilityEnricher` could still attach the exact `@if`; downstream exact-ID composition could then create a false R7.9 rendered terminal and R7.10 joint visibility fact.
+Fixture configuration:
 
-Full review record:
+```json
+{
+  "angularCompilerOptions": {
+    "enableLegacyTemplate": true
+  }
+}
+```
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-4.md`
+With legacy template support enabled, `<template>` is an inert template fragment. The previous authority filter recognized only `<ng-template>`, so the interpolation could incorrectly retain authoritative `ui-member-render`; the enclosing `@if` could then feed false R7.9/R7.10 PO-facing authority.
 
-## Static visibility-hidden repair completed
+Review record:
+
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-5.md`
+
+## Legacy-template repair completed
 
 Production checkpoint:
 
 ```text
-1fc4d212b9c7add2f012f51adf3eef0c16f34dae
-fix: reject static visibility hidden renders
+e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
+fix: reject inert legacy template renders
 ```
 
-The fix stays at the R7.9 render-authority boundary and extends the existing static inline declaration parser only:
-
-- static `display:none` / `display:none !important` remains rejected;
-- static `visibility:hidden` / `visibility:hidden !important` is now rejected;
-- property/value matching is case-insensitive;
-- static `display:block` and `visibility:visible` remain positive safeguards;
-- dynamic/interpolated style values remain unsupported rather than guessed.
-
-Deliberate non-claims remain:
-
-- Angular `[style]`, `[style.visibility]`, `[style.display]`;
-- class-based / stylesheet CSS and browser cascade;
-- computed CSS, opacity and runtime script mutation;
-- signals, outlets, structural directives and general DOM semantics.
+The repair stays at the R7.9 render-authority boundary. The inert template-fragment parser now treats both `<ng-template>` and legacy `<template>` as non-rendered fragment containers. It does not change backend predicate authority, R7.10 exact-ID composition, CSS support, or runtime DOM claims.
 
 Regression file:
 
-`tests/Pkc.CSharp.Tests/StaticCssRenderAuthorityRegressionTests.cs`
+`tests/Pkc.CSharp.Tests/LegacyTemplateRenderAuthorityRegressionTests.cs`
 
-It now includes frontend and end-to-end `visibility:hidden` negatives plus a `visibility:visible` positive safeguard, while retaining the prior `display:none` / `display:block` coverage.
+Coverage proves:
 
-Local .NET execution was unavailable in the implementation environment. The production/test diff was reviewed before one implementation push. Exact-SHA gates below provide clean executable verification.
+- interpolation and `@if` inside a legacy `<template>` do not become authoritative render/visibility facts;
+- a closed legacy `<template>` sibling does not incorrectly suppress a later active interpolation.
+
+The fixture explicitly enables `angularCompilerOptions.enableLegacyTemplate=true`.
+
+The connector briefly created a test-only commit while editing. Before final verification, `main` was rewritten so the final history contains one coherent implementation commit directly above the prior docs handoff. Compare from `c7011acb...` to `e54b8444...` shows exactly two files: production filter + regression test.
 
 ## Exact-SHA verification
 
-Exact production `1fc4d212b9c7add2f012f51adf3eef0c16f34dae`:
+Exact production `e54b8444c3d14e647bcc0a9fe23d8f6e1905865b`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35696272391 — PASS
-pinned Loren                                35696272323 — PASS
-Loren-main canary                           35696272328 — PASS
-pinned Jellyfin + parity/provenance         35696273519 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35699298170 — PASS
+pinned Loren                                35699298080 — PASS
+Loren-main canary                           35699298091 — PASS
+pinned Jellyfin + parity/provenance         35699298089 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             167 / 167 PASS
+C# tests             169 / 169 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -168,36 +160,36 @@ source build          PASS, 0 warnings / 0 errors
 116 product features | 504 knowledge Markdown files
 43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10680339386
-sha256:a31f2b97674c0a18fa4b3587a1d422dc1a7228e75ba67015f86791ca73467031
+artifact 10681845827
+sha256:cd6ffdb41b6652777064a51cc3f76a16cd44aa948e1044fa5a0d49ce1420b5f1
 ```
 
 ## Repaired real-repository benchmark
 
-Wrapper based exactly on `1fc4d212...`:
+Wrapper based exactly on `e54b8444...`:
 
 ```text
-branch:         benchmark/r710-visibility-1fc4d212
-wrapper commit: 7101b4c911539821c7c368203e0b05d150cbea64
-run:            35696381103 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-legacy-template-e54b8444
+wrapper commit: cee6bef95e4e2b7a86b483057d0672d9be728e52
+run:            35699541953 — PASS, 3 / 3 jobs
 ```
 
-GitHub compare proves the wrapper changes only one branch-trigger line in `.github/workflows/real-repo-benchmark.yml`; production and tests are byte-identical to `1fc4d212...`.
+GitHub compare proves the wrapper changes only one branch-trigger line in `.github/workflows/real-repo-benchmark.yml`; production and tests are byte-identical to `e54b8444...`.
 
 Artifacts:
 
 ```text
 jin12-xyz/CRM
-artifact 10679924411
-sha256:723e597275aab0e116daa920ba62faec025f786c0572a2ca16176aa1498a98a4
+artifact 10681654421
+sha256:b49d66ce422707fbe237125aaf7842c9e64556e6e99ac003805c8a9f402d5cfc
 
 hackersandwizards/agentic-engineering-training-angular
-artifact 10680915908
-sha256:f0477e13b6c91f88eed8f99485961fdc285922ff269a9fec4b79b29acb83fee5
+artifact 10682330270
+sha256:7b36dbccda49b210a68d9fee917ecbbd4b06489371944fed808da2b200b7dd12
 
 kesetovic/crm-system
-artifact 10680019528
-sha256:0171e0091f4520adabbba43e3fa43add73bc07cf7e44f650615922a6e2fc79e0
+artifact 10681677291
+sha256:6a1492b58809b5963500a4f9e29839bf8de86fc3822508d2dbb433f13f3d6b99
 ```
 
 Direct artifact inspection for every repository:
@@ -214,19 +206,21 @@ Agentic still contains exactly two raw `UpdatedAt` mutations with `runtime-patte
 
 This benchmark is fail-closed stress evidence only and does not satisfy R7.14. R7.14 remains **NOT PASS**.
 
-## Next action — independent rereview #5
+## Next action — independent rereview #6
 
 Review exact production SHA:
 
 ```text
-1fc4d212b9c7add2f012f51adf3eef0c16f34dae
+e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
 ```
 
 Request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-5-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-6-request.md`
 
-The reviewer must independently search for a new compile-valid/runtime-valid counterexample rather than merely re-confirming `visibility:hidden`.
+The reviewer must independently search for a new compile-valid/runtime-valid counterexample rather than merely re-confirming legacy `<template>`.
+
+A feature being unsupported and failing closed is not a blocker. A blocker requires actual false or over-authoritative output from a compile-valid/runtime-valid shape.
 
 If no blocker exists:
 
@@ -235,9 +229,9 @@ mark R7.10 PASS / COMPLETE
 → mark all V0.4.7-D PASS / COMPLETE
 → unlock only V0.4.7-E
 → keep R7.14 NOT PASS and required for E
-→ keep V0.5 locked
+→ keep V0.5 locked until E completes
 ```
 
 If a blocker exists, keep E locked and require regression-first minimum generic repair.
 
-This implementation session must not self-certify `1fc4d212...`.
+This implementation session must not self-certify `e54b8444...`.

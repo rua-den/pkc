@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality benchmark blocker    PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #5
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #5
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #6
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #6
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -25,11 +25,11 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`. The permanent 
 ## Exact production candidate under review
 
 ```text
-1fc4d212b9c7add2f012f51adf3eef0c16f34dae
-fix: reject static visibility hidden renders
+e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
+fix: reject inert legacy template renders
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `1fc4d212...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `e54b8444...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -46,7 +46,7 @@ Keep these closed unless a real regression is demonstrated.
 
 ## Permanent invariants
 
-Keep business conditions, value lineage/provenance, and mutation/causality distinct. Unsupported inference fails closed. Same/similar names are never sufficient proof. Conservative authority downgrade must preserve independently proven lower-authority evidence.
+Keep business conditions, value lineage/provenance, mutation/causality, and presentation authority distinct. Unsupported inference fails closed. Same/similar names are never sufficient proof. Stronger composition failure must preserve independently proven lower-authority evidence.
 
 ## R7.10 intended bounded proof
 
@@ -59,7 +59,7 @@ Enumerable.Single/First(predicate)
 → direct API response property projection
 → explicit wire identity
 → exact frontend result/member/state identity
-→ authoritative active visible Angular text interpolation
+→ authoritative active rendered Angular text interpolation
 → one supported enclosing @if
 → joint backend/frontend visibility evidence
 ```
@@ -72,66 +72,72 @@ Rereview #1 repaired false render authority for inert `<ng-template>`, HTML comm
 
 Rereview #2 repaired static HTML `hidden` ancestry at `97161baa2d0aff9131a7acf9db752393ae913d64`.
 
-Rereview #3 found static inline `display:none` could still produce false visible-render authority; repaired at:
+Rereview #3 repaired static inline `display:none` at `dc69e44206942ffb0012e1994d6d39249d1db4be`.
 
-```text
-dc69e44206942ffb0012e1994d6d39249d1db4be
-fix: reject static display none renders
-```
+Rereview #4 repaired static inline `visibility:hidden` at `1fc4d212b9c7add2f012f51adf3eef0c16f34dae`.
 
-Rereview #4 independently challenged `dc69e442...` and found a distinct compile-valid/runtime-valid false-authority shape:
+Rereview #5 independently found a distinct compile-valid/runtime-valid inert-fragment case when Angular legacy template support is enabled:
 
 ```html
-<section style="visibility: hidden">
+<template>
   @if (displayPrice > 0) {
     <strong>{{ displayPrice }}</strong>
   }
-</section>
+</template>
 ```
 
-Static inline `visibility:hidden` makes the rendered text visually hidden, but `dc69e442...` only recognized `display:none`. The interpolation could therefore remain authoritative `ui-member-render`, receive the enclosing `@if`, and flow into false R7.9/R7.10 PO-facing authority.
+With `angularCompilerOptions.enableLegacyTemplate=true`, legacy `<template>` is an inert template fragment equivalent to the already-recognized `<ng-template>` boundary. `1fc4d212...` recognized only `<ng-template>`, so interpolation inside legacy `<template>` could receive authoritative `ui-member-render` and feed false R7.9/R7.10 authority.
 
 Review record:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-4.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-5.md`
 
-## Static visibility-hidden repair
+## Legacy-template repair
 
 Production repair:
 
 ```text
-1fc4d212b9c7add2f012f51adf3eef0c16f34dae
-fix: reject static visibility hidden renders
+e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
+fix: reject inert legacy template renders
 ```
 
-The existing bounded static-inline-style scanner now also rejects `visibility:hidden` and `visibility:hidden !important`, case-insensitively, on active HTML ancestors. Static `visibility:visible` remains authoritative. Existing `display:none` behavior is unchanged.
+The render-authority filter now treats both `<ng-template>` and legacy `<template>` as inert template-fragment boundaries. The repair is intentionally narrow: it does not broaden CSS/runtime claims or change R7.10 identity composition.
 
-The repair deliberately does **not** claim dynamic `[style]` bindings, class/stylesheet cascade, computed browser CSS, signals, outlets, structural directives, opacity, or general runtime DOM semantics. Those remain unsupported unless a future compile-valid/runtime-valid false-positive is demonstrated and bounded generically.
+Regression coverage:
 
-Regression coverage is in:
+`tests/Pkc.CSharp.Tests/LegacyTemplateRenderAuthorityRegressionTests.cs`
 
-`tests/Pkc.CSharp.Tests/StaticCssRenderAuthorityRegressionTests.cs`
+It proves:
 
-Coverage includes frontend negative, end-to-end R7.9/R7.10 negative, and positive safeguards for both `display:block` and `visibility:visible`.
+```text
+legacy <template> containing @if + interpolation
+→ no authoritative ui-member-render
+→ no ui-member-visibility
 
-Local .NET execution was unavailable in the implementation environment. The complete production/test diff was reviewed before one implementation push. Exact-SHA clean-environment verification below is the executable evidence.
+closed legacy <template> sibling
+→ does not suppress a later active @if interpolation
+```
+
+The test fixture explicitly enables `angularCompilerOptions.enableLegacyTemplate=true`.
+
+Local .NET execution was unavailable in the implementation environment. An accidental temporary red-only test commit was removed from `main`; final history contains one coherent implementation commit from the prior docs handoff, with exactly the production filter and regression file changed.
 
 ## Exact-SHA standard verification
 
-All standard gates passed on exact production SHA `1fc4d212b9c7add2f012f51adf3eef0c16f34dae`:
+All standard gates passed on exact production SHA `e54b8444c3d14e647bcc0a9fe23d8f6e1905865b`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35696272391 — PASS
-pinned Loren                                35696272323 — PASS
-Loren-main canary                           35696272328 — PASS
-pinned Jellyfin + parity/provenance         35696273519 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35699298170 — PASS
+pinned Loren                                35699298080 — PASS
+Loren-main canary                           35699298091 — PASS
+pinned Jellyfin + parity/provenance         35699298089 — PASS
 ```
 
 Core CI evidence:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             167 / 167 PASS
+C# tests             169 / 169 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -149,18 +155,18 @@ product features      116
 knowledge Markdown    504 files
 analysis modes         43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10680339386
-sha256:a31f2b97674c0a18fa4b3587a1d422dc1a7228e75ba67015f86791ca73467031
+artifact              10681845827
+sha256:cd6ffdb41b6652777064a51cc3f76a16cd44aa948e1044fa5a0d49ce1420b5f1
 ```
 
 ## Repaired pinned three-repository benchmark
 
-Temporary wrapper branch based exactly on production SHA `1fc4d212...`:
+Temporary wrapper branch based exactly on production SHA `e54b8444...`:
 
 ```text
-branch:         benchmark/r710-visibility-1fc4d212
-wrapper commit: 7101b4c911539821c7c368203e0b05d150cbea64
-run:            35696381103 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-legacy-template-e54b8444
+wrapper commit: cee6bef95e4e2b7a86b483057d0672d9be728e52
+run:            35699541953 — PASS, 3 / 3 jobs
 ```
 
 GitHub compare confirms the wrapper differs only by the benchmark workflow branch-trigger line. Direct artifact inspection for every pinned repository found:
@@ -181,20 +187,20 @@ This benchmark is fail-closed stability evidence only. R7.14 remains **NOT PASS*
 
 ## Current external gate
 
-The implementation session repaired the rereview #4 blocker and must not self-certify its own repair. Required next gate:
+The implementation session repaired the rereview #5 blocker and must not self-certify its own repair. Required next gate:
 
 ```text
-independent rereview #5 of exact 1fc4d212b9c7add2f012f51adf3eef0c16f34dae
+independent rereview #6 of exact e54b8444c3d14e647bcc0a9fe23d8f6e1905865b
 ```
 
-Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-5-request.md`.
+Request: `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-6-request.md`.
 
-If rereview #5 finds no new compile-valid/runtime-valid blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required and NOT PASS; V0.5 remains locked. Do not start E before that independent outcome.
+If rereview #6 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required and NOT PASS; V0.5 remains locked until E completes.
 
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #5
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #6
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
