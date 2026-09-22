@@ -11,6 +11,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularResponseBindingScanner _responseBindingScanner = new();
     private readonly AngularServiceIdentityEnricher _serviceIdentityEnricher = new();
     private readonly AngularRenderedMemberAuthorityFilter _renderedMemberAuthorityFilter = new();
+    private readonly AngularHtmlDirectTextAuthorityFilter _htmlDirectTextAuthorityFilter = new();
     private readonly AngularComponentProjectionAuthorityFilter _componentProjectionAuthorityFilter = new();
     private readonly AngularSvgRenderedTextAuthorityFilter _svgRenderedTextAuthorityFilter = new();
     private readonly AngularSvgTextContentAuthorityFilter _svgTextContentAuthorityFilter = new();
@@ -77,9 +78,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             repositoryPath,
             identified,
             cancellationToken);
-        var projectionAuthoritativeRenders = await _componentProjectionAuthorityFilter.FilterAsync(
+        var htmlDirectTextAuthoritativeRenders = await _htmlDirectTextAuthorityFilter.FilterAsync(
             repositoryPath,
             authoritativeRenders,
+            cancellationToken);
+        var projectionAuthoritativeRenders = await _componentProjectionAuthorityFilter.FilterAsync(
+            repositoryPath,
+            htmlDirectTextAuthoritativeRenders,
             cancellationToken);
         var svgAuthoritativeRenders = await _svgRenderedTextAuthorityFilter.FilterAsync(
             repositoryPath,
