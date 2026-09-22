@@ -224,6 +224,22 @@ internal sealed class AngularRenderedMemberVisibilityEnricher
                 continue;
             }
 
+            if (index + 3 < text.Length &&
+                text[index] == '<' &&
+                text[index + 1] == '!' &&
+                text[index + 2] == '-' &&
+                text[index + 3] == '-')
+            {
+                var commentEnd = text.IndexOf("-->", index + 4, StringComparison.Ordinal);
+                if (commentEnd < 0)
+                {
+                    return -1;
+                }
+
+                index = commentEnd + 2;
+                continue;
+            }
+
             if (current is '\'' or '"')
             {
                 quote = current;
