@@ -12,6 +12,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularServiceIdentityEnricher _serviceIdentityEnricher = new();
     private readonly AngularRenderedMemberAuthorityFilter _renderedMemberAuthorityFilter = new();
     private readonly AngularSvgRenderedTextAuthorityFilter _svgRenderedTextAuthorityFilter = new();
+    private readonly AngularSvgTextContentAuthorityFilter _svgTextContentAuthorityFilter = new();
     private readonly AngularRenderedMemberVisibilityEnricher _renderedMemberVisibilityEnricher = new();
     private readonly AngularRenderedMemberVisibilityAuthorityFilter _renderedMemberVisibilityAuthorityFilter = new();
 
@@ -79,9 +80,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             repositoryPath,
             authoritativeRenders,
             cancellationToken);
-        var renderedVisibility = await _renderedMemberVisibilityEnricher.EnrichAsync(
+        var svgTextContentAuthoritativeRenders = await _svgTextContentAuthorityFilter.FilterAsync(
             repositoryPath,
             svgAuthoritativeRenders,
+            cancellationToken);
+        var renderedVisibility = await _renderedMemberVisibilityEnricher.EnrichAsync(
+            repositoryPath,
+            svgTextContentAuthoritativeRenders,
             cancellationToken);
         return await _renderedMemberVisibilityAuthorityFilter.FilterAsync(
             repositoryPath,
