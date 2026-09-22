@@ -261,7 +261,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                     return true;
                 }
 
-                if (string.Equals(value.Trim(), "false", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(value.Trim(), "false", StringComparison.Ordinal))
                 {
                     continue;
                 }
