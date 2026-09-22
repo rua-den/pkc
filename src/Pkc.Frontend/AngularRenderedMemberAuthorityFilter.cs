@@ -254,14 +254,22 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                                 !value.Contains("{{", StringComparison.Ordinal) &&
                                 !value.Contains("}}", StringComparison.Ordinal);
 
-            if (string.Equals(name, "hidden", StringComparison.OrdinalIgnoreCase))
+            if (IsAngularHiddenPropertyBinding(name))
             {
-                if (!hasValue || isStaticValue)
+                if (hasValue &&
+                    value is not null &&
+                    string.Equals(value.Trim(), "false", StringComparison.Ordinal))
                 {
-                    return true;
+                    continue;
                 }
 
-                continue;
+                return true;
+            }
+
+            if (IsAngularHiddenAttributeBinding(name) ||
+                string.Equals(name, "hidden", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
             }
 
             if (string.Equals(name, "style", StringComparison.OrdinalIgnoreCase) &&
@@ -275,6 +283,14 @@ internal sealed class AngularRenderedMemberAuthorityFilter
 
         return false;
     }
+
+    private static bool IsAngularHiddenPropertyBinding(string name) =>
+        string.Equals(name, "[hidden]", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "bind-hidden", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAngularHiddenAttributeBinding(string name) =>
+        string.Equals(name, "[attr.hidden]", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "bind-attr.hidden", StringComparison.OrdinalIgnoreCase);
 
     private static bool HasStaticInlinePresentationSuppression(string style)
     {
