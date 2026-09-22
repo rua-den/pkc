@@ -30,6 +30,11 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
     };
 
+    private static readonly HashSet<string> NonDirectRenderElements = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "style", "defs", "symbol", "clipPath", "mask", "marker", "pattern"
+    };
+
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -178,9 +183,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
     }
 
     private static bool SuppressesDirectRenderByElementName(string name) =>
-        string.Equals(name, "style", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "defs", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "symbol", StringComparison.OrdinalIgnoreCase);
+        NonDirectRenderElements.Contains(name);
 
     private static bool SuppressesRenderAuthority(string attributes)
     {

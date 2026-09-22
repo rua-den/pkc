@@ -30,13 +30,7 @@ public sealed class AngularSvgDefinitionRenderAuthorityRegressionTests
             }
             """);
 
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-render" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     [Fact]
@@ -63,13 +57,40 @@ public sealed class AngularSvgDefinitionRenderAuthorityRegressionTests
             }
             """);
 
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-render" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+        AssertNoAuthoritativeRenderOrVisibility(facts);
+    }
+
+    [Theory]
+    [InlineData("clipPath")]
+    [InlineData("mask")]
+    [InlineData("marker")]
+    [InlineData("pattern")]
+    public async Task Svg_non_direct_render_resource_interpolation_is_not_authoritative_visible_render(string elementName)
+    {
+        var source = """
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                @if (isAllowed) {
+                  <svg>
+                    <RESOURCE id="price-resource">
+                      <text>{{ displayPrice }}</text>
+                    </RESOURCE>
+                  </svg>
+                }
+              `
+            })
+            export class PriceComponent {
+              isAllowed = true;
+              displayPrice = 42;
+            }
+            """.Replace("RESOURCE", elementName, StringComparison.Ordinal);
+
+        var facts = await ScanAsync(source);
+
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     [Fact]
@@ -105,6 +126,52 @@ public sealed class AngularSvgDefinitionRenderAuthorityRegressionTests
             fact.Kind == "ui-member-visibility" &&
             fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
             fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
+    }
+
+    [Fact]
+    public async Task Closed_svg_non_direct_resource_before_real_if_preserves_supported_visible_render()
+    {
+        var facts = await ScanAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <svg>
+                  <clipPath id="price-clip">
+                    <rect width="10" height="10"></rect>
+                  </clipPath>
+                </svg>
+                @if (isAllowed) {
+                  <strong>{{ displayPrice }}</strong>
+                }
+              `
+            })
+            export class PriceComponent {
+              isAllowed = true;
+              displayPrice = 42;
+            }
+            """);
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
+    }
+
+    private static void AssertNoAuthoritativeRenderOrVisibility(FactDocument facts)
+    {
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
     }
 
     private static async Task<FactDocument> ScanAsync(string componentSource)
