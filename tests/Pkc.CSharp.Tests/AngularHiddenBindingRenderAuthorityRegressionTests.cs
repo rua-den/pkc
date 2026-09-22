@@ -11,6 +11,9 @@ public sealed class AngularHiddenBindingRenderAuthorityRegressionTests
     [InlineData("bind-hidden=\"true\"")]
     [InlineData("[hidden]=\"isHidden\"")]
     [InlineData("[hidden]=\"False\"")]
+    [InlineData("hidden=\"{{ isHidden }}\"")]
+    [InlineData("[attr.hidden]=\"isHidden\"")]
+    [InlineData("bind-attr.hidden=\"isHidden\"")]
     public async Task Hidden_binding_that_can_suppress_presentation_fails_closed(string hiddenBinding)
     {
         var source = ComponentSource.Replace("__HIDDEN_BINDING__", hiddenBinding, StringComparison.Ordinal);
@@ -25,10 +28,12 @@ public sealed class AngularHiddenBindingRenderAuthorityRegressionTests
             fact.Metadata.GetValueOrDefault("member") == "displayPrice");
     }
 
-    [Fact]
-    public async Task Literal_false_hidden_binding_preserves_render_authority()
+    [Theory]
+    [InlineData("[hidden]=\"false\"")]
+    [InlineData("bind-hidden=\"false\"")]
+    public async Task Literal_false_hidden_property_binding_preserves_render_authority(string hiddenBinding)
     {
-        var source = ComponentSource.Replace("__HIDDEN_BINDING__", "[hidden]=\"false\"", StringComparison.Ordinal);
+        var source = ComponentSource.Replace("__HIDDEN_BINDING__", hiddenBinding, StringComparison.Ordinal);
         var facts = await ScanAsync(source);
 
         Assert.Contains(facts.Facts, fact =>
