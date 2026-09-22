@@ -1,12 +1,10 @@
 # PKC Milestones
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
-PKC is a Product/System Knowledge Compiler. Milestones are accepted only when the generated portable knowledge answers the named Product Owner questions with deterministic evidence and appropriate uncertainty.
+PKC is a Product/System Knowledge Compiler. Milestones are accepted only when generated portable knowledge answers named Product Owner questions with deterministic evidence and appropriate uncertainty.
 
 ## Permanent delivery rules
-
-Every milestone follows:
 
 ```text
 question / acceptance boundary
@@ -20,9 +18,7 @@ question / acceptance boundary
 → independent review
 ```
 
-Do not use CI as the normal edit/test loop. Do not advance while a predecessor checkpoint is red or under review.
-
-Keep these knowledge classes distinct:
+Do not advance while a predecessor checkpoint is red or under review. Keep these knowledge classes distinct:
 
 ```text
 business conditions
@@ -30,197 +26,151 @@ value lineage / provenance
 mutation / causality
 ```
 
-Conservative authority downgrade must retain independently proven lower-authority evidence.
+Unsupported inference fails closed and lower-authority deterministic evidence must survive stronger composition failure.
 
 ## Accepted V0.4.x checkpoints
 
-### V0.4.4 — Loren knowledge readiness — PASS / COMPLETE
+```text
+V0.4.4 Loren knowledge readiness          PASS / COMPLETE
+V0.4.5 real-repository generalization     PASS / COMPLETE
+V0.4.6 business logic reconstruction      PASS / COMPLETE
+```
 
-Established usable PO-facing knowledge on Loren and the knowledge-only handoff/readiness bar.
-
-### V0.4.5 — real-repository generalization — PASS / COMPLETE
-
-Established independent generalization and portable parity/no-leak gates, including pinned Jellyfin.
-
-### V0.4.6 — business logic reconstruction — PASS / COMPLETE
-
-Accepted production:
+Accepted V0.4.6 production:
 
 ```text
 c310e893762997f34562a6b3a62dbab2b05c0c93
 fix: fail closed on Queryable authority
 ```
 
-Final review: `docs/reviews/2026-09-15-v0.4.6-independent-rereview-10.md`.
-
 ## V0.4.7 — cross-layer PO-question readiness — CURRENT
 
-V0.4.7 extends deterministic product knowledge through value origin, temporal semantics, computation, later change and cross-layer delivery.
+| Checkpoint | PO question | Current state |
+| --- | --- | --- |
+| A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | **PASS / COMPLETE** |
+| B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
+| C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
+| D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #2** |
+| E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
-No lineage may be inferred merely from matching names such as:
-
-```text
-Product.Price
-Service.Price
-Dto.Price
-Component.price
-```
-
-### Implementation checkpoints
-
-| Checkpoint | PO question | Current state | Completion boundary |
-| --- | --- | --- | --- |
-| A — Origin and copy timing | Where did this value come from? Does an upstream change alter this existing value? | **PASS / COMPLETE** | Snapshot + dynamic positives, exact identity/path/storage negatives, source traceability and PO-facing Markdown. |
-| B — Computation and later change | Was it calculated? What can overwrite it? What was the last source before output? | **PASS / COMPLETE** | Portable derivation, retained original origin, later override/causality, supported direct-return terminal source and comprehensive fail-closed negatives. |
-| C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** | Proven entity/domain → DTO/projection → API mapping with exact project/assembly/member identities, locations, PO-facing Markdown and collision/effect fail-closed coverage. |
-| D — API to UI | What feeds the displayed value and controls its visibility? | **R7.9 PASS / R7.10 CURRENT** | R7.9 proves bounded API result → frontend state → rendered value; R7.10 adds joint backend/frontend visibility with separate authorities. |
-| E — Product acceptance | Can an AI answer the agreed questions using only the knowledge pack? | **LOCKED behind D** | Blind knowledge-only review, real-project positive-yield gate, portable folder/bundle/ZIP parity/no-leak and exact-SHA cross-benchmark gates. |
-
-### Checkpoint A — accepted
-
-Accepted code:
+### A — accepted
 
 ```text
 09a0c7f2a058adfd7ddb7b4ac2feb2d17580a429
 feat: prove bounded reference dynamic lineage
 ```
 
-A proves both stored scalar snapshot and bounded reference/dynamic read-time dependency with exact target-project identity.
+A proves bounded snapshot vs reference/dynamic origin semantics with exact target-project identity.
 
-### Checkpoint B — accepted
-
-Accepted code:
+### B — accepted
 
 ```text
 17fd30b3a4b8178208adabc12c40dee060bedb54
 fix: fail closed after opaque terminal effects
 ```
 
-B proves supported multi-input scalar derivation, original origin retention, later override/mutation causality and last proven source before a supported direct return. It is not a general expression, alias, effect, path or persistence solver.
+B proves supported derivation, original-origin retention, later override/mutation causality and bounded direct-return terminal source.
 
-### Checkpoint C — accepted
-
-Accepted production code:
+### C — accepted
 
 ```text
 fbb64b9917da1f63362558355201ff7998384ba0
 feat: prove backend API projection lineage
 ```
 
-C proves a bounded target-project-semantic chain equivalent to:
+C proves exact backend entity/domain → DTO/projection → API response lineage using semantic project/assembly/type/member identity. Name matching alone is never proof.
 
-```text
-DomainEntity.Price
-→ ResponseDto.DisplayPrice
-→ API response
-```
-
-Renamed properties are supported only when explicit semantic assignment proves the mapping.
-
-Required provenance is retained:
-
-```text
-semantic project identity
-source assembly/type/member identity
-source receiver/occurrence + source declaration location
-target DTO assembly/type/member identity
-target occurrence + declaration/projection location
-endpoint/API response identity + return location
-analysis mode/confidence/proof boundary
-```
-
-The proven chain reaches scanner facts → endpoint candidate → knowledge synthesis → PO-facing workflow Markdown with source traceability.
-
-Permanent C fail-closed regressions include unrelated same-name members, namespace collisions, same full type/member identity across assemblies, custom accessors, user-defined conversions, alias ambiguity, opaque/custom effects, unsupported control flow/path shapes and missing project semantics.
-
-PokeTrade remained unmodified and served as the known-answer real-project regression gate.
-
-Final exact-main C gates on `fbb64b9917da1f63362558355201ff7998384ba0`:
-
-```text
-CI + full PKC tests + WorkPlay + PokeTrade   35416169067 — PASS
-pinned Loren                                35416169091 — PASS
-Loren-main canary                           35416169051 — PASS
-pinned Jellyfin                             35416169039 — PASS
-```
-
-### Checkpoint D / R7.9 — PASS / COMPLETE
-
-Exact implementation/test checkpoint:
+### D / R7.9 — accepted
 
 ```text
 fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
 test: target frontend casing collision
 ```
 
-R7.9 proves the first supported property-level chain only through explicit wire identity plus bounded frontend dataflow:
+R7.9 proves the bounded chain:
 
 ```text
-C-proven backend response property
-→ [JsonPropertyName("displayPrice")]
-→ API response field
-→ typed frontend HTTP result contract member
-→ exact resolved service/API method inside the supported scanner boundary
-→ exact subscribe result receiver/member assignment
-→ component/view-model member
-→ authoritative simple Angular interpolation
+C-proven API response property
+→ explicit wire identity
+→ typed frontend HTTP result member
+→ exact resolved frontend service/result assignment
+→ exact component/view-model member
+→ authoritative Angular interpolation
 → rendered UI value
 ```
 
-No normalized-name, casing, route-label, DTO naming convention or camelCase/PascalCase guess may create the property-level edge. Route identity may scope endpoint ↔ API-call correlation only.
-
-R7.9 retains backend response, wire-contract, frontend API/result member, assignment and render source locations. Failure to compose R7.9 retains accepted C evidence.
-
-Permanent R7.9 negatives cover same/equivalent-name collisions without wire proof, unrelated services/results with the same member, unresolved/ambiguous service or result receivers, untyped/fallback-only HTTP evidence, missing explicit wire identity and non-authoritative render evidence.
-
-All required exact-SHA gates passed on `fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a`:
+### Post-R7.9 mutation-causality repair — accepted
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35588410936 — PASS
-pinned Loren                                35588410941 — PASS
-Loren-main canary                           35588410930 — PASS
-pinned Jellyfin                             35588410939 — PASS
-
-Release build        0 warnings / 0 errors
-C# tests             142 / 142 PASS
-frontend tests       13 / 13 PASS
-tool pack/install    PASS
+67624944da27ff1f1f5a1154018a255aae11d1fe
+fix: avoid capturing mutation receiver out parameter
 ```
 
-### Checkpoint D / R7.10 — CURRENT / regression-first
+Runtime pattern-selected helper mutations stay as raw evidence with `caller-object-unproven` and are not promoted into workflow state changes without proven causality.
 
-R7.10 must answer, for the same already-proven R7.9 item/dataflow path:
+### D / R7.10 — repaired, awaiting independent rereview #2
 
-> What backend selection/eligibility conditions and frontend visibility/filter conditions jointly determine whether this item/value is visible?
-
-Target composition:
+Original R7.10 candidate:
 
 ```text
-R7.9-proven API → frontend item/value identity
-+
-backend business-condition evidence
-+
-frontend visibility/filter evidence
-→ one PO-facing visibility explanation
+eb64309263489a2b9bd658762b4526a4a32a8508
+fix: bound Angular visibility to active template structure
 ```
 
-Authority remains separated. Frontend evidence must never upgrade observed-only/lower-authority backend conditions, and unrelated predicates must remain disconnected. If joint composition fails, R7.9 and independently proven backend/frontend evidence remain available.
+Independent rereview #1 found compile-valid false rendered-value authority for:
 
-D completion requires focused R7.10 regressions, full relevant C#/frontend suites, Release build, PokeTrade, pinned Loren, Loren-main, pinned Jellyfin, portable parity/no-leak and independent rereview on the exact code SHA.
+- interpolation under a bare/inert `<ng-template>`;
+- interpolation inside an HTML comment;
+- interpolation inside an HTML tag/attribute.
 
-### Checkpoint E — locked
+Regression-first repairs:
 
-E is the final knowledge-only PO acceptance and portable transport/parity gate for V0.4.7.
+```text
+05ad6cb937010702a3fd01d5ef756e31bc4e8d9b
+099fabfcaeecbaf009b75052d20075745ee02437
+da5d23771ef8c9d58d0333d1f949e8d742210043
+```
 
-Before E can close, V0.4.7 must also demonstrate **positive usefulness on an unchanged real repository**. At least one real-repository benchmark must naturally emit a supported cross-layer V0.4.7 answer from the generated knowledge pack; do not modify a benchmark merely to manufacture the accepted shape. If the existing benchmarks do not naturally exercise it, add a separate representative real project rather than weakening authority.
+Current candidate:
+
+```text
+da5d23771ef8c9d58d0333d1f949e8d742210043
+fix: require visible text interpolation
+```
+
+R7.10 composes only exact R7.9 identity with a bounded backend `Enumerable.Single/First(predicate)` selection proof and one supported active Angular `@if`. Frontend evidence cannot upgrade observed-only backend authority; ambiguous/nested/inert shapes fail closed.
+
+Exact repaired-candidate gates:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35650084914 — PASS
+pinned Loren                                35650084917 — PASS
+Loren-main canary                           35650084926 — PASS
+pinned Jellyfin + parity/provenance         35650084759 — PASS
+```
+
+Repaired three-repository benchmark:
+
+```text
+run 35650761753 — PASS, 3 / 3 jobs
+```
+
+The benchmark confirms no false R7.9/R7.10 positive on the unchanged pinned repos, but also confirms R7.14 positive real-project yield is still **NOT YET PASS**.
+
+Rereview #1 cannot self-certify its repairs. Astra must perform independent rereview #2 on exact `da5d2377...` before D closes.
+
+Review request:
+
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-2-request.md`
+
+### E — locked
+
+E is the final knowledge-only PO acceptance and portable transport/parity gate. Before E can close, V0.4.7 must demonstrate positive usefulness on at least one unchanged real repository. Do not weaken proof authority or modify benchmarks merely to manufacture the shape.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 
-Azure DevOps will add requirement intent, Epic/Feature/PBI history, status and traceability as another compiler input. It must not compensate for missing code-derived behavior.
-
-Before V0.5 implementation, define the evidence-origin/authority and conflict contract so implementation-observed behavior, declared product intent and delivery history can coexist without one silently overwriting another.
-
-V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pass.
+V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pass. ADO intent/history evidence must coexist with implementation-observed behavior without silently overwriting it.
 
 ## Later milestones
 
@@ -228,14 +178,11 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 - V0.7 — runtime UI exploration/confirmation.
 - V0.8 — product insight, gaps and requirement-vs-implementation drift.
 
-Cross-repository/system composition and a stable query/MCP projection remain important post-V0.5 product directions, but they are not allowed to distract the current V0.4.7 release checkpoint.
-
 ## Version semantics
 
-Roadmap, package and serialized schema versions are independent. Current package remains:
-
 ```text
-RuaDen.Pkc.Tool 0.4.3-preview.2
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #2
+tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
-Do not mechanically bump package or schema identifiers when a roadmap checkpoint advances.
+Roadmap, package and schema versions are independent.
