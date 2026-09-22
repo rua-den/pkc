@@ -9,6 +9,10 @@ internal sealed class AngularRenderedMemberVisibilityAuthorityFilter
         @"^@if\s*\(",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex HtmlElementTagRegex = new(
+        @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -128,13 +132,19 @@ internal sealed class AngularRenderedMemberVisibilityAuthorityFilter
 
     private static bool IsInsideHtmlTag(string text, int position)
     {
-        var open = text.LastIndexOf('<', position);
-        if (open < 0)
+        foreach (Match tag in HtmlElementTagRegex.Matches(text))
         {
-            return false;
+            if (tag.Index > position)
+            {
+                break;
+            }
+
+            if (position >= tag.Index && position < tag.Index + tag.Length)
+            {
+                return true;
+            }
         }
 
-        var close = text.LastIndexOf('>', position);
-        return close < open;
+        return false;
     }
 }
