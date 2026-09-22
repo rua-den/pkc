@@ -123,7 +123,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                     !IsInsideHtmlComment(body.Value, memberMatch.Index) &&
                     !IsInsideHtmlTag(body.Value, memberMatch.Index) &&
                     !IsInsideInertTemplateFragment(body.Value, memberMatch.Index) &&
-                    !IsInsideStaticallyNonRenderedHtmlAncestor(body.Value, memberMatch.Index))
+                    !IsInsideNonAuthoritativeHtmlAncestor(body.Value, memberMatch.Index))
                 {
                     count++;
                 }
@@ -133,7 +133,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         return count;
     }
 
-    private static bool IsInsideStaticallyNonRenderedHtmlAncestor(string templateBody, int position)
+    private static bool IsInsideNonAuthoritativeHtmlAncestor(string templateBody, int position)
     {
         var ancestors = new Stack<HtmlElementFrame>();
         foreach (Match tag in HtmlElementTagRegex.Matches(templateBody))
@@ -169,13 +169,13 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 continue;
             }
 
-            ancestors.Push(new HtmlElementFrame(name, HasStaticPresentationSuppression(attrs)));
+            ancestors.Push(new HtmlElementFrame(name, SuppressesRenderAuthority(attrs)));
         }
 
-        return ancestors.Any(ancestor => ancestor.IsStaticallyNonRendered);
+        return ancestors.Any(ancestor => ancestor.SuppressesRenderAuthority);
     }
 
-    private static bool HasStaticPresentationSuppression(string attributes)
+    private static bool SuppressesRenderAuthority(string attributes)
     {
         var index = 0;
         while (index < attributes.Length)
@@ -253,6 +253,11 @@ internal sealed class AngularRenderedMemberAuthorityFilter
             var isStaticValue = value is not null &&
                                 !value.Contains("{{", StringComparison.Ordinal) &&
                                 !value.Contains("}}", StringComparison.Ordinal);
+
+            if (string.Equals(name, "ngNonBindable", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
 
             if (IsAngularHiddenPropertyBinding(name))
             {
@@ -368,14 +373,20 @@ internal sealed class AngularRenderedMemberAuthorityFilter
 
     private static bool IsInsideHtmlTag(string text, int position)
     {
-        var open = text.LastIndexOf('<', position);
-        if (open < 0)
+        foreach (Match tag in HtmlElementTagRegex.Matches(text))
         {
-            return false;
+            if (tag.Index > position)
+            {
+                break;
+            }
+
+            if (position >= tag.Index && position < tag.Index + tag.Length)
+            {
+                return true;
+            }
         }
 
-        var close = text.LastIndexOf('>', position);
-        return close < open;
+        return false;
     }
 
     private static bool IsActiveCodePosition(string text, int position)
@@ -430,7 +441,7 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         return state == LexicalState.Code;
     }
 
-    private sealed record HtmlElementFrame(string Name, bool IsStaticallyNonRendered);
+    private sealed record HtmlElementFrame(string Name, bool SuppressesRenderAuthority);
 
     private enum LexicalState
     {
