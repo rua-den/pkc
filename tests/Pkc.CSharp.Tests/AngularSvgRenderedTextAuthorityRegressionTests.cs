@@ -91,7 +91,32 @@ public sealed class AngularSvgRenderedTextAuthorityRegressionTests
     }
 
     [Fact]
-    public async Task Svg_text_element_interpolation_remains_authoritative_visible_render()
+    public async Task Svg_text_with_no_fill_or_stroke_is_not_authoritative_visible_render()
+    {
+        var facts = await ScanAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                @if (isAllowed) {
+                  <svg>
+                    <text fill="none" stroke="none">{{ displayPrice }}</text>
+                  </svg>
+                }
+              `
+            })
+            export class PriceComponent {
+              isAllowed = true;
+              displayPrice = 42;
+            }
+            """);
+
+        AssertNoAuthoritativeRenderOrVisibility(facts);
+    }
+
+    [Fact]
+    public async Task Native_svg_text_is_fail_closed_without_svg_rendering_proof()
     {
         var facts = await ScanAsync("""
             import { Component } from '@angular/core';
@@ -112,7 +137,7 @@ public sealed class AngularSvgRenderedTextAuthorityRegressionTests
             }
             """);
 
-        AssertAuthoritativeRenderAndVisibility(facts);
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     [Fact]

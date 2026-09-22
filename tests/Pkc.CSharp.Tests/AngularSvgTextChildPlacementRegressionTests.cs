@@ -28,17 +28,11 @@ public sealed class AngularSvgTextChildPlacementRegressionTests
             }
             """);
 
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-render" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.DoesNotContain(facts.Facts, fact =>
-            fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     [Fact]
-    public async Task Svg_tspan_inside_text_remains_authoritative_visible_render()
+    public async Task Svg_tspan_inside_text_remains_fail_closed_without_native_svg_rendering_proof()
     {
         var facts = await ScanAsync("""
             import { Component } from '@angular/core';
@@ -59,14 +53,18 @@ public sealed class AngularSvgTextChildPlacementRegressionTests
             }
             """);
 
-        Assert.Contains(facts.Facts, fact =>
+        AssertNoAuthoritativeRenderOrVisibility(facts);
+    }
+
+    private static void AssertNoAuthoritativeRenderOrVisibility(FactDocument facts)
+    {
+        Assert.DoesNotContain(facts.Facts, fact =>
             fact.Kind == "ui-member-render" &&
             fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
             fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.Contains(facts.Facts, fact =>
+        Assert.DoesNotContain(facts.Facts, fact =>
             fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
     }
 
     private static async Task<FactDocument> ScanAsync(string componentSource)

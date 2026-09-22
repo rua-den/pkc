@@ -141,7 +141,7 @@ public sealed class AngularSvgTextContentModelAuthorityRegressionTests
     }
 
     [Fact]
-    public async Task Svg_group_text_and_tspan_remain_authoritative_visible_render()
+    public async Task Svg_group_text_and_tspan_remain_fail_closed_without_native_svg_rendering_proof()
     {
         var facts = await ScanAsync("""
             import { Component } from '@angular/core';
@@ -164,7 +164,7 @@ public sealed class AngularSvgTextContentModelAuthorityRegressionTests
             }
             """);
 
-        AssertAuthoritativeRenderAndVisibility(facts);
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     private static void AssertNoAuthoritativeRenderOrVisibility(FactDocument facts)
@@ -176,18 +176,6 @@ public sealed class AngularSvgTextContentModelAuthorityRegressionTests
         Assert.DoesNotContain(facts.Facts, fact =>
             fact.Kind == "ui-member-visibility" &&
             fact.Metadata.GetValueOrDefault("member") == "displayPrice");
-    }
-
-    private static void AssertAuthoritativeRenderAndVisibility(FactDocument facts)
-    {
-        Assert.Contains(facts.Facts, fact =>
-            fact.Kind == "ui-member-render" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.Contains(facts.Facts, fact =>
-            fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
     }
 
     private static async Task<FactDocument> ScanAsync(string componentSource)

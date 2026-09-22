@@ -66,7 +66,7 @@ public sealed class AngularSvgOpacityRenderAuthorityRegressionTests
     }
 
     [Fact]
-    public async Task Svg_positive_static_opacity_preserves_authoritative_visible_render()
+    public async Task Svg_positive_static_opacity_does_not_unlock_native_svg_authority()
     {
         var facts = await ScanAsync("""
             import { Component } from '@angular/core';
@@ -87,14 +87,7 @@ public sealed class AngularSvgOpacityRenderAuthorityRegressionTests
             }
             """);
 
-        Assert.Contains(facts.Facts, fact =>
-            fact.Kind == "ui-member-render" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.ContainsKey("renderAuthority"));
-        Assert.Contains(facts.Facts, fact =>
-            fact.Kind == "ui-member-visibility" &&
-            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-            fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
+        AssertNoAuthoritativeRenderOrVisibility(facts);
     }
 
     private static void AssertNoAuthoritativeRenderOrVisibility(FactDocument facts)

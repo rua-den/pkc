@@ -18,16 +18,6 @@ internal sealed class AngularSvgTextContentAuthorityFilter
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
     };
 
-    private static readonly HashSet<string> SupportedInlineTextElements = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "tspan", "a"
-    };
-
-    private static readonly HashSet<string> SupportedTextParents = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "svg", "g", "a"
-    };
-
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -195,174 +185,26 @@ internal sealed class AngularSvgTextContentAuthorityFilter
                 continue;
             }
 
-            ancestors.Push(new ElementFrame(name, attributes, elementNamespace, childNamespace));
+            ancestors.Push(new ElementFrame(name, elementNamespace, childNamespace));
         }
 
-        var frames = ancestors.ToArray();
-        var svgFrames = frames
-            .Where(frame => frame.ElementNamespace == MarkupNamespace.Svg)
-            .ToArray();
-        if (svgFrames.Length == 0)
+        if (!ancestors.Any(frame => frame.ElementNamespace == MarkupNamespace.Svg))
         {
             return true;
-        }
-
-        if (svgFrames.Any(frame =>
-                string.Equals(frame.Name, "switch", StringComparison.OrdinalIgnoreCase) ||
-                HasUnprovenConditionalProcessing(frame.Attributes)))
-        {
-            return false;
         }
 
         var currentNamespace = ancestors.Count == 0
             ? MarkupNamespace.Html
             : ancestors.Peek().ChildNamespace;
-        if (currentNamespace != MarkupNamespace.Svg)
-        {
-            return true;
-        }
 
-        var nearestSvgIndex = Array.FindIndex(
-            frames,
-            frame =>
-                frame.ElementNamespace == MarkupNamespace.Svg &&
-                string.Equals(frame.Name, "svg", StringComparison.OrdinalIgnoreCase));
-        if (nearestSvgIndex < 0)
-        {
-            return false;
-        }
-
-        var textIndex = -1;
-        for (var index = 0; index < nearestSvgIndex; index++)
-        {
-            var frame = frames[index];
-            if (frame.ElementNamespace != MarkupNamespace.Svg)
-            {
-                return false;
-            }
-
-            if (string.Equals(frame.Name, "text", StringComparison.OrdinalIgnoreCase))
-            {
-                textIndex = index;
-                break;
-            }
-
-            if (!SupportedInlineTextElements.Contains(frame.Name))
-            {
-                return false;
-            }
-        }
-
-        if (textIndex < 0 || textIndex + 1 >= frames.Length)
-        {
-            return false;
-        }
-
-        var textParent = frames[textIndex + 1];
-        return textParent.ElementNamespace == MarkupNamespace.Svg &&
-               SupportedTextParents.Contains(textParent.Name);
+        // V0.4.7 does not claim native SVG paint/layout authority. Native SVG
+        // text can be structurally present while producing no visible glyphs
+        // because of paint, masking, clipping, filters, conditional processing,
+        // inherited presentation state, or other SVG rendering semantics. Keep
+        // that surface fail-closed until a later checkpoint proves it.
+        // HTML inside foreignObject is still handled by the normal HTML path.
+        return currentNamespace != MarkupNamespace.Svg;
     }
-
-    private static bool HasUnprovenConditionalProcessing(string attributes)
-    {
-        var index = 0;
-        while (index < attributes.Length)
-        {
-            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
-            {
-                index++;
-            }
-
-            if (index >= attributes.Length)
-            {
-                break;
-            }
-
-            if (attributes[index] == '/')
-            {
-                index++;
-                continue;
-            }
-
-            var nameStart = index;
-            while (index < attributes.Length &&
-                   !char.IsWhiteSpace(attributes[index]) &&
-                   attributes[index] is not '=' and not '/')
-            {
-                index++;
-            }
-
-            if (index == nameStart)
-            {
-                index++;
-                continue;
-            }
-
-            var name = attributes[nameStart..index];
-            if (IsConditionalProcessingAttribute(name))
-            {
-                return true;
-            }
-
-            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
-            {
-                index++;
-            }
-
-            if (index >= attributes.Length || attributes[index] != '=')
-            {
-                continue;
-            }
-
-            index++;
-            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
-            {
-                index++;
-            }
-
-            if (index < attributes.Length && attributes[index] is '\'' or '"')
-            {
-                var quote = attributes[index++];
-                while (index < attributes.Length && attributes[index] != quote)
-                {
-                    index++;
-                }
-
-                if (index < attributes.Length)
-                {
-                    index++;
-                }
-            }
-            else
-            {
-                while (index < attributes.Length &&
-                       !char.IsWhiteSpace(attributes[index]) &&
-                       attributes[index] != '/')
-                {
-                    index++;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsConditionalProcessingAttribute(string name) =>
-        string.Equals(name, "systemLanguage", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "requiredExtensions", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "requiredFeatures", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[systemLanguage]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[requiredExtensions]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[requiredFeatures]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[attr.systemLanguage]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[attr.requiredExtensions]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "[attr.requiredFeatures]", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-systemLanguage", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-requiredExtensions", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-requiredFeatures", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-attr.systemLanguage", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-attr.requiredExtensions", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(name, "bind-attr.requiredFeatures", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsInsideHtmlComment(string text, int position)
     {
@@ -378,7 +220,6 @@ internal sealed class AngularSvgTextContentAuthorityFilter
 
     private sealed record ElementFrame(
         string Name,
-        string Attributes,
         MarkupNamespace ElementNamespace,
         MarkupNamespace ChildNamespace);
 
