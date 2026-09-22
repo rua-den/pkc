@@ -51,7 +51,7 @@ fix: fail closed on Queryable authority
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REREVIEW #2 FAIL — STATIC HIDDEN ANCESTOR BLOCKER** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #3** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### A — accepted
@@ -84,19 +84,7 @@ fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
 test: target frontend casing collision
 ```
 
-R7.9 proves the bounded chain:
-
-```text
-C-proven API response property
-→ explicit wire identity
-→ typed frontend HTTP result member
-→ exact resolved service/result assignment
-→ exact component/view-model member
-→ authoritative rendered interpolation
-→ rendered UI value
-```
-
-R7.9 remains accepted as a predecessor, but the current R7.10 rereview exposed a new over-authority case in the rendered-value boundary that must be repaired before D can close.
+R7.9 proves the bounded exact API response → frontend result → component member → authoritative rendered-value chain. Rereviews of R7.10 exposed additional render-authority exclusions that are now repaired on top of this accepted baseline.
 
 ### Post-R7.9 mutation-causality repair — accepted
 
@@ -107,42 +95,58 @@ fix: avoid capturing mutation receiver out parameter
 
 Runtime pattern-selected helper mutations stay as raw evidence with `caller-object-unproven` and are not promoted into workflow state changes without proven causality.
 
-### D / R7.10 — blocked after independent rereview #2
+### D / R7.10 — repaired, awaiting independent rereview #3
 
-Current production SHA reviewed:
+Rereview #1 repaired false rendered-value authority for:
+
+- inert `<ng-template>` content;
+- HTML-comment interpolation;
+- HTML tag/attribute interpolation.
+
+Rereview #2 then found interpolation beneath a static HTML `hidden` ancestor could still be promoted as user-visible rendered text.
+
+Regression-first production repair:
 
 ```text
-da5d23771ef8c9d58d0333d1f949e8d742210043
-fix: require visible text interpolation
+97161baa2d0aff9131a7acf9db752393ae913d64
+fix: reject statically hidden rendered text
 ```
 
-Rereview #1 had already repaired false rendered-value authority for interpolation under inert `<ng-template>`, inside HTML comments, and inside HTML tags/attributes.
+The bounded render-authority scanner now rejects interpolation beneath active ancestors with a static `hidden` boolean attribute, honors presence semantics such as `hidden="false"`, pops closed hidden siblings, and fails closed on ambiguous ancestry. It does not claim dynamic `[hidden]`, CSS visibility, outlet, signal, structural-directive or general DOM semantics.
 
-Independent rereview #2 found a new compile-valid/runtime-valid counterexample:
+Regression coverage includes focused static-hidden cases and an end-to-end R7.9/R7.10 negative proving no rendered terminal or joint fact survives the hidden ancestry.
 
-```html
-<section hidden>
-  @if (displayPrice > 0) {
-    <strong>{{ displayPrice }}</strong>
-  }
-</section>
+Exact repaired-candidate gates:
+
+```text
+CI + full PKC tests + WorkPlay + PokeTrade   35686749488 — PASS
+pinned Loren                                35686749493 — PASS
+Loren-main canary                           35686749523 — PASS
+pinned Jellyfin + parity/provenance         35686749575 — PASS
+
+Release build        0 warnings / 0 errors
+C# tests             161 / 161 PASS
+frontend tests       13 / 13 PASS
+tool pack/install    PASS
 ```
 
-The standard HTML `hidden` attribute prevents the subtree from being presented to the user, but current render authority still treats the simple interpolation as authoritative because it is not in a comment, attribute, or inert `<ng-template>`. That can produce a false R7.9 `rendered UI value` terminal and a false R7.10 observable joint-visibility rule.
+Repaired pinned three-repository benchmark:
 
-Review record:
+```text
+run 35687153720 — PASS, 3 / 3 jobs
+```
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-2.md`
+Artifact inspection shows zero unsupported current R7.9/R7.10 positives on all three unchanged repositories, and the prior mutation-causality blocker remains closed.
 
-Required next implementation is regression-first and minimum-generic: reject interpolation under a statically hidden HTML ancestor, then rerun all local and exact-SHA gates and request a fresh independent rereview.
+This implementation session cannot independently certify its own repair. Fresh rereview request:
 
-Do not start E while this blocker is open.
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-3-request.md`
 
 ### E — locked
 
-E is the final knowledge-only PO acceptance and portable transport/parity gate. Before E can close, V0.4.7 must also demonstrate positive usefulness on at least one unchanged real repository.
+E remains locked until independent rereview #3 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
-R7.14 positive real-project yield remains **NOT PASS**. Do not weaken proof authority or modify benchmarks merely to manufacture the shape.
+R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. The current three-repository benchmark intentionally demonstrates conservative zero positive yield; do not weaken proof authority or modify a benchmark merely to manufacture the supported shape.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 
@@ -157,7 +161,7 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 BLOCKED after independent rereview #2
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #3
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
