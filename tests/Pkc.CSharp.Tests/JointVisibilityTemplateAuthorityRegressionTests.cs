@@ -108,6 +108,113 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
             """);
     }
 
+    [Fact]
+    public async Task Static_hidden_element_interpolation_is_not_an_authoritative_render_or_visibility()
+    {
+        await AssertNoAuthoritativeRenderAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                @if (displayPrice > 0) {
+                  <strong hidden>{{ displayPrice }}</strong>
+                }
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task Static_hidden_attribute_value_still_blocks_authority()
+    {
+        await AssertNoAuthoritativeRenderAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                @if (displayPrice > 0) {
+                  <strong hidden="false">{{ displayPrice }}</strong>
+                }
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task Static_hidden_ancestor_interpolation_is_not_an_authoritative_render_or_visibility()
+    {
+        await AssertNoAuthoritativeRenderAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <section hidden>
+                  <div>
+                    @if (displayPrice > 0) {
+                      <strong>{{ displayPrice }}</strong>
+                    }
+                  </div>
+                </section>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task Closed_static_hidden_sibling_does_not_hide_later_interpolation()
+    {
+        await AssertAuthoritativeRenderAndVisibilityAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <section hidden><span>secret</span></section>
+                @if (displayPrice > 0) {
+                  <strong>{{ displayPrice }}</strong>
+                }
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task Dynamic_hidden_binding_is_not_treated_as_static_hidden()
+    {
+        await AssertAuthoritativeRenderAndVisibilityAsync("""
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `
+                <section [hidden]="false">
+                  @if (displayPrice > 0) {
+                    <strong>{{ displayPrice }}</strong>
+                  }
+                </section>
+              `
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
     private static async Task AssertNoVisibilityAsync(string componentSource)
     {
         var facts = await ScanAsync(componentSource);
@@ -132,6 +239,20 @@ public sealed class JointVisibilityTemplateAuthorityRegressionTests
         Assert.DoesNotContain(facts.Facts, fact =>
             fact.Kind == "ui-member-visibility" &&
             fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+    }
+
+    private static async Task AssertAuthoritativeRenderAndVisibilityAsync(string componentSource)
+    {
+        var facts = await ScanAsync(componentSource);
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.GetValueOrDefault("condition") == "displayPrice > 0");
     }
 
     private static async Task<FactDocument> ScanAsync(string componentSource)

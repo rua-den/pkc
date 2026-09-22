@@ -13,6 +13,15 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         @"<\s*(?<closing>/)?\s*ng-template\b[^>]*>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
+    private static readonly Regex HtmlElementTagRegex = new(
+        @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    private static readonly HashSet<string> VoidHtmlElements = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"
+    };
+
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
         FactDocument document,
@@ -105,7 +114,8 @@ internal sealed class AngularRenderedMemberAuthorityFilter
                 if (line == sourceLine &&
                     !IsInsideHtmlComment(body.Value, memberMatch.Index) &&
                     !IsInsideHtmlTag(body.Value, memberMatch.Index) &&
-                    !IsInsideInertNgTemplate(body.Value, memberMatch.Index))
+                    !IsInsideInertNgTemplate(body.Value, memberMatch.Index) &&
+                    !IsInsideStaticallyHiddenHtmlAncestor(body.Value, memberMatch.Index))
                 {
                     count++;
                 }
@@ -113,6 +123,144 @@ internal sealed class AngularRenderedMemberAuthorityFilter
         }
 
         return count;
+    }
+
+    private static bool IsInsideStaticallyHiddenHtmlAncestor(string templateBody, int position)
+    {
+        var ancestors = new Stack<HtmlElementFrame>();
+        foreach (Match tag in HtmlElementTagRegex.Matches(templateBody))
+        {
+            if (tag.Index >= position)
+            {
+                break;
+            }
+
+            if (IsInsideHtmlComment(templateBody, tag.Index))
+            {
+                continue;
+            }
+
+            var name = tag.Groups["name"].Value;
+            if (tag.Groups["closing"].Success)
+            {
+                if (VoidHtmlElements.Contains(name) ||
+                    ancestors.Count == 0 ||
+                    !string.Equals(ancestors.Peek().Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                ancestors.Pop();
+                continue;
+            }
+
+            var attrs = tag.Groups["attrs"].Value;
+            var selfClosing = attrs.TrimEnd().EndsWith("/", StringComparison.Ordinal);
+            if (selfClosing || VoidHtmlElements.Contains(name))
+            {
+                continue;
+            }
+
+            ancestors.Push(new HtmlElementFrame(name, HasStaticHiddenAttribute(attrs)));
+        }
+
+        return ancestors.Any(ancestor => ancestor.IsStaticallyHidden);
+    }
+
+    private static bool HasStaticHiddenAttribute(string attributes)
+    {
+        var index = 0;
+        while (index < attributes.Length)
+        {
+            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+            {
+                index++;
+            }
+
+            if (index >= attributes.Length || attributes[index] == '/')
+            {
+                index++;
+                continue;
+            }
+
+            var nameStart = index;
+            while (index < attributes.Length &&
+                   !char.IsWhiteSpace(attributes[index]) &&
+                   attributes[index] is not '=' and not '/')
+            {
+                index++;
+            }
+
+            if (index == nameStart)
+            {
+                index++;
+                continue;
+            }
+
+            var name = attributes[nameStart..index];
+            while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+            {
+                index++;
+            }
+
+            var hasValue = index < attributes.Length && attributes[index] == '=';
+            string? value = null;
+            if (hasValue)
+            {
+                index++;
+                while (index < attributes.Length && char.IsWhiteSpace(attributes[index]))
+                {
+                    index++;
+                }
+
+                if (index < attributes.Length && attributes[index] is '\'' or '"')
+                {
+                    var quote = attributes[index++];
+                    var valueStart = index;
+                    while (index < attributes.Length && attributes[index] != quote)
+                    {
+                        index++;
+                    }
+
+                    value = attributes[valueStart..Math.Min(index, attributes.Length)];
+                    if (index < attributes.Length)
+                    {
+                        index++;
+                    }
+                }
+                else
+                {
+                    var valueStart = index;
+                    while (index < attributes.Length &&
+                           !char.IsWhiteSpace(attributes[index]) &&
+                           attributes[index] != '/')
+                    {
+                        index++;
+                    }
+
+                    value = attributes[valueStart..index];
+                }
+            }
+
+            if (!string.Equals(name, "hidden", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!hasValue)
+            {
+                return true;
+            }
+
+            if (value is not null &&
+                !value.Contains("{{", StringComparison.Ordinal) &&
+                !value.Contains("}}", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsInsideInertNgTemplate(string templateBody, int position)
@@ -224,6 +372,8 @@ internal sealed class AngularRenderedMemberAuthorityFilter
 
         return state == LexicalState.Code;
     }
+
+    private sealed record HtmlElementFrame(string Name, bool IsStaticallyHidden);
 
     private enum LexicalState
     {

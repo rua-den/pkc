@@ -62,6 +62,38 @@ public sealed class JointVisibilityRegressionTests
     }
 
     [Fact]
+    public async Task Static_hidden_ancestor_blocks_r79_and_r710_authority()
+    {
+        var root = CreateRoot("static-hidden-ancestor");
+        try
+        {
+            await WriteFixtureAsync(root);
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "price.component.ts"),
+                HiddenPriceComponentSource);
+
+            var facts = await ScanAsync(root);
+            Assert.DoesNotContain(facts.Facts, fact =>
+                fact.Kind == "ui-member-render" &&
+                fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+                fact.Metadata.ContainsKey("renderAuthority"));
+            Assert.DoesNotContain(facts.Facts, fact =>
+                fact.Kind == "ui-member-visibility" &&
+                fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+
+            var candidate = FindCandidate(facts);
+            Assert.DoesNotContain(candidate.Facts, fact =>
+                fact.Kind == "value-terminal-source" &&
+                fact.Metadata.GetValueOrDefault("boundary") == "rendered UI value");
+            Assert.DoesNotContain(candidate.Facts, fact => fact.Kind == "joint-visibility");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Unrelated_same_text_predicate_cannot_replace_exact_selected_predicate()
     {
         var root = CreateRoot("unrelated-predicate");
@@ -353,6 +385,32 @@ public sealed class JointVisibilityRegressionTests
                 <strong>{{ displayPrice }}</strong>
               }
             }
+          `
+        })
+        export class PriceComponent {
+          private readonly api = inject(PriceApi);
+          displayPrice = 0;
+
+          reload() {
+            this.api.getPrice().subscribe(result => this.displayPrice = result.displayPrice);
+          }
+        }
+        """;
+
+    private const string HiddenPriceComponentSource = """
+        import { Component, inject } from '@angular/core';
+        import { PriceApi } from './price-api';
+
+        @Component({
+          selector: 'app-price',
+          template: `
+            <section hidden>
+              <div>
+                @if (displayPrice > 0) {
+                  <strong>{{ displayPrice }}</strong>
+                }
+              </div>
+            </section>
           `
         })
         export class PriceComponent {
