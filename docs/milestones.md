@@ -51,7 +51,7 @@ fix: fail closed on Queryable authority
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #2** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REREVIEW #2 FAIL — STATIC HIDDEN ANCESTOR BLOCKER** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### A — accepted
@@ -61,16 +61,12 @@ fix: fail closed on Queryable authority
 feat: prove bounded reference dynamic lineage
 ```
 
-A proves bounded snapshot vs reference/dynamic origin semantics with exact target-project identity.
-
 ### B — accepted
 
 ```text
 17fd30b3a4b8178208adabc12c40dee060bedb54
 fix: fail closed after opaque terminal effects
 ```
-
-B proves supported derivation, original-origin retention, later override/mutation causality and bounded direct-return terminal source.
 
 ### C — accepted
 
@@ -79,9 +75,9 @@ fbb64b9917da1f63362558355201ff7998384ba0
 feat: prove backend API projection lineage
 ```
 
-C proves exact backend entity/domain → DTO/projection → API response lineage using semantic project/assembly/type/member identity. Name matching alone is never proof.
+C proves exact target-project-semantic domain/entity property → DTO/projection → API response identity and fails closed on unsupported or ambiguous semantics.
 
-### D / R7.9 — accepted
+### D / R7.9 — accepted predecessor
 
 ```text
 fc4bfa7042f59620b2c7ba1c4f6700cf3b02172a
@@ -94,11 +90,13 @@ R7.9 proves the bounded chain:
 C-proven API response property
 → explicit wire identity
 → typed frontend HTTP result member
-→ exact resolved frontend service/result assignment
+→ exact resolved service/result assignment
 → exact component/view-model member
-→ authoritative Angular interpolation
+→ authoritative rendered interpolation
 → rendered UI value
 ```
+
+R7.9 remains accepted as a predecessor, but the current R7.10 rereview exposed a new over-authority case in the rendered-value boundary that must be repaired before D can close.
 
 ### Post-R7.9 mutation-causality repair — accepted
 
@@ -109,64 +107,42 @@ fix: avoid capturing mutation receiver out parameter
 
 Runtime pattern-selected helper mutations stay as raw evidence with `caller-object-unproven` and are not promoted into workflow state changes without proven causality.
 
-### D / R7.10 — repaired, awaiting independent rereview #2
+### D / R7.10 — blocked after independent rereview #2
 
-Original R7.10 candidate:
-
-```text
-eb64309263489a2b9bd658762b4526a4a32a8508
-fix: bound Angular visibility to active template structure
-```
-
-Independent rereview #1 found compile-valid false rendered-value authority for:
-
-- interpolation under a bare/inert `<ng-template>`;
-- interpolation inside an HTML comment;
-- interpolation inside an HTML tag/attribute.
-
-Regression-first repairs:
-
-```text
-05ad6cb937010702a3fd01d5ef756e31bc4e8d9b
-099fabfcaeecbaf009b75052d20075745ee02437
-da5d23771ef8c9d58d0333d1f949e8d742210043
-```
-
-Current candidate:
+Current production SHA reviewed:
 
 ```text
 da5d23771ef8c9d58d0333d1f949e8d742210043
 fix: require visible text interpolation
 ```
 
-R7.10 composes only exact R7.9 identity with a bounded backend `Enumerable.Single/First(predicate)` selection proof and one supported active Angular `@if`. Frontend evidence cannot upgrade observed-only backend authority; ambiguous/nested/inert shapes fail closed.
+Rereview #1 had already repaired false rendered-value authority for interpolation under inert `<ng-template>`, inside HTML comments, and inside HTML tags/attributes.
 
-Exact repaired-candidate gates:
+Independent rereview #2 found a new compile-valid/runtime-valid counterexample:
 
-```text
-CI + full PKC tests + WorkPlay + PokeTrade   35650084914 — PASS
-pinned Loren                                35650084917 — PASS
-Loren-main canary                           35650084926 — PASS
-pinned Jellyfin + parity/provenance         35650084759 — PASS
+```html
+<section hidden>
+  @if (displayPrice > 0) {
+    <strong>{{ displayPrice }}</strong>
+  }
+</section>
 ```
 
-Repaired three-repository benchmark:
+The standard HTML `hidden` attribute prevents the subtree from being presented to the user, but current render authority still treats the simple interpolation as authoritative because it is not in a comment, attribute, or inert `<ng-template>`. That can produce a false R7.9 `rendered UI value` terminal and a false R7.10 observable joint-visibility rule.
 
-```text
-run 35650761753 — PASS, 3 / 3 jobs
-```
+Review record:
 
-The benchmark confirms no false R7.9/R7.10 positive on the unchanged pinned repos, but also confirms R7.14 positive real-project yield is still **NOT YET PASS**.
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-2.md`
 
-Rereview #1 cannot self-certify its repairs. Astra must perform independent rereview #2 on exact `da5d2377...` before D closes.
+Required next implementation is regression-first and minimum-generic: reject interpolation under a statically hidden HTML ancestor, then rerun all local and exact-SHA gates and request a fresh independent rereview.
 
-Review request:
-
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-2-request.md`
+Do not start E while this blocker is open.
 
 ### E — locked
 
-E is the final knowledge-only PO acceptance and portable transport/parity gate. Before E can close, V0.4.7 must demonstrate positive usefulness on at least one unchanged real repository. Do not weaken proof authority or modify benchmarks merely to manufacture the shape.
+E is the final knowledge-only PO acceptance and portable transport/parity gate. Before E can close, V0.4.7 must also demonstrate positive usefulness on at least one unchanged real repository.
+
+R7.14 positive real-project yield remains **NOT PASS**. Do not weaken proof authority or modify benchmarks merely to manufacture the shape.
 
 ## V0.5 — Azure DevOps input evidence — LOCKED
 
@@ -181,7 +157,7 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #2
+roadmap:      V0.4.7-D / R7.10 BLOCKED after independent rereview #2
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
 
