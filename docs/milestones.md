@@ -38,7 +38,7 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #11** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #12** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### Accepted baselines
@@ -53,17 +53,17 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — repaired, awaiting independent rereview #11
+### D / R7.10 — repaired, awaiting independent rereview #12
 
-Ten independent/adversarial review rounds have closed concrete false-positive classes including inert templates/comments, static presentation suppression, Angular hidden bindings, control-flow brace corruption, `ngNonBindable`, quoted attributes, unsupported nested/structural visibility, `<style>` raw text, and SVG definition containers.
+Eleven independent/adversarial review rounds have closed concrete false-positive classes including inert templates/comments, static presentation suppression, Angular hidden bindings, control-flow brace corruption, `ngNonBindable`, quoted attributes, unsupported nested/structural visibility, `<style>` raw text, SVG definition containers, and SVG resource containers.
 
-Rereview #10 found that interpolation below SVG `<defs>` / `<symbol>` could be mistaken for a directly visible rendered value even though those containers define reusable SVG content rather than directly presenting it.
+Rereview #11 found that interpolation below SVG `<clipPath>`, `<mask>`, `<marker>` and `<pattern>` could still be mistaken for a directly visible rendered value even though those elements define reusable presentation resources rather than directly presenting their child content.
 
 Regression-first production repair:
 
 ```text
-a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
-fix: reject SVG definition renders
+f9b20c27820a7ea9ac911222c613c2f9cdfb696f
+fix: reject SVG resource renders
 ```
 
 Regression coverage:
@@ -73,13 +73,13 @@ Regression coverage:
 Exact repaired-candidate gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35740454910 — PASS
-pinned Loren                                35740454928 — PASS
-Loren-main canary                           35740454970 — PASS
-pinned Jellyfin + parity/provenance         35740454878 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35743258917 — PASS
+pinned Loren                                35743258977 — PASS
+Loren-main canary                           35743259239 — PASS
+pinned Jellyfin + parity/provenance         35743258815 — PASS
 
 Release build        0 warnings / 0 errors
-C# tests             201 / 201 PASS
+C# tests             206 / 206 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 ```
@@ -87,20 +87,20 @@ tool pack/install    PASS
 Repaired three-repository benchmark:
 
 ```text
-base production  a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
-wrapper           e01326c66fef67679b53af459e0bb9208b5dd3f4
-run               35740571925 — PASS, 3 / 3 jobs
+base production  f9b20c27820a7ea9ac911222c613c2f9cdfb696f
+wrapper          461a281bd9c6d6e3a9d5b9b95c68562ff41638a9
+run              35743389433 — PASS, 3 / 3 jobs
 ```
 
 All three unchanged repositories remain conservatively at zero supported current R7.9/R7.10 positives. This is a safety PASS, not positive-yield completion. Mutation-causality remains closed.
 
 Fresh independent request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-11-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-12-request.md`
 
 ### E — locked
 
-E remains locked until independent rereview #11 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until independent rereview #12 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
 R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
 
@@ -117,6 +117,6 @@ V0.5 starts only after V0.4.7 and the V0.4.x PO-question-readiness exit gate pas
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #11
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #12
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

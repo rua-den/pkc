@@ -13,9 +13,9 @@ Before changing production code, read:
 3. `docs/milestones.md`
 4. `docs/product-knowledge-contract.md`
 5. `docs/v0.4.7-acceptance-plan.md`
-6. R7.10 independent rereview records through #10
+6. R7.10 independent rereview records #1 through #11
 7. `docs/benchmarks/2026-09-22-r7.10-real-repo-benchmark.md`
-8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-11-request.md`
+8. `docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-12-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
@@ -24,11 +24,11 @@ Then inspect current `main`, recent commits and repository status. Never reset t
 Exact production SHA for fresh independent rereview:
 
 ```text
-a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
-fix: reject SVG definition renders
+f9b20c27820a7ea9ac911222c613c2f9cdfb696f
+fix: reject SVG resource renders
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `a3334bc...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above this SHA on `main`. Review production behavior at `f9b20c27...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -38,8 +38,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #11
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #11
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #12
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #12
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -57,63 +57,68 @@ R7.10 answers, for the same exact R7.9-proven value path:
 
 > What backend selection condition and frontend visibility condition jointly determine whether this rendered value is visible?
 
-Supported backend remains target-project-semantic exact `System.Linq.Enumerable.Single/First(predicate)` → exact selected local → direct response property projection. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active directly-rendered text interpolation. R7.10 accepts exactly one supported enclosing Angular `@if` and composes only exact fact IDs. Unsupported raw-text, SVG definition, nested-control or structural-directive visibility paths fail closed.
+Supported backend remains target-project-semantic exact `System.Linq.Enumerable.Single/First(predicate)` → exact selected local → direct response property projection. R7.9 supplies explicit wire identity, typed result member, exact assignment and authoritative active directly-rendered text interpolation. R7.10 accepts exactly one supported enclosing Angular `@if` and composes only exact fact IDs. Unsupported raw-text, SVG resource/definition, nested-control or structural-directive visibility paths fail closed.
 
 Frontend evidence cannot upgrade an `observed-only` backend condition.
 
-## Rereview #10 finding
+## Rereview #11 finding
 
-Independent rereview #10 challenged exact predecessor:
-
-```text
-1bc67e62f1099e4d580072682566c2d305e4db07
-fix: ignore Angular style raw text
-```
-
-A new SVG direct-render authority defect was found. Angular templates can contain SVG interpolation, but child content under SVG `<defs>` or `<symbol>` is definition content and is not directly presented to the user. The predecessor could still promote `{{ displayPrice }}` under those containers to authoritative `ui-member-render`, after which R7.9/R7.10 could overstate that value as visibly rendered.
-
-Review record:
-
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-10.md`
-
-## Repair completed
-
-Production checkpoint:
+Independent rereview #11 challenged exact predecessor:
 
 ```text
 a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
 fix: reject SVG definition renders
 ```
 
-Repair scope is deliberately narrow:
+A new SVG resource direct-render authority defect was found. Angular templates can contain resource elements such as `<clipPath>`, `<mask>`, `<marker>` and `<pattern>`. Their child interpolation may participate in resource definitions but is not directly presented at the declaration site. The predecessor could still promote `{{ displayPrice }}` under those containers to authoritative `ui-member-render`, after which R7.9/R7.10 could overstate that occurrence as visibly rendered.
 
-- direct render authority is rejected beneath SVG `defs` and `symbol` ancestors;
-- existing `<style>` raw-text suppression remains intact;
-- a closed SVG definition container before a later genuine supported render does not over-filter;
-- no general SVG `<use>` graph, CSS/browser engine or runtime DOM solver is claimed.
+Review record:
+
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-independent-rereview-11.md`
+
+## Repair completed
+
+Production checkpoint:
+
+```text
+f9b20c27820a7ea9ac911222c613c2f9cdfb696f
+fix: reject SVG resource renders
+```
+
+Repair scope is deliberately bounded:
+
+- `style`, `defs`, `symbol`, `clipPath`, `mask`, `marker` and `pattern` are treated as non-direct-render ancestors;
+- a closed resource container before a later genuine supported render does not over-filter;
+- no SVG reference graph, CSS/browser engine or runtime DOM solver is claimed.
 
 Regression coverage:
 
 `tests/Pkc.CSharp.Tests/AngularSvgDefinitionRenderAuthorityRegressionTests.cs`
 
-The implementation commit changes exactly one production frontend file and one regression file. No backend, R7.9 exact identity-composition, joint composition or mutation-causality code changed.
+The implementation commit changes exactly one production frontend file and one regression file. No backend selected-projection identity, R7.9 exact API/frontend identity, R7.10 exact-ID composition or mutation-causality code changed.
+
+Regression-first test-only commit object, never attached to a branch:
+
+```text
+33b21245cf5dae4cd8fbb38d61d27e16670617db
+```
 
 ## Exact-SHA verification
 
-Exact production `a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9`:
+Exact production `f9b20c27820a7ea9ac911222c613c2f9cdfb696f`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35740454910 — PASS
-pinned Loren                                35740454928 — PASS
-Loren-main canary                           35740454970 — PASS
-pinned Jellyfin + parity/provenance         35740454878 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35743258917 — PASS
+pinned Loren                                35743258977 — PASS
+Loren-main canary                           35743259239 — PASS
+pinned Jellyfin + parity/provenance         35743258815 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             201 / 201 PASS
+C# tests             206 / 206 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -128,18 +133,18 @@ source build          PASS, 0 warnings / 0 errors
 116 product features | 504 knowledge Markdown files
 43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10698544024
-sha256:dc679ba75f586ef7e7f0fd4b3ac8e0f79c70ab496132896b2c7bbdece9d50ef4
+artifact 10702535277
+sha256:fa8a47d770be0d93d78142e116b89858750cfb04d0d884f77b2b3ce00bc710bf
 ```
 
 ## Real-repository safety benchmark
 
-Wrapper based exactly on production `a3334bc...`:
+Wrapper based exactly on production `f9b20c27...`:
 
 ```text
-branch:         benchmark/r710-svg-a3334bc2
-wrapper commit: e01326c66fef67679b53af459e0bb9208b5dd3f4
-run:            35740571925 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-svg-resource-f9b20c27
+wrapper commit: 461a281bd9c6d6e3a9d5b9b95c68562ff41638a9
+run:            35743389433 — PASS, 3 / 3 jobs
 ```
 
 Compare confirms the wrapper differs from production by exactly one workflow branch-trigger line.
@@ -148,16 +153,16 @@ Artifacts:
 
 ```text
 jin12-xyz/CRM
-artifact 10699379067
-sha256:6f46ad1b02c0bbe71a0d3ca1a8b325cf104f8a7224e369d0618bfea7d48dff8d
+artifact 10701386099
+sha256:327e3e8673b158dcc678402c506188d13df69b45321c44126f8aab0137be3ae8
 
 hackersandwizards/agentic-engineering-training-angular
-artifact 10699408849
-sha256:639a4faa92653250a9d439461be261ec47a2efd68f9954c70278fd1aa3ed297d
+artifact 10701296056
+sha256:97285af533f15e7bf89d72f33736576f3c552656ae28a6ec376e5a6858756277
 
 kesetovic/crm-system
-artifact 10698434908
-sha256:8b98a64b12457087cd1ea403c1ba024ce5d65bb6b92a9fa7efac895fda287fc9
+artifact 10701136220
+sha256:e40dffbef269b3b83530f4e9eece03e1e85ea582a1ff87bd7c90f16f70cb7a92
 ```
 
 Direct artifact inspection for every repository:
@@ -174,19 +179,19 @@ Agentic retains exactly two raw `UpdatedAt` mutations with `runtime-pattern-vari
 
 The benchmark proves fail-closed safety only. It does not satisfy R7.14; positive real-project yield remains NOT PASS.
 
-## Next action — independent rereview #11
+## Next action — independent rereview #12
 
 Review exact production:
 
 ```text
-a3334bc202ee5a9e2dc8cc6d7c176dde8e06c9f9
+f9b20c27820a7ea9ac911222c613c2f9cdfb696f
 ```
 
 Request:
 
-`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-11-request.md`
+`docs/reviews/2026-09-22-v0.4.7-d-r7.10-rereview-12-request.md`
 
-The reviewer must independently seek a new compile-valid/runtime-valid false-positive rather than merely re-confirming SVG `defs` / `symbol` handling.
+The reviewer must independently seek a new compile-valid/runtime-valid false-positive rather than merely replaying SVG `clipPath` / `mask` / `marker` / `pattern` handling.
 
 If no blocker exists:
 
@@ -200,4 +205,4 @@ mark R7.10 PASS / COMPLETE
 
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
 
-This implementation continuation found and repaired rereview #10 and must not self-certify `a3334bc...`.
+This implementation continuation found and repaired rereview #11 and must not self-certify `f9b20c27...`.
