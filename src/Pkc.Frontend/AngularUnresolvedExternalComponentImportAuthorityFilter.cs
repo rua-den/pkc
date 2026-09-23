@@ -14,7 +14,7 @@ internal sealed class AngularUnresolvedExternalComponentImportAuthorityFilter
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ImportsPropertyRegex = new(
-        @"\bimports\s*:\s*\[(?<imports>[\s\S]*?)\]",
+        @"\bimports\s*:\s*(?<imports>\[[\s\S]*?\]|[A-Za-z_$][A-Za-z0-9_$]*)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex IdentifierRegex = new(
@@ -28,6 +28,20 @@ internal sealed class AngularUnresolvedExternalComponentImportAuthorityFilter
     private static readonly Regex PackageNameRegex = new(
         @"^(?:@[A-Za-z0-9._~-]+/[A-Za-z0-9._~-]+|[A-Za-z0-9._~-]+)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly HashSet<string> KnownNonProjectionFrameworkPackages = new(
+        StringComparer.Ordinal)
+    {
+        "@angular/core",
+        "@angular/common",
+        "@angular/forms",
+        "@angular/router",
+        "@angular/animations",
+        "@angular/platform-browser",
+        "@angular/platform-browser-dynamic",
+        "@angular/service-worker",
+        "@angular/localize"
+    };
 
     public async Task<FactDocument> FilterAsync(
         string repositoryPath,
@@ -93,7 +107,8 @@ internal sealed class AngularUnresolvedExternalComponentImportAuthorityFilter
                 }
 
                 var package = GetPackageName(module);
-                if (CanResolvePackage(root, file, package))
+                if (KnownNonProjectionFrameworkPackages.Contains(package) ||
+                    CanResolvePackage(root, file, package))
                 {
                     continue;
                 }
@@ -118,9 +133,9 @@ internal sealed class AngularUnresolvedExternalComponentImportAuthorityFilter
                     continue;
                 }
 
-                var importedIdentifiers = IdentifierRegex.Matches(imports.Groups["imports"].Value)
-                    .Select(match => match.Value)
-                    .ToHashSet(StringComparer.Ordinal);
+                var importedIdentifiers = ResolveComponentImportIdentifiers(
+                    text,
+                    imports.Groups["imports"].Value);
                 if (!unresolvedLocals.Overlaps(importedIdentifiers))
                 {
                     continue;
@@ -137,6 +152,56 @@ internal sealed class AngularUnresolvedExternalComponentImportAuthorityFilter
         }
 
         return blocked;
+    }
+
+    private static HashSet<string> ResolveComponentImportIdentifiers(
+        string text,
+        string expression)
+    {
+        var identifiers = new HashSet<string>(StringComparer.Ordinal);
+        var expanded = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Stack<string>();
+
+        AddIdentifiers(expression, identifiers, pending);
+        while (pending.Count > 0)
+        {
+            var identifier = pending.Pop();
+            if (!expanded.Add(identifier) ||
+                !TryFindConstantArrayBody(text, identifier, out var body))
+            {
+                continue;
+            }
+
+            AddIdentifiers(body, identifiers, pending);
+        }
+
+        return identifiers;
+    }
+
+    private static void AddIdentifiers(
+        string expression,
+        HashSet<string> identifiers,
+        Stack<string> pending)
+    {
+        foreach (Match match in IdentifierRegex.Matches(expression))
+        {
+            if (identifiers.Add(match.Value))
+            {
+                pending.Push(match.Value);
+            }
+        }
+    }
+
+    private static bool TryFindConstantArrayBody(
+        string text,
+        string identifier,
+        out string body)
+    {
+        var pattern = @"\b(?:const|let|var)\s+" + Regex.Escape(identifier) +
+                      @"\s*=\s*\[(?<body>[\s\S]*?)\]";
+        var match = Regex.Match(text, pattern, RegexOptions.CultureInvariant);
+        body = match.Success ? match.Groups["body"].Value : string.Empty;
+        return match.Success;
     }
 
     private static IEnumerable<string> ExtractImportedLocalNames(string clause)

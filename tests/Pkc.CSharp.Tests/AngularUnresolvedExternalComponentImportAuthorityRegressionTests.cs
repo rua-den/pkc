@@ -37,13 +37,49 @@ public sealed class AngularUnresolvedExternalComponentImportAuthorityRegressionT
 
             var facts = await new FrontendScanner().ScanAsync(root);
 
-            Assert.DoesNotContain(facts.Facts, fact =>
-                fact.Kind == "ui-member-render" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
-                fact.Metadata.ContainsKey("renderAuthority"));
-            Assert.DoesNotContain(facts.Facts, fact =>
-                fact.Kind == "ui-member-visibility" &&
-                fact.Metadata.GetValueOrDefault("member") == "displayPrice");
+            AssertRejected(facts);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Unresolved_external_symbol_reached_through_const_import_array_fails_closed()
+    {
+        var root = CreateTestRoot();
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "angular.json"), "{}");
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "price.component.ts"),
+                """
+                import { Component } from '@angular/core';
+                import { ExternalShell } from '@vendor/ui';
+
+                const SHARED_IMPORTS = [ExternalShell];
+
+                @Component({
+                  selector: 'app-price',
+                  imports: SHARED_IMPORTS,
+                  template: `
+                    @if (isAllowed) {
+                      <div ext-shell>{{ displayPrice }}</div>
+                    }
+                  `
+                })
+                export class PriceComponent {
+                  isAllowed = true;
+                  displayPrice = 42;
+                }
+                """);
+
+            var facts = await new FrontendScanner().ScanAsync(root);
+
+            AssertRejected(facts);
         }
         finally
         {
@@ -87,6 +123,17 @@ public sealed class AngularUnresolvedExternalComponentImportAuthorityRegressionT
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    private static void AssertRejected(Pkc.Core.FactDocument facts)
+    {
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.DoesNotContain(facts.Facts, fact =>
+            fact.Kind == "ui-member-visibility" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice");
     }
 
     private static string CreateTestRoot() =>
