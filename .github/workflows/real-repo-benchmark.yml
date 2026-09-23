@@ -1,11 +1,8 @@
-name: real-repo-benchmark
+name: product-value-level2
 
 on:
   push:
-    branches: [main]
-    paths:
-      - '.github/workflows/real-repo-benchmark.yml'
-  workflow_dispatch:
+    branches: [benchmark/product-value-level2-79b0]
 
 jobs:
   benchmark:
@@ -14,12 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: jin12-crm
-            repo: jin12-xyz/CRM
-            sha: 00493af54d4d9e146d1c6eb75f5dc8f3898f09ec
           - id: agentic-angular
             repo: hackersandwizards/agentic-engineering-training-angular
             sha: 22f2aab64617f4de7984370a5bd40e8c9535dbf5
+          - id: jin12-crm
+            repo: jin12-xyz/CRM
+            sha: 00493af54d4d9e146d1c6eb75f5dc8f3898f09ec
           - id: kesetovic-crm
             repo: kesetovic/crm-system
             sha: 8e3b74bec4fdcd0144bd65f0c1b49c8e801bd2f7
@@ -37,7 +34,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build PKC once for this benchmark job
+      - name: Build exact PKC candidate
         run: dotnet build PKC.sln --configuration Release --nologo
 
       - name: Clone exact benchmark SHA
@@ -51,11 +48,30 @@ jobs:
           git -C "$TARGET" remote add origin "https://github.com/${{ matrix.repo }}.git"
           git -C "$TARGET" fetch --depth 1 origin "${{ matrix.sha }}"
           git -C "$TARGET" checkout --detach FETCH_HEAD
-          ACTUAL=$(git -C "$TARGET" rev-parse HEAD)
-          test "$ACTUAL" = "${{ matrix.sha }}"
-          printf '%s\n' "$ACTUAL" > "$ROOT/target-sha.txt"
+          test "$(git -C "$TARGET" rev-parse HEAD)" = "${{ matrix.sha }}"
 
-      - name: Build benchmark repository without modifying it
+      - name: Install pinned frontend dependencies when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="$GITHUB_WORKSPACE/.benchmark/${{ matrix.id }}/repo"
+          case "${{ matrix.id }}" in
+            agentic-angular)
+              cd "$TARGET/frontend"
+              if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+              test -s node_modules/typescript/lib/typescript.js
+              ;;
+            kesetovic-crm)
+              cd "$TARGET/client"
+              if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+              test -s node_modules/typescript/lib/typescript.js
+              ;;
+            jin12-crm)
+              echo 'No frontend dependency install required.'
+              ;;
+          esac
+
+      - name: Build pinned target without modifying source
         id: target_build
         continue-on-error: true
         shell: bash
@@ -63,101 +79,46 @@ jobs:
           set -euo pipefail
           TARGET="$GITHUB_WORKSPACE/.benchmark/${{ matrix.id }}/repo"
           case "${{ matrix.id }}" in
-            jin12-crm)
-              dotnet build "$TARGET/CRM.sln" --configuration Release --nologo
-              ;;
             agentic-angular)
               dotnet build "$TARGET/backend/CrmApi/CrmApi.csproj" --configuration Release --nologo
               cd "$TARGET/frontend"
-              if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
               npm run build --if-present
+              ;;
+            jin12-crm)
+              dotnet build "$TARGET/CRM.sln" --configuration Release --nologo
               ;;
             kesetovic-crm)
               dotnet build "$TARGET/crm-system.sln" --configuration Release --nologo
-              if [ -f "$TARGET/client/package.json" ]; then
-                cd "$TARGET/client"
-                if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
-                npm run build --if-present
-              fi
+              cd "$TARGET/client"
+              npm run build --if-present
               ;;
           esac
 
-      - name: Compile product knowledge with PKC
-        id: pkc_build
+      - name: Generate phase-1 product workspace
         shell: bash
-        env:
-          TARGET_BUILD_OUTCOME: ${{ steps.target_build.outcome }}
         run: |
-          set -u
-          ROOT="$GITHUB_WORKSPACE/.benchmark/${{ matrix.id }}"
-          TARGET="$ROOT/repo"
-          RESULT="$ROOT/result"
-          mkdir -p "$RESULT"
-
-          set +e
-          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- build "$TARGET" 2>&1 | tee "$RESULT/pkc-build.log"
-          PKC_EXIT=${PIPESTATUS[0]}
-          set -e
-          printf '%s\n' "$PKC_EXIT" > "$RESULT/pkc-exit-code.txt"
-
-          FACTS="$TARGET/.pkc/facts.json"
-          SUMMARY="$RESULT/summary.md"
+          set -euo pipefail
+          TARGET="$GITHUB_WORKSPACE/.benchmark/${{ matrix.id }}/repo"
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- run "$TARGET"
+          WORKSPACE="$TARGET/.pkc/workspace"
+          test -s "$WORKSPACE/CLAUDE.md"
+          test -s "$WORKSPACE/knowledge/START_HERE.md"
+          test -s "$WORKSPACE/_policy/answer-contract.md"
+          test -s "$WORKSPACE/_meta/catalog.json"
           {
-            echo "# PKC real-repo benchmark — ${{ matrix.repo }}"
+            echo "## Level-2 ${{ matrix.id }}"
             echo
-            echo "- Benchmark SHA: \`${{ matrix.sha }}\`"
-            echo "- Target build outcome: \`$TARGET_BUILD_OUTCOME\`"
-            echo "- PKC build exit code: \`$PKC_EXIT\`"
-            if [ -s "$FACTS" ]; then
-              echo "- Facts: \`$(jq '.facts | length' "$FACTS")\`"
-              echo "- Relations: \`$(jq '.relations | length' "$FACTS")\`"
-            else
-              echo "- Facts: \`unavailable\`"
-              echo "- Relations: \`unavailable\`"
-            fi
-            if [ -d "$TARGET/knowledge" ]; then
-              echo "- Knowledge files: \`$(find "$TARGET/knowledge" -type f | wc -l | tr -d ' ')\`"
-            else
-              echo "- Knowledge files: \`0\`"
-            fi
-            echo
+            echo '- PKC production candidate: `79b0f9fec80a2afb87f43ec7a559a5d54cb87863`'
+            echo '- Benchmark wrapper changes workflow only.'
+            echo '- Target: `${{ matrix.repo }}@${{ matrix.sha }}`'
+            echo '- Phase 1 artifact contains `.pkc/workspace` only.'
+            echo "- Target build outcome: `${{ steps.target_build.outcome }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-            if [ -s "$FACTS" ]; then
-              echo "## Fact kinds"
-              echo '```text'
-              jq -r '.facts[]?.kind // empty' "$FACTS" | sort | uniq -c | sort -nr | head -40
-              echo '```'
-              echo
-              echo "## Analysis modes"
-              echo '```text'
-              jq -r '.facts[]?.metadata.analysisMode // empty' "$FACTS" | sort | uniq -c | sort -nr | head -40
-              echo '```'
-              echo
-              echo "## Relation kinds"
-              echo '```text'
-              jq -r '.relations[]?.kind // empty' "$FACTS" | sort | uniq -c | sort -nr | head -40
-              echo '```'
-            fi
-          } > "$SUMMARY"
-
-          cat "$SUMMARY"
-          cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "$PKC_EXIT" -ne 0 ]; then
-            echo "::warning::PKC build exited with $PKC_EXIT for ${{ matrix.repo }}; retained as benchmark evidence rather than aborting the matrix."
-          fi
-
-      - name: Upload benchmark evidence
-        if: always()
+      - name: Upload phase-1 workspace only
         uses: actions/upload-artifact@v4
         with:
-          name: real-repo-${{ matrix.id }}
-          if-no-files-found: warn
+          name: ${{ matrix.id }}-level2-workspace
+          if-no-files-found: error
           include-hidden-files: true
-          path: |
-            .benchmark/${{ matrix.id }}/result/
-            .benchmark/${{ matrix.id }}/target-sha.txt
-            .benchmark/${{ matrix.id }}/repo/.pkc/
-            .benchmark/${{ matrix.id }}/repo/knowledge/
-            .benchmark/${{ matrix.id }}/repo/PKC_KNOWLEDGE.md
-            .benchmark/${{ matrix.id }}/repo/PKC_KNOWLEDGE.zip
+          path: .benchmark/${{ matrix.id }}/repo/.pkc/workspace/
