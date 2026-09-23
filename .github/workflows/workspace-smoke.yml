@@ -1,0 +1,56 @@
+name: workspace-smoke
+
+on:
+  push:
+    branches: [benchmark/workspace-b76427]
+    paths:
+      - '.github/workflows/workspace-smoke.yml'
+
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build PKC
+        run: dotnet build PKC.sln --configuration Release --nologo
+      - name: Run PKC workspace on isolated WorkPlay copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=/tmp/pkc-workspace-target
+          rm -rf "$TARGET"
+          cp -R samples/WorkPlaySample "$TARGET"
+
+          printf '%s\n' 'team claude instructions' > "$TARGET/CLAUDE.md"
+          printf '%s\n' 'team agent instructions' > "$TARGET/AGENTS.md"
+
+          dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- run "$TARGET"
+
+          test "$(cat "$TARGET/CLAUDE.md")" = 'team claude instructions'
+          test "$(cat "$TARGET/AGENTS.md")" = 'team agent instructions'
+
+          test ! -e "$TARGET/knowledge"
+          test ! -e "$TARGET/PKC_KNOWLEDGE.md"
+          test ! -e "$TARGET/PKC_KNOWLEDGE.zip"
+
+          WORKSPACE="$TARGET/.pkc/workspace"
+          test -s "$WORKSPACE/CLAUDE.md"
+          test -s "$WORKSPACE/AGENTS.md"
+          test -s "$WORKSPACE/knowledge/START_HERE.md"
+          test -s "$WORKSPACE/knowledge/index.md"
+          test -s "$WORKSPACE/knowledge/features/workplay/status-management.md"
+          test -s "$WORKSPACE/knowledge/workflows/workplay/complete.md"
+          test -s "$WORKSPACE/_policy/answer-contract.md"
+          test -s "$WORKSPACE/_meta/manifest.json"
+          test -s "$WORKSPACE/_meta/catalog.json"
+
+          grep -Fq 'Default mode is PRODUCT' "$WORKSPACE/CLAUDE.md"
+          grep -Fq 'Use `_meta/catalog.json`' "$WORKSPACE/knowledge/START_HERE.md"
+          grep -Fq '"workspaceStatus": "PREVIEW"' "$WORKSPACE/_meta/manifest.json"
+          grep -Fq '"legacyRootKnowledgeArtifactsGeneratedByRun": false' "$WORKSPACE/_meta/manifest.json"
+          grep -Fq 'WorkPlay Status Management' "$WORKSPACE/knowledge/index.md"
+          grep -Fq 'Click `Complete`' "$WORKSPACE/knowledge/workflows/workplay/complete.md"
+          grep -Fq 'ManageWorkPlay' "$WORKSPACE/knowledge/workflows/workplay/complete.md"
