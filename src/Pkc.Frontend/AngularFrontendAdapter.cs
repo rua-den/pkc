@@ -13,6 +13,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularRenderedMemberAuthorityFilter _renderedMemberAuthorityFilter = new();
     private readonly AngularHtmlDirectTextAuthorityFilter _htmlDirectTextAuthorityFilter = new();
     private readonly AngularComponentProjectionAuthorityFilter _componentProjectionAuthorityFilter = new();
+    private readonly AngularUnresolvedExternalComponentImportAuthorityFilter _unresolvedExternalComponentImportAuthorityFilter = new();
     private readonly AngularSvgRenderedTextAuthorityFilter _svgRenderedTextAuthorityFilter = new();
     private readonly AngularSvgTextContentAuthorityFilter _svgTextContentAuthorityFilter = new();
     private readonly AngularRenderedMemberVisibilityEnricher _renderedMemberVisibilityEnricher = new();
@@ -86,9 +87,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             repositoryPath,
             htmlDirectTextAuthoritativeRenders,
             cancellationToken);
-        var svgAuthoritativeRenders = await _svgRenderedTextAuthorityFilter.FilterAsync(
+        var resolvableExternalComponentRenders = await _unresolvedExternalComponentImportAuthorityFilter.FilterAsync(
             repositoryPath,
             projectionAuthoritativeRenders,
+            cancellationToken);
+        var svgAuthoritativeRenders = await _svgRenderedTextAuthorityFilter.FilterAsync(
+            repositoryPath,
+            resolvableExternalComponentRenders,
             cancellationToken);
         var svgTextContentAuthoritativeRenders = await _svgTextContentAuthorityFilter.FilterAsync(
             repositoryPath,
