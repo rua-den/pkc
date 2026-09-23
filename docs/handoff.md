@@ -147,43 +147,86 @@ Decision: **Fix #1 is complete only for the bounded direct-DI proof path above. 
 
 The full Agentic + Jin12 + Kesetovic benchmark has not been rerun. Keep the historical 63.9% full-corpus baseline until Level 2.
 
-## Required next action — Fix #2
+## Product-value Fix #2 checkpoint — PASS / COMPLETE for bounded paths
 
-Target: Kesetovic `PackOrder`.
+Exact production HEAD:
 
-Goal: prove frontend service URL expressions well enough to connect the relevant frontend request to the correct backend route.
+`b4dcb5187ef996cf266a584a9df8c5bec534a94a`
 
-Initial bounded scope:
+Production commits:
 
 ```text
-literal
-+ binary string concatenation
-+ template literal / template spans
-+ known local constants
-+ proven this.property values
-→ normalized route template
-→ backend route match
+b69c01e15ea24d76b25621e9e81fcf297c4af10c — fix: resolve Angular service URL expressions
+b4dcb5187ef996cf266a584a9df8c5bec534a94a — fix: bridge Angular output events to API calls
 ```
+
+Exact-SHA validation:
+
+```text
+primary CI / WorkPlay / PokeTrade   35875287680 PASS
+Loren pinned                        35875287748 PASS
+Loren-main canary                   35875287700 PASS
+Jellyfin parity                     35875287900 PASS
+```
+
+Targeted Kesetovic validation:
+
+```text
+target repository: kesetovic/crm-system
+target SHA: 8e3b74bec4fdcd0144bd65f0c1b49c8e801bd2f7
+URL-only run: 35873077699
+final Fix #2 run: 35874940385 PASS
+```
+
+Bounded URL path:
+
+`TypeScript URL expression → normalized route template → backend route match`
+
+Bounded Output-event path:
+
+`child external-template UI action → exact child handler → exact @Output → literal event discriminator → exact imported child selector → parent template $event handler → exact switch branch → parent target method → inject(ServiceType) receiver → existing service/API call → backend endpoint`
+
+Relevant regressions:
+
+```text
+tests/Pkc.Frontend.Tests/angular-url-expression-regression.cjs
+tests/Pkc.Frontend.Tests/angular-output-event-bridge-regression.cjs
+```
+
+Kesetovic PackOrder targeted result: Q3 `0% → 25% → 50%`; Q4 `60% → 70% → 80%` (baseline → URL-only → final Fix #2). Ambiguous or unsupported shapes remain fail-closed. Q3 remains partial pending displayed-value lineage.
+
+Formal R7.10 remains separate: `REPAIRED / ALL GATES PASS / PENDING INDEPENDENT REREVIEW #17`. Preserve that state and do not self-certify it from this product-value thread.
+
+## Required next action — Fix #3
+
+Target: Agentic `Users Update`.
+
+Goal: prove displayed-value lineage from `MAT_DIALOG_DATA` through `this.data.email`, form-control / FormBuilder initialization, control `email`, and `formControlName="email"` to the displayed field.
+
+Pinned target SHA: `22f2aab64617f4de7984370a5bd40e8c9535dbf5`
+
+Initial bounded lineage:
+
+`MAT_DIALOG_DATA → this.data.email → form-control / FormBuilder initialization → control email → formControlName="email" → displayed field`
 
 Regression-first sequence:
 
-1. inspect the current Kesetovic PackOrder workspace miss and the exact source expression only after freezing the workspace answer;
-2. create the smallest compile-valid TypeScript/Angular regression reproducing the URL expression shape;
-3. implement the minimum bounded evaluator in the existing frontend scanning/linking architecture;
-4. add ambiguity/fail-closed cases;
-5. run focused frontend tests;
-6. run related C#/cross-stack tests if route binding changes affect them;
-7. run the full relevant local suite;
-8. review the complete diff;
-9. create one coherent implementation commit and one push;
-10. use CI as final verification;
-11. run only the targeted Kesetovic Level-1 benchmark.
+1. freeze the current workspace-only Q3/Q4 answer before source inspection;
+2. inspect only enough pinned source to reproduce the missing lineage;
+3. create the smallest compile-valid Angular/TypeScript regression;
+4. reuse existing response-binding, form-behavior, UI-field, rendered-value and lineage architecture;
+5. require exact component/control/property identity at every promoted hop;
+6. add ambiguity/collision negative regressions;
+7. fail closed whenever identity or ownership is not proven;
+8. run focused, related, then broader relevant local tests;
+9. review the full diff and prefer one coherent implementation commit and push;
+10. run the targeted Agentic Level-1 Q3/Q4 benchmark after deterministic validation.
 
-Do **not** automatically add `HttpParams`, `HttpHeaders`, Angular `@Output` propagation or broad dataflow. If the URL proof is correct but the benchmark still misses action→API linkage, freeze that as a separate blocker and reproduce it independently.
+Do not build an unconstrained generic JavaScript/Angular data-flow engine or add unrelated semantic areas without a directly blocking Fix #3 regression.
 
-Do not start Fix #3 until Fix #2 reaches its terminal checkpoint.
+Fix #2 has reached its terminal checkpoint. Fix #3 is now UNLOCKED / ACTIVE.
 
-## Fix #3 — later
+## Fix #3 — displayed-value lineage
 
 Primary target: Agentic `Users Update`.
 
@@ -242,4 +285,4 @@ Keep working on the assigned checkpoint until:
 2. an external review/gate is genuinely required and cannot be performed in-session; or
 3. a genuinely external blocker is proven and documented.
 
-Fix #1 is at terminal state (1). The next coding checkpoint is Fix #2.
+Fix #2 is at terminal state (1). The next coding checkpoint is Fix #3.

@@ -20,8 +20,8 @@ R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 real-repo safety benchmark                       PASS
 real-repo product-value benchmark                NOT PASS / PARTIAL USEFULNESS
 product-value Fix #1 interface→concrete DI       PASS / COMPLETE FOR BOUNDED DIRECT-DI PATH
-product-value Fix #2 frontend URL resolution     UNLOCKED / NEXT
-product-value Fix #3 displayed-value lineage     LOCKED behind Fix #2 checkpoint
+product-value Fix #2 frontend URL + Output bridge PASS / COMPLETE FOR BOUNDED PATHS
+product-value Fix #3 displayed-value lineage     UNLOCKED / ACTIVE NEXT CHECKPOINT
 AI workspace preview spike                       IMPLEMENTED / VALIDATED PREVIEW / USER-AUTHORIZED
 co-located workspace Git isolation               IMPLEMENTED / VALIDATED
 formal AI-workspace W acceptance                 NOT UNLOCKED / NOT COMPLETE
@@ -156,22 +156,73 @@ overall applicable         63.9%
 
 Fix #1 now has targeted Jin12 evidence at 100% for Q1/Q2/Q4, but product-value acceptance overall remains NOT PASS until the remaining major semantic gaps are repaired and a Level-2 benchmark is run.
 
-### Next checkpoint — Fix #2 frontend service URL expression resolution
+### Product-value Fix #2 — PASS / COMPLETE for bounded paths
 
-Primary target: Kesetovic `PackOrder`.
+Exact production HEAD:
 
-Initial bounded scope:
+`b4dcb5187ef996cf266a584a9df8c5bec534a94a`
 
-- string concatenation;
-- template literals;
-- known local constants;
-- proven `this.property` values;
-- normalized route templates;
-- backend route matching.
+Production commits:
 
-Do not automatically include `HttpParams`, `HttpHeaders`, Angular event propagation, or other UI plumbing. If URL matching lands but PackOrder still lacks action→API proof, reproduce the remaining edge separately and keep it regression-first.
+```text
+b69c01e15ea24d76b25621e9e81fcf297c4af10c — fix: resolve Angular service URL expressions
+b4dcb5187ef996cf266a584a9df8c5bec534a94a — fix: bridge Angular output events to API calls
+```
 
-After Fix #2 is locally verified, run only the targeted Kesetovic Level-1 questions affected by the change. Fix #3 remains displayed-value lineage for Agentic `Users Update`.
+Exact-SHA validation for `b4dcb5187ef996cf266a584a9df8c5bec534a94a`:
+
+```text
+primary CI / WorkPlay / PokeTrade   35875287680 PASS
+Loren pinned                        35875287748 PASS
+Loren-main canary                   35875287700 PASS
+Jellyfin parity                     35875287900 PASS
+```
+
+Targeted Kesetovic validation (`kesetovic/crm-system`, SHA `8e3b74bec4fdcd0144bd65f0c1b49c8e801bd2f7`):
+
+```text
+URL-only run  35873077699
+final Fix #2  35874940385 PASS
+```
+
+The bounded URL path is:
+
+`TypeScript URL expression → normalized route template → backend route match`
+
+The bounded Output-event path is:
+
+`child external-template UI action → exact child handler → exact @Output → literal discriminator → exact imported child selector → parent template $event handler → exact switch branch → parent target method → inject(ServiceType) receiver → existing service/API call → backend endpoint`
+
+Ambiguous or unsupported URL/event/data-flow shapes remain fail-closed.
+
+Relevant regressions:
+
+```text
+tests/Pkc.Frontend.Tests/angular-url-expression-regression.cjs
+tests/Pkc.Frontend.Tests/angular-output-event-bridge-regression.cjs
+```
+
+Kesetovic PackOrder targeted result:
+
+```text
+                         baseline   URL-only   final Fix #2
+Q3 UI/API/value lineage      0%        25%          50%
+Q4 evidence trace           60%        70%          80%
+```
+
+Q3 remains partial because displayed-value origin is not yet proven.
+
+### Next checkpoint — Fix #3 displayed-value lineage
+
+Primary target: Agentic `Users Update`.
+
+Initial bounded lineage:
+
+`MAT_DIALOG_DATA → this.data.email → form-control / FormBuilder initialization → control email → formControlName="email" → displayed field`
+
+Reuse existing response-binding, form-behavior, UI-field, rendered-value and lineage architecture. Require exact component/control/property identity at every promoted hop, add ambiguity/collision regressions, and fail closed whenever identity or ownership is not proven.
+
+Fix #2 is complete for the bounded paths above. Fix #3 is now active for Agentic `Users Update` displayed-value lineage.
 
 ## Benchmark cadence
 
@@ -193,8 +244,8 @@ Do not use the full AI corpus as the normal edit-test loop.
 formal roadmap:       V0.4.7-D / R7.10 pending independent rereview #17
 workspace preview:    implemented + validated PREVIEW
 Fix #1:               bounded direct-DI traversal PASS
-Fix #2:               UNLOCKED / NEXT
-Fix #3:               locked behind current semantic checkpoint
+Fix #2:               PASS / COMPLETE FOR BOUNDED URL + OUTPUT PATHS
+Fix #3:               UNLOCKED / ACTIVE NEXT CHECKPOINT
 workspace privacy:    PRODUCT/TRACE workspace-only; ENGINEERING explicit
 benchmark policy:     Level 0 deterministic / Level 1 targeted / Level 2 full checkpoint
 tool/package:         RuaDen.Pkc.Tool 0.4.3-preview.2
