@@ -13,10 +13,12 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #15
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #15
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #16
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #16
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
+real-repo safety benchmark                       PASS
+real-repo product-value benchmark                NOT PASS / PARTIAL USEFULNESS
 V0.5 Azure DevOps input evidence                 LOCKED
 AI workspace + continuous-update plan            PREPARED / NOT UNLOCKED
 ```
@@ -26,19 +28,19 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent 
 ## Exact production candidate under review
 
 ```text
-47e098dbe910b7f6cfd933a0595370524bec1fb2
-fix: correct resolved package root type
+37a71172c8c425219aef35f5843ac2109810ae9d
+fix: preserve Angular infrastructure render evidence
 ```
 
-The relevant repair chain is:
+Relevant continuation repair chain after the #15 request:
 
 ```text
-8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors
-67c67fc25b6488dbc9f110a1b05c53a4bfee1a6c  fix: resolve nested Angular dependency selectors
-47e098dbe910b7f6cfd933a0595370524bec1fb2  fix: correct resolved package root type
+46dcf8941c67a11d96e4416774d02e555a8f6aaf  fix: bound linked Angular package selectors
+2ea361ba9d5e6e61041f38ca79e6587e12a1b745  fix: fail closed unresolved Angular component imports
+37a71172c8c425219aef35f5843ac2109810ae9d  fix: preserve Angular infrastructure render evidence
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `47e098...`; do not reset `main`.
+A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `37a711...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -53,57 +55,37 @@ mutation   67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a new real regression is demonstrated.
 
-## Rereview #14 result and repaired boundary
+## Latest R7.10 repairs
 
-Independent rereview #14 of `3e6fa774...` **FAILED**. The blocker was external Angular dependency components whose selectors are not visible in product-source `@Component` declarations. A native-looking host such as `div[ext-shell]` can be a component host from an imported package; without selector knowledge PKC could over-promote a lexical child interpolation even when that component does not project the child.
+Continuation review after the #15 request found three remaining package/import authority seams:
 
-Result record:
+1. linked/workspace packages could resolve outside `node_modules` while still being valid application dependencies;
+2. unresolved external symbols used in standalone component `imports` could hide an unknown component projection boundary;
+3. fail-closed handling of unresolved packages could over-filter normal Angular infrastructure imports and const-array `imports`.
 
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
+The repair chain above now accepts linked package metadata when its final target remains inside the repository, fails closed when a linked package escapes repository scope, fails closed when an unresolved external symbol is actually used in component `imports`, preserves known Angular framework infrastructure imports, and follows direct or bounded const-array component imports.
 
-`8f667abc...` added bounded imported-package selector discovery from Angular Ivy `ɵɵComponentDeclaration` metadata. It intentionally reads dependency declaration metadata only for projection authority; dependency source remains excluded from product facts/knowledge, and directives do not become projection blockers merely because they have selectors.
-
-A continuation review then found a second compile-valid layout hole: `8f667abc...` resolved packages only from `<repository-root>/node_modules`. A normal monorepo/nested Angular app can instead use:
-
-```text
-repo/
-  frontend/
-    package.json
-    src/price.component.ts
-    node_modules/@vendor/ui/index.d.ts
-```
-
-The app can resolve `@vendor/ui` correctly while PKC misses the selector if it only checks root `node_modules`.
-
-`67c67fc...` repaired this generically by resolving each imported package from the importing TypeScript file directory upward toward repository root, choosing the nearest matching `node_modules` package. Scoped packages and package subpath imports remain supported; root-hoisted dependencies still resolve. Dependency package symlinks are accepted only when their resolved target remains inside the selected `node_modules` tree. A nested-app regression proves the authority downgrade.
-
-The first CI attempt exposed one compile-only type mismatch around `ResolveLinkTarget()` (`FileSystemInfo` versus `DirectoryInfo`). `47e098db...` corrects that type without changing the resolver semantics and is the final candidate under review.
-
-## Regression coverage
-
-Relevant projection coverage now includes:
+Focused regressions:
 
 ```text
-tests/Pkc.CSharp.Tests/AngularComponentProjectionRenderAuthorityRegressionTests.cs
 tests/Pkc.CSharp.Tests/AngularNestedNodeModulesProjectionAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularUnresolvedExternalComponentImportAuthorityRegressionTests.cs
 ```
 
-The nested regression constructs an Angular app under `frontend/` with its own `node_modules/@vendor/ui/index.d.ts`, imports the external component, uses an attribute selector host, and proves no authoritative `ui-member-render` / `ui-member-visibility` survives beneath the unproven projection boundary.
+## Exact-SHA verification
 
-## Exact-SHA standard verification
-
-All required standard gates passed on exact production `47e098dbe910b7f6cfd933a0595370524bec1fb2`:
+All required standard gates passed on exact production `37a71172c8c425219aef35f5843ac2109810ae9d`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35818350915 — PASS
-pinned Loren                                35818350859 — PASS
-Loren-main canary                           35818350997 — PASS
-pinned Jellyfin + parity/provenance         35818350930 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35823346084 — PASS
+pinned Loren                                35823346060 — PASS
+Loren-main canary                           35823346077 — PASS
+pinned Jellyfin + parity/provenance         35823346046 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             248 / 248 PASS
+C# tests             253 / 253 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -121,72 +103,67 @@ product features      116
 knowledge Markdown    504 files
 analysis modes        43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10732606989
-sha256:1d2b38aadc18828a75625ea94651f2a1acfc3a3813a3cc9df0c57d9be4b1bde2
+artifact              10734541254
+sha256:f071f9841ffc4d95edd78d0334ed703c0ff53e7c55271e68facea47ca59d45a6
 ```
 
-Local repository execution is not claimed in this continuation because the available execution container could not resolve `github.com` and has no local .NET toolchain. Exact-SHA GitHub Actions are the completed verification evidence.
+## Real-repository benchmark
 
-## Final pinned three-repository safety benchmark
-
-A temporary wrapper branch based exactly on production `47e098...` changed only one workflow branch-trigger line:
+Exact production `37a711...` was benchmarked through a wrapper that changes only the branch trigger:
 
 ```text
-base production: 47e098dbe910b7f6cfd933a0595370524bec1fb2
-wrapper commit:  437d14a9b9ed36ce24e7fd8edfb2cef31eed7f6c
-run:             35818835753 — PASS, 3 / 3 jobs
-```
-
-Direct artifact inspection found, for every pinned repository:
-
-```text
-ui-member-render:           0
-ui-member-visibility:       0
-renderAuthority markers:    0
-selected API/R7.9 terminal: 0
-joint/combined visibility:  0
-```
-
-Counts remain stable:
-
-```text
-jin12-xyz/CRM                                      415 facts / 1,580 relations / 25 knowledge files
-hackersandwizards/agentic-engineering-training-angular 441 facts /   660 relations / 26 knowledge files
-kesetovic/crm-system                               488 facts / 2,054 relations / 28 knowledge files
+production:      37a71172c8c425219aef35f5843ac2109810ae9d
+wrapper:         f76c946e15cfe37d380745e0a2efb22cd3fc9123
+run:             35823872896 — PASS, 3 / 3
 ```
 
 Artifacts:
 
 ```text
-jin12          10732532350  sha256:6f4e41e7b18357d5a06036bd14a39b15988ba437b013f78b0ecfee9af9b15f9f
-agentic        10733025143  sha256:6c360ae70b72d9d8678b0d209f233d565f176a2aa878a5a20d62876638adb040
-kesetovic      10732851433  sha256:16a95ee2bbb4155d33a1c3f6dfdf60767f036d389a83bff98e2954a86f348c54
+agentic-angular  10734561505  sha256:b15120b5b17580ed9defe3600147ed0998f5cd9e121f8a6b6cc02297fec5daf4
+jin12-crm        10734496662  sha256:36aa1772e18ebba7c3911429edbf51eb51c256f16065f0563b4c15d59b4ec8d1
+kesetovic-crm    10733409752  sha256:d1f90d1cb1eb97d5ff6129134254bc11981faf28d78fd92fd9617a1a4f212fb0
 ```
 
-Agentic mutation-causality remains closed: the two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, and their exact fact IDs occur zero times outside raw facts in candidates, product features and generated Markdown.
+Canonical evidence is byte-stable versus the preceding safety benchmark for all three repos. No new unsupported R7.9/R7.10 authority appears.
 
-Interpretation:
+### Benchmark interpretation
+
+Do not collapse benchmark results into one green/red bit.
 
 ```text
-Safety / fail-closed: PASS
-R7.14 positive real-project yield: NOT PASS
+Safety / fail-closed stability        PASS
+Backend workflow usefulness           PARTIAL / PROMISING
+Feature-summary fidelity              NOT PASS
+Cross-method/interface reconstruction NOT PASS
+Object defaults/computations          NOT PASS
+Side-effect synthesis                 NOT PASS
+UI → API usefulness                   PARTIAL / REPO-DEPENDENT
+R7.14 positive cross-layer yield      NOT PASS
+Overall product-value benchmark       NOT PASS
 ```
 
-Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-nested-dependency-selector-benchmark.md`.
+Detailed known-answer scorecard:
+
+`docs/benchmarks/2026-09-23-real-repo-product-value-scorecard.md`
+
+A benchmark is not product-passing merely because jobs are green, output files exist, or authority positives are zero.
 
 ## Current external gate
 
 Required next gate:
 
 ```text
-independent rereview #15 of exact 47e098dbe910b7f6cfd933a0595370524bec1fb2
+independent rereview #16 of exact 37a71172c8c425219aef35f5843ac2109810ae9d
 ```
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-15-request.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-16-request.md`.
 
-If rereview #15 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
+If rereview #16 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E.
 
-This implementation continuation repaired the blocker and must not self-certify its own production candidate.
+E must then use the known-answer scorecard as product-value acceptance evidence. R7.14 remains required and NOT PASS. V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
+
+This implementation/benchmark continuation must not self-certify its own production candidate.
 
 ## Prepared future productization packet
 
@@ -195,12 +172,12 @@ docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md
 docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md
 ```
 
-After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing is AI workspace + `run/verify`, then semantic `update/diff`, then Azure DevOps evidence.
+After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing remains AI workspace + `run/verify`, then semantic `update/diff`, then Azure DevOps evidence.
 
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #15
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #16
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
