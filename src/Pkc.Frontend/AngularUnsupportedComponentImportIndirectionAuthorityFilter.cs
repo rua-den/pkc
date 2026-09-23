@@ -103,12 +103,10 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
 
         foreach (var source in sources.Values)
         {
-            var aliases = ScalarAliasRegex.Matches(source.Text)
+            var scalarAliases = ScalarAliasRegex.Matches(source.Text)
                 .Cast<Match>()
-                .ToDictionary(
-                    match => match.Groups["name"].Value,
-                    match => match.Groups["target"].Value,
-                    StringComparer.Ordinal);
+                .Select(match => match.Groups["name"].Value)
+                .ToHashSet(StringComparer.Ordinal);
             var imports = ReadLocalImports(source, sources);
 
             foreach (Match component in ComponentDecoratorRegex.Matches(source.Text))
@@ -123,8 +121,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
                     .Select(match => match.Value)
                     .ToHashSet(StringComparer.Ordinal);
 
-                var unsupportedScalarAlias = identifiers.Any(identifier =>
-                    HasScalarAlias(identifier, aliases));
+                var unsupportedScalarAlias = identifiers.Overlaps(scalarAliases);
                 var unsupportedDefaultReExport = imports.Any(imported =>
                     identifiers.Contains(imported.LocalName) &&
                     HasDefaultReExport(
@@ -149,25 +146,6 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         }
 
         return blocked;
-    }
-
-    private static bool HasScalarAlias(
-        string identifier,
-        IReadOnlyDictionary<string, string> aliases)
-    {
-        var visited = new HashSet<string>(StringComparer.Ordinal);
-        var current = identifier;
-        while (aliases.TryGetValue(current, out var target))
-        {
-            if (!visited.Add(current))
-            {
-                return true;
-            }
-
-            current = target;
-        }
-
-        return visited.Count > 0;
     }
 
     private static IReadOnlyList<LocalImport> ReadLocalImports(
