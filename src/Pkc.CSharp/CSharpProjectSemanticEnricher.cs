@@ -607,10 +607,13 @@ public sealed class CSharpProjectSemanticEnricher
             GetTypeKey(pair.First.Type) == GetTypeKey(pair.Second.Type));
 
     private static string GetSymbolKey(ISymbol symbol) =>
-        symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+        $"{GetAssemblyKey(symbol.ContainingAssembly)}::{symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)}";
 
     private static string GetTypeKey(ITypeSymbol symbol) =>
-        symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        $"{GetAssemblyKey(symbol.ContainingAssembly)}::{symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
+
+    private static string GetAssemblyKey(IAssemblySymbol? assembly) =>
+        assembly?.Identity.ToString() ?? "<no-assembly>";
 
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}";
