@@ -23,12 +23,30 @@ if (!Directory.Exists(repositoryPath))
 
 try
 {
+    Progress("start", $"PKC {command} started.");
+
+    Progress("scan:csharp", "Scanning C# repository evidence...");
     var csharpFacts = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
+    Progress(
+        "scan:csharp",
+        $"Complete: {csharpFacts.Facts.Count} facts, {csharpFacts.Relations.Count} relations.");
+
+    Progress("scan:frontend", "Scanning frontend repository evidence...");
     var frontendFacts = await new FrontendScanner().ScanAsync(repositoryPath);
+    Progress(
+        "scan:frontend",
+        $"Complete: {frontendFacts.Facts.Count} facts, {frontendFacts.Relations.Count} relations.");
+
+    Progress("merge", "Merging repository evidence...");
     var facts = Merge(csharpFacts, frontendFacts);
+    Progress("merge", $"Complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations.");
+
+    Progress("link", "Building cross-stack workflow candidates...");
     var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
+    Progress("enrich", "Enriching workflow candidates with validation and visibility evidence...");
     candidates = new ValidationConsistencyCandidateEnricher().Enrich(candidates, facts);
     candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
+    Progress("link", $"Complete: {candidates.Candidates.Count} workflow candidates.");
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
@@ -40,11 +58,13 @@ try
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    Progress("write", "Writing scan artifacts...");
     var factsPath = Path.Combine(outputDirectory, "facts.json");
     await File.WriteAllTextAsync(factsPath, JsonSerializer.Serialize(facts, options));
 
     var candidatesPath = Path.Combine(outputDirectory, "feature-candidates.json");
     await File.WriteAllTextAsync(candidatesPath, JsonSerializer.Serialize(candidates, options));
+    Progress("write", "Scan artifacts written.");
 
     Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} workflow candidates");
     Console.WriteLine(factsPath);
@@ -57,19 +77,30 @@ try
         var workflows = new List<FeatureKnowledge>();
         var canonicalKnowledgeFiles = new Dictionary<string, string>(StringComparer.Ordinal);
 
+        Progress("synthesize", $"Synthesizing {candidates.Candidates.Count} workflow candidates...");
+        var synthesizedCount = 0;
         foreach (var candidate in candidates.Candidates)
         {
             var workflow = await synthesizer.SynthesizeAsync(candidate);
             workflows.Add(workflow);
             var relativePath = workflowRenderer.GetRelativePath(workflow);
             canonicalKnowledgeFiles[relativePath] = workflowRenderer.Render(workflow);
+
+            synthesizedCount++;
+            if (ShouldReportProgress(synthesizedCount, candidates.Candidates.Count))
+            {
+                Progress("synthesize", $"Workflows: {synthesizedCount}/{candidates.Candidates.Count}.");
+            }
         }
 
+        Progress("product", "Building product features...");
         var productFeatures = new ProductFeatureBuilder().Build(workflows);
         var productFeaturesPath = Path.Combine(outputDirectory, "product-features.json");
         await File.WriteAllTextAsync(productFeaturesPath, JsonSerializer.Serialize(productFeatures, options));
         Console.WriteLine(productFeaturesPath);
+        Progress("product", $"Complete: {productFeatures.Features.Count} product features.");
 
+        Progress("knowledge", "Rendering canonical knowledge files...");
         var featureRenderer = new ProductFeatureMarkdownRenderer();
         foreach (var feature in productFeatures.Features)
         {
@@ -84,15 +115,19 @@ try
         var packRenderer = new PortableKnowledgePackRenderer();
         canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] =
             packRenderer.RenderInstructions(sourceRepositoryLabel);
+        Progress("knowledge", $"Complete: {canonicalKnowledgeFiles.Count} canonical files ready.");
 
         if (command == "run")
         {
+            Progress("workspace", "Rendering AI workspace...");
             var workspaceFiles = new AiWorkspaceRenderer().Render(
                 canonicalKnowledgeFiles,
                 sourceRepositoryLabel);
+            Progress("workspace", "Writing AI workspace...");
             var workspacePath = await new AiWorkspaceWriter().WriteAsync(
                 repositoryPath,
                 workspaceFiles);
+            Progress("workspace", $"Complete: {workspaceFiles.Count} workspace files written.");
 
             Console.WriteLine($"PKC run complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features");
             Console.WriteLine($"PKC AI workspace generated: {workspacePath}");
@@ -105,6 +140,7 @@ try
         }
         else
         {
+            Progress("build", "Reconciling and writing legacy knowledge outputs...");
             ReconcileGeneratedKnowledge(repositoryPath, canonicalKnowledgeFiles);
             foreach (var pair in canonicalKnowledgeFiles.OrderBy(pair => pair.Key, StringComparer.Ordinal))
             {
@@ -123,6 +159,7 @@ try
             var archivePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.ArchiveFileName);
             WriteKnowledgeArchive(archivePath, canonicalKnowledgeFiles);
             Console.WriteLine(archivePath);
+            Progress("build", "Legacy knowledge outputs written.");
 
             Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
             Console.WriteLine();
@@ -141,6 +178,13 @@ catch (Exception exception)
     Console.Error.WriteLine($"PKC {command} failed: {exception.Message}");
     return 1;
 }
+
+static void Progress(string phase, string message) =>
+    Console.Error.WriteLine($"[pkc:{phase}] {message}");
+
+static bool ShouldReportProgress(int completed, int total) =>
+    completed > 0 && total > 0 &&
+    (completed == 1 || completed == total || completed % 25 == 0);
 
 static string Resolve(string repositoryPath, string relativePath) =>
     Path.Combine(repositoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
