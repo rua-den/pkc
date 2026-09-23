@@ -2,64 +2,70 @@
 
 Last updated: 2026-09-23
 
-Use this file when continuing PKC in another coding/review thread, especially the company Claude audit requested by the user.
+This handoff is for the next Claude Code / Opus coding or audit session.
 
 ## Read first
 
-For Claude Code, root `CLAUDE.md` is the bootstrap. Then read in this order before changing production code:
+1. root `CLAUDE.md`
+2. `AGENTS.md`
+3. `docs/status.md`
+4. this handoff
+5. `docs/milestones.md`
+6. `docs/product-knowledge-contract.md`
+7. `docs/v0.4.7-acceptance-plan.md`
+8. `docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md`
+9. `docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md`
+10. `docs/benchmarks/product-value-benchmark-protocol.md`
+11. `docs/benchmarks/2026-09-23-ai-question-answerability-benchmark.md`
+12. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
+13. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when working on the formal R7.10/D gate
 
-1. `AGENTS.md`
-2. `docs/status.md`
-3. this handoff
-4. `docs/milestones.md`
-5. `docs/product-knowledge-contract.md`
-6. `docs/v0.4.7-acceptance-plan.md`
-7. `docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md`
-8. `docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md`
-9. `docs/benchmarks/product-value-benchmark-protocol.md`
-10. `docs/benchmarks/2026-09-23-ai-question-answerability-benchmark.md`
-11. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
-12. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` when working on the formal R7.10/D gate
+Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. The repository is the source of truth; never reset to a historical SHA merely because this handoff names it.
 
-Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. Never reset to a historical SHA merely because this handoff names it.
+## Keep these two states separate
 
-## Two states must remain separate
-
-### 1. Formal V0.4.7 acceptance state
+### Formal V0.4.7 state
 
 ```text
-A/B/C                                  PASS / COMPLETE
-R7.9                                   PASS / COMPLETE
-mutation-causality                     PASS / CLOSED
-R7.10                                  REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
-V0.4.7-D                               PENDING INDEPENDENT REREVIEW #17
-V0.4.7-E                               LOCKED
-R7.14                                  NOT PASS / REQUIRED FOR E
+A/B/C                    PASS / COMPLETE
+R7.9                     PASS / COMPLETE
+mutation-causality       PASS / CLOSED
+R7.10                    REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
+V0.4.7-D                 PENDING INDEPENDENT REREVIEW #17
+V0.4.7-E                 LOCKED
+R7.14                    NOT PASS / REQUIRED FOR E
 ```
 
-Formal R7.10 candidate under review:
+Formal R7.10 candidate:
 
 ```text
 96205a9a643864facaf9642a3b390ddcdbed59d9
 fix: tolerate duplicate Angular import aliases
 ```
 
-The implementation thread that authored R7.10 repairs must not self-certify it. Rereview #17 remains an external formal gate.
+Do not self-certify this candidate from its implementation continuation.
 
-### 2. User-authorized AI workspace preview spike
+### User-authorized AI workspace preview
 
-The user explicitly required a usable Claude/Codex workspace today for a real company repository, so this isolated productization slice was implemented before formal W unlock.
+The user explicitly required same-day company-repository testing, so the isolated workspace preview is allowed before formal W unlock.
 
-Exact source:
+Current exact workspace/privacy production source:
+
+```text
+bf0ef686f2591841b85f36583a5fec7afb049060
+feat: enforce workspace privacy and benchmark cadence
+```
+
+Predecessors:
 
 ```text
 6e845dc16718e74adac38e4aa49ee75023f99fa5  feat: generate AI product workspace
 b76427f67b78ab8964284c1a6c43ec89e5656375  fix: isolate pkc run workspace
 ```
 
-This preview is implemented and validated, but it does **not** mark formal W complete.
+This preview does not mark formal W complete.
 
-## Current preferred user flow
+## Preferred user flow
 
 ```text
 pkc run <repository-path>
@@ -67,7 +73,7 @@ cd <repository-path>/.pkc/workspace
 claude
 ```
 
-For direct source checkout execution:
+Direct source-checkout flow:
 
 ```text
 dotnet build PKC.sln --configuration Release
@@ -76,7 +82,7 @@ cd <repository-path>/.pkc/workspace
 claude
 ```
 
-The target AI should start from generated `CLAUDE.md` and should not require the user to manually choose or upload `PKC_KNOWLEDGE.md`.
+The user should not have to open or upload `PKC_KNOWLEDGE.md` for the preferred UX.
 
 ## Generated workspace contract
 
@@ -100,65 +106,93 @@ The target AI should start from generated `CLAUDE.md` and should not require the
       catalog.json
 ```
 
-Important boundaries:
+Required boundaries:
 
 - target root `CLAUDE.md` untouched;
 - target root `AGENTS.md` untouched;
-- `pkc run` emits no root `knowledge/`, `PKC_KNOWLEDGE.md`, or `PKC_KNOWLEDGE.zip`;
-- `pkc build` still emits legacy compatibility artifacts;
-- generated workspace is replaced on the next run so stale generated files are removed;
-- output paths may not escape `.pkc/workspace`;
-- default answer mode is PRODUCT;
-- TRACE is explicit;
-- ENGINEERING is explicit and honest about source availability;
-- manifest currently says `PREVIEW` because `pkc verify` / READY-PARTIAL-FAILED is not implemented.
+- no root legacy knowledge artifacts from `pkc run`;
+- stale workspace files removed on regeneration;
+- output paths confined to `.pkc/workspace`;
+- PRODUCT default reads generated workspace only;
+- TRACE is explicit and may cite paths/symbols without code dumps;
+- ENGINEERING is explicit and requires approved source-enabled context;
+- generated workspace contains product knowledge, not source code/raw facts;
+- manifest remains `PREVIEW` until `pkc verify` exists.
 
-Primary implementation files:
+## Company-source privacy boundary
+
+Treat proprietary target source as confidential.
+
+- Source inspection/editing occurs only in the approved company Claude Code / enterprise source-enabled environment.
+- Never copy proprietary source-code bodies, source files, secrets, credentials, or raw fact payloads into PKC repo docs, public issues, generated workspaces or benchmark reports.
+- Benchmark reports may contain business behavior, scores, endpoint names, source paths, symbol names and concise evidence descriptions.
+- Do not commit the target company repository or its `.pkc/` output into PKC.
+- PKC controls generated workspace content and routing, not provider/network retention policy. Use the company-approved Claude environment for private source.
+
+## Benchmark cadence
+
+Protocol:
+
+`docs/benchmarks/product-value-benchmark-protocol.md`
+
+Do **not** run full AI benchmark after every edit.
+
+### Level 0 — deterministic, default
+
+For every change run the appropriate focused/related/full tests and deterministic gates. Examples include build, regression, authority/no-leak checks, workspace isolation, expected files, output diff and idempotence.
+
+No AI reread is needed when the change cannot alter product answers.
+
+### Level 1 — targeted AI product-value
+
+Use when a change can alter answers. Select only the affected pinned repo/workflow/questions.
+
+Two-phase rule:
 
 ```text
-src/Pkc.Cli/Program.cs
-src/Pkc.Knowledge/AiWorkspaceRenderer.cs
-src/Pkc.Knowledge/AiWorkspaceWriter.cs
-tests/Pkc.CSharp.Tests/AiWorkspaceRendererTests.cs
+phase 1: open only generated .pkc/workspace → answer + record
+phase 2: inspect minimum required pinned/company source locally in approved environment → known answer → score
 ```
 
-## Exact validation on `b76427...`
+Never paste source code into the report.
 
-All standard gates PASS:
+Typical Level-1 triggers:
+
+- interface → implementation traversal;
+- permissions/preconditions;
+- state/default/computation extraction;
+- side effects;
+- frontend/API linkage;
+- displayed-value lineage;
+- feature/workflow synthesis;
+- authority change that affects answerability.
+
+### Level 2 — full AI product-value
+
+Full Agentic/Jin12/Kesetovic corpus only for acceptance/release/demo checkpoints, major semantic/routing changes, broad regression risk, or explicit request.
+
+Safety PASS is never automatically product-value PASS.
+
+## Why `bf0ef686...` does not require full AI Q&A
+
+This checkpoint changes workspace privacy/routing instructions, manifest declarations, benchmark cadence and their regressions. It does not change extracted business semantics or canonical knowledge.
+
+Use Level 0 deterministic validation for this checkpoint. Future semantic fixes should use Level 1 targeted AI benchmark first.
+
+## Exact validation for `bf0ef686...`
+
+Required exact-SHA runs:
 
 ```text
-CI / full tests / WorkPlay / PokeTrade  35845593687 — PASS
-pinned Loren                            35845593592 — PASS
-Loren-main canary                       35845593715 — PASS
-pinned Jellyfin                         35845593692 — PASS
+CI / full tests / WorkPlay / PokeTrade  35848727746
+pinned Loren                            35848727772
+Loren-main canary                       35848727756
+pinned Jellyfin                         35848727793
 ```
 
-```text
-Release build        0 warnings / 0 errors
-C#                   262 / 262 PASS
-frontend             13 / 13 PASS
-tool pack/install    PASS
-WorkPlay             PASS
-PokeTrade            PASS
-```
+The docs handoff should only claim this checkpoint validated when all four are PASS.
 
-Pinned Jellyfin remains:
-
-```text
-43,365 facts
-195,316 relations
-386 workflows
-116 product features
-504 knowledge Markdown files
-43,365 / 43,365 project-semantic
-portable parity PASS
-artifact 10743487151
-sha256:5c2f06b03236aae82dabc92eb674befcfe866a08afab0674921ee94faf088fa3
-```
-
-## Isolated workspace smoke
-
-Validation-only wrapper:
+Previous isolated end-to-end `pkc run` smoke remains relevant for unchanged CLI/writer mechanics:
 
 ```text
 branch   benchmark/workspace-b76427
@@ -166,67 +200,7 @@ commit   1ee7b0d523f29dcbb7f45494d2c9461e9d1027ce
 run      35845652352 — PASS
 ```
 
-The wrapper adds one smoke workflow only; source under test is exact `b76427...`.
-
-It runs `pkc run` on a temporary WorkPlay copy with pre-existing team root `CLAUDE.md`/`AGENTS.md` and verifies:
-
-```text
-root team instructions preserved    PASS
-legacy root knowledge absent        PASS
-workspace bootloaders present       PASS
-START_HERE / policy / catalog       PASS
-manifest PREVIEW/isolation fields   PASS
-known WorkPlay product rules        PASS
-```
-
-Do not merge the wrapper workflow blindly. Decide during audit whether an equivalent workspace smoke belongs permanently in CI.
-
-## Mandatory product-value benchmark
-
-The user explicitly requires agents to benchmark the **actual generated AI workspace**, not merely count facts or read `PKC_KNOWLEDGE.md`.
-
-Protocol:
-
-`docs/benchmarks/product-value-benchmark-protocol.md`
-
-After any product-knowledge/workspace change:
-
-```text
-candidate code
-→ pkc run pinned real repo
-→ AI opens only .pkc/workspace
-→ ask standard PO/QC questions
-→ record generated answer before source inspection
-→ inspect pinned source known answer
-→ compare + score
-→ report percentages + concrete misses
-→ choose next highest-ROI repair
-```
-
-Standard questions:
-
-1. Who may perform the action and what preconditions apply?
-2. What state/data changes after success?
-3. Which UI action calls which API and where does the displayed value come from?
-4. What evidence trace supports the answer?
-
-Use PASS / PARTIAL / FAIL / N/A plus explicit percentage components. Do not turn a safety PASS into a product-value PASS.
-
-Reference baseline:
-
-```text
-Agentic Users Update       80.8%
-Jin12 Contacts Update      40.0%
-Kesetovic PackOrder        65.0%
-permission/preconditions   90.0%
-state changes              61.0%
-UI/API/value lineage       25.0%
-evidence trace             66.7%
-backend PO/QC core         72.6%
-overall applicable         63.9%
-```
-
-These are baseline evidence only. Recompute them after a material knowledge change.
+Current privacy/cadence content is covered by `AiWorkspaceRendererTests`.
 
 ## Company Claude next action
 
@@ -234,22 +208,23 @@ Primary request:
 
 `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
 
-The company Claude session should:
+Claude Opus / Claude Code should:
 
-1. independently audit exact workspace source `b76427...` against the isolation/routing/answer-contract boundary;
-2. reproduce any concrete defect with a focused regression;
-3. implement the minimum generic repair;
-4. run focused/related/full validation locally when available;
-5. push one coherent checkpoint rather than using CI as an edit loop;
-6. run the mandatory workspace product-value benchmark after changes that affect output or routing;
-7. record exact scores and concrete misses in the handoff;
-8. keep formal D/E/W acceptance claims separate from the user-authorized preview.
+1. verify current `main` and exact workspace/privacy source;
+2. audit generated routing, privacy/no-code-dump behavior and benchmark cadence;
+3. reproduce any concrete defect regression-first;
+4. implement the minimum generic fix;
+5. run focused → related → broader deterministic validation;
+6. select benchmark Level 0/1/2 based on semantic impact rather than habit;
+7. for Level 1/2, record workspace-only answer before source inspection;
+8. source-cross-check only inside approved company environment;
+9. report behavior/scores/evidence references, not proprietary code;
+10. use one coherent implementation commit/push when possible;
+11. update status/handoff after a meaningful verified checkpoint.
 
-If the audit finds the workspace boundary sound, the preview can be used immediately on the real company/team repository.
+If the workspace/privacy boundary is sound, continue to the next highest-value product gap only within the user-authorized preview scope while formal D/E/W gates remain separate.
 
-## Real team-repository validation
-
-This is the next highest-value external/product check:
+## Real company repository test
 
 ```text
 pkc run <TEAM_REPOSITORY_PATH>
@@ -257,13 +232,22 @@ cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
 claude
 ```
 
-Then benchmark the actual team workspace using the same product-value protocol. For company/private source, keep source and generated artifacts within the company-approved environment.
+Normal PO/QA use should stay in the workspace.
 
-If `.pkc/` is not already ignored in the team repository, do not accidentally commit generated PKC output.
+If benchmarking the team repository:
 
-## Known product-value gaps after workspace boundary audit
+```text
+1. ask from workspace only and record answer
+2. source-cross-check locally in approved company Claude Code
+3. score match
+4. report misses without code dump
+```
 
-The current known-answer corpus still points to:
+Do not commit `.pkc/` unless the target repository explicitly wants generated PKC artifacts under version control.
+
+## Known product-value gaps
+
+Current known-answer corpus points to:
 
 1. interface → concrete implementation traversal;
 2. frontend event/service URL-expression linkage;
@@ -273,14 +257,14 @@ The current known-answer corpus still points to:
 6. feature-summary fidelity;
 7. R7.14 positive real-project yield without weakening authority.
 
-Do not opportunistically attack all of them in one patch. Let the mandatory benchmark identify the highest-value next repair.
+Use targeted benchmark evidence to select one high-ROI repair at a time.
 
-## Terminal-state rule
+## Terminal state
 
-For the workspace audit/code continuation, keep moving until one of these is reached:
+Keep moving on the assigned checkpoint until one of:
 
-1. current workspace checkpoint is PASS and locally/exact-SHA verified;
+1. PASS and verified;
 2. a required external review/gate cannot be performed in-session;
 3. a genuinely external blocker is proven and documented.
 
-Test failure, build failure, command failure, tool failure, a hanging process, ambiguity, or the first unsuccessful approach are not terminal states.
+Test/build/tool failures and first unsuccessful approaches are not terminal states.

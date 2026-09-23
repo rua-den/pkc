@@ -1,39 +1,39 @@
-# AI Workspace Preview — Company Claude Audit Request — 2026-09-23
+# AI Workspace Preview — Company Claude Audit / Coding Request — 2026-09-23
 
 ## Purpose
 
-Audit and continue the user-authorized demo-critical AI workspace preview without falsely advancing the formal V0.4.7 milestone.
+Audit and continue the user-authorized AI workspace preview for real company-repository use without falsely advancing the formal V0.4.7 roadmap.
 
-This audit is specifically for the new product UX:
+Primary product UX:
 
 ```text
 pkc run <repository-path>
 → <repository>/.pkc/workspace/
-→ Claude/Codex opens the generated workspace
-→ asks Product Owner / QA questions without manually selecting PKC_KNOWLEDGE.md
+→ Claude Code / approved company agent opens the generated workspace
+→ Product Owner / QA questions are answered without manually selecting PKC_KNOWLEDGE.md
 ```
 
-## Exact implementation to audit
+## Exact workspace/privacy candidate
 
 ```text
-b76427f67b78ab8964284c1a6c43ec89e5656375
-fix: isolate pkc run workspace
+bf0ef686f2591841b85f36583a5fec7afb049060
+feat: enforce workspace privacy and benchmark cadence
 ```
 
-Parent feature commit:
+Relevant predecessor commits:
 
 ```text
-6e845dc16718e74adac38e4aa49ee75023f99fa5
-feat: generate AI product workspace
+6e845dc16718e74adac38e4aa49ee75023f99fa5  feat: generate AI product workspace
+b76427f67b78ab8964284c1a6c43ec89e5656375  fix: isolate pkc run workspace
 ```
 
-Do not reset `main` to these SHAs if a later docs-only handoff commit sits above them. Inspect the exact production behavior and current `main` history.
+Do not reset current `main` to these SHAs if a later docs-only `[skip ci]` handoff sits above them. Review the exact production behavior while keeping current repository history intact.
 
 ## Formal milestone boundary
 
-The workspace preview was explicitly authorized by the user for same-day real-team testing. It is a productization spike, **not** evidence that the formal roadmap gate was completed.
+The workspace preview is explicitly user-authorized for company testing. It is a productization spike, not evidence that formal roadmap gates are complete.
 
-At the time of this request:
+Keep this state separate:
 
 ```text
 R7.10 / V0.4.7-D   pending independent rereview #17
@@ -44,7 +44,7 @@ formal W acceptance not unlocked / not complete
 
 Do not mark D, E, W, U, or V0.5 complete merely because the preview works.
 
-## Required read order
+## Required read order for Claude Opus / Claude Code
 
 1. root `CLAUDE.md`
 2. `AGENTS.md`
@@ -58,11 +58,23 @@ Do not mark D, E, W, U, or V0.5 complete merely because the preview works.
 10. `docs/benchmarks/2026-09-23-ai-question-answerability-benchmark.md`
 11. this request
 
-Then inspect current `main`, recent commits, production code and regressions.
+Then inspect current `main`, recent commits, working tree state, production code and regressions.
 
-## Implemented preview contract
+## Company-source privacy boundary
 
-`pkc run <repo>` must generate only the product workspace and PKC metadata under `.pkc`:
+Company source is confidential unless the company explicitly says otherwise.
+
+- Perform proprietary source inspection/editing only inside the approved source-enabled/company Claude Code or enterprise environment.
+- Never copy company source files, code snippets, secrets, credentials, raw `.pkc/facts.json`, or proprietary file contents into PKC repo docs, benchmark reports, public issues, or generated product workspaces.
+- Benchmark reports may contain business behavior, scores, endpoints, source paths, symbol names and bounded evidence descriptions; they must not contain source-code bodies.
+- Never commit the company target repository or its generated `.pkc/` output into the PKC repository.
+- PRODUCT/QA usage must stay inside generated `.pkc/workspace` by default.
+- ENGINEERING/source inspection is explicit and local to the approved environment.
+- PKC controls generated workspace content and routing. It does not control provider/network retention policy; proprietary source must therefore use the company-approved Claude environment.
+
+## Implemented generated workspace contract
+
+`pkc run <repo>` generates PKC metadata and the product workspace under `.pkc`:
 
 ```text
 <repo>/.pkc/
@@ -86,120 +98,139 @@ Then inspect current `main`, recent commits, production code and regressions.
 
 Required properties:
 
-- do not overwrite source-root `CLAUDE.md`;
-- do not overwrite source-root `AGENTS.md`;
-- `pkc run` must not generate root `knowledge/`, `PKC_KNOWLEDGE.md`, or `PKC_KNOWLEDGE.zip`;
-- legacy `pkc build` retains those compatibility outputs;
+- source-root `CLAUDE.md` is never overwritten;
+- source-root `AGENTS.md` is never overwritten;
+- `pkc run` emits no root `knowledge/`, `PKC_KNOWLEDGE.md`, or `PKC_KNOWLEDGE.zip`;
+- legacy `pkc build` retains compatibility outputs;
 - stale generated workspace files are replaced by the next run;
-- workspace path traversal is rejected;
-- generated bootloaders route the AI through START_HERE + answer contract + catalog;
-- PRODUCT is the default response mode;
-- TRACE and ENGINEERING require explicit user intent;
-- unsupported behavior must remain unknown rather than invented;
-- the manifest must say `PREVIEW`, not `READY`, because `pkc verify` has not been implemented.
+- path traversal outside `.pkc/workspace` is rejected;
+- generated `CLAUDE.md` / `AGENTS.md` route through START_HERE + answer contract + catalog;
+- PRODUCT is default and does not inspect source;
+- TRACE is explicit and may identify paths/symbols without code dumps;
+- ENGINEERING is explicit and requires approved source-enabled context;
+- benchmark phase 1 is workspace-only;
+- benchmark source cross-check is phase 2 and local to the approved environment;
+- manifest remains `PREVIEW`, not `READY`;
+- manifest states that generated workspace contains no source code/raw facts and source is not read by default.
 
-## Existing regressions
+## Primary implementation/regression files
 
 ```text
+src/Pkc.Cli/Program.cs
+src/Pkc.Knowledge/AiWorkspaceRenderer.cs
+src/Pkc.Knowledge/AiWorkspaceWriter.cs
 tests/Pkc.CSharp.Tests/AiWorkspaceRendererTests.cs
 ```
 
-Coverage includes:
+The renderer regression must protect at least:
 
 - bootstrap/policy/catalog/manifest generation;
-- source-root CLAUDE/AGENTS preservation;
-- stale generated workspace cleanup;
-- path traversal rejection.
+- root CLAUDE/AGENTS preservation;
+- stale workspace cleanup;
+- path traversal rejection;
+- source-free/product-default privacy declarations;
+- source cross-check requiring approved context;
+- deterministic-default / targeted-AI / full-checkpoint benchmark cadence.
 
-## Isolated end-to-end smoke evidence
+## Benchmark cadence — mandatory but proportional
 
-Validation wrapper branch:
-
-```text
-benchmark/workspace-b76427
-```
-
-Wrapper commit:
-
-```text
-1ee7b0d523f29dcbb7f45494d2c9461e9d1027ce
-test: run isolated AI workspace smoke
-```
-
-Workflow run:
-
-```text
-35845652352 — PASS
-```
-
-The wrapper adds only a validation workflow. It copies WorkPlay to a temporary target, creates fake team root `CLAUDE.md` and `AGENTS.md`, runs exact production `pkc run`, and verifies:
-
-- root team agent files are unchanged;
-- root legacy knowledge artifacts are absent;
-- `.pkc/workspace` contains bootloaders, routing, policy, catalog, manifest and canonical knowledge;
-- generated knowledge still contains expected WorkPlay product behavior.
-
-Do not merge the wrapper workflow into production merely because it exists; decide separately whether this smoke should become a permanent CI gate.
-
-## Audit questions
-
-Independently review at least:
-
-1. Can `pkc run` modify anything outside `.pkc` on a clean target repository?
-2. Can a crafted canonical path escape `.pkc/workspace`?
-3. Can regeneration leave stale generated workspace knowledge that may mislead an AI?
-4. Do root team `CLAUDE.md` / `AGENTS.md` remain byte-for-byte untouched?
-5. Does the generated `CLAUDE.md` correctly route Claude to product knowledge without requiring manual `PKC_KNOWLEDGE.md` selection?
-6. Does `AGENTS.md` provide equivalent routing for compatible coding agents?
-7. Does PRODUCT mode avoid default source/code dumping?
-8. Is TRACE explicit and bounded?
-9. Is ENGINEERING honest about source availability?
-10. Does the manifest avoid a false READY claim?
-11. Does `pkc build` remain backward compatible?
-12. Does running `pkc run` twice produce the same semantic workspace for unchanged source, ignoring genuinely non-semantic metadata?
-13. Does the workspace remain usable on a repository that already has `.pkc` metadata from a prior scan/build?
-14. Are filesystem/symlink/reparse-point boundaries sufficiently fail-closed for company repositories?
-
-If a concrete defect exists, reproduce it regression-first and implement the minimum generic repair.
-
-## Mandatory benchmark after product changes
-
-After any fix that can affect generated knowledge or workspace routing, follow:
+Read and follow:
 
 `docs/benchmarks/product-value-benchmark-protocol.md`
 
-The required sequence is:
+Do **not** run a full AI benchmark after every change.
+
+### Level 0 — deterministic, default
+
+Every change gets the appropriate focused/related/full tests, build/smoke, authority/no-leak, workspace isolation and output assertions.
+
+No AI reread is required if the change cannot materially alter product answers.
+
+### Level 1 — targeted AI product-value
+
+When a change can alter product answers, select only the affected pinned repo/workflow/questions.
+
+Typical triggers:
+
+- interface → implementation;
+- permission/precondition extraction;
+- state/default/computation recovery;
+- side effects;
+- frontend/API linking;
+- displayed-value lineage;
+- feature/workflow synthesis;
+- answer authority materially changing answerability.
+
+Use two phases:
 
 ```text
-pkc run pinned repo
-→ open only .pkc/workspace as AI context
-→ answer standard PO/QC questions
-→ record answer
-→ inspect pinned source known answer
-→ score percentages + PASS/PARTIAL/FAIL
-→ report concrete misses
+phase 1: .pkc/workspace only → record generated answer
+phase 2: local approved source cross-check → known answer → score
 ```
 
-Do not report only fact counts, workflow counts, process exit code, or CI status.
+Do not put source code in the report.
 
-## Baseline product-value scores
+### Level 2 — full AI product-value
 
-Current reference baseline before workspace-specific product improvements:
+Run all pinned probes only for acceptance/release/demo checkpoints, major semantic/routing changes, broad regression risk, or explicit request.
+
+A green deterministic safety result never becomes a product-value PASS automatically.
+
+## Standard product-value questions
+
+1. Who may perform the action and what business preconditions apply?
+2. What state/data/default/computation changes after success?
+3. Which UI action calls which API and where does the displayed value come from?
+4. What evidence trace supports the answer?
+
+Level 1 asks only the affected questions. Level 2 asks the full set.
+
+## Current product-value baseline
+
+Reference only; recompute after semantic changes:
 
 ```text
 Agentic Users Update       80.8%
 Jin12 Contacts Update      40.0%
 Kesetovic PackOrder        65.0%
-
 backend PO/QC core         72.6%
 overall applicable         63.9%
 ```
 
-Recompute rather than copying these numbers after a material knowledge change.
+## Audit / coding questions
 
-## Highest-value known gaps after workspace audit
+Independently review at least:
 
-Do not broaden scope until the workspace boundary itself is sound. Once it is, the existing product benchmark identifies these high-value knowledge gaps:
+1. Can `pkc run` modify anything outside `.pkc` on a clean target repo?
+2. Can crafted canonical paths escape `.pkc/workspace`?
+3. Can regeneration leave stale generated knowledge?
+4. Are target-root team `CLAUDE.md` / `AGENTS.md` byte-for-byte preserved?
+5. Does generated `CLAUDE.md` reliably route Opus/Claude Code to START_HERE, policy and catalog?
+6. Does `AGENTS.md` provide equivalent routing for compatible agents?
+7. Does PRODUCT stay source-free and avoid code/raw-fact dumps?
+8. Is TRACE bounded to evidence references rather than code dumps?
+9. Is ENGINEERING explicit about approved source-enabled context?
+10. Can benchmark phase 1 accidentally climb into source before recording the workspace-only answer?
+11. Can benchmark reporting accidentally serialize/copy proprietary code or raw facts?
+12. Does manifest truthfully advertise PREVIEW/privacy/cadence metadata?
+13. Does `pkc build` remain backward compatible?
+14. Is repeated `pkc run` semantically idempotent for unchanged source?
+15. Are symlink/reparse/file-system boundaries sufficiently fail-closed for company repos?
+
+If a concrete defect exists, reproduce it regression-first and implement the minimum generic repair.
+
+## Coding discipline
+
+- Make related changes locally first.
+- Add/update regressions.
+- Run focused tests, then related tests, then broader relevant verification.
+- Review the complete diff.
+- Prefer one coherent implementation commit + one push.
+- Do not use GitHub Actions as the edit/test loop.
+- Do not broaden into unrelated product gaps in the same patch.
+- After a semantic product change, run Level 1 targeted benchmark before deciding whether Level 2 is justified.
+
+## Highest-value known semantic gaps after workspace audit
 
 1. interface → concrete implementation traversal;
 2. frontend event/service URL-expression linkage;
@@ -207,6 +238,6 @@ Do not broaden scope until the workspace boundary itself is sound. Once it is, t
 4. construction/default/computation state;
 5. integration side-effect synthesis;
 6. feature-summary fidelity;
-7. real-repository R7.14 positive yield without weakening authority.
+7. R7.14 positive real-project yield without weakening authority.
 
-Formal E remains locked until D is independently accepted. Continue productization work only under the explicit user-authorized preview scope recorded in the handoff.
+Let benchmark evidence select the next repair; do not attack all gaps in one patch.
