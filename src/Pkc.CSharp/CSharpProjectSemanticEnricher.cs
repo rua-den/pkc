@@ -128,6 +128,7 @@ public sealed class CSharpProjectSemanticEnricher
 
                 if (TryResolveDirectDiDispatch(
                         methodSymbol,
+                        source.ProjectPath,
                         registrations,
                         callableSymbols,
                         out var concrete,
@@ -503,7 +504,7 @@ public sealed class CSharpProjectSemanticEnricher
             var root = source.Tree.GetRoot();
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
-                if (IsConditionalRegistrationSite(invocation))
+                if (!IsProvenStartupRegistrationSite(invocation) || IsConditionalRegistrationSite(invocation))
                 {
                     continue;
                 }
@@ -521,7 +522,7 @@ public sealed class CSharpProjectSemanticEnricher
                 }
 
                 registrations.Add(new DirectDiRegistration(
-                    GetTypeKey(serviceType),
+                    GetRegistrationKey(source.ProjectPath, serviceType),
                     serviceType,
                     implementationType,
                     GetLocation(
@@ -536,6 +537,13 @@ public sealed class CSharpProjectSemanticEnricher
                 group => group.Key,
                 group => group.ToArray(),
                 StringComparer.Ordinal);
+    }
+
+    private static bool IsProvenStartupRegistrationSite(InvocationExpressionSyntax invocation)
+    {
+        var ancestors = invocation.Ancestors().ToArray();
+        return ancestors.OfType<GlobalStatementSyntax>().Any() &&
+               !ancestors.Any(ancestor => ancestor is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax);
     }
 
     private static bool IsConditionalRegistrationSite(InvocationExpressionSyntax invocation) =>
@@ -560,6 +568,7 @@ public sealed class CSharpProjectSemanticEnricher
 
     private static bool TryResolveDirectDiDispatch(
         IMethodSymbol interfaceMethod,
+        string projectPath,
         IReadOnlyDictionary<string, DirectDiRegistration[]> registrations,
         IReadOnlyDictionary<string, EvidenceFact[]> callableSymbols,
         out EvidenceFact concrete,
@@ -568,7 +577,9 @@ public sealed class CSharpProjectSemanticEnricher
         concrete = null!;
         registrationSource = null!;
         if (interfaceMethod.ContainingType?.TypeKind != TypeKind.Interface ||
-            !registrations.TryGetValue(GetTypeKey(interfaceMethod.ContainingType), out var matches) ||
+            !registrations.TryGetValue(
+                GetRegistrationKey(projectPath, interfaceMethod.ContainingType),
+                out var matches) ||
             matches.Length != 1)
         {
             return false;
@@ -605,6 +616,9 @@ public sealed class CSharpProjectSemanticEnricher
         left.Parameters.Zip(right.Parameters).All(pair =>
             pair.First.RefKind == pair.Second.RefKind &&
             GetTypeKey(pair.First.Type) == GetTypeKey(pair.Second.Type));
+
+    private static string GetRegistrationKey(string projectPath, ITypeSymbol serviceType) =>
+        $"{projectPath}::{GetTypeKey(serviceType)}";
 
     private static string GetSymbolKey(ISymbol symbol) =>
         $"{GetAssemblyKey(symbol.ContainingAssembly)}::{symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)}";

@@ -22,7 +22,7 @@ public sealed class RepeatedBuildKnowledgeParityTests
                 """
                 <Project Sdk="Microsoft.NET.Sdk.Web">
                   <PropertyGroup>
-                    <TargetFramework>net8.0</TargetFramework>
+                    <TargetFramework>net10.0</TargetFramework>
                     <Nullable>enable</Nullable>
                   </PropertyGroup>
                 </Project>
@@ -94,14 +94,16 @@ public sealed class RepeatedBuildKnowledgeParityTests
     private static async Task RunPkcBuildAsync(string repositoryPath)
     {
         var repositoryRoot = FindRepositoryRoot();
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name ?? "Release";
+        var outputDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+        var targetFramework = outputDirectory.Name;
+        var configuration = outputDirectory.Parent?.Name ?? "Release";
         var cliPath = Path.Combine(
             repositoryRoot,
             "src",
             "Pkc.Cli",
             "bin",
             configuration,
-            "net8.0",
+            targetFramework,
             "pkc.dll");
 
         Assert.True(File.Exists(cliPath), $"PKC CLI was not built at {cliPath}");
