@@ -38,7 +38,7 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #15** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### Accepted baselines
@@ -53,55 +53,59 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — rereview #14 failed; local repair awaiting push and gates
+### D / R7.10 — repaired, awaiting independent rereview #15
 
-Rereview #13 targeted native-SVG fail-closed candidate `7818c7ed...`. Before independent acceptance was recorded, pre-challenge found two additional Angular render-authority false-positive classes, so #13 is superseded rather than passed.
+Independent rereview #14 **FAILED** production `3e6fa774...` because external Angular dependency components with attribute/class/combined selectors were absent from the product-only component selector inventory. A lexical interpolation under such a component host could be over-promoted even when content projection was not proven.
 
-Current repaired production is:
+Result:
+
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
+
+Repair chain:
 
 ```text
-34182e221df6cf50eaa0ac362a5f575e80236a64  fix: reject unproven Angular content projection
-3e6fa7749eb8ef47be4eedb72d1c159cd502692f  fix: bound Angular direct text containers
-8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors (local, not pushed)
+8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors
+67c67fc25b6488dbc9f110a1b05c53a4bfee1a6c  fix: resolve nested Angular dependency selectors
+47e098dbe910b7f6cfd933a0595370524bec1fb2  fix: correct resolved package root type
 ```
 
-The first repair prevents lexical children of component hosts from being treated as directly rendered when content projection is not proven. The second rejects metadata/fallback/conditional HTML containers such as `title`, `canvas`, `dialog`, `details`, `object` and `noscript` from direct-text authority. Native SVG direct authority remains fail-closed from `7818c7ed...`; ordinary HTML remains supported, including eligible HTML under SVG `foreignObject`.
+`8f667abc...` reads bounded imported-package Angular Ivy component declaration metadata so external component hosts become conservative projection boundaries while directives remain non-blocking. Continuation review found that root-only `node_modules` resolution missed normal nested Angular app dependency trees. `67c67fc...` resolves imported packages from the importing TypeScript file upward to repository root, selecting nearest `node_modules`, and adds a nested-app regression. `47e098db...` is the compile-correct final candidate after fixing the `ResolveLinkTarget()` result type.
 
 Exact candidate gates:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35769202107 — PASS
-pinned Loren                                35769202115 — PASS
-Loren-main canary                           35769202043 — PASS
-pinned Jellyfin + parity/provenance         35769202074 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35818350915 — PASS
+pinned Loren                                35818350859 — PASS
+Loren-main canary                           35818350997 — PASS
+pinned Jellyfin + parity/provenance         35818350930 — PASS
 
 Release build        0 warnings / 0 errors
-C# tests             241 / 241 PASS
+C# tests             248 / 248 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
+WorkPlay             PASS
+PokeTrade            PASS
 ```
 
-Pinned Jellyfin remains 43,365 / 43,365 project-semantic with 43,365 facts, 195,316 relations, 386 workflows, 116 product features and 504 knowledge Markdown files; portable parity/no-leak PASS.
+Pinned Jellyfin remains 43,365 / 43,365 project-semantic with 43,365 facts, 195,316 relations, 386 workflows, 116 product features and 504 knowledge Markdown files; portable parity/no-leak PASS. Artifact `10732606989`, digest `sha256:1d2b38aadc18828a75625ea94651f2a1acfc3a3813a3cc9df0c57d9be4b1bde2`.
 
-Repaired three-repository benchmark:
+Repaired three-repository safety benchmark:
 
 ```text
-base production  3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-wrapper          28c9758ba5ae172bb0ee52e032a28fa24fb1f917
-run              35769939151 — PASS, 3 / 3 jobs
+base production  47e098dbe910b7f6cfd933a0595370524bec1fb2
+wrapper          437d14a9b9ed36ce24e7fd8edfb2cef31eed7f6c
+run              35818835753 — PASS, 3 / 3 jobs
 ```
 
-Direct artifact inspection shows all three unchanged repositories remain at zero current R7.9/R7.10 render/visibility authority promotion. Canonical benchmark outputs are byte-identical to the prior safety benchmark except generated nested ZIP bytes/timestamps. Mutation-causality remains closed.
+All three unchanged repositories remain conservatively at zero current R7.9/R7.10 render/visibility authority. Agentic mutation-causality remains closed. This is safety evidence, not R7.14 positive-yield completion.
 
-Rereview #14 result:
+Fresh independent request:
 
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
-
-The new repair recognizes external Angular component selectors from bounded imported-package Ivy declaration metadata. Local focused and related authority tests pass, and the Release solution build is clean. The push is approved but blocked by repository authentication: SSH has no accepted key and the configured HTTPS identity lacks write permission. Exact-SHA gates and a fresh independent rereview #15 remain pending.
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-15-request.md`
 
 ### E — locked
 
-E remains locked until the repaired exact SHA passes all gates and independent rereview #15 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until independent rereview #15 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
 R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
 
@@ -127,6 +131,6 @@ Current recorded roadmap, pending formal post-V0.4.7 re-baseline:
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 repaired locally; push/gates/rereview #15 pending
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #15
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING
-V0.4.7-D overall                                 OPEN / FRESH REREVIEW #15 REQUIRED AFTER GATES
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #15
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #15
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -23,27 +23,22 @@ AI workspace + continuous-update plan            PREPARED / NOT UNLOCKED
 
 V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent product contract is `docs/product-knowledge-contract.md`.
 
-## Local repaired production candidate
+## Exact production candidate under review
 
 ```text
-8f667abc819f048b3dc85fc834677b7ca30f5518
-fix: recognize external Angular component selectors
+47e098dbe910b7f6cfd933a0595370524bec1fb2
+fix: correct resolved package root type
 ```
 
-This commit is locally verified but not pushed. Its reviewed predecessor is:
+The relevant repair chain is:
 
 ```text
-3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-fix: bound Angular direct text containers
+8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors
+67c67fc25b6488dbc9f110a1b05c53a4bfee1a6c  fix: resolve nested Angular dependency selectors
+47e098dbe910b7f6cfd933a0595370524bec1fb2  fix: correct resolved package root type
 ```
 
-Rereview #14 failed `3e6fa774...` on external dependency attribute/class component selectors. The user approved pushing `8f667ab...`, but this host has no working write credential for `rua-den/pkc`: SSH fails `Permission denied (publickey)` and the configured HTTPS identity `nhkhuy` receives HTTP 403. Exact-SHA gates have therefore not run.
-
-## Rereview #14 blocker and local repair
-
-An imported dependency component such as selector `div[ext-shell]` can consume a native-looking host without projecting its lexical child. Because selector discovery was limited to product-source decorators and excluded `node_modules`, PKC could over-promote `<div ext-shell>{{ displayPrice }}</div>` as directly rendered.
-
-Local repair `8f667ab...` reads bounded Ivy `ɵɵComponentDeclaration` selector metadata from imported packages, keeps directives non-blocking, handles escaped selector literals, prunes excluded source trees, and validates/contains package traversal. Focused tests are 9/9, related render-authority regressions 25/25, and the Release solution build has 0 warnings/errors. Detailed record: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`.
+A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `47e098...`; do not reset `main`.
 
 ## Accepted predecessors
 
@@ -58,64 +53,57 @@ mutation   67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a new real regression is demonstrated.
 
-## Why rereview #13 is superseded
+## Rereview #14 result and repaired boundary
 
-Rereview #13 requested an independent review of native-SVG fail-closed production `7818c7ed...`. Before an independent acceptance record was committed, this continuation pre-challenged that candidate and found two new compile-valid/runtime-valid Angular render-authority classes. Therefore #13 is historical/stale and must not be treated as PASS.
+Independent rereview #14 of `3e6fa774...` **FAILED**. The blocker was external Angular dependency components whose selectors are not visible in product-source `@Component` declarations. A native-looking host such as `div[ext-shell]` can be a component host from an imported package; without selector knowledge PKC could over-promote a lexical child interpolation even when that component does not project the child.
 
-### Blocker 1 — unproven component content projection
+Result record:
 
-A child interpolation is not directly rendered merely because it is lexically inside a component host:
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
 
-```html
-@if (isAllowed) {
-  <app-shell>{{ displayPrice }}</app-shell>
-}
+`8f667abc...` added bounded imported-package selector discovery from Angular Ivy `ɵɵComponentDeclaration` metadata. It intentionally reads dependency declaration metadata only for projection authority; dependency source remains excluded from product facts/knowledge, and directives do not become projection blockers merely because they have selectors.
+
+A continuation review then found a second compile-valid layout hole: `8f667abc...` resolved packages only from `<repository-root>/node_modules`. A normal monorepo/nested Angular app can instead use:
+
+```text
+repo/
+  frontend/
+    package.json
+    src/price.component.ts
+    node_modules/@vendor/ui/index.d.ts
 ```
 
-If `app-shell` does not project that child through a matching `ng-content`, the interpolation never becomes rendered DOM. The predecessor could still emit authoritative `ui-member-render` / `ui-member-visibility`.
+The app can resolve `@vendor/ui` correctly while PKC misses the selector if it only checks root `node_modules`.
 
-Generic repair `34182e22...` adds an authority filter that fails closed beneath component/custom-element projection boundaries unless direct rendering is independently established. Local product-source component selectors are recognized for element, attribute, class and combined selector forms; custom-element hosts also fail closed conservatively.
+`67c67fc...` repaired this generically by resolving each imported package from the importing TypeScript file directory upward toward repository root, choosing the nearest matching `node_modules` package. Scoped packages and package subpath imports remain supported; root-hoisted dependencies still resolve. Dependency package symlinks are accepted only when their resolved target remains inside the selected `node_modules` tree. A nested-app regression proves the authority downgrade.
 
-### Blocker 2 — non-direct / conditional HTML text containers
+The first CI attempt exposed one compile-only type mismatch around `ResolveLinkTarget()` (`FileSystemInfo` versus `DirectoryInfo`). `47e098db...` corrects that type without changing the resolver semantics and is the final candidate under review.
 
-Ordinary HTML syntax is not sufficient proof that child text is directly page-visible. Examples include metadata, fallback and conditionally-presented containers such as:
+## Regression coverage
 
-```html
-<title>{{ displayPrice }}</title>
-<canvas>{{ displayPrice }}</canvas>
-<dialog>{{ displayPrice }}</dialog>
-<details>{{ displayPrice }}</details>
-<object>{{ displayPrice }}</object>
-<noscript>{{ displayPrice }}</noscript>
-```
-
-Generic repair `3e6fa774...` rejects authoritative direct-text proof under the bounded unsupported container set while preserving later ordinary HTML positives after a closed unsupported container. This is deliberately a fail-closed authority boundary, not a browser/CSS/layout engine.
-
-Native SVG direct render remains unsupported from `7818c7ed...`; HTML under supported `foreignObject` namespace transition remains eligible subject to the new HTML/projection boundaries.
-
-## Regression coverage added
+Relevant projection coverage now includes:
 
 ```text
 tests/Pkc.CSharp.Tests/AngularComponentProjectionRenderAuthorityRegressionTests.cs
-tests/Pkc.CSharp.Tests/AngularHtmlDirectTextAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularNestedNodeModulesProjectionAuthorityRegressionTests.cs
 ```
 
-Coverage includes element-selector projection, attribute-selector projection, non-direct HTML containers, and positive later ordinary-HTML rendering after the unsupported boundary closes.
+The nested regression constructs an Angular app under `frontend/` with its own `node_modules/@vendor/ui/index.d.ts`, imports the external component, uses an attribute selector host, and proves no authoritative `ui-member-render` / `ui-member-visibility` survives beneath the unproven projection boundary.
 
 ## Exact-SHA standard verification
 
-All required standard gates passed on exact production `3e6fa7749eb8ef47be4eedb72d1c159cd502692f`:
+All required standard gates passed on exact production `47e098dbe910b7f6cfd933a0595370524bec1fb2`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35769202107 — PASS
-pinned Loren                                35769202115 — PASS
-Loren-main canary                           35769202043 — PASS
-pinned Jellyfin + parity/provenance         35769202074 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35818350915 — PASS
+pinned Loren                                35818350859 — PASS
+Loren-main canary                           35818350997 — PASS
+pinned Jellyfin + parity/provenance         35818350930 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             241 / 241 PASS
+C# tests             248 / 248 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -133,20 +121,20 @@ product features      116
 knowledge Markdown    504 files
 analysis modes        43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10713378704
-sha256:cca8adf6d31a4c0207eaea58e5935147d279a7e9e3db361ad6b32291a0807198
+artifact              10732606989
+sha256:1d2b38aadc18828a75625ea94651f2a1acfc3a3813a3cc9df0c57d9be4b1bde2
 ```
 
-Local repository execution is not claimed because the execution container could not resolve `github.com` when cloning and has no local .NET toolchain. Exact-SHA GitHub gates are the validation evidence.
+Local repository execution is not claimed in this continuation because the available execution container could not resolve `github.com` and has no local .NET toolchain. Exact-SHA GitHub Actions are the completed verification evidence.
 
 ## Final pinned three-repository safety benchmark
 
-A temporary wrapper branch based exactly on production `3e6fa774...` changed only the benchmark workflow branch-trigger line:
+A temporary wrapper branch based exactly on production `47e098...` changed only one workflow branch-trigger line:
 
 ```text
-base production: 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-wrapper commit:  28c9758ba5ae172bb0ee52e032a28fa24fb1f917
-run:             35769939151 — PASS, 3 / 3 jobs
+base production: 47e098dbe910b7f6cfd933a0595370524bec1fb2
+wrapper commit:  437d14a9b9ed36ce24e7fd8edfb2cef31eed7f6c
+run:             35818835753 — PASS, 3 / 3 jobs
 ```
 
 Direct artifact inspection found, for every pinned repository:
@@ -159,7 +147,7 @@ selected API/R7.9 terminal: 0
 joint/combined visibility:  0
 ```
 
-The canonical benchmark evidence is byte-identical to the preceding safety benchmark for all three repositories except the nested generated ZIP archive bytes/timestamps. Counts remain:
+Counts remain stable:
 
 ```text
 jin12-xyz/CRM                                      415 facts / 1,580 relations / 25 knowledge files
@@ -167,15 +155,15 @@ hackersandwizards/agentic-engineering-training-angular 441 facts /   660 relatio
 kesetovic/crm-system                               488 facts / 2,054 relations / 28 knowledge files
 ```
 
-Benchmark artifacts:
+Artifacts:
 
 ```text
-jin12          10713667423  sha256:10bb68b7e10714d6c217bce776c09737dfe0330279775840b4bd8b45c7387f72
-agentic        10713841164  sha256:cbbbcc2b9dd42d1bf3b2978ed56e72d057a3452d9e7844cd4b6cc7e14a41863d
-kesetovic      10713209096  sha256:d4f24200afff9a532514731ce93f18f802bfece6117a8f0b9fc386cc4d1a1d39
+jin12          10732532350  sha256:6f4e41e7b18357d5a06036bd14a39b15988ba437b013f78b0ecfee9af9b15f9f
+agentic        10733025143  sha256:6c360ae70b72d9d8678b0d209f233d565f176a2aa878a5a20d62876638adb040
+kesetovic      10732851433  sha256:16a95ee2bbb4155d33a1c3f6dfdf60767f036d389a83bff98e2954a86f348c54
 ```
 
-Agentic mutation-causality remains closed: exactly two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, and their exact fact IDs occur zero times outside raw facts in feature candidates, product features and generated Markdown.
+Agentic mutation-causality remains closed: the two raw `UpdatedAt` mutations retain `runtime-pattern-variable / caller-object-unproven`, and their exact fact IDs occur zero times outside raw facts in candidates, product features and generated Markdown.
 
 Interpretation:
 
@@ -184,24 +172,21 @@ Safety / fail-closed: PASS
 R7.14 positive real-project yield: NOT PASS
 ```
 
-Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`.
+Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-nested-dependency-selector-benchmark.md`.
 
 ## Current external gate
 
-Required next action:
+Required next gate:
 
 ```text
-provide a GitHub credential with write access to rua-den/pkc on this host
-→ push local production 8f667abc819f048b3dc85fc834677b7ca30f5518
-→ exact-SHA standard gates + repaired safety benchmark
-→ fresh independent rereview #15
+independent rereview #15 of exact 47e098dbe910b7f6cfd933a0595370524bec1fb2
 ```
 
-Rereview #14 result: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-15-request.md`.
 
-R7.10 and D remain open until the repaired exact SHA passes all required gates and a fresh independent rereview accepts it. E, V0.5 and the prepared AI-workspace/update initiative remain locked.
+If rereview #15 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
 
-This implementation continuation repaired the blockers and must not self-certify its own production candidate.
+This implementation continuation repaired the blocker and must not self-certify its own production candidate.
 
 ## Prepared future productization packet
 
@@ -210,12 +195,12 @@ docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md
 docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md
 ```
 
-After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing is AI workspace + `run/verify`, then semantic `update/diff`, then Azure DevOps evidence. Do not open that work while D/E remain incomplete.
+After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing is AI workspace + `run/verify`, then semantic `update/diff`, then Azure DevOps evidence.
 
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 repaired locally; push/gates/rereview #15 pending
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #15
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4

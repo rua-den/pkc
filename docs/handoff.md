@@ -13,29 +13,30 @@ Before changing production code, read:
 3. `docs/milestones.md`
 4. `docs/product-knowledge-contract.md`
 5. `docs/v0.4.7-acceptance-plan.md`
-6. prior R7.10 rereview records through #13 request/history
-7. `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`
-8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`
+6. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
+7. `docs/benchmarks/2026-09-23-r7.10-nested-dependency-selector-benchmark.md`
+8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-15-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
-## Current local production checkpoint
+## Current production checkpoint
 
-Local repaired SHA:
-
-```text
-8f667abc819f048b3dc85fc834677b7ca30f5518
-fix: recognize external Angular component selectors
-```
-
-Reviewed predecessor that failed rereview #14:
+Exact production SHA for fresh independent rereview:
 
 ```text
-3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-fix: bound Angular direct text containers
+47e098dbe910b7f6cfd933a0595370524bec1fb2
+fix: correct resolved package root type
 ```
 
-`8f667ab...` is committed locally but not pushed. The user explicitly approved the push. SSH reached GitHub but failed `Permission denied (publickey)`; HTTPS used configured identity `nhkhuy` and GitHub returned HTTP 403 for `rua-den/pkc`. Do not reset or discard the local commit.
+Relevant repair chain:
+
+```text
+8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors
+67c67fc25b6488dbc9f110a1b05c53a4bfee1a6c  fix: resolve nested Angular dependency selectors
+47e098dbe910b7f6cfd933a0595370524bec1fb2  fix: correct resolved package root type
+```
+
+A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `47e098...`; do not reset `main`.
 
 ## Current milestone state
 
@@ -45,8 +46,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING
-V0.4.7-D overall                        OPEN / FRESH REREVIEW #15 REQUIRED AFTER GATES
+V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #15
+V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #15
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -69,98 +70,79 @@ Supported backend remains target-project-semantic exact `System.Linq.Enumerable.
 
 Frontend evidence cannot upgrade an `observed-only` backend condition.
 
-## Why rereview #13 is stale
+## Rereview #14 — FAIL
 
-Rereview #13 targeted:
+Independent rereview #14 of `3e6fa774...` found a real external-component projection blocker. Product-source selector inventory alone cannot prove whether native-looking hosts such as `div[ext-shell]`, `.external-shell`, or combined selectors are ordinary HTML or imported Angular components. A child interpolation under an external component host is not authoritative direct render unless projection is proven.
 
-```text
-7818c7ed646b30cb7b8505f053572783e075af6f
-fix: fail closed on native SVG render authority
-```
+Record:
 
-Before independent acceptance was recorded, implementation pre-challenge found two additional compile-valid/runtime-valid false-positive authority classes. #13 is therefore superseded; it must not be interpreted as PASS.
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
 
-## Repair 1 — component content projection
+The current continuation treats #14 as FAIL history, not as an accepted D checkpoint.
 
-Counterexample:
-
-```ts
-@Component({
-  selector: 'app-shell',
-  template: `<span>Shell</span>`
-})
-export class ShellComponent {}
-
-@Component({
-  imports: [ShellComponent],
-  template: `
-    @if (isAllowed) {
-      <app-shell>{{ displayPrice }}</app-shell>
-    }
-  `
-})
-export class PriceComponent {}
-```
-
-Without matching `ng-content`, `displayPrice` is not projected/rendered by `app-shell`, but the predecessor could over-promote the lexical interpolation.
-
-Repair:
+## Repair 1 — external dependency component selectors
 
 ```text
-34182e221df6cf50eaa0ac362a5f575e80236a64
-fix: reject unproven Angular content projection
+8f667abc819f048b3dc85fc834677b7ca30f5518
+fix: recognize external Angular component selectors
 ```
 
-`AngularComponentProjectionAuthorityFilter` now fails closed for custom-element/component-host projection boundaries. Product-source component selectors are recognized for element, attribute, class and combined selector forms. This is an authority downgrade only; lower-authority facts remain available.
+The projection authority filter now identifies packages referenced by product TypeScript imports and reads bounded Angular Ivy declaration metadata (`ɵɵComponentDeclaration`) from those imported package declarations. Only component declarations supply projection boundaries; directive declarations do not become projection blockers. Dependency declarations are authority metadata only and remain excluded from product facts/knowledge.
 
-Focused regression:
+This repair handles external element, attribute, class and combined component selectors and escaped selector strings within the bounded declaration parser.
 
-`tests/Pkc.CSharp.Tests/AngularComponentProjectionRenderAuthorityRegressionTests.cs`
+## Repair 2 — nested/nearest `node_modules`
 
-## Repair 2 — direct HTML text authority
+Continuation review found `8f667abc...` assumed imported packages lived under repository-root `node_modules`. That is insufficient for normal monorepo layouts where an Angular app has its own dependency tree:
 
-Compile-valid Angular templates can contain child text that is metadata, fallback content, or conditionally presented rather than directly page-visible:
-
-```html
-<title>{{ displayPrice }}</title>
-<canvas>{{ displayPrice }}</canvas>
-<dialog>{{ displayPrice }}</dialog>
-<details>{{ displayPrice }}</details>
-<object>{{ displayPrice }}</object>
-<noscript>{{ displayPrice }}</noscript>
+```text
+repo/
+  frontend/
+    package.json
+    src/price.component.ts
+    node_modules/@vendor/ui/index.d.ts
 ```
 
 Repair:
 
 ```text
-3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-fix: bound Angular direct text containers
+67c67fc25b6488dbc9f110a1b05c53a4bfee1a6c
+fix: resolve nested Angular dependency selectors
 ```
 
-`AngularHtmlDirectTextAuthorityFilter` rejects authoritative direct-text proof beneath the bounded unsupported container set covering metadata/raw/fallback/conditional browser surfaces. Ordinary HTML remains supported; a closed unsupported container does not suppress a later ordinary supported render.
+For each external import, package resolution now starts at the importing TypeScript file directory and walks ancestors up to repository root, selecting the nearest matching `node_modules/<package>` directory. Scoped packages and subpath imports are reduced to the owning package name; root-hoisted dependencies continue to work. Package symlinks are resolved conservatively only when the final target stays within the selected `node_modules` tree.
 
 Focused regression:
 
-`tests/Pkc.CSharp.Tests/AngularHtmlDirectTextAuthorityRegressionTests.cs`
+`tests/Pkc.CSharp.Tests/AngularNestedNodeModulesProjectionAuthorityRegressionTests.cs`
 
-Native SVG direct-render authority remains fail-closed from `7818c7ed...`. HTML inside supported SVG `foreignObject` remains eligible subject to the ordinary HTML and projection boundaries.
+The regression constructs a nested `frontend/` Angular app with local `node_modules/@vendor/ui/index.d.ts` and proves an imported attribute-selector component cannot leave authoritative render/visibility evidence for an unprojected child interpolation.
+
+The first CI attempt on `67c67fc...` exposed only a compile type mismatch because `DirectoryInfo.ResolveLinkTarget()` returns `FileSystemInfo`. Final compile correction:
+
+```text
+47e098dbe910b7f6cfd933a0595370524bec1fb2
+fix: correct resolved package root type
+```
+
+No resolver semantics changed in that final correction.
 
 ## Exact-SHA verification
 
-Exact production `3e6fa7749eb8ef47be4eedb72d1c159cd502692f`:
+Exact production `47e098dbe910b7f6cfd933a0595370524bec1fb2`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35769202107 — PASS
-pinned Loren                                35769202115 — PASS
-Loren-main canary                           35769202043 — PASS
-pinned Jellyfin + parity/provenance         35769202074 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35818350915 — PASS
+pinned Loren                                35818350859 — PASS
+Loren-main canary                           35818350997 — PASS
+pinned Jellyfin + parity/provenance         35818350930 — PASS
 ```
 
 Core CI:
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             241 / 241 PASS
+C# tests             248 / 248 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
@@ -175,20 +157,20 @@ source build          PASS, 0 warnings / 0 errors
 116 product features | 504 knowledge Markdown files
 43,365 / 43,365 facts project-semantic
 portable parity/no-leak PASS
-artifact 10713378704
-sha256:cca8adf6d31a4c0207eaea58e5935147d279a7e9e3db361ad6b32291a0807198
+artifact 10732606989
+sha256:1d2b38aadc18828a75625ea94651f2a1acfc3a3813a3cc9df0c57d9be4b1bde2
 ```
 
-Local repository test execution is not claimed: the execution container could not resolve `github.com` while cloning and has no local .NET toolchain. Exact-SHA GitHub Actions are the validation evidence.
+Local repository execution is not claimed in this continuation because the available container could not resolve `github.com` and has no local .NET toolchain. Exact-SHA GitHub Actions are the verification evidence.
 
 ## Real-repository safety benchmark
 
 Wrapper based exactly on production:
 
 ```text
-branch:         benchmark/r710-html-projection-3e6fa774
-wrapper commit: 28c9758ba5ae172bb0ee52e032a28fa24fb1f917
-run:            35769939151 — PASS, 3 / 3 jobs
+branch:         benchmark/r710-nested-node-modules-47e098
+wrapper commit: 437d14a9b9ed36ce24e7fd8edfb2cef31eed7f6c
+run:            35818835753 — PASS, 3 / 3 jobs
 ```
 
 Compare confirms the wrapper differs from production by exactly one branch-trigger line in `.github/workflows/real-repo-benchmark.yml`.
@@ -197,16 +179,16 @@ Artifacts:
 
 ```text
 jin12-xyz/CRM
-artifact 10713667423
-sha256:10bb68b7e10714d6c217bce776c09737dfe0330279775840b4bd8b45c7387f72
+artifact 10732532350
+sha256:6f4e41e7b18357d5a06036bd14a39b15988ba437b013f78b0ecfee9af9b15f9f
 
 hackersandwizards/agentic-engineering-training-angular
-artifact 10713841164
-sha256:cbbbcc2b9dd42d1bf3b2978ed56e72d057a3452d9e7844cd4b6cc7e14a41863d
+artifact 10733025143
+sha256:6c360ae70b72d9d8678b0d209f233d565f176a2aa878a5a20d62876638adb040
 
 kesetovic/crm-system
-artifact 10713209096
-sha256:d4f24200afff9a532514731ce93f18f802bfece6117a8f0b9fc386cc4d1a1d39
+artifact 10732851433
+sha256:16a95ee2bbb4155d33a1c3f6dfdf60767f036d389a83bff98e2954a86f348c54
 ```
 
 Direct artifact inspection for every repository:
@@ -219,48 +201,37 @@ selected API/R7.9 terminal: 0
 joint/combined visibility:  0
 ```
 
-Canonical benchmark outputs are byte-identical to the previous accepted safety benchmark except the generated nested ZIP archive bytes/timestamps. Agentic still has exactly two relevant raw `UpdatedAt` mutations with `runtime-pattern-variable / caller-object-unproven`, and their exact IDs occur zero times outside raw facts in candidates/features/generated Markdown.
+Counts remain the same safety baseline:
 
-This proves fail-closed stability only. It does not satisfy R7.14; positive real-project yield remains NOT PASS.
+```text
+jin12       415 facts / 1,580 relations / 25 knowledge files
+agentic     441 facts /   660 relations / 26 knowledge files
+kesetovic   488 facts / 2,054 relations / 28 knowledge files
+```
+
+Agentic retains the exact two relevant raw `UpdatedAt` mutations with `runtime-pattern-variable / caller-object-unproven`; their exact fact IDs occur zero times outside raw facts in feature candidates, product features and generated Markdown. Mutation-causality remains closed.
+
+This benchmark proves fail-closed stability only. It does not satisfy R7.14; positive real-project yield remains NOT PASS.
 
 Detailed record:
 
-`docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`
+`docs/benchmarks/2026-09-23-r7.10-nested-dependency-selector-benchmark.md`
 
-## Rereview #14 result and repair
+## Next action — independent rereview #15
 
-Rereview #14 failed exact production:
-
-```text
-3e6fa7749eb8ef47be4eedb72d1c159cd502692f
-```
-
-Result:
-
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
-
-The new blocker is an external dependency component with an attribute/class/combined selector. Product-only selector discovery could treat its native-looking host as ordinary HTML and promote child content that the component does not project.
-
-Local repair `8f667ab...` discovers bounded external Ivy component selectors while preserving directives and ordinary HTML. Local verification is 9/9 focused, 25/25 related, and Release build 0 warnings/errors. Code review and scoped rereview are clean.
-
-## Next action
+Review exact production:
 
 ```text
-provide a GitHub credential with write access to rua-den/pkc on this host
-→ push local production 8f667abc819f048b3dc85fc834677b7ca30f5518 once
-→ run exact-SHA CI, Loren, Loren-main, Jellyfin/parity and repaired safety benchmark
-→ prepare and run fresh independent rereview #15
+47e098dbe910b7f6cfd933a0595370524bec1fb2
 ```
 
-The fresh reviewer must independently search for another compile-valid/runtime-valid false-positive rather than replaying the new external-selector regression. High-value seams include:
+Request:
 
-- projection across local/external component selectors, especially unresolved dependency selectors;
-- HTML/SVG namespace transitions and `foreignObject`;
-- exact control-block scope across unsupported containers/component hosts;
-- malformed or ambiguous structures only where Angular/runtime still accepts the input and PKC can over-promote authority;
-- exact fact-ID composition, observed-only backend authority, and mutation-causality closure.
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-15-request.md`
 
-If no blocker exists after the repaired exact-SHA gates:
+The reviewer must independently search for a new compile-valid/runtime-valid false-positive rather than replaying the external-selector or nested-node_modules regressions. High-value seams include nearest/hoisted dependency resolution, package subpaths/scoped packages, workspace/symlink packages, external component-vs-directive distinction, selector collisions, HTML/SVG `foreignObject` boundaries, exact control scope/fact-ID composition, observed-only backend authority, and mutation-causality closure.
+
+If no blocker exists:
 
 ```text
 mark R7.10 PASS / COMPLETE
@@ -272,7 +243,7 @@ mark R7.10 PASS / COMPLETE
 
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
 
-This implementation continuation must not self-certify `8f667ab...`.
+This implementation continuation must not self-certify `47e098...`.
 
 ## Prepared future execution packet — planning only
 
