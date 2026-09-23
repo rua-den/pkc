@@ -3,6 +3,25 @@
 These instructions apply to repository work performed by coding agents and reviewers.
 The repository is the source of truth. Milestone/status documents determine current scope and acceptance state.
 
+## Mandatory Bootstrap Read Order
+
+Before changing production code or deciding the next milestone action:
+
+1. inspect `git status`, the current branch, current `main` HEAD, and recent commits;
+2. read `docs/status.md`;
+3. read `docs/handoff.md`;
+4. read `docs/milestones.md`;
+5. read `docs/product-knowledge-contract.md`;
+6. read the active acceptance plan named by the handoff;
+7. read the active review request/result and benchmark evidence named by the handoff;
+8. inspect the production code and regression coverage relevant to the current checkpoint.
+
+`docs/status.md` and `docs/handoff.md` own the current milestone state. This file intentionally does not duplicate the current SHA/checkpoint so it does not become stale.
+
+A docs-only `[skip ci]` commit may sit above the exact production SHA under review. When the handoff names an exact production SHA, review that production behavior without resetting `main` to the older SHA.
+
+Do not trust a remembered SHA, chat summary, or older review request over the current repository state.
+
 ## Repository Workflow
 
 Before making changes:
@@ -13,6 +32,42 @@ Before making changes:
 4. Do not start the next milestone until the current milestone is explicitly complete.
 
 The milestone rule prevents advancement only; it must never be interpreted as a reason to stop working on the current milestone. If the current milestone is incomplete, continue resolving its remaining blockers until complete or until a genuinely external blocker is proven and documented.
+
+## Independent Review Discipline
+
+When `docs/handoff.md` says the next gate is an **independent review/rereview**, treat that review as the current task before implementation or milestone advancement.
+
+A fresh coding-agent session may perform that independent review, but it must keep the reviewer role clean until the decision is recorded:
+
+- inspect the exact production SHA named by the handoff;
+- independently search for a new compile-valid/runtime-valid counterexample;
+- do not merely replay already-covered regressions;
+- do not modify production while still deciding whether the candidate passes;
+- distinguish unsupported shapes that correctly fail closed from real false/over-authoritative output;
+- preserve accepted predecessor checkpoints unless a new concrete regression is demonstrated.
+
+If the review **PASSes**:
+
+```text
+record independent PASS
+→ update status/handoff/acceptance state
+→ explicitly close the current checkpoint
+→ unlock only the next checkpoint allowed by the acceptance plan
+→ then begin that next checkpoint regression-first
+```
+
+If the review **FAILs**:
+
+```text
+record the exact blocker and violated proof boundary
+→ keep later checkpoints locked
+→ define the minimum generic regression-first repair
+→ only then transition from reviewer to implementation work
+→ repair and re-run the required gates
+→ require a fresh independent rereview of the repaired production SHA
+```
+
+Never let an implementation continuation self-certify its own repaired candidate as the independent review that accepts it.
 
 ## Anti-Stall / Forward Progress
 
@@ -345,6 +400,18 @@ understand scope
 ```
 
 Stay within the current milestone and its acceptance criteria.
+
+Keep these evidence classes distinct unless exact evidence proves composition:
+
+- business conditions;
+- value lineage/provenance;
+- mutation/causality;
+- API/wire identity;
+- render authority;
+- visibility authority;
+- portable knowledge rendering.
+
+Same or similar names are never proof of identity. Stronger composition failure must preserve independently proven lower-authority evidence.
 
 ## Status and Handoff
 
