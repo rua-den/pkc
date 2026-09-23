@@ -6,7 +6,7 @@ namespace Pkc.CSharp.Tests;
 public sealed class AiWorkspaceRendererTests
 {
     [Fact]
-    public void Render_includes_bootloaders_policy_routing_catalog_and_preview_manifest()
+    public void Render_includes_bootloaders_policy_routing_catalog_preview_manifest_and_privacy_boundary()
     {
         var canonical = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -25,10 +25,31 @@ public sealed class AiWorkspaceRendererTests
         Assert.Contains(AiWorkspaceRenderer.CatalogRelativePath, files.Keys);
         Assert.Equal("# Pack", files["knowledge/workflows/orders/pack.md"]);
 
-        Assert.Contains("Do not inspect parent/source directories", files[AiWorkspaceRenderer.ClaudeRelativePath], StringComparison.Ordinal);
-        Assert.Contains("Default mode is PRODUCT", files[AiWorkspaceRenderer.AgentsRelativePath], StringComparison.Ordinal);
-        Assert.Contains("Use `_meta/catalog.json`", files[AiWorkspaceRenderer.StartHereRelativePath], StringComparison.Ordinal);
-        Assert.Contains("\"workspaceStatus\": \"PREVIEW\"", files[AiWorkspaceRenderer.ManifestRelativePath], StringComparison.Ordinal);
+        var claude = files[AiWorkspaceRenderer.ClaudeRelativePath];
+        var agents = files[AiWorkspaceRenderer.AgentsRelativePath];
+        var startHere = files[AiWorkspaceRenderer.StartHereRelativePath];
+        var contract = files[AiWorkspaceRenderer.AnswerContractRelativePath];
+        var manifest = files[AiWorkspaceRenderer.ManifestRelativePath];
+
+        Assert.Contains("Do not inspect parent/source directories", claude, StringComparison.Ordinal);
+        Assert.Contains("Default mode is PRODUCT", agents, StringComparison.Ordinal);
+        Assert.Contains("Use `_meta/catalog.json`", startHere, StringComparison.Ordinal);
+
+        Assert.Contains("workspace is intentionally source-free", claude, StringComparison.Ordinal);
+        Assert.Contains("Do not copy source-code bodies", claude, StringComparison.Ordinal);
+        Assert.Contains("approved source-enabled/company environment", claude, StringComparison.Ordinal);
+        Assert.Contains("Do not run a full AI benchmark after every edit", claude, StringComparison.Ordinal);
+        Assert.Contains("Phase 1: answer from this generated workspace only", contract, StringComparison.Ordinal);
+        Assert.Contains("do not paste source-code bodies", contract, StringComparison.Ordinal);
+
+        Assert.Contains("\"workspaceStatus\": \"PREVIEW\"", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"workspaceContainsSourceCode\": false", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"rawFactFilesIncluded\": false", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"productAnswersMayReadSourceByDefault\": false", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"sourceCrossCheckRequiresApprovedContext\": true", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"defaultLevel\": \"deterministic\"", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"targetedAiForSemanticChanges\": true", manifest, StringComparison.Ordinal);
+        Assert.Contains("\"fullAiForCheckpointsOnly\": true", manifest, StringComparison.Ordinal);
         Assert.Contains("\"kind\": \"workflow\"", files[AiWorkspaceRenderer.CatalogRelativePath], StringComparison.Ordinal);
     }
 
