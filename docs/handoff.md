@@ -14,13 +14,12 @@ This handoff is for the next PKC coding or audit session.
 6. `docs/product-knowledge-contract.md`
 7. `docs/v0.4.7-acceptance-plan.md`
 8. `docs/benchmarks/product-value-benchmark-protocol.md`
-9. `docs/benchmarks/2026-09-23-fix1-jin12-di-product-value-benchmark.md`
-10. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
-11. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when explicitly assigned the formal R7.10/D independent-review role
+9. `docs/benchmarks/2026-09-23-product-value-level2-and-fix4-prework.md`
+10. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when explicitly assigned the formal independent-review role
 
-Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. Do not reset to a historical SHA merely because this handoff names one.
+Then inspect current `main`, recent commits, production code and relevant regressions. Do not reset to an old SHA merely because this handoff names one.
 
-## Formal acceptance remains separate
+## Formal acceptance state
 
 ```text
 A/B/C                    PASS / COMPLETE
@@ -30,232 +29,189 @@ R7.10                    REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
 V0.4.7-D                 PENDING INDEPENDENT REREVIEW #17
 V0.4.7-E                 LOCKED
 R7.14                    NOT PASS / REQUIRED FOR E
+V0.5                     LOCKED
 ```
 
-Formal R7.10 candidate:
+Formal R7.10 review target:
 
 ```text
 96205a9a643864facaf9642a3b390ddcdbed59d9
 fix: tolerate duplicate Angular import aliases
 ```
 
-Do not self-certify that gate from a product-value implementation thread.
+The product-value thread MUST NOT self-certify this gate. The request explicitly requires an independent rereview.
 
-## Product-value Fix #1 checkpoint — PASS in bounded scope
+## Current main production code
 
-Exact production SHA under validation:
-
-```text
-1401d42291f5da4ce59ba79887ac53106b978dd7
-fix: prove DI dispatch host authority
-```
-
-Observed exact validation:
+Production code checkpoint below this docs-only handoff:
 
 ```text
-primary CI / WorkPlay / PokeTrade   PASS
-Loren pinned                        PASS
-Loren-main canary                   PASS
-Jellyfin parity                     PASS
-Release build                       0 warnings / 0 errors
-C# tests                            274 / 274 PASS
-Frontend tests                      13 / 13 PASS
+79b0f9fec80a2afb87f43ec7a559a5d54cb87863
+fix: surface pkc run progress
 ```
 
-Keep the primary CI `.NET 8` + `.NET 10` setup. PKC targets `net10.0`; many semantic fixtures remain `net8.0`.
+Exact-SHA gates are green:
 
-Fix #1 now proves this bounded path:
+```text
+CI / full tests / WorkPlay / PokeTrade  35898219948 PASS
+Loren pinned                            35898219784 PASS
+Loren-main canary                       35898219957 PASS
+Jellyfin                                35898219943 PASS
+```
+
+The CLI progress fix writes long-running phase progress to stderr and preserves stdout result/path behavior. Real PokeTrade CI showed C# scan, frontend scan, merge/link, synthesis and output phases visibly progressing.
+
+## Product-value Fix #1
+
+PASS / COMPLETE for the bounded direct-DI authority path:
 
 ```text
 controller / endpoint interface call
-→ exact interface method symbol
-→ one authoritative direct `builder.Services.AddScoped/AddTransient/AddSingleton<I,T>` registration
-→ exact concrete implementation method
+→ exact interface method
+→ one authoritative direct host registration
+→ exact concrete implementation
 → concrete guards / mutations / downstream calls
 ```
 
-Safety boundaries are part of the feature, not incidental limitations. Keep fail-closed behavior for:
+Keep all existing fail-closed registration/host/collision boundaries.
 
-- ambiguous/multiple registrations;
-- conditional registrations;
-- dead/uninvoked helper registrations;
-- unrelated service collections;
-- builders that are never built;
-- unrelated hosts/projects;
-- assembly/type-name collisions;
-- factory delegates;
-- decorators;
-- assembly scanning;
-- keyed services;
-- helper/extension registration indirection;
-- any other DI shape without a concrete regression proving a safe generic path.
-
-Relevant regressions:
-
-- `tests/Pkc.CSharp.Tests/MinimalApiEndpointScannerTests.cs`
-- `tests/Pkc.CSharp.Tests/DirectDiDispatchAuthorityScopeRegressionTests.cs`
-- `tests/Pkc.CSharp.Tests/DirectDiDispatchCrossProjectCollisionRegressionTests.cs`
-
-## Level-1 Jin12 result
-
-Pinned benchmark:
-
-```text
-benchmark branch    benchmark/fix1-jin12-1401
-wrapper commit      ed498f63578444e4a13ea5a31957d2597890f2f8
-workflow run        35862459255
-target              jin12-xyz/CRM
-target SHA          00493af54d4d9e146d1c6eb75f5dc8f3898f09ec
-artifact            .pkc/workspace only for phase 1
-```
-
-Phase 1 was frozen before source access:
-
-```text
-Q1  100%
-Q2  100%
-Q4  100%
-repo 100%
-```
-
-Baseline:
-
-```text
-Q1   70%
-Q2    0%
-Q4   50%
-repo 40%
-```
-
-Delta: **+60 percentage points**.
-
-Phase 2 source cross-check found no mismatch for those questions. The generated workspace recovered:
-
-- authorization for Contacts Update;
-- the concrete contact-existence precondition;
-- successful mutations to `FirstName`, `LastName`, `Email`, `Phone`, `JobTitle`, `CompanyId`, and `UpdatedAt`;
-- persistence through the contact repository;
-- a traceable controller/interface → DI registration → concrete `ContactService.UpdateAsync` proof path.
-
-No proprietary source snippets were copied into the report.
-
-Report:
+Reference report:
 
 `docs/benchmarks/2026-09-23-fix1-jin12-di-product-value-benchmark.md`
 
-Decision: **Fix #1 is complete only for the bounded direct-DI proof path above. Fix #2 is now unlocked.**
+## Product-value Fix #2
 
-The full Agentic + Jin12 + Kesetovic benchmark has not been rerun. Keep the historical 63.9% full-corpus baseline until Level 2.
+PASS / COMPLETE for bounded Angular URL-expression resolution and child Output-event bridging.
 
-## Product-value Fix #2 checkpoint — PASS / COMPLETE for bounded paths
-
-Exact production HEAD:
-
-`b4dcb5187ef996cf266a584a9df8c5bec534a94a`
-
-Production commits:
+Supported chain:
 
 ```text
-b69c01e15ea24d76b25621e9e81fcf297c4af10c — fix: resolve Angular service URL expressions
-b4dcb5187ef996cf266a584a9df8c5bec534a94a — fix: bridge Angular output events to API calls
+child action
+→ exact @Output + discriminator
+→ parent template event handler
+→ exact switch branch
+→ parent method
+→ exact injected service
+→ URL expression normalization
+→ API call
+→ backend endpoint
 ```
 
-Exact-SHA validation:
+Ambiguous/unsupported event, selector, receiver or URL shapes remain fail-closed.
+
+## Product-value Fix #3
+
+PASS / COMPLETE for the bounded Agentic email displayed-value path.
+
+Pinned target:
 
 ```text
-primary CI / WorkPlay / PokeTrade   35875287680 PASS
-Loren pinned                        35875287748 PASS
-Loren-main canary                   35875287700 PASS
-Jellyfin parity                     35875287900 PASS
+hackersandwizards/agentic-engineering-training-angular
+22f2aab64617f4de7984370a5bd40e8c9535dbf5
 ```
 
-Targeted Kesetovic validation:
+Targeted Level-1 run:
 
 ```text
-target repository: kesetovic/crm-system
-target SHA: 8e3b74bec4fdcd0144bd65f0c1b49c8e801bd2f7
-URL-only run: 35873077699
-final Fix #2 run: 35874940385 PASS
+35899560821 PASS
 ```
 
-Bounded URL path:
-
-`TypeScript URL expression → normalized route template → backend route match`
-
-Bounded Output-event path:
-
-`child external-template UI action → exact child handler → exact @Output → literal event discriminator → exact imported child selector → parent template $event handler → exact switch branch → parent target method → inject(ServiceType) receiver → existing service/API call → backend endpoint`
-
-Relevant regressions:
+Workspace-only Phase 1 proved:
 
 ```text
-tests/Pkc.Frontend.Tests/angular-url-expression-regression.cjs
-tests/Pkc.Frontend.Tests/angular-output-event-bridge-regression.cjs
+MAT_DIALOG_DATA.data.email
+→ EditUserDialogComponent.form.email
+→ EditUserDialogComponent.displayed.email
 ```
 
-Kesetovic PackOrder targeted result: Q3 `0% → 25% → 50%`; Q4 `60% → 70% → 80%` (baseline → URL-only → final Fix #2). Ambiguous or unsupported shapes remain fail-closed. Q3 remains partial pending displayed-value lineage.
+Targeted score moved Q3 `50% → 100%` and bounded Q4 `90% → 100%`. Phase 2 source cross-check found no mismatch for that chain.
 
-Formal R7.10 remains separate: `REPAIRED / ALL GATES PASS / PENDING INDEPENDENT REREVIEW #17`. Preserve that state and do not self-certify it from this product-value thread.
+Do not generalize this result to unrelated Agentic `UpdatedAt` or other unsupported displayed-value paths.
 
-## Required next action — Fix #3
+## Level-2 corpus checkpoint
 
-Target: Agentic `Users Update`.
-
-Goal: prove displayed-value lineage from `MAT_DIALOG_DATA` through `this.data.email`, form-control / FormBuilder initialization, control `email`, and `formControlName="email"` to the displayed field.
-
-Pinned target SHA: `22f2aab64617f4de7984370a5bd40e8c9535dbf5`
-
-Initial bounded lineage:
-
-`MAT_DIALOG_DATA → this.data.email → form-control / FormBuilder initialization → control email → formControlName="email" → displayed field`
-
-Regression-first sequence:
-
-1. freeze the current workspace-only Q3/Q4 answer before source inspection;
-2. inspect only enough pinned source to reproduce the missing lineage;
-3. create the smallest compile-valid Angular/TypeScript regression;
-4. reuse existing response-binding, form-behavior, UI-field, rendered-value and lineage architecture;
-5. require exact component/control/property identity at every promoted hop;
-6. add ambiguity/collision negative regressions;
-7. fail closed whenever identity or ownership is not proven;
-8. run focused, related, then broader relevant local tests;
-9. review the full diff and prefer one coherent implementation commit and push;
-10. run the targeted Agentic Level-1 Q3/Q4 benchmark after deterministic validation.
-
-Do not build an unconstrained generic JavaScript/Angular data-flow engine or add unrelated semantic areas without a directly blocking Fix #3 regression.
-
-Fix #2 has reached its terminal checkpoint. Fix #3 is now UNLOCKED / ACTIVE.
-
-Current Fix #3 deterministic checkpoint:
-
-Pinned target `hackersandwizards/agentic-engineering-training-angular` SHA `22f2aab64617f4de7984370a5bd40e8c9535dbf5`; workspace-only freeze was Q3 `50%`, Q4 `90%` before source inspection.
-
-Implemented bounded lineage:
-
-`MAT_DIALOG_DATA.data.email → EditUserDialogComponent.form.email → EditUserDialogComponent.displayed.email`
-
-Exact imported-token identity is required (`MAT_DIALOG_DATA` from `@angular/material/dialog`, `FormBuilder` from `@angular/forms`, `inject` from `@angular/core`). Component body, formGroup ownership, control/property identity and ambiguity boundaries are checked; unsupported or colliding shapes fail closed.
-
-Focused evidence: `AngularFormBehaviorTests` 11/11 PASS, including direct-expression, nested-group, duplicate-control, import-identity, lexical-spoof and collision negatives; `AngularUiValueLineageKnowledgeTests` 3/3 PASS, including CrossStackFeatureCandidateBuilder exact-component attachment from an external HTML template and markdown rendering; regenerated pinned workspace contains the complete chain in `knowledge/workflows/users/update.md`.
-
-Fix #3 remains ACTIVE / NOT COMPLETE pending related/broader verification and targeted Agentic Level-1 Q3/Q4 benchmark.
-
-## Fix #3 — displayed-value lineage
-
-Primary target: Agentic `Users Update`.
-
-Initial bounded chain:
+Full benchmark:
 
 ```text
-MAT_DIALOG_DATA
-→ this.data.email
-→ form-control initialization
-→ control `email`
-→ formControlName="email"
-→ displayed field
+branch   benchmark/product-value-level2-79b0
+wrapper  749e24406d050a2b738751e086f02320cd28cf86
+run      35900111059 PASS, 3 / 3
 ```
 
-Reuse existing lineage architecture and keep ambiguity handling explicit.
+Selected-probe diagnostic result:
+
+```text
+Agentic Users Update     ~94.5%
+Jin12 Contacts Update    100.0%
+Kesetovic PackOrder       82.5%
+selected-probe aggregate ~91.6%
+backend PO/QC core       ~95.3%
+```
+
+These scores are diagnostic only. Gate B remains NOT PASS because the corpus still has independent gaps:
+
+- construction/default/computation state;
+- semantic side effects (`OrderSignal` is the concrete known example);
+- feature-summary rule fidelity;
+- R7.14 positive unchanged-real-project cross-layer yield.
+
+Detailed report:
+
+`docs/benchmarks/2026-09-23-product-value-level2-and-fix4-prework.md`
+
+## Fix #4 prework candidate — DO NOT MERGE YET
+
+This was prepared because Level-2 exposed construction/default/computation as a high-value gap, but the formal acceptance plan still locks E behind D. Therefore this candidate remains off `main`.
+
+Implementation:
+
+```text
+branch  fix/product-value-construction-state
+commit  35c8e5c5f856e15568aa963bb2d76268008c5570
+        fix: prove observable constructed state
+```
+
+Production-code delta is only:
+
+```text
+src/Pkc.CSharp/CSharpEvidenceScanner.cs
+src/Pkc.CSharp/CSharpObservableConstructionEnricher.cs
+tests/Pkc.CSharp.Tests/ObservableConstructionStateRegressionTests.cs
+```
+
+Authority rule:
+
+Promote object-initializer member assignments only when exact target-project Roslyn identity proves the same local object is passed whole to both a downstream invocation and an invocation on the return path. Return-only construction and a downstream invocation involving another local fail closed.
+
+Validation evidence for the unchanged implementation commit:
+
+```text
+Release build          PASS, 0 warnings / 0 errors
+focused regressions    8 / 8 PASS
+C# full suite          282 / 282 PASS
+frontend full suite     23 / 23 PASS
+```
+
+First wrapper run `35901814917` reached all of the above PASS states, then a transient pinned-target restore failed on AutoMapper 12.0.1 NU1903 advisory before PKC generation.
+
+A wrapper-only retry did not alter implementation:
+
+```text
+wrapper  3529c3a87597cb58ac0cd7f317c39d6311bddff3
+run      35902984101 PASS
+```
+
+The retry target build succeeded and the generated Kesetovic `AddOrder` workflow contains the known construction behavior:
+
+```text
+newOrder.OrderStatus = OrderStatus.NEW
+newOrder.BonusAwarded = orderDto.OrderPrice * 0.05
+newOrder.CustomerName = orderDto.CustomerName
+```
+
+This proves the candidate technically works for the target gap. It is still NOT production and MUST stay unmerged while E is locked.
+
+Potential performance note: the new semantic enricher adds another MSBuild semantic pass. Full C# suite on the candidate ran 6m08 versus roughly 4m45 on the preceding main CI. If E is unlocked and this candidate is adopted, consider prefiltering to endpoints that already own initializer-mutation candidates before opening project models; do not weaken authority to optimize runtime.
 
 ## Workspace / privacy boundary
 
@@ -266,37 +222,42 @@ pkc run <TEAM_REPOSITORY_PATH>
 cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
 ```
 
-- PRODUCT/TRACE: workspace only; no source fallback.
-- Benchmark phase 1: workspace only and frozen before source.
-- ENGINEERING/benchmark phase 2: source allowed only in the approved company environment.
-- Reports use paths, symbols, line ranges and business descriptions, never raw proprietary source bodies.
-- `.pkc/` is co-located and locally Git-excluded where supported; PKC does not rewrite tracked ignore rules or untrack existing files.
+- PRODUCT/TRACE: workspace only, no source fallback.
+- Benchmark phase 1: workspace only and freeze answer before source inspection.
+- Phase 2/source cross-check: minimum necessary source only in the approved environment.
+- Do not copy proprietary source bodies into benchmark reports.
 
 ## Git / CI discipline
 
-For each logical fix:
+For one logical repair:
 
 ```text
 inspect
-→ reproduce with regression
-→ implement minimum generic fix
-→ focused tests
-→ related tests
-→ broader relevant suite
-→ review diff
-→ one coherent commit
-→ one push
+→ regression
+→ generic fix
+→ focused verification
+→ related verification
+→ broader verification
+→ diff review
+→ one coherent implementation commit/push
 → CI final verification
 ```
 
-Do not use GitHub Actions as the edit-test loop. A failing command is evidence to investigate, not a terminal state.
+Do not use Actions as the ordinary edit-test loop.
 
-## Terminal state
+## Exact next action
 
-Keep working on the assigned checkpoint until:
+The current checkpoint has reached an external formal gate.
 
-1. it is PASS and locally verified;
-2. an external review/gate is genuinely required and cannot be performed in-session; or
-3. a genuinely external blocker is proven and documented.
+```text
+independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
+```
 
-Fix #2 is at terminal state (1). The next coding checkpoint is Fix #3.
+Decision rule from the acceptance plan:
+
+```text
+PASS → mark R7.10 + V0.4.7-D PASS / COMPLETE; unlock only E
+FAIL → regression-first minimum generic R7.10 repair; rerun exact-SHA gates and rereview
+```
+
+Do not merge Fix #4 or begin any other E-only work until that independent gate explicitly passes.
