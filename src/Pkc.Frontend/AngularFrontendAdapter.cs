@@ -6,6 +6,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
 {
     private readonly AngularRepositoryScanner _regexFallback = new();
     private readonly AngularTypeScriptAstScanner _astScanner = new();
+    private readonly AngularUrlExpressionEnricher _urlExpressionEnricher = new();
     private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
     private readonly AngularListBehaviorScanner _listBehaviorScanner = new();
     private readonly AngularResponseBindingScanner _responseBindingScanner = new();
@@ -73,9 +74,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
                 "0.4.6-angular");
         }
 
-        var identified = await _serviceIdentityEnricher.EnrichAsync(
+        var urlResolved = await _urlExpressionEnricher.EnrichAsync(
             repositoryPath,
             merged,
+            cancellationToken);
+        var identified = await _serviceIdentityEnricher.EnrichAsync(
+            repositoryPath,
+            urlResolved,
             cancellationToken);
         var authoritativeRenders = await _renderedMemberAuthorityFilter.FilterAsync(
             repositoryPath,
