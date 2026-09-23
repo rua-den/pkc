@@ -7,6 +7,7 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
     private readonly AngularRepositoryScanner _regexFallback = new();
     private readonly AngularTypeScriptAstScanner _astScanner = new();
     private readonly AngularUrlExpressionEnricher _urlExpressionEnricher = new();
+    private readonly AngularOutputEventBridgeEnricher _outputEventBridgeEnricher = new();
     private readonly AngularFormBehaviorScanner _formBehaviorScanner = new();
     private readonly AngularListBehaviorScanner _listBehaviorScanner = new();
     private readonly AngularResponseBindingScanner _responseBindingScanner = new();
@@ -82,9 +83,13 @@ public sealed class AngularFrontendAdapter : IFrontendAdapter
             repositoryPath,
             urlResolved,
             cancellationToken);
-        var authoritativeRenders = await _renderedMemberAuthorityFilter.FilterAsync(
+        var eventBridged = await _outputEventBridgeEnricher.EnrichAsync(
             repositoryPath,
             identified,
+            cancellationToken);
+        var authoritativeRenders = await _renderedMemberAuthorityFilter.FilterAsync(
+            repositoryPath,
+            eventBridged,
             cancellationToken);
         var htmlDirectTextAuthoritativeRenders = await _htmlDirectTextAuthorityFilter.FilterAsync(
             repositoryPath,

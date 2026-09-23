@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="../Pkc.Core/Pkc.Core.csproj" />
     <EmbeddedResource Include="AngularUrlExpressionResolver.cjs" LogicalName="Pkc.Frontend.AngularUrlExpressionResolver.cjs" />
+    <EmbeddedResource Include="AngularOutputEventBridge.cjs" LogicalName="Pkc.Frontend.AngularOutputEventBridge.cjs" />
   </ItemGroup>
 </Project>
