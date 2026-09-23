@@ -237,7 +237,7 @@ internal sealed class AngularComponentProjectionAuthorityFilter
     private static string? ResolveContainedPackageRoot(string nodeModulesRoot, string packageRoot)
     {
         var packageDirectory = new DirectoryInfo(packageRoot);
-        DirectoryInfo? resolved = packageDirectory;
+        FileSystemInfo? resolved = packageDirectory;
         if ((packageDirectory.Attributes & FileAttributes.ReparsePoint) != 0)
         {
             try
