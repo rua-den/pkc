@@ -20,11 +20,11 @@ This handoff is for the next Claude Code / Opus coding or audit session.
 12. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
 13. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when working on the formal R7.10/D gate
 
-Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. The repository is the source of truth; never reset to a historical SHA merely because this handoff names it.
+Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. The repository is the source of truth; do not reset to a historical SHA merely because this handoff names it.
 
-## Keep these two states separate
+## Keep formal acceptance and the user-authorized preview separate
 
-### Formal V0.4.7 state
+Formal V0.4.7 state:
 
 ```text
 A/B/C                    PASS / COMPLETE
@@ -45,46 +45,35 @@ fix: tolerate duplicate Angular import aliases
 
 Do not self-certify this candidate from its implementation continuation.
 
-### User-authorized AI workspace preview
-
-The user explicitly required same-day company-repository testing, so the isolated workspace preview is allowed before formal W unlock.
-
-Current exact workspace/privacy production source:
+User-authorized AI workspace preview current exact source:
 
 ```text
-bf0ef686f2591841b85f36583a5fec7afb049060
-feat: enforce workspace privacy and benchmark cadence
+c45eb24809f181d48eac53abc64e8b5e816c57cc
+feat: isolate colocated PKC workspace from Git
 ```
 
-Predecessors:
+This preview is validated for company-repository testing but does not mark formal W complete.
+
+## Company repository UX
 
 ```text
-6e845dc16718e74adac38e4aa49ee75023f99fa5  feat: generate AI product workspace
-b76427f67b78ab8964284c1a6c43ec89e5656375  fix: isolate pkc run workspace
-```
-
-This preview does not mark formal W complete.
-
-## Preferred user flow
-
-```text
-pkc run <repository-path>
-cd <repository-path>/.pkc/workspace
+pkc run <TEAM_REPOSITORY_PATH>
+cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
 claude
 ```
 
-Direct source-checkout flow:
+Source-checkout equivalent:
 
 ```text
 dotnet build PKC.sln --configuration Release
-dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- run <repository-path>
-cd <repository-path>/.pkc/workspace
+dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- run <TEAM_REPOSITORY_PATH>
+cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
 claude
 ```
 
-The user should not have to open or upload `PKC_KNOWLEDGE.md` for the preferred UX.
+The generated workspace lives beside the source under `.pkc/`; the user should not need to upload `PKC_KNOWLEDGE.md` for the preferred UX.
 
-## Generated workspace contract
+## Co-located workspace contract
 
 ```text
 <repo>/.pkc/
@@ -104,30 +93,92 @@ The user should not have to open or upload `PKC_KNOWLEDGE.md` for the preferred 
     _meta/
       manifest.json
       catalog.json
+      git-isolation.json
+      source-context.json
 ```
 
-Required boundaries:
+Same repository root does not mean same authority.
 
-- target root `CLAUDE.md` untouched;
-- target root `AGENTS.md` untouched;
-- no root legacy knowledge artifacts from `pkc run`;
-- stale workspace files removed on regeneration;
-- output paths confined to `.pkc/workspace`;
-- PRODUCT default reads generated workspace only;
-- TRACE is explicit and may cite paths/symbols without code dumps;
-- ENGINEERING is explicit and requires approved source-enabled context;
-- generated workspace contains product knowledge, not source code/raw facts;
-- manifest remains `PREVIEW` until `pkc verify` exists.
+### PRODUCT — default
 
-## Company-source privacy boundary
+- read generated workspace only;
+- do not climb to `../..` source;
+- answer in business/QA language;
+- prefer unknown/not-grounded over guessing;
+- do not dump source, raw facts, secrets or proprietary file bodies.
 
-Treat proprietary target source as confidential.
+### TRACE — explicit
 
-- Source inspection/editing occurs only in the approved company Claude Code / enterprise source-enabled environment.
-- Never copy proprietary source-code bodies, source files, secrets, credentials, or raw fact payloads into PKC repo docs, public issues, generated workspaces or benchmark reports.
-- Benchmark reports may contain business behavior, scores, endpoint names, source paths, symbol names and concise evidence descriptions.
-- Do not commit the target company repository or its `.pkc/` output into PKC.
-- PKC controls generated workspace content and routing, not provider/network retention policy. Use the company-approved Claude environment for private source.
+- remain workspace-only;
+- may cite generated evidence paths, symbols and endpoints;
+- do not open or reproduce source bodies.
+
+### ENGINEERING — explicit
+
+- source root is declared by `_meta/source-context.json` as `../..` relative to the workspace;
+- source inspection/editing is allowed only in an approved company/source-enabled Claude Code environment;
+- do not export source bodies into generated workspace, PKC public docs, issues or benchmark reports.
+
+### Benchmark
+
+Phase 1 must answer from generated workspace only and record the answer. Phase 2 may inspect the minimum required source locally in the approved company environment to establish the known answer and score the workspace answer. Reports contain behavior, evidence locations/symbols, scores and misses, not proprietary code bodies.
+
+## Git isolation added by `c45eb248...`
+
+`pkc run` now attempts to keep generated `.pkc/` out of ordinary `git add .` without modifying the team's tracked ignore policy.
+
+- normal checkout: use `.git/info/exclude`;
+- worktree/separate gitdir: follow `.git` `gitdir:` plus `commondir` and use common Git `info/exclude`;
+- add `/.pkc/` idempotently;
+- never edit tracked `.gitignore`;
+- write result to `.pkc/workspace/_meta/git-isolation.json`;
+- non-Git, unsupported or read-only layouts do not fail workspace generation.
+
+Important limitation: ignore rules do not untrack already-tracked `.pkc` files. PKC deliberately does not rewrite the target repository index/history.
+
+After running on a team repo, check:
+
+```text
+git status --short
+```
+
+New `.pkc/` output should be absent from status for a supported Git layout when it was not previously tracked. If not, inspect `_meta/git-isolation.json` before changing repository settings manually.
+
+## Exact validation
+
+Exact source:
+
+```text
+c45eb24809f181d48eac53abc64e8b5e816c57cc
+```
+
+Exact-SHA gates:
+
+```text
+CI / full tests / WorkPlay / PokeTrade  35852404008  PASS
+pinned Loren                            35852403984  PASS
+Loren-main canary                       35852404005  PASS
+pinned Jellyfin                         35852404020  PASS
+```
+
+Observed exact results:
+
+```text
+Release build       0 warnings / 0 errors
+C# tests            265 / 265 PASS
+Frontend tests      13 / 13 PASS
+Tool pack/install   PASS
+WorkPlay            PASS
+PokeTrade           PASS
+Loren pinned/main   PASS
+Jellyfin parity     PASS
+```
+
+Focused regression:
+
+`tests/Pkc.CSharp.Tests/PkcWorkspaceColocationTests.cs`
+
+This change is benchmark Level 0 because it changes workspace placement/Git isolation metadata, not product-answer semantics. Do not spend a full AI corpus on it.
 
 ## Benchmark cadence
 
@@ -135,131 +186,92 @@ Protocol:
 
 `docs/benchmarks/product-value-benchmark-protocol.md`
 
-Do **not** run full AI benchmark after every edit.
-
-### Level 0 — deterministic, default
-
-For every change run the appropriate focused/related/full tests and deterministic gates. Examples include build, regression, authority/no-leak checks, workspace isolation, expected files, output diff and idempotence.
-
-No AI reread is needed when the change cannot alter product answers.
-
-### Level 1 — targeted AI product-value
-
-Use when a change can alter answers. Select only the affected pinned repo/workflow/questions.
-
-Two-phase rule:
-
 ```text
-phase 1: open only generated .pkc/workspace → answer + record
-phase 2: inspect minimum required pinned/company source locally in approved environment → known answer → score
+Level 0 — deterministic default
+Level 1 — targeted AI only when product answers can change
+Level 2 — full AI for acceptance/release/demo checkpoints, major semantic/routing changes, broad regression risk, or explicit request
 ```
 
-Never paste source code into the report.
+For Level 1/2 always capture phase-1 workspace answer before inspecting source.
 
-Typical Level-1 triggers:
-
-- interface → implementation traversal;
-- permissions/preconditions;
-- state/default/computation extraction;
-- side effects;
-- frontend/API linkage;
-- displayed-value lineage;
-- feature/workflow synthesis;
-- authority change that affects answerability.
-
-### Level 2 — full AI product-value
-
-Full Agentic/Jin12/Kesetovic corpus only for acceptance/release/demo checkpoints, major semantic/routing changes, broad regression risk, or explicit request.
-
-Safety PASS is never automatically product-value PASS.
-
-## Why `bf0ef686...` does not require full AI Q&A
-
-This checkpoint changes workspace privacy/routing instructions, manifest declarations, benchmark cadence and their regressions. It does not change extracted business semantics or canonical knowledge.
-
-Use Level 0 deterministic validation for this checkpoint. Future semantic fixes should use Level 1 targeted AI benchmark first.
-
-## Exact validation for `bf0ef686...`
-
-Required exact-SHA runs:
+## Product-value baseline
 
 ```text
-CI / full tests / WorkPlay / PokeTrade  35848727746
-pinned Loren                            35848727772
-Loren-main canary                       35848727756
-pinned Jellyfin                         35848727793
+Agentic Users Update       80.8%
+Jin12 Contacts Update      40.0%
+Kesetovic PackOrder        65.0%
+backend PO/QC core         72.6%
+overall applicable         63.9%
 ```
 
-The docs handoff should only claim this checkpoint validated when all four are PASS.
+Safety/fail-closed PASS does not mean product-value PASS.
 
-Previous isolated end-to-end `pkc run` smoke remains relevant for unchanged CLI/writer mechanics:
+## Next semantic coding priority — DeepSeek review reconciled with current architecture
+
+Do not attack all three fixes in one patch. Use regression-first and targeted Level-1 benchmark after each semantic checkpoint.
+
+### Fix #1 — interface → concrete implementation traversal
+
+This is the next highest-ROI semantic repair and should start first.
+
+Required proof shape:
 
 ```text
-branch   benchmark/workspace-b76427
-commit   1ee7b0d523f29dcbb7f45494d2c9461e9d1027ce
-run      35845652352 — PASS
+endpoint/controller invocation
+→ exact interface method symbol
+→ proven DI registration
+→ exact concrete implementing method
+→ concrete guards / mutations / downstream calls already present in evidence
 ```
 
-Current privacy/cadence content is covered by `AiWorkspaceRendererTests`.
+Rules:
 
-## Company Claude next action
+- use Roslyn/project-semantic identities, not method-name matching;
+- scan registration sites across the loaded compilation, including top-level `Program.cs`;
+- first bounded authoritative scope: direct `AddScoped<I,T>`, `AddTransient<I,T>`, `AddSingleton<I,T>`;
+- resolve the exact interface member implementation, including overload identity/signature;
+- retain interface-call evidence and add an explicit dispatch/resolution proof edge rather than pretending the interface call was originally a concrete call;
+- multiple/ambiguous implementations must downgrade to uncertain/not grounded;
+- factory delegates, assembly scanning, decorators, keyed and conditional registrations remain unsupported until deterministic proof and regressions exist;
+- candidate traversal must follow the proven dispatch edge without weakening current fail-closed authority;
+- targeted benchmark: Jin12 Contacts Update/GetAll Q1/Q2/Q4, then source cross-check.
 
-Primary request:
+Expected score increases are hypotheses, not acceptance criteria. Acceptance is proof correctness + safety preservation.
 
-`docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
+### Fix #2 — frontend URL expression resolution
 
-Claude Opus / Claude Code should:
+After #1 closes, build a bounded TypeScript AST expression evaluator rather than widening regexes. Target literals, binary `+`, template spans, local constants and proven `this.property` values. Normalize route parameters and match backend route templates. Run targeted Kesetovic Q3/Q4.
 
-1. verify current `main` and exact workspace/privacy source;
-2. audit generated routing, privacy/no-code-dump behavior and benchmark cadence;
-3. reproduce any concrete defect regression-first;
-4. implement the minimum generic fix;
-5. run focused → related → broader deterministic validation;
-6. select benchmark Level 0/1/2 based on semantic impact rather than habit;
-7. for Level 1/2, record workspace-only answer before source inspection;
-8. source-cross-check only inside approved company environment;
-9. report behavior/scores/evidence references, not proprietary code;
-10. use one coherent implementation commit/push when possible;
-11. update status/handoff after a meaningful verified checkpoint.
+If URL matching is fixed but PackOrder still lacks action→API proof, investigate the real child `@Output` → parent event handler bridge as a separate regression. Do not assume URL folding alone solves the full UI event chain. HttpParams/HttpHeaders are not part of the first route-matching repair unless a targeted regression requires them.
 
-If the workspace/privacy boundary is sound, continue to the next highest-value product gap only within the user-authorized preview scope while formal D/E/W gates remain separate.
+### Fix #3 — displayed-value lineage
 
-## Real company repository test
+Extend the existing bounded lineage model. First known target:
 
 ```text
-pkc run <TEAM_REPOSITORY_PATH>
-cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
-claude
+MAT_DIALOG_DATA
+→ this.data.email
+→ FormControl/FormBuilder initialization
+→ form control `email`
+→ formControlName="email"
+→ displayed field
 ```
 
-Normal PO/QA use should stay in the workspace.
+Every promoted hop needs exact source location/proof identity and ambiguity handling. Reuse current `ui-field`, form behavior and rendered-value lineage facts where possible; do not start with an unbounded generic dataflow engine. Targeted benchmark: Agentic Users Update Q3/Q4.
 
-If benchmarking the team repository:
+Portable evidence/report format should use path + line range + symbol/fact/proof/confidence + business description. Do not persist proprietary raw source snippets in the workspace or reports.
 
-```text
-1. ask from workspace only and record answer
-2. source-cross-check locally in approved company Claude Code
-3. score match
-4. report misses without code dump
-```
+After all three semantic checkpoints are independently verified, run a Level-2 three-repository benchmark and compare against the exact 63.9% baseline, plus report newly discovered unsupported cases.
 
-Do not commit `.pkc/` unless the target repository explicitly wants generated PKC artifacts under version control.
+## Privacy boundary for company Claude / Opus
 
-## Known product-value gaps
+- Proprietary target source stays in the company-approved Claude Code/enterprise environment.
+- Normal PO/QA sessions should launch from `.pkc/workspace` and remain there.
+- ENGINEERING and benchmark phase 2 may inspect source because it is co-located, but only after explicit mode/phase transition.
+- PKC generated output must not contain source-code bodies or secrets.
+- PKC cannot guarantee provider/network retention; organizational controls remain required.
 
-Current known-answer corpus points to:
-
-1. interface → concrete implementation traversal;
-2. frontend event/service URL-expression linkage;
-3. displayed-value lineage;
-4. construction/default/computation state;
-5. integration side-effect synthesis;
-6. feature-summary fidelity;
-7. R7.14 positive real-project yield without weakening authority.
-
-Use targeted benchmark evidence to select one high-ROI repair at a time.
-
-## Terminal state
+## Terminal state / discipline
 
 Keep moving on the assigned checkpoint until one of:
 
@@ -267,4 +279,4 @@ Keep moving on the assigned checkpoint until one of:
 2. a required external review/gate cannot be performed in-session;
 3. a genuinely external blocker is proven and documented.
 
-Test/build/tool failures and first unsuccessful approaches are not terminal states.
+Test/build/tool failure is evidence to investigate, not a reason to stop. Keep one coherent implementation commit/push where possible, then one docs-only handoff commit when needed.
