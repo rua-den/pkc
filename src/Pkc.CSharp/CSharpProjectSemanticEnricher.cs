@@ -504,7 +504,8 @@ public sealed class CSharpProjectSemanticEnricher
             var root = source.Tree.GetRoot();
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
-                if (!IsProvenStartupRegistrationSite(invocation) || IsConditionalRegistrationSite(invocation))
+                if (!IsProvenStartupRegistrationSite(invocation, source.SemanticModel) ||
+                    IsConditionalRegistrationSite(invocation))
                 {
                     continue;
                 }
@@ -539,12 +540,57 @@ public sealed class CSharpProjectSemanticEnricher
                 StringComparer.Ordinal);
     }
 
-    private static bool IsProvenStartupRegistrationSite(InvocationExpressionSyntax invocation)
+    private static bool IsProvenStartupRegistrationSite(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel)
     {
         var ancestors = invocation.Ancestors().ToArray();
-        return ancestors.OfType<GlobalStatementSyntax>().Any() &&
-               !ancestors.Any(ancestor => ancestor is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax);
+        if (!ancestors.OfType<GlobalStatementSyntax>().Any() ||
+            ancestors.Any(ancestor => ancestor is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax) ||
+            invocation.Expression is not MemberAccessExpressionSyntax registrationAccess ||
+            registrationAccess.Expression is not MemberAccessExpressionSyntax servicesAccess ||
+            servicesAccess.Name.Identifier.ValueText != "Services" ||
+            servicesAccess.Expression is not IdentifierNameSyntax builderIdentifier)
+        {
+            return false;
+        }
+
+        var servicesProperty = semanticModel.GetSymbolInfo(servicesAccess).Symbol as IPropertySymbol;
+        var builderSymbol = semanticModel.GetSymbolInfo(builderIdentifier).Symbol;
+        if (servicesProperty is null ||
+            builderSymbol is null ||
+            !IsSupportedHostBuilder(servicesProperty.ContainingType))
+        {
+            return false;
+        }
+
+        var root = invocation.SyntaxTree.GetRoot();
+        foreach (var candidate in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (candidate.SpanStart <= invocation.SpanStart ||
+                candidate.Expression is not MemberAccessExpressionSyntax buildAccess ||
+                buildAccess.Name.Identifier.ValueText != "Build")
+            {
+                continue;
+            }
+
+            var candidateBuilder = semanticModel.GetSymbolInfo(buildAccess.Expression).Symbol;
+            var buildMethod = semanticModel.GetSymbolInfo(candidate).Symbol as IMethodSymbol;
+            if (SymbolEqualityComparer.Default.Equals(builderSymbol, candidateBuilder) &&
+                buildMethod is not null &&
+                IsSupportedHostBuilder(buildMethod.ContainingType))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    private static bool IsSupportedHostBuilder(INamedTypeSymbol? type) =>
+        type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) is
+            "global::Microsoft.AspNetCore.Builder.WebApplicationBuilder" or
+            "global::Microsoft.Extensions.Hosting.HostApplicationBuilder";
 
     private static bool IsConditionalRegistrationSite(InvocationExpressionSyntax invocation) =>
         invocation.Ancestors().Any(ancestor => ancestor switch

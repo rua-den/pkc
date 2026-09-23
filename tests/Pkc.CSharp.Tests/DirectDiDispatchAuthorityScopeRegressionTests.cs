@@ -37,9 +37,7 @@ public sealed class DirectDiDispatchAuthorityScopeRegressionTests
                 """);
 
             var document = await new CSharpEvidenceScanner().ScanAsync(root);
-            var endpoint = FindEndpoint(document, "/api/run");
-            Assert.DoesNotContain(document.Relations, relation =>
-                relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
+            AssertNoDispatch(document, FindEndpoint(document, "/api/run"));
         }
         finally
         {
@@ -111,15 +109,86 @@ public sealed class DirectDiDispatchAuthorityScopeRegressionTests
                 fact.Kind == "endpoint" &&
                 fact.Source.Path.StartsWith("HostB/", StringComparison.Ordinal) &&
                 fact.Metadata.TryGetValue("fullRoute", out var route) && route == "/api/run");
-
-            Assert.DoesNotContain(document.Relations, relation =>
-                relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
+            AssertNoDispatch(document, endpoint);
         }
         finally
         {
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Scan_does_not_dispatch_registration_into_unrelated_service_collection()
+    {
+        var root = CreateTempDirectory("unrelated-collection");
+        try
+        {
+            await WriteWebProjectAsync(root, "Fixture");
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                var builder = WebApplication.CreateBuilder(args);
+                var unusedServices = new ServiceCollection();
+                unusedServices.AddScoped<IRunService, FakeRunService>();
+                builder.Services.AddScoped<IRunService>(_ => new RealRunService());
+                var app = builder.Build();
+                app.MapPost("/api/run", (IRunService service) => Results.Ok(service.RunAsync()));
+                app.Run();
+
+                public interface IRunService { string RunAsync(); }
+                public sealed class RealRunService : IRunService { public string RunAsync() => "real"; }
+                public sealed class FakeRunService : IRunService { public string RunAsync() => "fake"; }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            AssertNoDispatch(document, FindEndpoint(document, "/api/run"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Scan_does_not_dispatch_registration_from_host_builder_that_is_never_built()
+    {
+        var root = CreateTempDirectory("unused-builder");
+        try
+        {
+            await WriteWebProjectAsync(root, "Fixture");
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                var unusedBuilder = WebApplication.CreateBuilder(args);
+                unusedBuilder.Services.AddScoped<IRunService, FakeRunService>();
+
+                var builder = WebApplication.CreateBuilder(args);
+                builder.Services.AddScoped<IRunService>(_ => new RealRunService());
+                var app = builder.Build();
+                app.MapPost("/api/run", (IRunService service) => Results.Ok(service.RunAsync()));
+                app.Run();
+
+                public interface IRunService { string RunAsync(); }
+                public sealed class RealRunService : IRunService { public string RunAsync() => "real"; }
+                public sealed class FakeRunService : IRunService { public string RunAsync() => "fake"; }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            AssertNoDispatch(document, FindEndpoint(document, "/api/run"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void AssertNoDispatch(FactDocument document, EvidenceFact endpoint) =>
+        Assert.DoesNotContain(document.Relations, relation =>
+            relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
 
     private static EvidenceFact FindEndpoint(FactDocument document, string route) =>
         Assert.Single(document.Facts, fact =>
