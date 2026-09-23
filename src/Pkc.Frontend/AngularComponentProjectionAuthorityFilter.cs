@@ -131,7 +131,7 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         CancellationToken cancellationToken)
     {
         var selectors = new HashSet<string>(StringComparer.Ordinal);
-        var importedPackages = new HashSet<string>(StringComparer.Ordinal);
+        var importedPackageRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in EnumerateProductTypeScriptFiles(root, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -139,10 +139,17 @@ internal sealed class AngularComponentProjectionAuthorityFilter
             foreach (Match importedModule in ImportedModuleRegex.Matches(text))
             {
                 var module = importedModule.Groups["module"].Value;
-                if (!module.StartsWith(".", StringComparison.Ordinal) &&
-                    !module.StartsWith("/", StringComparison.Ordinal))
+                if (module.StartsWith(".", StringComparison.Ordinal) ||
+                    module.StartsWith("/", StringComparison.Ordinal))
                 {
-                    importedPackages.Add(GetPackageName(module));
+                    continue;
+                }
+
+                var package = GetPackageName(module);
+                var packageRoot = FindImportedPackageRoot(root, file, package);
+                if (packageRoot is not null)
+                {
+                    importedPackageRoots.Add(packageRoot);
                 }
             }
 
@@ -165,28 +172,9 @@ internal sealed class AngularComponentProjectionAuthorityFilter
             }
         }
 
-        foreach (var package in importedPackages.OrderBy(value => value, StringComparer.Ordinal))
+        foreach (var packageRoot in importedPackageRoots.OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!PackageNameRegex.IsMatch(package))
-            {
-                continue;
-            }
-
-            var nodeModulesRoot = Path.GetFullPath(Path.Combine(root, "node_modules"));
-            var packageRoot = Path.Combine(root, "node_modules", package.Replace('/', Path.DirectorySeparatorChar));
-            var packageRootFullPath = Path.GetFullPath(packageRoot);
-            var containmentPrefix = nodeModulesRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!packageRootFullPath.StartsWith(containmentPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!Directory.Exists(packageRoot))
-            {
-                continue;
-            }
-
             foreach (var file in EnumerateDeclarationFiles(packageRoot, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -206,6 +194,101 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         }
 
         return selectors.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+    }
+
+    private static string? FindImportedPackageRoot(
+        string repositoryRoot,
+        string sourceFile,
+        string package)
+    {
+        if (!PackageNameRegex.IsMatch(package))
+        {
+            return null;
+        }
+
+        var root = NormalizeDirectoryPath(repositoryRoot);
+        var current = Path.GetDirectoryName(Path.GetFullPath(sourceFile));
+        var packagePath = package.Replace('/', Path.DirectorySeparatorChar);
+        while (current is not null && IsPathWithinOrEqual(root, current))
+        {
+            var nodeModulesRoot = Path.GetFullPath(Path.Combine(current, "node_modules"));
+            var packageRoot = Path.GetFullPath(Path.Combine(nodeModulesRoot, packagePath));
+            var containmentPrefix = NormalizeDirectoryPath(nodeModulesRoot) + Path.DirectorySeparatorChar;
+            if (packageRoot.StartsWith(containmentPrefix, StringComparison.OrdinalIgnoreCase) &&
+                Directory.Exists(packageRoot))
+            {
+                return ResolveContainedPackageRoot(nodeModulesRoot, packageRoot);
+            }
+
+            if (string.Equals(
+                    NormalizeDirectoryPath(current),
+                    root,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            current = Path.GetDirectoryName(current);
+        }
+
+        return null;
+    }
+
+    private static string? ResolveContainedPackageRoot(string nodeModulesRoot, string packageRoot)
+    {
+        var packageDirectory = new DirectoryInfo(packageRoot);
+        DirectoryInfo? resolved = packageDirectory;
+        if ((packageDirectory.Attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            try
+            {
+                resolved = packageDirectory.ResolveLinkTarget(returnFinalTarget: true);
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return null;
+            }
+            catch (NotSupportedException)
+            {
+                return null;
+            }
+        }
+
+        if (resolved is null || !resolved.Exists)
+        {
+            return null;
+        }
+
+        var resolvedPath = NormalizeDirectoryPath(resolved.FullName);
+        return IsPathWithinOrEqual(nodeModulesRoot, resolvedPath)
+            ? resolvedPath
+            : null;
+    }
+
+    private static bool IsPathWithinOrEqual(string root, string candidate)
+    {
+        var normalizedRoot = NormalizeDirectoryPath(root);
+        var normalizedCandidate = NormalizeDirectoryPath(candidate);
+        return string.Equals(normalizedRoot, normalizedCandidate, StringComparison.OrdinalIgnoreCase) ||
+               normalizedCandidate.StartsWith(
+                   normalizedRoot + Path.DirectorySeparatorChar,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeDirectoryPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var pathRoot = Path.GetPathRoot(fullPath);
+        if (string.Equals(fullPath, pathRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return fullPath;
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
     private static IEnumerable<string> EnumerateProductTypeScriptFiles(
