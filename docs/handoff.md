@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-23
 
-This handoff is for the next Claude Code / Opus coding or audit session.
+This handoff is for the next PKC coding or audit session.
 
 ## Read first
 
@@ -13,18 +13,14 @@ This handoff is for the next Claude Code / Opus coding or audit session.
 5. `docs/milestones.md`
 6. `docs/product-knowledge-contract.md`
 7. `docs/v0.4.7-acceptance-plan.md`
-8. `docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md`
-9. `docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md`
-10. `docs/benchmarks/product-value-benchmark-protocol.md`
-11. `docs/benchmarks/2026-09-23-ai-question-answerability-benchmark.md`
-12. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
-13. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when working on the formal R7.10/D gate
+8. `docs/benchmarks/product-value-benchmark-protocol.md`
+9. `docs/benchmarks/2026-09-23-fix1-jin12-di-product-value-benchmark.md`
+10. `docs/reviews/2026-09-23-ai-workspace-preview-company-audit-request.md`
+11. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md` only when explicitly assigned the formal R7.10/D independent-review role
 
-Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. The repository is the source of truth; do not reset to a historical SHA merely because this handoff names it.
+Then inspect current `main`, recent commits, working tree state, production code and relevant regressions. Do not reset to a historical SHA merely because this handoff names one.
 
-## Keep formal acceptance and the user-authorized preview separate
-
-Formal V0.4.7 state:
+## Formal acceptance remains separate
 
 ```text
 A/B/C                    PASS / COMPLETE
@@ -43,240 +39,207 @@ Formal R7.10 candidate:
 fix: tolerate duplicate Angular import aliases
 ```
 
-Do not self-certify this candidate from its implementation continuation.
+Do not self-certify that gate from a product-value implementation thread.
 
-User-authorized AI workspace preview current exact source:
+## Product-value Fix #1 checkpoint — PASS in bounded scope
+
+Exact production SHA under validation:
 
 ```text
-c45eb24809f181d48eac53abc64e8b5e816c57cc
-feat: isolate colocated PKC workspace from Git
+1401d42291f5da4ce59ba79887ac53106b978dd7
+fix: prove DI dispatch host authority
 ```
 
-This preview is validated for company-repository testing but does not mark formal W complete.
-
-## Company repository UX
+Observed exact validation:
 
 ```text
-pkc run <TEAM_REPOSITORY_PATH>
-cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
-claude
+primary CI / WorkPlay / PokeTrade   PASS
+Loren pinned                        PASS
+Loren-main canary                   PASS
+Jellyfin parity                     PASS
+Release build                       0 warnings / 0 errors
+C# tests                            274 / 274 PASS
+Frontend tests                      13 / 13 PASS
 ```
 
-Source-checkout equivalent:
+Keep the primary CI `.NET 8` + `.NET 10` setup. PKC targets `net10.0`; many semantic fixtures remain `net8.0`.
+
+Fix #1 now proves this bounded path:
 
 ```text
-dotnet build PKC.sln --configuration Release
-dotnet run --project src/Pkc.Cli/Pkc.Cli.csproj --configuration Release --no-build -- run <TEAM_REPOSITORY_PATH>
-cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
-claude
-```
-
-The generated workspace lives beside the source under `.pkc/`; the user should not need to upload `PKC_KNOWLEDGE.md` for the preferred UX.
-
-## Co-located workspace contract
-
-```text
-<repo>/.pkc/
-  facts.json
-  feature-candidates.json
-  product-features.json
-  workspace/
-    CLAUDE.md
-    AGENTS.md
-    knowledge/
-      START_HERE.md
-      index.md
-      features/...
-      workflows/...
-    _policy/
-      answer-contract.md
-    _meta/
-      manifest.json
-      catalog.json
-      git-isolation.json
-      source-context.json
-```
-
-Same repository root does not mean same authority.
-
-### PRODUCT — default
-
-- read generated workspace only;
-- do not climb to `../..` source;
-- answer in business/QA language;
-- prefer unknown/not-grounded over guessing;
-- do not dump source, raw facts, secrets or proprietary file bodies.
-
-### TRACE — explicit
-
-- remain workspace-only;
-- may cite generated evidence paths, symbols and endpoints;
-- do not open or reproduce source bodies.
-
-### ENGINEERING — explicit
-
-- source root is declared by `_meta/source-context.json` as `../..` relative to the workspace;
-- source inspection/editing is allowed only in an approved company/source-enabled Claude Code environment;
-- do not export source bodies into generated workspace, PKC public docs, issues or benchmark reports.
-
-### Benchmark
-
-Phase 1 must answer from generated workspace only and record the answer. Phase 2 may inspect the minimum required source locally in the approved company environment to establish the known answer and score the workspace answer. Reports contain behavior, evidence locations/symbols, scores and misses, not proprietary code bodies.
-
-## Git isolation added by `c45eb248...`
-
-`pkc run` now attempts to keep generated `.pkc/` out of ordinary `git add .` without modifying the team's tracked ignore policy.
-
-- normal checkout: use `.git/info/exclude`;
-- worktree/separate gitdir: follow `.git` `gitdir:` plus `commondir` and use common Git `info/exclude`;
-- add `/.pkc/` idempotently;
-- never edit tracked `.gitignore`;
-- write result to `.pkc/workspace/_meta/git-isolation.json`;
-- non-Git, unsupported or read-only layouts do not fail workspace generation.
-
-Important limitation: ignore rules do not untrack already-tracked `.pkc` files. PKC deliberately does not rewrite the target repository index/history.
-
-After running on a team repo, check:
-
-```text
-git status --short
-```
-
-New `.pkc/` output should be absent from status for a supported Git layout when it was not previously tracked. If not, inspect `_meta/git-isolation.json` before changing repository settings manually.
-
-## Exact validation
-
-Exact source:
-
-```text
-c45eb24809f181d48eac53abc64e8b5e816c57cc
-```
-
-Exact-SHA gates:
-
-```text
-CI / full tests / WorkPlay / PokeTrade  35852404008  PASS
-pinned Loren                            35852403984  PASS
-Loren-main canary                       35852404005  PASS
-pinned Jellyfin                         35852404020  PASS
-```
-
-Observed exact results:
-
-```text
-Release build       0 warnings / 0 errors
-C# tests            265 / 265 PASS
-Frontend tests      13 / 13 PASS
-Tool pack/install   PASS
-WorkPlay            PASS
-PokeTrade           PASS
-Loren pinned/main   PASS
-Jellyfin parity     PASS
-```
-
-Focused regression:
-
-`tests/Pkc.CSharp.Tests/PkcWorkspaceColocationTests.cs`
-
-This change is benchmark Level 0 because it changes workspace placement/Git isolation metadata, not product-answer semantics. Do not spend a full AI corpus on it.
-
-## Benchmark cadence
-
-Protocol:
-
-`docs/benchmarks/product-value-benchmark-protocol.md`
-
-```text
-Level 0 — deterministic default
-Level 1 — targeted AI only when product answers can change
-Level 2 — full AI for acceptance/release/demo checkpoints, major semantic/routing changes, broad regression risk, or explicit request
-```
-
-For Level 1/2 always capture phase-1 workspace answer before inspecting source.
-
-## Product-value baseline
-
-```text
-Agentic Users Update       80.8%
-Jin12 Contacts Update      40.0%
-Kesetovic PackOrder        65.0%
-backend PO/QC core         72.6%
-overall applicable         63.9%
-```
-
-Safety/fail-closed PASS does not mean product-value PASS.
-
-## Next semantic coding priority — DeepSeek review reconciled with current architecture
-
-Do not attack all three fixes in one patch. Use regression-first and targeted Level-1 benchmark after each semantic checkpoint.
-
-### Fix #1 — interface → concrete implementation traversal
-
-This is the next highest-ROI semantic repair and should start first.
-
-Required proof shape:
-
-```text
-endpoint/controller invocation
+controller / endpoint interface call
 → exact interface method symbol
-→ proven DI registration
-→ exact concrete implementing method
-→ concrete guards / mutations / downstream calls already present in evidence
+→ one authoritative direct `builder.Services.AddScoped/AddTransient/AddSingleton<I,T>` registration
+→ exact concrete implementation method
+→ concrete guards / mutations / downstream calls
 ```
 
-Rules:
+Safety boundaries are part of the feature, not incidental limitations. Keep fail-closed behavior for:
 
-- use Roslyn/project-semantic identities, not method-name matching;
-- scan registration sites across the loaded compilation, including top-level `Program.cs`;
-- first bounded authoritative scope: direct `AddScoped<I,T>`, `AddTransient<I,T>`, `AddSingleton<I,T>`;
-- resolve the exact interface member implementation, including overload identity/signature;
-- retain interface-call evidence and add an explicit dispatch/resolution proof edge rather than pretending the interface call was originally a concrete call;
-- multiple/ambiguous implementations must downgrade to uncertain/not grounded;
-- factory delegates, assembly scanning, decorators, keyed and conditional registrations remain unsupported until deterministic proof and regressions exist;
-- candidate traversal must follow the proven dispatch edge without weakening current fail-closed authority;
-- targeted benchmark: Jin12 Contacts Update/GetAll Q1/Q2/Q4, then source cross-check.
+- ambiguous/multiple registrations;
+- conditional registrations;
+- dead/uninvoked helper registrations;
+- unrelated service collections;
+- builders that are never built;
+- unrelated hosts/projects;
+- assembly/type-name collisions;
+- factory delegates;
+- decorators;
+- assembly scanning;
+- keyed services;
+- helper/extension registration indirection;
+- any other DI shape without a concrete regression proving a safe generic path.
 
-Expected score increases are hypotheses, not acceptance criteria. Acceptance is proof correctness + safety preservation.
+Relevant regressions:
 
-### Fix #2 — frontend URL expression resolution
+- `tests/Pkc.CSharp.Tests/MinimalApiEndpointScannerTests.cs`
+- `tests/Pkc.CSharp.Tests/DirectDiDispatchAuthorityScopeRegressionTests.cs`
+- `tests/Pkc.CSharp.Tests/DirectDiDispatchCrossProjectCollisionRegressionTests.cs`
 
-After #1 closes, build a bounded TypeScript AST expression evaluator rather than widening regexes. Target literals, binary `+`, template spans, local constants and proven `this.property` values. Normalize route parameters and match backend route templates. Run targeted Kesetovic Q3/Q4.
+## Level-1 Jin12 result
 
-If URL matching is fixed but PackOrder still lacks action→API proof, investigate the real child `@Output` → parent event handler bridge as a separate regression. Do not assume URL folding alone solves the full UI event chain. HttpParams/HttpHeaders are not part of the first route-matching repair unless a targeted regression requires them.
+Pinned benchmark:
 
-### Fix #3 — displayed-value lineage
+```text
+benchmark branch    benchmark/fix1-jin12-1401
+wrapper commit      ed498f63578444e4a13ea5a31957d2597890f2f8
+workflow run        35862459255
+target              jin12-xyz/CRM
+target SHA          00493af54d4d9e146d1c6eb75f5dc8f3898f09ec
+artifact            .pkc/workspace only for phase 1
+```
 
-Extend the existing bounded lineage model. First known target:
+Phase 1 was frozen before source access:
+
+```text
+Q1  100%
+Q2  100%
+Q4  100%
+repo 100%
+```
+
+Baseline:
+
+```text
+Q1   70%
+Q2    0%
+Q4   50%
+repo 40%
+```
+
+Delta: **+60 percentage points**.
+
+Phase 2 source cross-check found no mismatch for those questions. The generated workspace recovered:
+
+- authorization for Contacts Update;
+- the concrete contact-existence precondition;
+- successful mutations to `FirstName`, `LastName`, `Email`, `Phone`, `JobTitle`, `CompanyId`, and `UpdatedAt`;
+- persistence through the contact repository;
+- a traceable controller/interface → DI registration → concrete `ContactService.UpdateAsync` proof path.
+
+No proprietary source snippets were copied into the report.
+
+Report:
+
+`docs/benchmarks/2026-09-23-fix1-jin12-di-product-value-benchmark.md`
+
+Decision: **Fix #1 is complete only for the bounded direct-DI proof path above. Fix #2 is now unlocked.**
+
+The full Agentic + Jin12 + Kesetovic benchmark has not been rerun. Keep the historical 63.9% full-corpus baseline until Level 2.
+
+## Required next action — Fix #2
+
+Target: Kesetovic `PackOrder`.
+
+Goal: prove frontend service URL expressions well enough to connect the relevant frontend request to the correct backend route.
+
+Initial bounded scope:
+
+```text
+literal
++ binary string concatenation
++ template literal / template spans
++ known local constants
++ proven this.property values
+→ normalized route template
+→ backend route match
+```
+
+Regression-first sequence:
+
+1. inspect the current Kesetovic PackOrder workspace miss and the exact source expression only after freezing the workspace answer;
+2. create the smallest compile-valid TypeScript/Angular regression reproducing the URL expression shape;
+3. implement the minimum bounded evaluator in the existing frontend scanning/linking architecture;
+4. add ambiguity/fail-closed cases;
+5. run focused frontend tests;
+6. run related C#/cross-stack tests if route binding changes affect them;
+7. run the full relevant local suite;
+8. review the complete diff;
+9. create one coherent implementation commit and one push;
+10. use CI as final verification;
+11. run only the targeted Kesetovic Level-1 benchmark.
+
+Do **not** automatically add `HttpParams`, `HttpHeaders`, Angular `@Output` propagation or broad dataflow. If the URL proof is correct but the benchmark still misses action→API linkage, freeze that as a separate blocker and reproduce it independently.
+
+Do not start Fix #3 until Fix #2 reaches its terminal checkpoint.
+
+## Fix #3 — later
+
+Primary target: Agentic `Users Update`.
+
+Initial bounded chain:
 
 ```text
 MAT_DIALOG_DATA
 → this.data.email
-→ FormControl/FormBuilder initialization
-→ form control `email`
+→ form-control initialization
+→ control `email`
 → formControlName="email"
 → displayed field
 ```
 
-Every promoted hop needs exact source location/proof identity and ambiguity handling. Reuse current `ui-field`, form behavior and rendered-value lineage facts where possible; do not start with an unbounded generic dataflow engine. Targeted benchmark: Agentic Users Update Q3/Q4.
+Reuse existing lineage architecture and keep ambiguity handling explicit.
 
-Portable evidence/report format should use path + line range + symbol/fact/proof/confidence + business description. Do not persist proprietary raw source snippets in the workspace or reports.
+## Workspace / privacy boundary
 
-After all three semantic checkpoints are independently verified, run a Level-2 three-repository benchmark and compare against the exact 63.9% baseline, plus report newly discovered unsupported cases.
+Preferred product flow:
 
-## Privacy boundary for company Claude / Opus
+```text
+pkc run <TEAM_REPOSITORY_PATH>
+cd <TEAM_REPOSITORY_PATH>/.pkc/workspace
+```
 
-- Proprietary target source stays in the company-approved Claude Code/enterprise environment.
-- Normal PO/QA sessions should launch from `.pkc/workspace` and remain there.
-- ENGINEERING and benchmark phase 2 may inspect source because it is co-located, but only after explicit mode/phase transition.
-- PKC generated output must not contain source-code bodies or secrets.
-- PKC cannot guarantee provider/network retention; organizational controls remain required.
+- PRODUCT/TRACE: workspace only; no source fallback.
+- Benchmark phase 1: workspace only and frozen before source.
+- ENGINEERING/benchmark phase 2: source allowed only in the approved company environment.
+- Reports use paths, symbols, line ranges and business descriptions, never raw proprietary source bodies.
+- `.pkc/` is co-located and locally Git-excluded where supported; PKC does not rewrite tracked ignore rules or untrack existing files.
 
-## Terminal state / discipline
+## Git / CI discipline
 
-Keep moving on the assigned checkpoint until one of:
+For each logical fix:
 
-1. PASS and verified;
-2. a required external review/gate cannot be performed in-session;
+```text
+inspect
+→ reproduce with regression
+→ implement minimum generic fix
+→ focused tests
+→ related tests
+→ broader relevant suite
+→ review diff
+→ one coherent commit
+→ one push
+→ CI final verification
+```
+
+Do not use GitHub Actions as the edit-test loop. A failing command is evidence to investigate, not a terminal state.
+
+## Terminal state
+
+Keep working on the assigned checkpoint until:
+
+1. it is PASS and locally verified;
+2. an external review/gate is genuinely required and cannot be performed in-session; or
 3. a genuinely external blocker is proven and documented.
 
-Test/build/tool failure is evidence to investigate, not a reason to stop. Keep one coherent implementation commit/push where possible, then one docs-only handoff commit when needed.
+Fix #1 is at terminal state (1). The next coding checkpoint is Fix #2.
