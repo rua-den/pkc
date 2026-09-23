@@ -15,26 +15,26 @@ Read in this order before changing production code:
 5. `docs/v0.4.7-acceptance-plan.md`
 6. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
 7. `docs/benchmarks/2026-09-23-real-repo-product-value-scorecard.md`
-8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-16-request.md`
+8. `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md`
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
 ## Exact production under review
 
 ```text
-37a71172c8c425219aef35f5843ac2109810ae9d
-fix: preserve Angular infrastructure render evidence
+96205a9a643864facaf9642a3b390ddcdbed59d9
+fix: tolerate duplicate Angular import aliases
 ```
 
-Latest repair chain:
+Latest production repair chain:
 
 ```text
-46dcf8941c67a11d96e4416774d02e555a8f6aaf  fix: bound linked Angular package selectors
-2ea361ba9d5e6e61041f38ca79e6587e12a1b745  fix: fail closed unresolved Angular component imports
-37a71172c8c425219aef35f5843ac2109810ae9d  fix: preserve Angular infrastructure render evidence
+10876a28d15767930e0bc6de95def4993bb7265f  fix: close indirect Angular component import authority
+d81be9560c741296271376aca7481db3d9925e41  fix: fail closed unsupported Angular import indirection
+96205a9a643864facaf9642a3b390ddcdbed59d9  fix: tolerate duplicate Angular import aliases
 ```
 
-A docs-only `[skip ci]` checkpoint may sit above production. Review production behavior at `37a711...`; do not reset `main`.
+Rereview #16 targeted the older `37a711...` candidate and is superseded. Do not review that SHA as the current candidate and do not self-certify `96205...` from the implementation thread.
 
 ## Current state
 
@@ -42,8 +42,8 @@ A docs-only `[skip ci]` checkpoint may sit above production. Review production b
 A/B/C                                  PASS / COMPLETE
 R7.9                                   PASS / COMPLETE
 mutation-causality                     PASS / CLOSED
-R7.10                                  REPAIRED / ALL GATES PASS / PENDING REREVIEW #16
-V0.4.7-D                               PENDING INDEPENDENT REREVIEW #16
+R7.10                                  REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
+V0.4.7-D                               PENDING INDEPENDENT REREVIEW #17
 V0.4.7-E                               LOCKED
 R7.14                                  NOT PASS / REQUIRED FOR E
 real-repo safety benchmark             PASS
@@ -53,29 +53,39 @@ V0.5 / future W-U work                 LOCKED
 
 Do not start E or later milestones until D is independently accepted.
 
-## What changed after rereview #15 was requested
+## What changed after rereview #16 was requested
 
-Continuation review found remaining external dependency authority seams rather than accepting `47e098...`:
+A fresh implementation-side adversarial review found a compile-valid standalone Angular indirection bypass:
 
-- workspace / linked packages;
-- unresolved external component imports used in standalone component `imports`;
-- over-filtering of normal Angular framework imports;
-- bounded const-array component imports.
+```text
+external package symbol
+→ local shared-imports helper
+→ local barrel / re-export
+→ component imports
+→ rendered member
+```
 
-The current candidate closes those shapes fail-closed without admitting dependency source into product knowledge.
+The previous boundary handled direct unresolved imports and bounded same-file arrays but did not close the local module symbol graph. The repair now propagates risk through local imports/re-exports/export-all/const-array closure. Unsupported scalar aliases and default re-export shapes fail closed. A duplicate-alias crash path discovered during static review was also removed.
+
+Focused regressions:
+
+```text
+tests/Pkc.CSharp.Tests/AngularComponentImportClosureAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularUnsupportedComponentImportIndirectionAuthorityRegressionTests.cs
+```
 
 ## Exact-SHA gates
 
 ```text
-CI / full tests / WorkPlay / PokeTrade  35823346084 — PASS
-pinned Loren                            35823346060 — PASS
-Loren-main canary                       35823346077 — PASS
-pinned Jellyfin                         35823346046 — PASS
+CI / full tests / WorkPlay / PokeTrade  35832501567 — PASS
+pinned Loren                            35832501543 — PASS
+Loren-main canary                       35832501552 — PASS
+pinned Jellyfin                         35832501534 — PASS
 ```
 
 ```text
 Release build      0 warnings / 0 errors
-C#                 253 / 253 PASS
+C#                 259 / 259 PASS
 frontend           13 / 13 PASS
 tool pack/install  PASS
 WorkPlay           PASS
@@ -86,40 +96,52 @@ Jellyfin remains 43,365/43,365 project-semantic with 43,365 facts, 195,316 relat
 
 ## Real-repository benchmark
 
-Wrapper based directly on `37a711...`:
+Wrapper based directly on `96205...`:
 
 ```text
-wrapper  f76c946e15cfe37d380745e0a2efb22cd3fc9123
-run      35823872896 — PASS, 3 / 3
+wrapper  65c02df67938197d929d30793dc012dbc3878ca3
+run      35833147258 — PASS, 3 / 3
 ```
 
-The wrapper changes only the benchmark branch trigger. Canonical output is unchanged versus the preceding safety benchmark.
+Established output sizes are unchanged:
+
+```text
+agentic-angular  441 facts / 660 relations / 26 knowledge files
+jin12-crm        415 facts / 1,580 relations / 25 knowledge files
+kesetovic-crm    488 facts / 2,054 relations / 28 knowledge files
+```
+
+Artifacts:
+
+```text
+agentic-angular  10737653171
+jin12-crm        10738280766
+kesetovic-crm    10737827547
+```
+
+Agentic and Kesetovic target builds remain blocked by dependency vulnerability warnings-as-errors, but PKC exits 0 and emits benchmark evidence. Do not confuse the 3/3 workflow result with product-value acceptance.
 
 ### Safety result
 
-PASS. No unsupported R7.9/R7.10 authority was introduced and accepted mutation-causality boundaries remain closed.
+PASS. The new production code only removes or withholds unsupported render authority; it does not synthesize new product evidence.
 
 ### Product-value result
 
-**NOT PASS.**
+**NOT PASS.** The known-answer gaps are still the acceptance truth:
 
-Known-answer inspection shows PKC is already useful for direct backend questions but still misses material PO/QC behavior:
+- feature documents can lose child-workflow rules;
+- controller → interface → implementation behavior is not reconstructed deeply enough;
+- construction-time/default/computed state can be lost;
+- integration side effects can be observed but omitted from synthesized Side effects;
+- R7.14 still has zero supported positive cross-layer yield on the pinned repos.
 
-- Agentic login/signup validation rules are reconstructed well and UI→API linkage is often present.
-- Kesetovic order Pack/Complete/Cancel permissions, preconditions and direct status transitions are reconstructed well.
-- Kesetovic AddOrder misses initial `NEW` status and `OrderPrice * 0.05` bonus computation.
-- SignalR `SendAsync("OrderSignal")` is visible in backend flow but Side effects remains empty.
-- Jin12 controller → interface → concrete service behavior is not reconstructed deeply enough; user-scoped contact filtering and update mutations are lost.
-- feature documents may report no business rules even when linked workflow documents contain grounded rules.
-- all three pinned repos still yield zero authoritative R7.9/R7.10 positive cross-layer answers.
-
-Use `docs/benchmarks/2026-09-23-real-repo-product-value-scorecard.md` as the benchmark truth. A green workflow alone is not product acceptance.
+Use `docs/benchmarks/2026-09-23-real-repo-product-value-scorecard.md` as source of truth for E once D passes.
 
 ## Next action
 
-Perform **independent rereview #16** of exact production `37a711...`.
+Perform **independent rereview #17** of exact production `96205...`.
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-16-request.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md`.
 
 If no new R7.10 false-positive blocker exists:
 
@@ -128,28 +150,14 @@ mark R7.10 PASS / COMPLETE
 → mark D PASS / COMPLETE
 → unlock only E
 → keep R7.14 NOT PASS
-→ use the product-value known-answer scorecard to drive E
+→ drive E from the known-answer product-value scorecard
 ```
 
 If a blocker exists, record the exact counterexample and convert to regression-first implementation work.
 
-The implementation thread that authored the repairs must not self-certify the candidate.
-
-## Today / manual testing
-
-The current candidate is suitable for **manual pre-acceptance product-value testing** because all standard gates and the safety benchmark pass.
-
-Current CLI remains:
-
-```text
-pkc build <repository-path>
-```
-
-Inspect the generated `PKC_KNOWLEDGE.md` / `knowledge/` pack and test with PO/QC questions. Treat gaps documented in the scorecard as expected known failures, not proof that the run crashed.
-
 ## Future packet
 
-After V0.4.7 is explicitly complete:
+Only after V0.4.7 is explicitly complete:
 
 ```text
 docs/plans/2026-09-22-ai-workspace-continuous-update-plan.md

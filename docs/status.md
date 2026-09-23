@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #16
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #16
+V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
+V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #17
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 real-repo safety benchmark                       PASS
@@ -28,19 +28,11 @@ V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent 
 ## Exact production candidate under review
 
 ```text
-37a71172c8c425219aef35f5843ac2109810ae9d
-fix: preserve Angular infrastructure render evidence
+96205a9a643864facaf9642a3b390ddcdbed59d9
+fix: tolerate duplicate Angular import aliases
 ```
 
-Relevant continuation repair chain after the #15 request:
-
-```text
-46dcf8941c67a11d96e4416774d02e555a8f6aaf  fix: bound linked Angular package selectors
-2ea361ba9d5e6e61041f38ca79e6587e12a1b745  fix: fail closed unresolved Angular component imports
-37a71172c8c425219aef35f5843ac2109810ae9d  fix: preserve Angular infrastructure render evidence
-```
-
-A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `37a711...`; do not reset `main`.
+Rereview #16 targeted `37a711...`, but implementation review found a new compile-valid R7.10 bypass before #16 completed. That request is superseded. Do not self-certify `96205...`; the next external gate is rereview #17.
 
 ## Accepted predecessors
 
@@ -55,47 +47,50 @@ mutation   67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a new real regression is demonstrated.
 
-## Latest R7.10 repairs
+## Latest R7.10 repair
 
-Continuation review after the #15 request found three remaining package/import authority seams:
+The new counterexample used a standalone Angular component whose `imports` reached an unresolved external component indirectly through a local helper/barrel. Existing filtering handled direct unresolved imports and same-file const arrays but did not close the local module import/re-export graph.
 
-1. linked/workspace packages could resolve outside `node_modules` while still being valid application dependencies;
-2. unresolved external symbols used in standalone component `imports` could hide an unknown component projection boundary;
-3. fail-closed handling of unresolved packages could over-filter normal Angular infrastructure imports and const-array `imports`.
+Repair chain:
 
-The repair chain above now accepts linked package metadata when its final target remains inside the repository, fails closed when a linked package escapes repository scope, fails closed when an unresolved external symbol is actually used in component `imports`, preserves known Angular framework infrastructure imports, and follows direct or bounded const-array component imports.
+```text
+10876a28d15767930e0bc6de95def4993bb7265f  fix: close indirect Angular component import authority
+d81be9560c741296271376aca7481db3d9925e41  fix: fail closed unsupported Angular import indirection
+96205a9a643864facaf9642a3b390ddcdbed59d9  fix: tolerate duplicate Angular import aliases
+```
+
+The implementation now propagates projection risk through local imports, named/default re-exports, export-all and const-array closure. Unsupported scalar alias/default-re-export shapes fail closed rather than promoting render authority. Duplicate alias names no longer create a runtime exception path.
 
 Focused regressions:
 
 ```text
-tests/Pkc.CSharp.Tests/AngularNestedNodeModulesProjectionAuthorityRegressionTests.cs
-tests/Pkc.CSharp.Tests/AngularUnresolvedExternalComponentImportAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularComponentImportClosureAuthorityRegressionTests.cs
+tests/Pkc.CSharp.Tests/AngularUnsupportedComponentImportIndirectionAuthorityRegressionTests.cs
 ```
 
 ## Exact-SHA verification
 
-All required standard gates passed on exact production `37a71172c8c425219aef35f5843ac2109810ae9d`:
+All standard gates passed on exact production `96205a9a643864facaf9642a3b390ddcdbed59d9`:
 
 ```text
-CI + full PKC tests + WorkPlay + PokeTrade   35823346084 — PASS
-pinned Loren                                35823346060 — PASS
-Loren-main canary                           35823346077 — PASS
-pinned Jellyfin + parity/provenance         35823346046 — PASS
+CI + full PKC tests + WorkPlay + PokeTrade   35832501567 — PASS
+pinned Loren                                35832501543 — PASS
+Loren-main canary                           35832501552 — PASS
+pinned Jellyfin + parity/provenance         35832501534 — PASS
 ```
 
 ```text
 Release build        0 warnings / 0 errors
-C# tests             253 / 253 PASS
+C# tests             259 / 259 PASS
 frontend tests       13 / 13 PASS
 tool pack/install    PASS
 WorkPlay             PASS
 PokeTrade            PASS
 ```
 
-Pinned Jellyfin:
+Pinned Jellyfin remains stable:
 
 ```text
-source build          PASS, 0 warnings / 0 errors
 facts                 43,365
 relations             195,316
 workflow candidates   386
@@ -103,31 +98,39 @@ product features      116
 knowledge Markdown    504 files
 analysis modes        43,365 / 43,365 project-semantic
 portable parity       PASS
-artifact              10734541254
-sha256:f071f9841ffc4d95edd78d0334ed703c0ff53e7c55271e68facea47ca59d45a6
+artifact              10737494915
+sha256:94e17f2cb595c34586409aa279ff61457e8fd98c9c5835ef87ed0a68511a7c6a
 ```
 
 ## Real-repository benchmark
 
-Exact production `37a711...` was benchmarked through a wrapper that changes only the branch trigger:
+A one-line branch-trigger wrapper based directly on production `96205...` ran the unchanged pinned repositories:
 
 ```text
-production:      37a71172c8c425219aef35f5843ac2109810ae9d
-wrapper:         f76c946e15cfe37d380745e0a2efb22cd3fc9123
-run:             35823872896 — PASS, 3 / 3
+production  96205a9a643864facaf9642a3b390ddcdbed59d9
+wrapper     65c02df67938197d929d30793dc012dbc3878ca3
+run         35833147258 — PASS, 3 / 3
+```
+
+Observed outputs remain at the established baseline sizes:
+
+```text
+agentic-angular  441 facts / 660 relations / 26 knowledge files
+jin12-crm        415 facts / 1,580 relations / 25 knowledge files
+kesetovic-crm    488 facts / 2,054 relations / 28 knowledge files
 ```
 
 Artifacts:
 
 ```text
-agentic-angular  10734561505  sha256:b15120b5b17580ed9defe3600147ed0998f5cd9e121f8a6b6cc02297fec5daf4
-jin12-crm        10734496662  sha256:36aa1772e18ebba7c3911429edbf51eb51c256f16065f0563b4c15d59b4ec8d1
-kesetovic-crm    10733409752  sha256:d1f90d1cb1eb97d5ff6129134254bc11981faf28d78fd92fd9617a1a4f212fb0
+agentic-angular  10737653171  sha256:da8ad00c539eb3887765d0314113c1c7287b97734012c2a39e22892757091f48
+jin12-crm        10738280766  sha256:38bb0ae71b02e2c0045ee84785095606babcf471d1031244a705b40915b4b88f
+kesetovic-crm    10737827547  sha256:726da3adada8742448ab87bf1bd1b8f86de35f000e452f2eca8a0edb422e0611
 ```
 
-Canonical evidence is byte-stable versus the preceding safety benchmark for all three repos. No new unsupported R7.9/R7.10 authority appears.
+Agentic and Kesetovic upstream builds still fail on dependency vulnerability warnings-as-errors; PKC itself exits 0 and emits the same established benchmark counts. The production changes are fail-closed authority filters only; they do not manufacture new product evidence.
 
-### Benchmark interpretation
+## Benchmark interpretation
 
 Do not collapse benchmark results into one green/red bit.
 
@@ -147,23 +150,19 @@ Detailed known-answer scorecard:
 
 `docs/benchmarks/2026-09-23-real-repo-product-value-scorecard.md`
 
-A benchmark is not product-passing merely because jobs are green, output files exist, or authority positives are zero.
-
 ## Current external gate
 
 Required next gate:
 
 ```text
-independent rereview #16 of exact 37a71172c8c425219aef35f5843ac2109810ae9d
+independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
 ```
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-16-request.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md`.
 
-If rereview #16 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E.
+If rereview #17 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E.
 
 E must then use the known-answer scorecard as product-value acceptance evidence. R7.14 remains required and NOT PASS. V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
-
-This implementation/benchmark continuation must not self-certify its own production candidate.
 
 ## Prepared future productization packet
 
@@ -177,7 +176,7 @@ After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing remains AI work
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #16
+roadmap:             V0.4.7-D / R7.10 pending independent rereview #17
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4

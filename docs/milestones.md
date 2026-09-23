@@ -44,19 +44,21 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B | Was it computed or later overwritten? | PASS / COMPLETE |
 | C | What backend value supplies the response field? | PASS / COMPLETE |
 | D / R7.9 | What API field feeds the rendered value? | PASS / COMPLETE |
-| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #16** |
+| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #17** |
 | E | Can an AI answer agreed PO/QC questions from the portable pack alone? | **LOCKED behind D** |
 
 Exact R7.10 candidate:
 
 ```text
-37a71172c8c425219aef35f5843ac2109810ae9d
-fix: preserve Angular infrastructure render evidence
+96205a9a643864facaf9642a3b390ddcdbed59d9
+fix: tolerate duplicate Angular import aliases
 ```
 
-Exact gates: CI/PokeTrade `35823346084`, pinned Loren `35823346060`, Loren-main `35823346077`, Jellyfin `35823346046` — all PASS. Core is 253/253 C# and 13/13 frontend with Release 0 warnings/errors.
+Latest repair closes local Angular import/re-export closure around unresolved external component projection risk and fails closed on unsupported scalar/default indirection. Exact gates are all PASS: CI `35832501567`, pinned Loren `35832501543`, Loren-main `35832501552`, Jellyfin `35832501534`; Release 0 warnings/errors; C# 259/259; frontend 13/13.
 
-Safety benchmark wrapper `f76c946...`, run `35823872896`, passes 3/3 pinned repositories without new unsupported authority.
+Safety benchmark wrapper `65c02df...`, run `35833147258`, passes 3/3 pinned repositories with established output counts unchanged.
+
+Rereview #16 targeted older candidate `37a711...` and is superseded. Current external gate is rereview #17 of `96205...`.
 
 ## Benchmark acceptance semantics
 
@@ -95,12 +97,12 @@ At least one unchanged real repository must naturally emit a supported positive 
 ## Current exact action
 
 ```text
-independent rereview #16 of exact 37a71172c8c425219aef35f5843ac2109810ae9d
+independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
 → PASS: close R7.10 + D and unlock only E
 → FAIL: regression-first minimum generic repair
 ```
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-16-request.md`.
+Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md`.
 
 ## Post-V0.4.7 roadmap
 
@@ -121,6 +123,6 @@ docs/reviews/2026-09-22-ai-workspace-continuous-update-plan-self-review.md
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #16
+roadmap:      V0.4.7-D / R7.10 pending independent rereview #17
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
