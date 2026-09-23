@@ -91,6 +91,17 @@ public sealed partial class FeatureCandidateBuilder
                     continue;
                 }
 
+                if (relation.Kind == "dispatches")
+                {
+                    AddRelation(relation, includedRelations, seenRelations);
+                    if (factsById.TryGetValue(relation.Target, out var dispatchedFact))
+                    {
+                        queue.Enqueue((dispatchedFact, depth + 1));
+                    }
+
+                    continue;
+                }
+
                 if (relation.Kind != "invokes")
                 {
                     continue;

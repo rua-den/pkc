@@ -1,5 +1,6 @@
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Pkc.Core;
@@ -59,6 +60,36 @@ public sealed class CSharpProjectSemanticEnricher
             .Where(relation => relation.Kind != "invokes" || !projectFactIds.Contains(relation.FromFactId))
             .ToList();
 
+        var callableSymbols = new Dictionary<string, EvidenceFact[]>(StringComparer.Ordinal);
+        foreach (var fact in facts.Where(fact =>
+                     projectFactIds.Contains(fact.Id) &&
+                     fact.Kind is "method" or "endpoint" or "constructor"))
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(
+                rootPath,
+                fact.Source.Path.Replace('/', Path.DirectorySeparatorChar)));
+            if (!load.Models.TryGetValue(fullPath, out var source))
+            {
+                continue;
+            }
+
+            var node = await FindFactNodeAsync(fact, source, cancellationToken);
+            var symbol = node is null
+                ? null
+                : source.SemanticModel.GetDeclaredSymbol(node, cancellationToken) as IMethodSymbol;
+            if (symbol is null)
+            {
+                continue;
+            }
+
+            var key = GetSymbolKey(symbol);
+            callableSymbols[key] = callableSymbols.TryGetValue(key, out var existing)
+                ? existing.Append(fact).ToArray()
+                : [fact];
+        }
+
+        var registrations = FindDirectDiRegistrations(rootPath, load.Models);
+
         foreach (var fact in facts.Where(fact =>
                      projectFactIds.Contains(fact.Id) &&
                      fact.Kind is "method" or "endpoint" or "constructor"))
@@ -94,6 +125,20 @@ public sealed class CSharpProjectSemanticEnricher
                     "invokes",
                     GetMethodTarget(methodSymbol),
                     GetLocation(invocation, fact.Source.Path)));
+
+                if (TryResolveDirectDiDispatch(
+                        methodSymbol,
+                        registrations,
+                        callableSymbols,
+                        out var concrete,
+                        out var registrationSource))
+                {
+                    relations.Add(new EvidenceRelation(
+                        fact.Id,
+                        "dispatches",
+                        concrete.Id,
+                        registrationSource));
+                }
             }
         }
 
@@ -448,6 +493,125 @@ public sealed class CSharpProjectSemanticEnricher
         return string.IsNullOrWhiteSpace(type) ? symbol.Name : $"{type}.{symbol.Name}";
     }
 
+    private static IReadOnlyDictionary<string, DirectDiRegistration[]> FindDirectDiRegistrations(
+        string rootPath,
+        IReadOnlyDictionary<string, ProjectSemanticSource> models)
+    {
+        var registrations = new List<DirectDiRegistration>();
+        foreach (var source in models.Values)
+        {
+            var root = source.Tree.GetRoot();
+            foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                if (IsConditionalRegistrationSite(invocation))
+                {
+                    continue;
+                }
+
+                var method = source.SemanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+                if (method is null || method.ContainingNamespace.ToDisplayString() !=
+                    "Microsoft.Extensions.DependencyInjection" ||
+                    method.Name is not ("AddScoped" or "AddTransient" or "AddSingleton") ||
+                    method.TypeArguments.Length != 2 ||
+                    method.TypeArguments[0] is not INamedTypeSymbol serviceType ||
+                    method.TypeArguments[1] is not INamedTypeSymbol implementationType ||
+                    serviceType.TypeKind != TypeKind.Interface)
+                {
+                    continue;
+                }
+
+                registrations.Add(new DirectDiRegistration(
+                    GetTypeKey(serviceType),
+                    serviceType,
+                    implementationType,
+                    GetLocation(
+                        invocation,
+                        NormalizePath(Path.GetRelativePath(rootPath, source.Tree.FilePath)))));
+            }
+        }
+
+        return registrations
+            .GroupBy(registration => registration.ServiceKey, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToArray(),
+                StringComparer.Ordinal);
+    }
+
+    private static bool IsConditionalRegistrationSite(InvocationExpressionSyntax invocation) =>
+        invocation.Ancestors().Any(ancestor => ancestor switch
+        {
+            IfStatementSyntax or
+            ElseClauseSyntax or
+            SwitchStatementSyntax or
+            SwitchSectionSyntax or
+            SwitchExpressionSyntax or
+            ConditionalAccessExpressionSyntax or
+            ForStatementSyntax or
+            ForEachStatementSyntax or
+            WhileStatementSyntax or
+            DoStatementSyntax or
+            ConditionalExpressionSyntax => true,
+            BinaryExpressionSyntax binary => binary.IsKind(SyntaxKind.LogicalAndExpression) ||
+                                             binary.IsKind(SyntaxKind.LogicalOrExpression) ||
+                                             binary.IsKind(SyntaxKind.CoalesceExpression),
+            _ => false
+        });
+
+    private static bool TryResolveDirectDiDispatch(
+        IMethodSymbol interfaceMethod,
+        IReadOnlyDictionary<string, DirectDiRegistration[]> registrations,
+        IReadOnlyDictionary<string, EvidenceFact[]> callableSymbols,
+        out EvidenceFact concrete,
+        out SourceLocation registrationSource)
+    {
+        concrete = null!;
+        registrationSource = null!;
+        if (interfaceMethod.ContainingType?.TypeKind != TypeKind.Interface ||
+            !registrations.TryGetValue(GetTypeKey(interfaceMethod.ContainingType), out var matches) ||
+            matches.Length != 1)
+        {
+            return false;
+        }
+
+        var registration = matches[0];
+        var interfaceMember = registration.ServiceType
+            .GetMembers(interfaceMethod.Name)
+            .OfType<IMethodSymbol>()
+            .SingleOrDefault(candidate => HasSameSignature(candidate, interfaceMethod));
+        if (interfaceMember is null)
+        {
+            return false;
+        }
+
+        var implementationMethod = registration.ImplementationType
+            .FindImplementationForInterfaceMember(interfaceMember) as IMethodSymbol;
+        if (implementationMethod is null ||
+            !callableSymbols.TryGetValue(GetSymbolKey(implementationMethod), out var facts) ||
+            facts.Length != 1)
+        {
+            return false;
+        }
+
+        concrete = facts[0];
+        registrationSource = registration.Source;
+        return true;
+    }
+
+    private static bool HasSameSignature(IMethodSymbol left, IMethodSymbol right) =>
+        left.Name == right.Name &&
+        left.Arity == right.Arity &&
+        left.Parameters.Length == right.Parameters.Length &&
+        left.Parameters.Zip(right.Parameters).All(pair =>
+            pair.First.RefKind == pair.Second.RefKind &&
+            GetTypeKey(pair.First.Type) == GetTypeKey(pair.Second.Type));
+
+    private static string GetSymbolKey(ISymbol symbol) =>
+        symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+
+    private static string GetTypeKey(ITypeSymbol symbol) =>
+        symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}";
 
@@ -470,4 +634,10 @@ public sealed class CSharpProjectSemanticEnricher
         IReadOnlyDictionary<string, ProjectSemanticSource> Models,
         IReadOnlyDictionary<string, string> ProjectFailures,
         string? FallbackReason);
+
+    private sealed record DirectDiRegistration(
+        string ServiceKey,
+        INamedTypeSymbol ServiceType,
+        INamedTypeSymbol ImplementationType,
+        SourceLocation Source);
 }

@@ -189,4 +189,274 @@ public sealed class MinimalApiEndpointScannerTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Scan_dispatches_interface_call_through_exact_direct_di_registration_to_concrete_behavior()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-minimal-api-di-dispatch-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Fixture.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk.Web">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+                  </ItemGroup>
+                </Project>
+                """);
+
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+                builder.Services.AddScoped<IRunService, RunService>();
+                WebApplication app = builder.Build();
+
+                app.MapPost(
+                    "/api/run",
+                    (RunRequest request, IRunService service) =>
+                    {
+                        var result = service.RunAsync(request.Message);
+                        return Results.Ok(new { result });
+                    });
+
+                public sealed record RunRequest(string Message);
+
+                public interface IRunService
+                {
+                    string RunAsync(string message);
+                    string RunAsync(int message);
+                }
+
+                public sealed class RunService : IRunService
+                {
+                    private int _calls;
+
+                    public string RunAsync(string message)
+                    {
+                        if (string.IsNullOrWhiteSpace(message))
+                        {
+                            throw new ArgumentException("message is required");
+                        }
+
+                        _calls++;
+                        return message.Trim();
+                    }
+
+                    public string RunAsync(int message) => message.ToString();
+                }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            var endpoint = Assert.Single(document.Facts, fact =>
+                fact.Kind == "endpoint" &&
+                fact.Metadata.TryGetValue("fullRoute", out var route) && route == "/api/run");
+
+            var interfaceInvocation = Assert.Single(document.Relations, relation =>
+                relation.FromFactId == endpoint.Id &&
+                relation.Kind == "invokes" &&
+                relation.Target.EndsWith("IRunService.RunAsync", StringComparison.Ordinal));
+
+            var concrete = Assert.Single(document.Facts, fact =>
+                fact.Kind == "method" &&
+                fact.Container == "RunService" &&
+                fact.Name == "RunAsync" &&
+                fact.Metadata.TryGetValue("parameters", out var parameters) &&
+                parameters.Contains("string message", StringComparison.Ordinal));
+
+            var dispatch = Assert.Single(document.Relations, relation =>
+                relation.FromFactId == endpoint.Id &&
+                relation.Kind == "dispatches" &&
+                relation.Target == concrete.Id);
+            Assert.Equal("Program.cs", dispatch.Source.Path);
+            Assert.True(dispatch.Source.StartLine > 0);
+
+            var candidate = Assert.Single(new FeatureCandidateBuilder().Build(document).Candidates);
+            Assert.Contains(candidate.Relations, relation =>
+                relation.FromFactId == endpoint.Id &&
+                relation.Kind == "invokes" &&
+                relation.Target == interfaceInvocation.Target);
+            Assert.Contains(candidate.Relations, relation =>
+                relation.FromFactId == endpoint.Id &&
+                relation.Kind == "dispatches" &&
+                relation.Target == concrete.Id);
+            Assert.Contains(candidate.Facts, fact => fact.Id == concrete.Id);
+            Assert.Contains(candidate.Relations, relation =>
+                relation.FromFactId == concrete.Id && relation.Kind == "contains-condition");
+            Assert.Contains(candidate.Relations, relation =>
+                relation.FromFactId == concrete.Id && relation.Kind == "mutates");
+
+            var knowledge = await new GroundedKnowledgeSynthesizer().SynthesizeAsync(candidate);
+            Assert.Contains(
+                $"Run.POST /api/run via DI registration at {dispatch.Source.Path}:L{dispatch.Source.StartLine} -> RunService.RunAsync",
+                knowledge.Flow);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Scan_fails_closed_for_ambiguous_direct_di_registrations()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-minimal-api-di-ambiguous-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Fixture.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk.Web">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+                  </ItemGroup>
+                </Project>
+                """);
+
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+                builder.Services.AddScoped<IRunService, FirstRunService>();
+                builder.Services.AddTransient<IRunService, SecondRunService>();
+                WebApplication app = builder.Build();
+                app.MapPost("/api/run", (IRunService service) => Results.Ok(service.RunAsync()));
+
+                public interface IRunService { string RunAsync(); }
+                public sealed class FirstRunService : IRunService { public string RunAsync() => "first"; }
+                public sealed class SecondRunService : IRunService { public string RunAsync() => "second"; }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            var endpoint = Assert.Single(document.Facts, fact =>
+                fact.Kind == "endpoint" &&
+                fact.Metadata.TryGetValue("fullRoute", out var route) && route == "/api/run");
+
+            Assert.DoesNotContain(document.Relations, relation =>
+                relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Scan_fails_closed_for_conditional_direct_di_registration()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-minimal-api-di-conditional-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Fixture.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk.Web">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+                  </ItemGroup>
+                </Project>
+                """);
+
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+                if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Monday)
+                {
+                    builder.Services.AddScoped<IRunService, RunService>();
+                }
+
+                WebApplication app = builder.Build();
+                app.MapPost("/api/run", (IRunService service) => Results.Ok(service.RunAsync()));
+
+                public interface IRunService { string RunAsync(); }
+                public sealed class RunService : IRunService { public string RunAsync() => "run"; }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            var endpoint = Assert.Single(document.Facts, fact =>
+                fact.Kind == "endpoint" &&
+                fact.Metadata.TryGetValue("fullRoute", out var route) && route == "/api/run");
+
+            Assert.DoesNotContain(document.Relations, relation =>
+                relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Scan_fails_closed_for_conditional_access_and_switch_expression_registrations()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-minimal-api-di-expression-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Fixture.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk.Web">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+                  </ItemGroup>
+                </Project>
+                """);
+
+            await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), """
+                using Microsoft.AspNetCore.Builder;
+                using Microsoft.AspNetCore.Http;
+                using Microsoft.Extensions.DependencyInjection;
+
+                WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+                IServiceCollection? services = DateTime.UtcNow.DayOfWeek == DayOfWeek.Monday
+                    ? builder.Services
+                    : null;
+                services?.AddScoped<IRunService, RunService>();
+                _ = DateTime.UtcNow.Day switch
+                {
+                    1 => builder.Services.AddTransient<IRunService, RunService>(),
+                    _ => builder.Services
+                };
+
+                WebApplication app = builder.Build();
+                app.MapPost("/api/run", (IRunService service) => Results.Ok(service.RunAsync()));
+
+                public interface IRunService { string RunAsync(); }
+                public sealed class RunService : IRunService { public string RunAsync() => "run"; }
+                """);
+
+            var document = await new CSharpEvidenceScanner().ScanAsync(root);
+            var endpoint = Assert.Single(document.Facts, fact =>
+                fact.Kind == "endpoint" &&
+                fact.Metadata.TryGetValue("fullRoute", out var route) && route == "/api/run");
+
+            Assert.DoesNotContain(document.Relations, relation =>
+                relation.FromFactId == endpoint.Id && relation.Kind == "dispatches");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }

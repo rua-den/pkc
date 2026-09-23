@@ -457,19 +457,30 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 
     private static IReadOnlyList<string> BuildFlow(
         FeatureCandidate candidate,
-        IReadOnlyDictionary<string, EvidenceFact> factsById) =>
-        candidate.Relations
-            .Where(relation => relation.Kind == "invokes")
-            .Select(relation =>
-            {
-                var source = factsById.TryGetValue(relation.FromFactId, out var sourceFact)
-                    ? DisplayFact(sourceFact)
-                    : relation.FromFactId;
+        IReadOnlyDictionary<string, EvidenceFact> factsById)
+    {
+        var flow = new List<string>();
+        foreach (var relation in candidate.Relations.Where(relation =>
+                     relation.Kind is "invokes" or "dispatches"))
+        {
+            var source = factsById.TryGetValue(relation.FromFactId, out var sourceFact)
+                ? DisplayFact(sourceFact)
+                : relation.FromFactId;
 
-                return $"{source} → {relation.Target}";
-            })
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+            if (relation.Kind == "invokes")
+            {
+                flow.Add($"{source} → {relation.Target}");
+                continue;
+            }
+
+            var target = factsById.TryGetValue(relation.Target, out var targetFact)
+                ? DisplayFact(targetFact)
+                : relation.Target;
+            flow.Add($"{source} via DI registration at {relation.Source.Path}:L{relation.Source.StartLine} -> {target}");
+        }
+
+        return flow.Distinct(StringComparer.Ordinal).ToArray();
+    }
 
     private static IReadOnlyList<KnowledgeEvidence> BuildEvidence(
         FeatureCandidate candidate,
