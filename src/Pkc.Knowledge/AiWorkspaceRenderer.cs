@@ -144,10 +144,21 @@ public sealed class AiWorkspaceRenderer
             sourceRepositoryLabel,
             knowledgeFileCount = canonicalKnowledgeFiles.Count(pair =>
                 pair.Key.StartsWith("knowledge/", StringComparison.Ordinal)),
-            compatibilityArtifacts = new[]
+            isolation = new
             {
-                PortableKnowledgePackRenderer.BundleFileName,
-                PortableKnowledgePackRenderer.ArchiveFileName
+                generatedRoot = ".pkc/workspace",
+                sourceRootAgentFilesModified = false,
+                legacyRootKnowledgeArtifactsGeneratedByRun = false
+            },
+            legacyCompatibility = new
+            {
+                command = "pkc build <repository-path>",
+                artifacts = new[]
+                {
+                    "knowledge/",
+                    PortableKnowledgePackRenderer.BundleFileName,
+                    PortableKnowledgePackRenderer.ArchiveFileName
+                }
             },
             verification = new
             {

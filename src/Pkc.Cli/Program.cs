@@ -85,25 +85,6 @@ try
         canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] =
             packRenderer.RenderInstructions(sourceRepositoryLabel);
 
-        ReconcileGeneratedKnowledge(repositoryPath, canonicalKnowledgeFiles);
-        foreach (var pair in canonicalKnowledgeFiles.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-        {
-            var outputPath = Resolve(repositoryPath, pair.Key);
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            await File.WriteAllTextAsync(outputPath, pair.Value);
-            Console.WriteLine(outputPath);
-        }
-
-        var bundlePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.BundleFileName);
-        await File.WriteAllTextAsync(bundlePath, packRenderer.RenderBundle(canonicalKnowledgeFiles, sourceRepositoryLabel));
-        Console.WriteLine(bundlePath);
-
-        var archivePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.ArchiveFileName);
-        WriteKnowledgeArchive(archivePath, canonicalKnowledgeFiles);
-        Console.WriteLine(archivePath);
-
-        Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
-
         if (command == "run")
         {
             var workspaceFiles = new AiWorkspaceRenderer().Render(
@@ -113,27 +94,43 @@ try
                 repositoryPath,
                 workspaceFiles);
 
-            Console.WriteLine();
-            Console.WriteLine($"PKC run workspace generated: {workspacePath}");
+            Console.WriteLine($"PKC run complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features");
+            Console.WriteLine($"PKC AI workspace generated: {workspacePath}");
             Console.WriteLine("Workspace status: PREVIEW (pkc verify / READY-PARTIAL-FAILED is not implemented yet).");
             Console.WriteLine();
-            Console.WriteLine("AI workspace:");
+            Console.WriteLine("Open the generated workspace, not the source root:");
             Console.WriteLine($"  Claude Code: cd \"{workspacePath}\" then run `claude`.");
             Console.WriteLine("  Codex-compatible agent: open the workspace directory; AGENTS.md is the bootstrap.");
             Console.WriteLine("  PRODUCT mode is default. TRACE/ENGINEERING require explicit user intent.");
-            Console.WriteLine();
-            Console.WriteLine("Compatibility outputs were also retained:");
-            Console.WriteLine($"  {bundlePath}");
-            Console.WriteLine($"  {archivePath}");
         }
         else
         {
+            ReconcileGeneratedKnowledge(repositoryPath, canonicalKnowledgeFiles);
+            foreach (var pair in canonicalKnowledgeFiles.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                var outputPath = Resolve(repositoryPath, pair.Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                await File.WriteAllTextAsync(outputPath, pair.Value);
+                Console.WriteLine(outputPath);
+            }
+
+            var bundlePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.BundleFileName);
+            await File.WriteAllTextAsync(
+                bundlePath,
+                packRenderer.RenderBundle(canonicalKnowledgeFiles, sourceRepositoryLabel));
+            Console.WriteLine(bundlePath);
+
+            var archivePath = Path.Combine(repositoryPath, PortableKnowledgePackRenderer.ArchiveFileName);
+            WriteKnowledgeArchive(archivePath, canonicalKnowledgeFiles);
+            Console.WriteLine(archivePath);
+
+            Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
             Console.WriteLine();
             Console.WriteLine("AI handoff:");
-            Console.WriteLine($"  Simplest: upload {bundlePath} to the AI, then ask product/system questions.");
-            Console.WriteLine($"  Structured: provide {Path.Combine(repositoryPath, "knowledge")} when the AI/workspace supports multiple files.");
+            Console.WriteLine($"  Simplest legacy flow: upload {bundlePath} to the AI, then ask product/system questions.");
+            Console.WriteLine($"  Structured legacy flow: provide {Path.Combine(repositoryPath, "knowledge")} when the AI/workspace supports multiple files.");
             Console.WriteLine($"  Archive: {archivePath} is for sharing/storage or archive-capable destinations; ZIP parsing is not required.");
-            Console.WriteLine("  Prefer `pkc run <repository-path>` for the generated Claude/Codex workspace.");
+            Console.WriteLine("  Preferred product UX: use `pkc run <repository-path>` for the isolated Claude/Codex workspace.");
         }
     }
 
