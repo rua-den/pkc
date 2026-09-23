@@ -1,8 +1,12 @@
+using System.Text.Json;
+
 namespace Pkc.Knowledge;
 
 public sealed class AiWorkspaceWriter
 {
     public const string WorkspaceDirectoryName = "workspace";
+    public const string GitIsolationRelativePath = "_meta/git-isolation.json";
+    public const string SourceContextRelativePath = "_meta/source-context.json";
 
     public async Task<string> WriteAsync(
         string repositoryPath,
@@ -32,6 +36,47 @@ public sealed class AiWorkspaceWriter
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
             await File.WriteAllTextAsync(outputPath, pair.Value, cancellationToken);
         }
+
+        var gitIsolation = new PkcLocalGitExclude().EnsureIgnored(repositoryRoot);
+        var gitIsolationPath = ResolveInsideWorkspace(workspaceRoot, GitIsolationRelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(gitIsolationPath)!);
+        var jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        await File.WriteAllTextAsync(
+            gitIsolationPath,
+            JsonSerializer.Serialize(
+                new
+                {
+                    schemaVersion = "0.1-preview",
+                    generatedOutput = ".pkc/",
+                    localGitExcludePattern = PkcLocalGitExclude.ExcludePattern,
+                    localGitExcludeStatus = gitIsolation.Status.ToString(),
+                    trackedGitignoreModified = false,
+                    note = "PKC uses Git's local exclude when a supported Git checkout is detected; tracked .gitignore is never modified."
+                },
+                jsonOptions),
+            cancellationToken);
+
+        var sourceContextPath = ResolveInsideWorkspace(workspaceRoot, SourceContextRelativePath);
+        await File.WriteAllTextAsync(
+            sourceContextPath,
+            JsonSerializer.Serialize(
+                new
+                {
+                    schemaVersion = "0.1-preview",
+                    sourceRootRelativePath = "../..",
+                    productMayReadSource = false,
+                    traceMayReadSource = false,
+                    engineeringMayReadSource = true,
+                    benchmarkPhase2MayReadSource = true,
+                    requiresApprovedSourceEnabledContext = true,
+                    note = "The source root is co-located with this generated workspace. PRODUCT and TRACE remain workspace-only; ENGINEERING and benchmark phase 2 may inspect source only in an approved company context."
+                },
+                jsonOptions),
+            cancellationToken);
 
         return workspaceRoot;
     }
