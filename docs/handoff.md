@@ -19,23 +19,23 @@ Before changing production code, read:
 
 Then inspect current `main`, recent commits and repository status. Never reset to a historical SHA merely because this handoff names it.
 
-## Current production checkpoint
+## Current local production checkpoint
 
-Exact production SHA for fresh independent rereview:
+Local repaired SHA:
+
+```text
+8f667abc819f048b3dc85fc834677b7ca30f5518
+fix: recognize external Angular component selectors
+```
+
+Reviewed predecessor that failed rereview #14:
 
 ```text
 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
 fix: bound Angular direct text containers
 ```
 
-Direct predecessor in the same repaired authority boundary:
-
-```text
-34182e221df6cf50eaa0ac362a5f575e80236a64
-fix: reject unproven Angular content projection
-```
-
-A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `3e6fa774...`; do not reset `main`.
+`8f667ab...` is committed locally but not pushed. The user explicitly approved the push. SSH reached GitHub but failed `Permission denied (publickey)`; HTTPS used configured identity `nhkhuy` and GitHub returned HTTP 403 for `rua-den/pkc`. Do not reset or discard the local commit.
 
 ## Current milestone state
 
@@ -45,8 +45,8 @@ V0.4.7-B                                PASS / COMPLETE
 V0.4.7-C                                PASS / COMPLETE
 V0.4.7-D / R7.9                         PASS / COMPLETE
 V0.4.7-D mutation-causality blocker     PASS / CLOSED
-V0.4.7-D / R7.10                        REPAIRED / ALL GATES PASS / PENDING REREVIEW #14
-V0.4.7-D overall                        PENDING INDEPENDENT REREVIEW #14
+V0.4.7-D / R7.10                        REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING
+V0.4.7-D overall                        OPEN / FRESH REREVIEW #15 REQUIRED AFTER GATES
 V0.4.7-E                                LOCKED behind D
 R7.14 real-project positive yield       NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps                       LOCKED
@@ -227,19 +227,32 @@ Detailed record:
 
 `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed-benchmark.md`
 
-## Next action — independent rereview #14
+## Rereview #14 result and repair
 
-Review exact production:
+Rereview #14 failed exact production:
 
 ```text
 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
 ```
 
-Request:
+Result:
 
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
 
-The reviewer must independently search for another compile-valid/runtime-valid false-positive rather than merely replaying the new projection/container regressions. High-value seams now include:
+The new blocker is an external dependency component with an attribute/class/combined selector. Product-only selector discovery could treat its native-looking host as ordinary HTML and promote child content that the component does not project.
+
+Local repair `8f667ab...` discovers bounded external Ivy component selectors while preserving directives and ordinary HTML. Local verification is 9/9 focused, 25/25 related, and Release build 0 warnings/errors. Code review and scoped rereview are clean.
+
+## Next action
+
+```text
+provide a GitHub credential with write access to rua-den/pkc on this host
+→ push local production 8f667abc819f048b3dc85fc834677b7ca30f5518 once
+→ run exact-SHA CI, Loren, Loren-main, Jellyfin/parity and repaired safety benchmark
+→ prepare and run fresh independent rereview #15
+```
+
+The fresh reviewer must independently search for another compile-valid/runtime-valid false-positive rather than replaying the new external-selector regression. High-value seams include:
 
 - projection across local/external component selectors, especially unresolved dependency selectors;
 - HTML/SVG namespace transitions and `foreignObject`;
@@ -247,7 +260,7 @@ The reviewer must independently search for another compile-valid/runtime-valid f
 - malformed or ambiguous structures only where Angular/runtime still accepts the input and PKC can over-promote authority;
 - exact fact-ID composition, observed-only backend authority, and mutation-causality closure.
 
-If no blocker exists:
+If no blocker exists after the repaired exact-SHA gates:
 
 ```text
 mark R7.10 PASS / COMPLETE
@@ -259,7 +272,7 @@ mark R7.10 PASS / COMPLETE
 
 If a blocker exists, keep E locked and require a regression-first minimum generic repair.
 
-This implementation continuation must not self-certify `3e6fa774...`.
+This implementation continuation must not self-certify `8f667ab...`.
 
 ## Prepared future execution packet — planning only
 

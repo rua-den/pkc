@@ -38,7 +38,7 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B — Computation and later change | Was it calculated? What can overwrite it? What was the last proven source before output? | **PASS / COMPLETE** |
 | C — Backend to API | What exact backend value supplies this response field? | **PASS / COMPLETE** |
 | D / R7.9 — API to rendered value | What exact API field feeds the displayed value? | **PASS / COMPLETE** |
-| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #14** |
+| D / R7.10 — Joint visibility | What backend condition and frontend visibility condition jointly control that same rendered value? | **REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING** |
 | E — Product acceptance | Can an AI answer agreed PO questions from the portable knowledge pack alone? | **LOCKED behind D** |
 
 ### Accepted baselines
@@ -53,7 +53,7 @@ mutation-causality repair 67624944da27ff1f1f5a1154018a255aae11d1fe
 
 Keep these closed unless a real regression is demonstrated.
 
-### D / R7.10 — repaired, awaiting independent rereview #14
+### D / R7.10 — rereview #14 failed; local repair awaiting push and gates
 
 Rereview #13 targeted native-SVG fail-closed candidate `7818c7ed...`. Before independent acceptance was recorded, pre-challenge found two additional Angular render-authority false-positive classes, so #13 is superseded rather than passed.
 
@@ -62,6 +62,7 @@ Current repaired production is:
 ```text
 34182e221df6cf50eaa0ac362a5f575e80236a64  fix: reject unproven Angular content projection
 3e6fa7749eb8ef47be4eedb72d1c159cd502692f  fix: bound Angular direct text containers
+8f667abc819f048b3dc85fc834677b7ca30f5518  fix: recognize external Angular component selectors (local, not pushed)
 ```
 
 The first repair prevents lexical children of component hosts from being treated as directly rendered when content projection is not proven. The second rejects metadata/fallback/conditional HTML containers such as `title`, `canvas`, `dialog`, `details`, `object` and `noscript` from direct-text authority. Native SVG direct authority remains fail-closed from `7818c7ed...`; ordinary HTML remains supported, including eligible HTML under SVG `foreignObject`.
@@ -92,13 +93,15 @@ run              35769939151 — PASS, 3 / 3 jobs
 
 Direct artifact inspection shows all three unchanged repositories remain at zero current R7.9/R7.10 render/visibility authority promotion. Canonical benchmark outputs are byte-identical to the prior safety benchmark except generated nested ZIP bytes/timestamps. Mutation-causality remains closed.
 
-Fresh independent request:
+Rereview #14 result:
 
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`
+`docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`
+
+The new repair recognizes external Angular component selectors from bounded imported-package Ivy declaration metadata. Local focused and related authority tests pass, and the Release solution build is clean. The push is approved but blocked by repository authentication: SSH has no accepted key and the configured HTTPS identity lacks write permission. Exact-SHA gates and a fresh independent rereview #15 remain pending.
 
 ### E — locked
 
-E remains locked until independent rereview #14 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
+E remains locked until the repaired exact SHA passes all gates and independent rereview #15 accepts D. E is the final knowledge-only PO acceptance and portable transport/parity gate.
 
 R7.14 positive real-project yield is **REQUIRED for E completion and remains NOT PASS**. Do not weaken authority or modify benchmarks merely to manufacture a positive shape.
 
@@ -124,6 +127,6 @@ Current recorded roadmap, pending formal post-V0.4.7 re-baseline:
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #14
+roadmap:      V0.4.7-D / R7.10 repaired locally; push/gates/rereview #15 pending
 tool/package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

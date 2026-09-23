@@ -13,8 +13,8 @@ V0.4.7-B computation and later change            PASS / COMPLETE
 V0.4.7-C backend to API                          PASS / COMPLETE
 V0.4.7-D API to UI / R7.9 binding                PASS / COMPLETE
 V0.4.7-D mutation-causality blocker              PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility      REPAIRED / ALL GATES PASS / PENDING REREVIEW #14
-V0.4.7-D overall                                 PENDING INDEPENDENT REREVIEW #14
+V0.4.7-D API to UI / R7.10 joint visibility      REREVIEW #14 FAIL / REPAIRED LOCALLY / PUSH + GATES PENDING
+V0.4.7-D overall                                 OPEN / FRESH REREVIEW #15 REQUIRED AFTER GATES
 V0.4.7-E product acceptance                      LOCKED behind D
 R7.14 real-project positive yield                NOT PASS / REQUIRED FOR E
 V0.5 Azure DevOps input evidence                 LOCKED
@@ -23,21 +23,27 @@ AI workspace + continuous-update plan            PREPARED / NOT UNLOCKED
 
 V0.4.7 acceptance is defined in `docs/v0.4.7-acceptance-plan.md`; the permanent product contract is `docs/product-knowledge-contract.md`.
 
-## Exact production candidate under review
+## Local repaired production candidate
+
+```text
+8f667abc819f048b3dc85fc834677b7ca30f5518
+fix: recognize external Angular component selectors
+```
+
+This commit is locally verified but not pushed. Its reviewed predecessor is:
 
 ```text
 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
 fix: bound Angular direct text containers
 ```
 
-Its direct implementation predecessor is:
+Rereview #14 failed `3e6fa774...` on external dependency attribute/class component selectors. The user approved pushing `8f667ab...`, but this host has no working write credential for `rua-den/pkc`: SSH fails `Permission denied (publickey)` and the configured HTTPS identity `nhkhuy` receives HTTP 403. Exact-SHA gates have therefore not run.
 
-```text
-34182e221df6cf50eaa0ac362a5f575e80236a64
-fix: reject unproven Angular content projection
-```
+## Rereview #14 blocker and local repair
 
-A docs-only `[skip ci]` checkpoint may sit above production on `main`. Review production behavior at `3e6fa774...`; do not reset `main`.
+An imported dependency component such as selector `div[ext-shell]` can consume a native-looking host without projecting its lexical child. Because selector discovery was limited to product-source decorators and excluded `node_modules`, PKC could over-promote `<div ext-shell>{{ displayPrice }}</div>` as directly rendered.
+
+Local repair `8f667ab...` reads bounded Ivy `ɵɵComponentDeclaration` selector metadata from imported packages, keeps directives non-blocking, handles escaped selector literals, prunes excluded source trees, and validates/contains package traversal. Focused tests are 9/9, related render-authority regressions 25/25, and the Release solution build has 0 warnings/errors. Detailed record: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`.
 
 ## Accepted predecessors
 
@@ -182,15 +188,18 @@ Detailed evidence: `docs/benchmarks/2026-09-23-r7.10-html-projection-fail-closed
 
 ## Current external gate
 
-Required next gate:
+Required next action:
 
 ```text
-independent rereview #14 of exact 3e6fa7749eb8ef47be4eedb72d1c159cd502692f
+provide a GitHub credential with write access to rua-den/pkc on this host
+→ push local production 8f667abc819f048b3dc85fc834677b7ca30f5518
+→ exact-SHA standard gates + repaired safety benchmark
+→ fresh independent rereview #15
 ```
 
-Request: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-14-request.md`.
+Rereview #14 result: `docs/reviews/2026-09-23-v0.4.7-d-r7.10-independent-rereview-14.md`.
 
-If rereview #14 finds no new compile-valid/runtime-valid false-positive blocker, it may mark R7.10 and all of D PASS / COMPLETE and unlock only E. R7.14 remains required for E; V0.5 and the prepared AI-workspace/update initiative remain locked until V0.4.7 completes.
+R7.10 and D remain open until the repaired exact SHA passes all required gates and a fresh independent rereview accepts it. E, V0.5 and the prepared AI-workspace/update initiative remain locked.
 
 This implementation continuation repaired the blockers and must not self-certify its own production candidate.
 
@@ -206,7 +215,7 @@ After V0.4.7 is explicitly PASS / COMPLETE, preferred sequencing is AI workspace
 ## Version semantics
 
 ```text
-roadmap:             V0.4.7-D / R7.10 pending independent rereview #14
+roadmap:             V0.4.7-D / R7.10 repaired locally; push/gates/rereview #15 pending
 tool/package:        RuaDen.Pkc.Tool 0.4.3-preview.2
 C# raw schema:       0.4.4-csharp-raw
 merged facts schema: 0.4.4
