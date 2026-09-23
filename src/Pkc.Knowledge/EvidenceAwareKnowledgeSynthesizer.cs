@@ -271,6 +271,43 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
             .ToHashSet(StringComparer.Ordinal);
 
         var result = new List<string>();
+        var uiTransfers = transfers
+            .Where(fact => fact.Metadata.TryGetValue("lineageDomain", out var domain) &&
+                           string.Equals(domain, "angular-ui", StringComparison.Ordinal))
+            .ToArray();
+        if (uiTransfers.Length > 0)
+        {
+            var uiById = uiTransfers.ToDictionary(fact => fact.Id, StringComparer.Ordinal);
+            var uiPredecessorIds = uiTransfers
+                .Select(fact => fact.Metadata.TryGetValue("predecessorTransferFactId", out var predecessor)
+                    ? predecessor
+                    : null)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Cast<string>()
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var leaf in uiTransfers.Where(fact => !uiPredecessorIds.Contains(fact.Id)))
+            {
+                var chain = BuildTransferChain(leaf, uiById);
+                if (chain.Count < 2 || !IsValidUiLineageChain(chain))
+                {
+                    continue;
+                }
+
+                var nodes = new List<string>();
+                if (chain[0].Metadata.TryGetValue("sourceOccurrence", out var firstSource))
+                {
+                    nodes.Add(firstSource);
+                }
+
+                nodes.AddRange(chain.Select(fact => fact.Metadata.TryGetValue("targetOccurrence", out var target)
+                    ? target
+                    : fact.Name));
+                var proofLocations = string.Join(", ", chain.Select(fact => $"`{fact.Source.Path}:L{fact.Source.StartLine}`"));
+                result.Add($"Proven UI value lineage chain: {string.Join(" → ", nodes.Select(node => $"`{node}`"))}. Each edge is identity-qualified; proof: {proofLocations}.");
+            }
+        }
+
         foreach (var leaf in snapshotTransfers.Where(fact => !predecessorIds.Contains(fact.Id)))
         {
             var chain = BuildTransferChain(leaf, byId);
@@ -328,6 +365,55 @@ public sealed class EvidenceAwareKnowledgeSynthesizer : IKnowledgeSynthesizer
 
         reversed.Reverse();
         return reversed;
+    }
+
+    private static bool IsValidUiLineageChain(IReadOnlyList<EvidenceFact> chain)
+    {
+        if (chain.Count < 2 ||
+            !string.Equals(chain[0].Metadata.GetValueOrDefault("mechanism"), "copy", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var componentIdentities = chain
+            .Select(fact => fact.Metadata.GetValueOrDefault("componentIdentity"))
+            .ToArray();
+        var controlIdentities = chain
+            .Select(fact => fact.Metadata.GetValueOrDefault("controlIdentity"))
+            .ToArray();
+        if (componentIdentities.Any(string.IsNullOrWhiteSpace) ||
+            componentIdentities.Distinct(StringComparer.Ordinal).Count() != 1 ||
+            controlIdentities.Any(string.IsNullOrWhiteSpace) ||
+            controlIdentities.Distinct(StringComparer.Ordinal).Count() != 1)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < chain.Count; index++)
+        {
+            var fact = chain[index];
+            var source = fact.Metadata.GetValueOrDefault("sourceOccurrence");
+            var target = fact.Metadata.GetValueOrDefault("targetOccurrence");
+            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(target))
+            {
+                return false;
+            }
+
+            if (index == 0 && !string.Equals(target, controlIdentities[0], StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (index > 0 &&
+                (!string.Equals(fact.Metadata.GetValueOrDefault("mechanism"), "form-control-binding", StringComparison.Ordinal) ||
+                 !string.Equals(source, chain[index - 1].Metadata.GetValueOrDefault("targetOccurrence"), StringComparison.Ordinal) ||
+                 !string.Equals(source, controlIdentities[index], StringComparison.Ordinal)))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static string DescribeValueTransfer(EvidenceFact fact)

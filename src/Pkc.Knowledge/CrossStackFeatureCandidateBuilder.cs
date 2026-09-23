@@ -16,7 +16,8 @@ public sealed class CrossStackFeatureCandidateBuilder
         "ui-field-visibility",
         "ui-field-enabled-state",
         "ui-result-binding",
-        "ui-list-render"
+        "ui-list-render",
+        "value-transfer"
     };
 
     private const string CSharpFallbackWarning =
@@ -197,7 +198,10 @@ public sealed class CrossStackFeatureCandidateBuilder
                      ScreenBehaviorKinds.Contains(fact.Kind) &&
                      (string.Equals(fact.Container, screen.Name, StringComparison.Ordinal) ||
                       fact.Metadata.TryGetValue("component", out var component) &&
-                      string.Equals(component, screen.Name, StringComparison.Ordinal))))
+                      string.Equals(component, screen.Name, StringComparison.Ordinal)))
+                 .Where(fact => fact.Kind != "value-transfer" ||
+                                (fact.Metadata.TryGetValue("componentIdentity", out var componentIdentity) &&
+                                 string.Equals(componentIdentity, $"{screen.Source.Path}#{screen.Name}", StringComparison.Ordinal))))
         {
             facts[behavior.Id] = behavior;
             AddRelation(

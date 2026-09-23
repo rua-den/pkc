@@ -224,6 +224,29 @@ Reuse existing response-binding, form-behavior, UI-field, rendered-value and lin
 
 Fix #2 is complete for the bounded paths above. Fix #3 is now active for Agentic `Users Update` displayed-value lineage.
 
+### Fix #3 implementation checkpoint — deterministic evidence
+
+Pinned target: `hackersandwizards/agentic-engineering-training-angular` at `22f2aab64617f4de7984370a5bd40e8c9535dbf5`.
+
+The workspace-only freeze before source inspection was Q3 `50%`, Q4 `90%`; the missing answer was the displayed-value lineage for `Users Update`.
+
+The bounded implementation now proves, with exact component, form, control, property and imported-token identity:
+
+`MAT_DIALOG_DATA.data.email → EditUserDialogComponent.form.email → EditUserDialogComponent.displayed.email`
+
+It requires exact named imports for `MAT_DIALOG_DATA` from `@angular/material/dialog`, `FormBuilder` from `@angular/forms`, and `inject` from `@angular/core`; ambiguous injections, sibling/mismatched forms, duplicate ownership and same-file component collisions fail closed.
+
+Deterministic verification:
+
+```text
+AngularFormBehaviorTests        11 / 11 PASS
+AngularUiValueLineageKnowledge  3 / 3 PASS
+CrossStackFeatureCandidateBuilder exact-component + external-template regression PASS
+Users Update workspace render   full chain present in knowledge/workflows/users/update.md
+```
+
+Fix #3 remains ACTIVE / NOT COMPLETE pending related and broader verification plus the targeted Agentic Level-1 Q3/Q4 benchmark.
+
 ## Benchmark cadence
 
 Protocol:

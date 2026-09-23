@@ -226,6 +226,20 @@ Do not build an unconstrained generic JavaScript/Angular data-flow engine or add
 
 Fix #2 has reached its terminal checkpoint. Fix #3 is now UNLOCKED / ACTIVE.
 
+Current Fix #3 deterministic checkpoint:
+
+Pinned target `hackersandwizards/agentic-engineering-training-angular` SHA `22f2aab64617f4de7984370a5bd40e8c9535dbf5`; workspace-only freeze was Q3 `50%`, Q4 `90%` before source inspection.
+
+Implemented bounded lineage:
+
+`MAT_DIALOG_DATA.data.email → EditUserDialogComponent.form.email → EditUserDialogComponent.displayed.email`
+
+Exact imported-token identity is required (`MAT_DIALOG_DATA` from `@angular/material/dialog`, `FormBuilder` from `@angular/forms`, `inject` from `@angular/core`). Component body, formGroup ownership, control/property identity and ambiguity boundaries are checked; unsupported or colliding shapes fail closed.
+
+Focused evidence: `AngularFormBehaviorTests` 11/11 PASS, including direct-expression, nested-group, duplicate-control, import-identity, lexical-spoof and collision negatives; `AngularUiValueLineageKnowledgeTests` 3/3 PASS, including CrossStackFeatureCandidateBuilder exact-component attachment from an external HTML template and markdown rendering; regenerated pinned workspace contains the complete chain in `knowledge/workflows/users/update.md`.
+
+Fix #3 remains ACTIVE / NOT COMPLETE pending related/broader verification and targeted Agentic Level-1 Q3/Q4 benchmark.
+
 ## Fix #3 — displayed-value lineage
 
 Primary target: Agentic `Users Update`.

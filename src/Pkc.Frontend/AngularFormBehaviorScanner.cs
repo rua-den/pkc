@@ -38,6 +38,26 @@ internal sealed class AngularFormBehaviorScanner
         @"formControlName\s*=\s*[""'](?<name>[^""']+)[""']",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    private static readonly Regex FormGroupAttributeRegex = new(
+        @"\[formGroup\]\s*=\s*[""'](?<name>[A-Za-z_$][A-Za-z0-9_$]*)[""']",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex FormOpenRegex = new(
+        @"<form\b(?<attrs>[^>]*)>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex FormCloseRegex = new(
+        @"</form\s*>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex ClassDeclarationRegex = new(
+        @"\bclass\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b[^\{]*\{",
+        RegexOptions.Compiled);
+
+    private static readonly Regex NamedImportRegex = new(
+        @"(?m)^\s*import\s*\{(?<bindings>[^}]+)\}\s*from\s*[""'](?<module>[^""']+)[""']",
+        RegexOptions.Compiled);
+
     private static readonly Regex ValueRegex = new(
         @"(?:\[value\]|value)\s*=\s*[""'](?<value>[^""']+)[""']",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -77,6 +97,26 @@ internal sealed class AngularFormBehaviorScanner
     private static readonly Regex RequestBindingRegex = new(
         @"(?<requestField>[A-Za-z_$][A-Za-z0-9_$]*)\s*:\s*(?<expression>(?:this\.)?(?<form>[A-Za-z_$][A-Za-z0-9_$]*)\.(?:value\.(?<field1>[A-Za-z_$][A-Za-z0-9_$]*)|getRawValue\(\)\.(?<field2>[A-Za-z_$][A-Za-z0-9_$]*)|controls\.(?<field3>[A-Za-z_$][A-Za-z0-9_$]*)\.value))",
         RegexOptions.Compiled);
+
+    private static readonly Regex DialogDataInjectionRegex = new(
+        @"(?m)^\s*(?:private|public|protected)?\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*:\s*[^=;\r\n]+\s*=\s*inject\(\s*MAT_DIALOG_DATA\s*\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex FormBuilderInjectionRegex = new(
+        @"(?m)^\s*(?:private|public|protected)?\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*inject\(\s*FormBuilder\s*\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex FormGroupInitializerRegex = new(
+        @"(?m)^\s*(?<form>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*this\.(?<builder>[A-Za-z_$][A-Za-z0-9_$]*)(?:\.nonNullable)?\.group\s*\(\s*\{(?<body>[\s\S]*?)\}\s*\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex FormControlInitializerRegex = new(
+        @"(?m)^\s*(?<field>[A-Za-z_$][A-Za-z0-9_$]*)\s*:\s*\[\s*this\.(?<data>[A-Za-z_$][A-Za-z0-9_$]*)\.(?<property>[A-Za-z_$][A-Za-z0-9_$]*)\b(?=\s*(?:,|\]))",
+        RegexOptions.Compiled);
+
+    private static readonly Regex FormGroupNameRegex = new(
+        @"\bformGroupName\s*=\s*[""'][^""']+[""']",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex MethodRegex = new(
         @"(?m)^\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*\([^\r\n)]*\)\s*(?::\s*[^{\r\n]+)?\{",
@@ -209,6 +249,17 @@ internal sealed class AngularFormBehaviorScanner
                     ["element"] = match.Groups["tag"].Value.ToLowerInvariant(),
                     ["framework"] = "angular-static"
                 });
+            var formGroup = FindNearestFormGroup(template, match.Index);
+            if (!string.IsNullOrWhiteSpace(formGroup))
+            {
+                field = field with
+                {
+                    Metadata = new Dictionary<string, string>(field.Metadata, StringComparer.Ordinal)
+                    {
+                        ["formGroup"] = formGroup
+                    }
+                };
+            }
             facts.Add(Tag(field));
 
             var boundRequired = BoundRequiredRegex.Match(attrs);
@@ -415,6 +466,318 @@ internal sealed class AngularFormBehaviorScanner
                 });
             facts.Add(Tag(fact));
         }
+
+        ExtractDisplayedValueLineage(relativePath, text, component, facts);
+    }
+
+    private static void ExtractDisplayedValueLineage(
+        string relativePath,
+        string text,
+        string component,
+        ICollection<EvidenceFact> facts)
+    {
+        if (!HasExactNamedImport(text, "MAT_DIALOG_DATA", "@angular/material/dialog") ||
+            !HasExactNamedImport(text, "FormBuilder", "@angular/forms") ||
+            !HasExactNamedImport(text, "inject", "@angular/core"))
+        {
+            return;
+        }
+
+        if (!TryGetComponentBody(text, component, out var componentBody, out var componentOffset))
+        {
+            return;
+        }
+
+        var dataBindings = DialogDataInjectionRegex.Matches(componentBody)
+            .Cast<Match>()
+            .Where(match => IsActiveCodePosition(componentBody, match.Index))
+            .ToArray();
+        var formBuilders = FormBuilderInjectionRegex.Matches(componentBody)
+            .Cast<Match>()
+            .Where(match => IsActiveCodePosition(componentBody, match.Index))
+            .ToArray();
+        var formInitializers = FormGroupInitializerRegex.Matches(componentBody)
+            .Cast<Match>()
+            .Where(match => IsActiveCodePosition(componentBody, match.Index))
+            .ToArray();
+        if (dataBindings.Length != 1 || formBuilders.Length != 1 || formInitializers.Length != 1)
+        {
+            return;
+        }
+
+        var dataBinding = dataBindings[0];
+        var formBuilder = formBuilders[0].Groups["name"].Value;
+        var formInitializer = formInitializers[0];
+        if (!string.Equals(formInitializer.Groups["builder"].Value, formBuilder, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var dataName = dataBinding.Groups["name"].Value;
+        var formName = formInitializer.Groups["form"].Value;
+        if (formInitializer.Groups["body"].Value.Contains(".group(", StringComparison.Ordinal) ||
+            FormGroupNameRegex.IsMatch(text))
+        {
+            return;
+        }
+        var displayedFields = facts
+            .Where(fact => fact.Kind == "ui-field" &&
+                          string.Equals(fact.Container, component, StringComparison.Ordinal) &&
+                          fact.Metadata.TryGetValue("field", out var name) &&
+                          !string.IsNullOrWhiteSpace(name) &&
+                          fact.Metadata.TryGetValue("formGroup", out var formGroup) &&
+                          string.Equals(formGroup, formName, StringComparison.Ordinal))
+            .ToArray();
+        var componentIdentity = $"{relativePath}#{component}";
+        var controls = FormControlInitializerRegex.Matches(formInitializer.Groups["body"].Value)
+            .Cast<Match>()
+            .Where(match => IsActiveCodePosition(
+                formInitializer.Groups["body"].Value,
+                match.Index))
+            .ToArray();
+
+        foreach (var displayedField in displayedFields)
+        {
+            var field = displayedField.Metadata["field"];
+            var ownershipCount = displayedFields.Count(candidate =>
+                string.Equals(candidate.Metadata.GetValueOrDefault("field"), field, StringComparison.Ordinal));
+            if (ownershipCount != 1)
+            {
+                continue;
+            }
+
+            var matchingControls = controls
+                .Where(match =>
+                    string.Equals(match.Groups["field"].Value, field, StringComparison.Ordinal) &&
+                    string.Equals(match.Groups["data"].Value, dataName, StringComparison.Ordinal) &&
+                    string.Equals(match.Groups["property"].Value, field, StringComparison.Ordinal))
+                .ToArray();
+            if (matchingControls.Length != 1)
+            {
+                continue;
+            }
+
+            var control = matchingControls[0];
+            var controlIdentity = $"{component}.{formName}.{field}";
+            var sourceIdentity = $"{component}.{dataName}.{field}";
+            var controlIndex = componentOffset + formInitializer.Index + formInitializer.Groups["body"].Index + control.Index;
+            var sourceToControl = Tag(CreateFact(
+                relativePath,
+                text,
+                controlIndex,
+                Math.Max(dataBinding.Length, control.Length),
+                "value-transfer",
+                $"{sourceIdentity}->{controlIdentity}",
+                component,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                ["knowledgeClass"] = "value-lineage",
+                ["sourceOccurrence"] = $"MAT_DIALOG_DATA.{dataName}.{field}",
+                ["targetOccurrence"] = $"{component}.{formName}.{field}",
+                ["sourceToken"] = "MAT_DIALOG_DATA",
+                ["sourceBinding"] = dataName,
+                ["sourceProperty"] = field,
+                ["targetForm"] = formName,
+                ["targetControl"] = field,
+                ["componentIdentity"] = componentIdentity,
+                ["controlIdentity"] = controlIdentity,
+                ["sourceIdentity"] = sourceIdentity,
+                ["lineageDomain"] = "angular-ui",
+                ["mechanism"] = "copy",
+                ["temporalSemantics"] = "snapshot",
+                ["expression"] = $"this.{dataName}.{field}",
+                ["proof"] = "exact-MAT_DIALOG_DATA-binding+exact-FormBuilder-control-initializer"
+                }));
+            facts.Add(sourceToControl);
+
+            facts.Add(Tag(new EvidenceFact(
+                $"nglineage:{displayedField.Id}:form-control-binding",
+                "value-transfer",
+                $"{controlIdentity}->{component}.displayed.{field}",
+                component,
+                displayedField.Source,
+                [],
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                ["knowledgeClass"] = "value-lineage",
+                ["sourceOccurrence"] = $"{component}.{formName}.{field}",
+                ["targetOccurrence"] = $"{component}.displayed.{field}",
+                ["sourceForm"] = formName,
+                ["sourceControl"] = field,
+                ["targetField"] = field,
+                ["componentIdentity"] = componentIdentity,
+                ["controlIdentity"] = controlIdentity,
+                ["lineageDomain"] = "angular-ui",
+                ["predecessorTransferFactId"] = sourceToControl.Id,
+                ["mechanism"] = "form-control-binding",
+                ["temporalSemantics"] = "dynamic",
+                ["proof"] = "exact-formControlName-to-form-control-identity"
+                })));
+        }
+    }
+
+    private static bool HasExactNamedImport(string text, string name, string module)
+    {
+        foreach (Match match in NamedImportRegex.Matches(text))
+        {
+            if (!IsActiveCodePosition(text, match.Index))
+            {
+                continue;
+            }
+
+            if (!string.Equals(match.Groups["module"].Value, module, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (match.Groups["bindings"].Value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(binding => string.Equals(binding, name, StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsActiveCodePosition(string text, int position)
+    {
+        var state = TypeScriptLexicalState.Code;
+        for (var index = 0; index < position && index < text.Length; index++)
+        {
+            var current = text[index];
+            var next = index + 1 < text.Length ? text[index + 1] : '\0';
+            switch (state)
+            {
+                case TypeScriptLexicalState.Code:
+                    if (current == '/' && next == '/')
+                    {
+                        state = TypeScriptLexicalState.LineComment;
+                        index++;
+                    }
+                    else if (current == '/' && next == '*')
+                    {
+                        state = TypeScriptLexicalState.BlockComment;
+                        index++;
+                    }
+                    else if (current == '\'') state = TypeScriptLexicalState.SingleQuotedString;
+                    else if (current == '"') state = TypeScriptLexicalState.DoubleQuotedString;
+                    else if (current == '`') state = TypeScriptLexicalState.TemplateLiteral;
+                    break;
+                case TypeScriptLexicalState.LineComment:
+                    if (current is '\r' or '\n') state = TypeScriptLexicalState.Code;
+                    break;
+                case TypeScriptLexicalState.BlockComment:
+                    if (current == '*' && next == '/')
+                    {
+                        state = TypeScriptLexicalState.Code;
+                        index++;
+                    }
+                    break;
+                case TypeScriptLexicalState.SingleQuotedString:
+                    if (current == '\\') index++;
+                    else if (current == '\'') state = TypeScriptLexicalState.Code;
+                    break;
+                case TypeScriptLexicalState.DoubleQuotedString:
+                    if (current == '\\') index++;
+                    else if (current == '"') state = TypeScriptLexicalState.Code;
+                    break;
+                case TypeScriptLexicalState.TemplateLiteral:
+                    if (current == '\\') index++;
+                    else if (current == '`') state = TypeScriptLexicalState.Code;
+                    break;
+            }
+        }
+
+        return state == TypeScriptLexicalState.Code;
+    }
+
+    private static string? FindNearestFormGroup(string template, int beforeIndex)
+    {
+        var openings = FormOpenRegex.Matches(template)
+            .Cast<Match>()
+            .Where(match => match.Index < beforeIndex)
+            .OrderByDescending(match => match.Index)
+            .ToArray();
+        foreach (var opening in openings)
+        {
+            var closing = FormCloseRegex.Match(template, opening.Index + opening.Length);
+            if (!closing.Success || closing.Index <= beforeIndex)
+            {
+                continue;
+            }
+
+            var group = FormGroupAttributeRegex.Match(opening.Groups["attrs"].Value);
+            return group.Success ? group.Groups["name"].Value : null;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetComponentBody(string text, string component, out string body, out int bodyOffset)
+    {
+        var declarations = ClassDeclarationRegex.Matches(text)
+            .Cast<Match>()
+            .Where(match => string.Equals(match.Groups["name"].Value, component, StringComparison.Ordinal))
+            .ToArray();
+        if (declarations.Length != 1)
+        {
+            body = string.Empty;
+            bodyOffset = 0;
+            return false;
+        }
+
+        var openBrace = declarations[0].Index + declarations[0].Value.LastIndexOf('{');
+        var closeBrace = FindMatchingBrace(text, openBrace);
+        if (closeBrace <= openBrace)
+        {
+            body = string.Empty;
+            bodyOffset = 0;
+            return false;
+        }
+
+        bodyOffset = openBrace + 1;
+        body = text.Substring(bodyOffset, closeBrace - bodyOffset);
+        return true;
+    }
+
+    private static int FindMatchingBrace(string text, int openBrace)
+    {
+        var depth = 0;
+        var quote = '\0';
+        for (var index = openBrace; index < text.Length; index++)
+        {
+            var current = text[index];
+            if (quote != '\0')
+            {
+                if (current == '\\')
+                {
+                    index++;
+                }
+                else if (current == quote)
+                {
+                    quote = '\0';
+                }
+
+                continue;
+            }
+
+            if (current is '\'' or '"' or '`')
+            {
+                quote = current;
+            }
+            else if (current == '{')
+            {
+                depth++;
+            }
+            else if (current == '}' && --depth == 0)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static EvidenceFact CreateBehaviorFact(
@@ -577,4 +940,14 @@ internal sealed class AngularFormBehaviorScanner
 
     private static string RelationKey(EvidenceRelation relation) =>
         $"{relation.FromFactId}|{relation.Kind}|{relation.Target}|{relation.Source.Path}|{relation.Source.StartLine}";
+
+    private enum TypeScriptLexicalState
+    {
+        Code,
+        LineComment,
+        BlockComment,
+        SingleQuotedString,
+        DoubleQuotedString,
+        TemplateLiteral,
+    }
 }
