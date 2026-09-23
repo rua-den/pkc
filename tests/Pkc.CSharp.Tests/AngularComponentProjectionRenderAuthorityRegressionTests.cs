@@ -121,6 +121,265 @@ public sealed class AngularComponentProjectionRenderAuthorityRegressionTests
             fact.Metadata.GetValueOrDefault("condition") == "isAllowed");
     }
 
+    [Fact]
+    public async Task External_attribute_component_declaration_without_projection_does_not_create_authority()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+            import { ExternalShell } from '@vendor/ui';
+
+            @Component({
+              selector: 'app-price',
+              imports: [ExternalShell],
+              template: `
+                @if (isAllowed) {
+                  <div ext-shell>{{ displayPrice }}</div>
+                }
+              `
+            })
+            export class PriceComponent {
+              isAllowed = true;
+              displayPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'unused-shell',
+              template: `<span>unused</span>`
+            })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class ExternalShell {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<ExternalShell, "div[ext-shell]", never, {}, {}, never, never, true, never>;
+                    }
+                    export declare class ExternalDirective {
+                      static ɵdir: i0.ɵɵDirectiveDeclaration<ExternalDirective, "div[ext-shell]", never, {}, {}, never, never, true>;
+                    }
+                    """
+            });
+
+        AssertNoAuthoritativeRenderOrVisibility(facts, "displayPrice");
+    }
+
+    [Fact]
+    public async Task External_directive_declaration_does_not_suppress_text_and_later_html_remains_supported()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+            import { ExternalDirective } from '@vendor/ui';
+
+            @Component({
+              selector: 'app-price',
+              imports: [ExternalDirective],
+              template: `
+                <div ext-directive>{{ directiveText }}</div>
+                <strong>{{ displayPrice }}</strong>
+              `
+            })
+            export class PriceComponent {
+              directiveText = 'directive';
+              displayPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'unused-shell',
+              template: `<span>unused</span>`
+            })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class ExternalDirective {
+                      static ɵdir: i0.ɵɵDirectiveDeclaration<ExternalDirective, "div[ext-directive]", never, {}, {}, never, never, true>;
+                    }
+                    """
+            });
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "directiveText" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+    }
+
+    [Fact]
+    public async Task External_class_and_combined_component_declarations_are_projection_boundaries()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+            import { ExternalClassShell, ExternalCombinedShell } from '@vendor/ui';
+
+            @Component({
+              selector: 'app-price',
+              imports: [ExternalClassShell, ExternalCombinedShell],
+              template: `
+                <div class="ext-class">{{ classPrice }}</div>
+                <div ext-combined class="ext-combined">{{ combinedPrice }}</div>
+              `
+            })
+            export class PriceComponent {
+              classPrice = 7;
+              combinedPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'unused-shell',
+              template: `<span>unused</span>`
+            })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class ExternalClassShell {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<ExternalClassShell, "div.ext-class", never, {}, {}, never, never, true, never>;
+                    }
+                    export declare class ExternalCombinedShell {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<ExternalCombinedShell, "div[ext-combined].ext-combined", never, {}, {}, never, never, true, never>;
+                    }
+                    """
+            });
+
+        AssertNoAuthoritativeRenderOrVisibility(facts, "classPrice");
+        AssertNoAuthoritativeRenderOrVisibility(facts, "combinedPrice");
+    }
+
+    [Fact]
+    public async Task External_quoted_value_component_selector_is_projection_boundary()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+            import { ExternalShell } from '@vendor/ui';
+
+            @Component({
+              selector: 'app-price',
+              imports: [ExternalShell],
+              template: `<div ext-shell="active">{{ displayPrice }}</div>`
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+            @Component({ selector: 'unused-shell', template: `<span>unused</span>` })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class ExternalShell {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<ExternalShell, "div[ext-shell=\"active\"]", never, {}, {}, never, never, true, never>;
+                    }
+                    """
+            });
+
+        AssertNoAuthoritativeRenderOrVisibility(facts, "displayPrice");
+    }
+
+    [Fact]
+    public async Task Malformed_external_component_declaration_does_not_bridge_to_later_declaration()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+            import { ExternalShell } from '@vendor/ui';
+
+            @Component({
+              selector: 'app-price',
+              imports: [ExternalShell],
+              template: `<div later-shell>{{ displayPrice }}</div>`
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+            @Component({ selector: 'unused-shell', template: `<span>unused</span>` })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class Broken {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<Broken, "div[broken], never>;
+                    }
+                    export declare class Later {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<Later, "div[later-shell]", never, {}, {}, never, never, true, never>;
+                    }
+                    """
+            });
+
+        AssertNoAuthoritativeRenderOrVisibility(facts, "displayPrice");
+    }
+
+    [Fact]
+    public async Task Unimported_external_component_selector_does_not_affect_product_html()
+    {
+        var facts = await ScanAsync(
+            """
+            import { Component } from '@angular/core';
+
+            @Component({
+              selector: 'app-price',
+              template: `<div ext-shell>{{ displayPrice }}</div>`
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """,
+            """
+            import { Component } from '@angular/core';
+            @Component({ selector: 'unused-shell', template: `<span>unused</span>` })
+            export class UnusedComponent {}
+            """,
+            new Dictionary<string, string>
+            {
+                ["node_modules/@vendor/ui/index.d.ts"] =
+                    """
+                    import * as i0 from '@angular/core';
+                    export declare class ExternalShell {
+                      static ɵcmp: i0.ɵɵComponentDeclaration<ExternalShell, 'div[ext-shell]', never, {}, {}, never, never, true, never>;
+                    }
+                    """
+            });
+
+        Assert.Contains(facts.Facts, fact =>
+            fact.Kind == "ui-member-render" &&
+            fact.Metadata.GetValueOrDefault("member") == "displayPrice" &&
+            fact.Metadata.ContainsKey("renderAuthority"));
+    }
+
     private static void AssertNoAuthoritativeRenderOrVisibility(FactDocument facts, string member)
     {
         Assert.DoesNotContain(facts.Facts, fact =>
@@ -134,7 +393,8 @@ public sealed class AngularComponentProjectionRenderAuthorityRegressionTests
 
     private static async Task<FactDocument> ScanAsync(
         string shellComponentSource,
-        string priceComponentSource)
+        string priceComponentSource,
+        IReadOnlyDictionary<string, string>? additionalFiles = null)
     {
         var root = Path.Combine(
             Path.GetTempPath(),
@@ -154,6 +414,15 @@ public sealed class AngularComponentProjectionRenderAuthorityRegressionTests
             await File.WriteAllTextAsync(
                 Path.Combine(root, "price.component.ts"),
                 priceComponentSource);
+            if (additionalFiles is not null)
+            {
+                foreach (var file in additionalFiles)
+                {
+                    var path = Path.Combine(root, file.Key.Replace('/', Path.DirectorySeparatorChar));
+                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                    await File.WriteAllTextAsync(path, file.Value);
+                }
+            }
             return await new FrontendScanner().ScanAsync(root);
         }
         finally

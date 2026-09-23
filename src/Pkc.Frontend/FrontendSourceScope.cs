@@ -51,4 +51,7 @@ internal static class FrontendSourceScope
         return !ExcludedFileSuffixes.Any(suffix =>
             fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
     }
+
+    internal static bool IsExcludedDirectoryName(string name) =>
+        ExcludedDirectoryNames.Contains(name);
 }

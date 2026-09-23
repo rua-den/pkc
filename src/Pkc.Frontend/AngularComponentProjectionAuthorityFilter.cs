@@ -17,6 +17,14 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         @"\bselector\s*:\s*(?<quote>[""'])(?<selector>[^""']+)\k<quote>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex ImportedModuleRegex = new(
+        @"\bfrom\s*[""'](?<module>[^""']+)[""']|\bimport\s*[""'](?<module>[^""']+)[""']",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex PackageNameRegex = new(
+        @"^(?:@[A-Za-z0-9._~-]+/[A-Za-z0-9._~-]+|[A-Za-z0-9._~-]+)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex HtmlElementTagRegex = new(
         @"<\s*(?<closing>/)?\s*(?<name>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>(?:[^""'<>]|""[^""]*""|'[^']*')*)>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
@@ -123,16 +131,21 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         CancellationToken cancellationToken)
     {
         var selectors = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var file in Directory.EnumerateFiles(root, "*.ts", SearchOption.AllDirectories))
+        var importedPackages = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in EnumerateProductTypeScriptFiles(root, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var relativePath = Path.GetRelativePath(root, file).Replace('\\', '/');
-            if (!FrontendSourceScope.IsProductSource(relativePath))
+            var text = await File.ReadAllTextAsync(file, cancellationToken);
+            foreach (Match importedModule in ImportedModuleRegex.Matches(text))
             {
-                continue;
+                var module = importedModule.Groups["module"].Value;
+                if (!module.StartsWith(".", StringComparison.Ordinal) &&
+                    !module.StartsWith("/", StringComparison.Ordinal))
+                {
+                    importedPackages.Add(GetPackageName(module));
+                }
             }
 
-            var text = await File.ReadAllTextAsync(file, cancellationToken);
             foreach (Match component in ComponentDecoratorRegex.Matches(text))
             {
                 var selector = SelectorPropertyRegex.Match(component.Groups["metadata"].Value);
@@ -152,7 +165,278 @@ internal sealed class AngularComponentProjectionAuthorityFilter
             }
         }
 
+        foreach (var package in importedPackages.OrderBy(value => value, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!PackageNameRegex.IsMatch(package))
+            {
+                continue;
+            }
+
+            var nodeModulesRoot = Path.GetFullPath(Path.Combine(root, "node_modules"));
+            var packageRoot = Path.Combine(root, "node_modules", package.Replace('/', Path.DirectorySeparatorChar));
+            var packageRootFullPath = Path.GetFullPath(packageRoot);
+            var containmentPrefix = nodeModulesRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!packageRootFullPath.StartsWith(containmentPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!Directory.Exists(packageRoot))
+            {
+                continue;
+            }
+
+            foreach (var file in EnumerateDeclarationFiles(packageRoot, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var text = await File.ReadAllTextAsync(file, cancellationToken);
+                foreach (var selector in ExtractExternalComponentSelectors(text))
+                {
+                    foreach (var candidate in selector.Split(','))
+                    {
+                        var value = candidate.Trim();
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            selectors.Add(value);
+                        }
+                    }
+                }
+            }
+        }
+
         return selectors.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+    }
+
+    private static IEnumerable<string> EnumerateProductTypeScriptFiles(
+        string root,
+        CancellationToken cancellationToken)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var directory = pending.Pop();
+            var entries = Directory.EnumerateFileSystemEntries(directory)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToArray();
+            foreach (var entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    var name = Path.GetFileName(entry);
+                    if (!FrontendSourceScope.IsExcludedDirectoryName(name) &&
+                        (attributes & FileAttributes.ReparsePoint) == 0)
+                    {
+                        pending.Push(entry);
+                    }
+                }
+                else if (entry.EndsWith(".ts", StringComparison.OrdinalIgnoreCase))
+                {
+                    var relativePath = Path.GetRelativePath(root, entry).Replace('\\', '/');
+                    if (FrontendSourceScope.IsProductSource(relativePath))
+                    {
+                        yield return entry;
+                    }
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateDeclarationFiles(
+        string packageRoot,
+        CancellationToken cancellationToken)
+    {
+        var pending = new Stack<string>();
+        pending.Push(packageRoot);
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var directory = pending.Pop();
+            var entries = Directory.EnumerateFileSystemEntries(directory)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToArray();
+            foreach (var entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    if ((attributes & FileAttributes.ReparsePoint) == 0)
+                    {
+                        pending.Push(entry);
+                    }
+                }
+                else if (entry.EndsWith(".d.ts", StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return entry;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> ExtractExternalComponentSelectors(string text)
+    {
+        const string marker = "ɵɵComponentDeclaration";
+        var searchStart = 0;
+        while (searchStart < text.Length)
+        {
+            var markerIndex = text.IndexOf(marker, searchStart, StringComparison.Ordinal);
+            if (markerIndex < 0)
+            {
+                yield break;
+            }
+
+            if (TryParseSecondGenericString(text, markerIndex + marker.Length, out var selector))
+            {
+                yield return selector;
+            }
+
+            searchStart = markerIndex + marker.Length;
+        }
+    }
+
+    private static bool TryParseSecondGenericString(
+        string text,
+        int start,
+        out string selector)
+    {
+        selector = string.Empty;
+        var open = text.IndexOf('<', start);
+        if (open < 0)
+        {
+            return false;
+        }
+
+        var depth = 1;
+        var firstComma = -1;
+        var index = open + 1;
+        while (index < text.Length)
+        {
+            var character = text[index];
+            if (character is '\'' or '"')
+            {
+                if (!SkipTypeScriptString(text, ref index))
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (character == ';' && depth == 1)
+            {
+                return false;
+            }
+
+            if (character == '<')
+            {
+                depth++;
+            }
+            else if (character == '>')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return false;
+                }
+            }
+            else if (character == ',' && depth == 1)
+            {
+                if (firstComma < 0)
+                {
+                    firstComma = index;
+                }
+                else
+                {
+                    var candidate = text[(firstComma + 1)..index].Trim();
+                    return TryParseTypeScriptStringLiteral(candidate, out selector);
+                }
+            }
+
+            index++;
+        }
+
+        return false;
+    }
+
+    private static bool SkipTypeScriptString(string text, ref int index)
+    {
+        var quote = text[index++];
+        while (index < text.Length)
+        {
+            if (text[index] == '\\')
+            {
+                index += 2;
+                continue;
+            }
+
+            if (text[index] == quote)
+            {
+                index++;
+                return true;
+            }
+
+            index++;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseTypeScriptStringLiteral(string text, out string value)
+    {
+        value = string.Empty;
+        if (text.Length < 2 || (text[0] != '\'' && text[0] != '"') || text[^1] != text[0])
+        {
+            return false;
+        }
+
+        var builder = new System.Text.StringBuilder(text.Length - 2);
+        for (var index = 1; index < text.Length - 1; index++)
+        {
+            if (text[index] != '\\')
+            {
+                builder.Append(text[index]);
+                continue;
+            }
+
+            if (++index >= text.Length - 1)
+            {
+                return false;
+            }
+
+            var escaped = text[index];
+            builder.Append(escaped switch
+            {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                'b' => '\b',
+                'f' => '\f',
+                'v' => '\v',
+                '0' => '\0',
+                _ => escaped
+            });
+        }
+
+        value = builder.ToString();
+        return true;
+    }
+
+    private static string GetPackageName(string module)
+    {
+        var segments = module.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+        {
+            return module;
+        }
+
+        return segments[0].StartsWith("@", StringComparison.Ordinal) && segments.Length > 1
+            ? $"{segments[0]}/{segments[1]}"
+            : segments[0];
     }
 
     private static bool HasSupportedRenderContext(
