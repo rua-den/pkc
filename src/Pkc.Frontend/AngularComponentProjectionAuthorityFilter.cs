@@ -5,6 +5,8 @@ namespace Pkc.Frontend;
 
 internal sealed class AngularComponentProjectionAuthorityFilter
 {
+    private const string FailClosedComponentSelectorPrefix = "__pkc_fail_closed_component__:";
+
     private static readonly Regex ComponentTemplateRegex = new(
         @"@Component\s*\(\s*\{(?<before>[\s\S]*?)\btemplate\s*:\s*`(?<body>[\s\S]*?)`(?<after>[\s\S]*?)\}\s*\)\s*(?:export\s+)?class\s+(?<component>[A-Z][A-Za-z0-9_$]*Component)\b",
         RegexOptions.Compiled);
@@ -146,10 +148,23 @@ internal sealed class AngularComponentProjectionAuthorityFilter
                 }
 
                 var package = GetPackageName(module);
-                var packageRoot = FindImportedPackageRoot(root, file, package);
+                var packageRoot = FindImportedPackageRoot(
+                    root,
+                    file,
+                    package,
+                    out var rejectedLinkedPackage);
                 if (packageRoot is not null)
                 {
                     importedPackageRoots.Add(packageRoot);
+                }
+                else if (rejectedLinkedPackage)
+                {
+                    foreach (Match template in ComponentTemplateRegex.Matches(text))
+                    {
+                        selectors.Add(
+                            FailClosedComponentSelectorPrefix +
+                            template.Groups["component"].Value);
+                    }
                 }
             }
 
@@ -199,8 +214,10 @@ internal sealed class AngularComponentProjectionAuthorityFilter
     private static string? FindImportedPackageRoot(
         string repositoryRoot,
         string sourceFile,
-        string package)
+        string package,
+        out bool rejectedLinkedPackage)
     {
+        rejectedLinkedPackage = false;
         if (!PackageNameRegex.IsMatch(package))
         {
             return null;
@@ -217,7 +234,10 @@ internal sealed class AngularComponentProjectionAuthorityFilter
             if (packageRoot.StartsWith(containmentPrefix, StringComparison.OrdinalIgnoreCase) &&
                 Directory.Exists(packageRoot))
             {
-                return ResolveContainedPackageRoot(nodeModulesRoot, packageRoot);
+                return ResolveContainedPackageRoot(
+                    root,
+                    packageRoot,
+                    out rejectedLinkedPackage);
             }
 
             if (string.Equals(
@@ -234,11 +254,16 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         return null;
     }
 
-    private static string? ResolveContainedPackageRoot(string nodeModulesRoot, string packageRoot)
+    private static string? ResolveContainedPackageRoot(
+        string repositoryRoot,
+        string packageRoot,
+        out bool rejectedLinkedPackage)
     {
+        rejectedLinkedPackage = false;
         var packageDirectory = new DirectoryInfo(packageRoot);
+        var isLink = (packageDirectory.Attributes & FileAttributes.ReparsePoint) != 0;
         FileSystemInfo? resolved = packageDirectory;
-        if ((packageDirectory.Attributes & FileAttributes.ReparsePoint) != 0)
+        if (isLink)
         {
             try
             {
@@ -246,27 +271,35 @@ internal sealed class AngularComponentProjectionAuthorityFilter
             }
             catch (IOException)
             {
+                rejectedLinkedPackage = true;
                 return null;
             }
             catch (UnauthorizedAccessException)
             {
+                rejectedLinkedPackage = true;
                 return null;
             }
             catch (NotSupportedException)
             {
+                rejectedLinkedPackage = true;
                 return null;
             }
         }
 
         if (resolved is null || !resolved.Exists)
         {
+            rejectedLinkedPackage = isLink;
             return null;
         }
 
         var resolvedPath = NormalizeDirectoryPath(resolved.FullName);
-        return IsPathWithinOrEqual(nodeModulesRoot, resolvedPath)
-            ? resolvedPath
-            : null;
+        if (IsPathWithinOrEqual(repositoryRoot, resolvedPath))
+        {
+            return resolvedPath;
+        }
+
+        rejectedLinkedPackage = isLink;
+        return null;
     }
 
     private static bool IsPathWithinOrEqual(string root, string candidate)
@@ -529,6 +562,13 @@ internal sealed class AngularComponentProjectionAuthorityFilter
         int sourceLine,
         IReadOnlyList<string> componentSelectors)
     {
+        if (componentSelectors.Contains(
+                FailClosedComponentSelectorPrefix + component,
+                StringComparer.Ordinal))
+        {
+            return false;
+        }
+
         var matches = 0;
         var supported = 0;
 
