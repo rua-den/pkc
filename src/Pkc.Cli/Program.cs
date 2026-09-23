@@ -8,9 +8,9 @@ using Pkc.Frontend;
 using Pkc.Knowledge;
 
 var command = args.Length > 0 ? args[0] : string.Empty;
-if (args.Length != 2 || (command != "scan" && command != "build"))
+if (args.Length != 2 || (command != "scan" && command != "build" && command != "run"))
 {
-    Console.Error.WriteLine("Usage: pkc <scan|build> <repository-path>");
+    Console.Error.WriteLine("Usage: pkc <scan|build|run> <repository-path>");
     return 2;
 }
 
@@ -50,7 +50,7 @@ try
     Console.WriteLine(factsPath);
     Console.WriteLine(candidatesPath);
 
-    if (command == "build")
+    if (command is "build" or "run")
     {
         var synthesizer = new JointVisibilityKnowledgeSynthesizer();
         var workflowRenderer = new MarkdownKnowledgeRenderer();
@@ -103,11 +103,38 @@ try
         Console.WriteLine(archivePath);
 
         Console.WriteLine($"PKC build complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features, canonical knowledge pack + single-file bundle + ZIP generated");
-        Console.WriteLine();
-        Console.WriteLine("AI handoff:");
-        Console.WriteLine($"  Simplest: upload {bundlePath} to the AI, then ask product/system questions.");
-        Console.WriteLine($"  Structured: provide {Path.Combine(repositoryPath, "knowledge")} when the AI/workspace supports multiple files.");
-        Console.WriteLine($"  Archive: {archivePath} is for sharing/storage or archive-capable destinations; ZIP parsing is not required.");
+
+        if (command == "run")
+        {
+            var workspaceFiles = new AiWorkspaceRenderer().Render(
+                canonicalKnowledgeFiles,
+                sourceRepositoryLabel);
+            var workspacePath = await new AiWorkspaceWriter().WriteAsync(
+                repositoryPath,
+                workspaceFiles);
+
+            Console.WriteLine();
+            Console.WriteLine($"PKC run workspace generated: {workspacePath}");
+            Console.WriteLine("Workspace status: PREVIEW (pkc verify / READY-PARTIAL-FAILED is not implemented yet).");
+            Console.WriteLine();
+            Console.WriteLine("AI workspace:");
+            Console.WriteLine($"  Claude Code: cd \"{workspacePath}\" then run `claude`.");
+            Console.WriteLine("  Codex-compatible agent: open the workspace directory; AGENTS.md is the bootstrap.");
+            Console.WriteLine("  PRODUCT mode is default. TRACE/ENGINEERING require explicit user intent.");
+            Console.WriteLine();
+            Console.WriteLine("Compatibility outputs were also retained:");
+            Console.WriteLine($"  {bundlePath}");
+            Console.WriteLine($"  {archivePath}");
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.WriteLine("AI handoff:");
+            Console.WriteLine($"  Simplest: upload {bundlePath} to the AI, then ask product/system questions.");
+            Console.WriteLine($"  Structured: provide {Path.Combine(repositoryPath, "knowledge")} when the AI/workspace supports multiple files.");
+            Console.WriteLine($"  Archive: {archivePath} is for sharing/storage or archive-capable destinations; ZIP parsing is not required.");
+            Console.WriteLine("  Prefer `pkc run <repository-path>` for the generated Claude/Codex workspace.");
+        }
     }
 
     return 0;
