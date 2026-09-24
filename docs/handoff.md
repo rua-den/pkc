@@ -127,6 +127,85 @@ Run only inside the approved source-enabled/company environment, against the app
 
 A PKC-source session without that environment must not claim RD8. If the operator's run exposes gaps, reproduce them with synthetic fixtures and fix them regression-first here.
 
+## First private-repository run — findings and follow-ups (2026-09-24)
+
+Operator-authorized run in the approved company environment. Sanitized measurements only; RD8 is **not** yet formally PASS (see open items).
+
+Repository scale:
+
+- about 26.9k files;
+- 18 hosts;
+- about 16.8k planned semantic files;
+- 1,982 test-evidence files and 41 light-index files withheld by the plan;
+- 138 excluded areas;
+- about 263.6k facts and 2.04M relations;
+- 4,186 workflow candidates.
+
+| Run | PKC state | Result | Elapsed | Peak memory |
+| --- | --- | --- | --- | --- |
+| 1 | `cf20b29` (RD7) | **failed** at `[pkc:write]` (out of memory) | 41.5 min | ~18.6 GB |
+| 2 | `cf20b29` + working-tree fixes below | **exit 0**, workspace generated (703 product features, 4,709 files) | 29 min | ~7.5 GB |
+
+`pkc discover` alone took about 98 s. Fact and relation counts were identical in runs 1 and 2.
+
+Fixes, in the working tree and **not committed yet**:
+
+- `src/Pkc.Core/JsonArtifactFile.cs` — `facts.json`, `feature-candidates.json` and `product-features.json` are streamed to disk. `facts.json` reached about 1.2 GB, which cannot be materialized as one string. The bytes are identical to the previous output (regression test `JsonArtifactFileRegressionTests`).
+- `src/Pkc.CSharp/CSharpProjectSemanticEnricher.cs` — one shared `MSBuildWorkspace` per pass. Previously each project opened its own workspace and recompiled its whole reference closure, and every copy was kept alive by its semantic models; that was the source of the ~18 GB peak.
+- Verification: `Pkc.CSharp.Tests` 333/333, `Pkc.Frontend.Tests` 23/23; sample `.pkc` output identical to the RD7 run.
+
+Implemented after run 2, in the working tree and **not committed yet**:
+
+- **Answer format** — `AiWorkspaceRenderer.RenderAnswerContract` now has an `## Answer format` section:
+  - answer in the user's language;
+  - translate code conditions into business language;
+  - certainty markers ✅ proven / ⚠️ not proven / 💡 inferred;
+  - PRODUCT template: short answer, a When/Then rules table, permissions, errors, not proven, links;
+  - QA table `ID | Scenario | Preconditions | Steps | Expected result | Basis`;
+  - TRACE evidence list without code bodies.
+
+  This replaces the hand-added demo section. The private run's patched workspace is kept locally as `.pkc/legacy/2026-09-24-workspace` in the target repository, not in this repository.
+- **Run summary** — `src/Pkc.Knowledge/RunSummary.cs`. `pkc run` prints an ASCII summary block and writes `.pkc/RUN_SUMMARY.md` and `.pkc/run-summary.json`. They record:
+  - repository shape;
+  - what was analyzed and skipped;
+  - facts and relations;
+  - knowledge counts;
+  - grounded share per aspect (rules, permissions, state changes, side effects, UI);
+  - largest areas;
+  - phase timings;
+  - per-artifact write status.
+
+  Paths are repository-relative. `knowledge/START_HERE.md` gets a count-only "What this workspace contains" section with answer caveats derived from the grounding shares.
+- **Failure-safe writes and resume:**
+  - JSON artifacts are written to a temporary sibling file and then atomically replaced;
+  - post-scan artifact writes are best-effort: failures are listed in the summary and the exit code is 1;
+  - the AI workspace is written to `.pkc/workspace.staging` and swapped in. The replaced one is kept as `.pkc/workspace.previous`. If the swap is blocked (for example a session open inside the workspace), the new one is kept as `.pkc/workspace.new`;
+  - after `facts.json` is written, `.pkc/checkpoint/scan-checkpoint.json` records the plan fingerprint, scanner build identity, scope, facts hash and coverage;
+  - `pkc run|build <repo> --resume` reuses that scan only while all of these still match; otherwise it reports why and runs a full scan;
+  - `--resume` does not see source edits made after the checkpoint, and the CLI says so.
+- Verification: 367/367 tests (`ResumableRunRegressionTests` adds 11). Sample `.pkc` output is identical to before except the answer contract, START_HERE and the new summary/checkpoint files.
+
+Follow-ups (proposals, not in code):
+
+1. **Commit the fixes above** and write `docs/reviews/<date>-rd8-private-validation.md` from these measurements after the operator's next full private run.
+2. The answer format is only a contract for the assistant; a Level 1 benchmark must confirm answers follow it.
+3. The run summary is written for `pkc run` only; `build`/`scan` still print the older console lines.
+4. **Remaining resource work:**
+   - the ~7.5 GB peak now occurs after scanning, while the full fact document is held in memory;
+   - the other C# enrichers still open a workspace per project group, which costs time;
+   - discovery takes about 98 s on about 27k files.
+
+   Profile before optimizing.
+5. **Open RD8 items:**
+   - the product-value quality of answers from this workspace has not been benchmarked; run a Level 1 targeted benchmark with 2–3 known questions;
+   - the private repository exercised no runtime-dependency-index or runtime-plugin cases, so those RD8 bullets remain unproven on it.
+6. **Knowledge gaps seen in the generated private workspace.** These are E1 semantic candidates, to be prioritized after E0 and reproduced with synthetic fixtures first:
+   - **Mediator dispatch.** About 186 of about 4,000 workflows stop at a generic in-process mediator (`IMediator.InvokeAsync`-style), so the command/query handler holding the real permissions, rules and state changes is never reached, and those workflows show "No grounded information". This needs proven request-type → handler traversal, fail-closed when the handler is ambiguous.
+   - **Custom authorization attributes.** Permissions show only the framework `[Authorize]`. Organization-specific attributes that carry claim/role/module requirements are not extracted, so permission answers are under-reported.
+   - **UI linkage.** 0 workflows have `UI to backend` or `How to do it in the UI` evidence on this repository; screen-level answers are therefore weak. Needs frontend coverage for the legacy UI stacks actually present (per `_meta/coverage.json`, many files are not analyzable).
+   - **Raw code expressions in knowledge.** Business rules and state changes are rendered as literal code conditions and initializers (sometimes multi-line). The workspace holds no source files, but it does hold these fragments. Either render them in business language or fence them clearly as evidence; until then, product wording must say "no source files, only short rule conditions".
+   - Observed during source cross-checking: chained comparison expressions can mean something different from their apparent intent. PKC currently reports such conditions verbatim; it must never paraphrase them as simple intent without proof.
+
 ## RD7 scope (completed)
 
 Let users inspect detection and planned scope before expensive execution, and see honest coverage afterwards:
@@ -378,7 +457,9 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 
 ```text
 operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936, c440eea, 280450c and d0c1017
-operator: run RD8 in the approved private environment (see RD8 scope) and record sanitized measurements
+operator: next full private `pkc run` with the working-tree changes (legacy workspace kept locally)
+implementation: commit the working-tree changes (see "First private-repository run"), then
+                Level 1 benchmark on the private workspace → remaining resource work
 ```
 
 After RD8, fix any exposed gaps regression-first, then record E0 PASS only when the normal product path generates the workspace practically with honest coverage.

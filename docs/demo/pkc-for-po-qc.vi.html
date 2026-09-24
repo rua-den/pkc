@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PKC — sổ tay sản phẩm, viết ra từ chính code</title>
+<style>
+  :root {
+    --bg: #0f1226; --panel: #171b36; --ink: #eef0ff; --muted: #a7acd6;
+    --a: #7c5cff; --b: #22d3ee; --c: #34d399; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  a { color: var(--b); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  header { min-height: 88vh; display: flex; align-items: center; position: relative; overflow: hidden; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .35; animation: float 14s ease-in-out infinite; }
+  .blob.one { width: 420px; height: 420px; background: var(--a); top: -80px; left: -120px; }
+  .blob.two { width: 360px; height: 360px; background: var(--b); bottom: -120px; right: -80px; animation-delay: -6s; }
+  @keyframes float { 50% { transform: translate(40px, 30px) scale(1.08); } }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.1; margin: 0 0 16px; }
+  .grad { background: linear-gradient(90deg, var(--a), var(--b), var(--c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 1.25rem; color: var(--muted); max-width: 640px; }
+  .lang { position: absolute; top: 20px; right: 24px; font-size: .9rem; z-index: 2; }
+  .pill { display: inline-block; padding: 6px 14px; border-radius: 999px; background: rgba(124,92,255,.18); color: #cfc4ff; font-size: .9rem; margin-bottom: 18px; }
+  section { padding: 72px 0; }
+  h2 { font-size: 2rem; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: 18px; padding: 22px; transition: transform .25s, border-color .25s; }
+  .card:hover { transform: translateY(-4px); border-color: rgba(124,92,255,.5); }
+  .emoji { font-size: 2rem; }
+  .card h3 { margin: 8px 0 6px; }
+  .card p { margin: 0; color: var(--muted); }
+  .steps { counter-reset: s; display: grid; gap: 16px; }
+  .step { display: flex; gap: 18px; align-items: flex-start; background: var(--panel); border-radius: 18px; padding: 20px 22px; border-left: 4px solid var(--a); }
+  .step:nth-child(2) { border-color: var(--b); } .step:nth-child(3) { border-color: var(--c); } .step:nth-child(4) { border-color: var(--warn); }
+  .step .n { counter-increment: s; flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; background: rgba(255,255,255,.08); }
+  .step .n::before { content: counter(s); }
+  .step h3 { margin: 0 0 4px; }
+  .step p { margin: 0; color: var(--muted); }
+  .flow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .node { flex: 1 1 110px; min-width: 110px; text-align: center; background: var(--panel); border-radius: 18px; padding: 16px 10px; border: 1px solid rgba(255,255,255,.08); }
+  .node .emoji { display: block; }
+  .node b { display: block; margin-top: 6px; }
+  .node small { color: var(--muted); }
+  .pipe { flex: 0 0 22px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); position: relative; overflow: hidden; }
+  .pipe::after { content: ""; position: absolute; top: 0; left: -30%; width: 30%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, var(--b), transparent); animation: flow 1.8s linear infinite; }
+  @keyframes flow { to { left: 100%; } }
+  .note { margin-top: 18px; color: var(--muted); font-size: .95rem; }
+  .chat { background: var(--panel); border-radius: 22px; padding: 22px; min-height: 420px; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; margin: 10px 0; opacity: 0; transform: translateY(8px); transition: opacity .4s, transform .4s; white-space: pre-line; }
+  .msg.show { opacity: 1; transform: none; }
+  .msg.you { margin-left: auto; background: linear-gradient(135deg, var(--a), #5b3fd6); }
+  .msg.ai { background: #22274a; border: 1px solid rgba(255,255,255,.06); }
+  .msg.ai b { color: var(--b); }
+  .msg.ai .unk { color: var(--warn); }
+  .typing { display: inline-flex; gap: 4px; padding: 12px 16px; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .replay { margin-top: 10px; background: none; border: 1px solid rgba(255,255,255,.2); color: var(--ink); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+  .fun { display: grid; gap: 12px; }
+  .fun div { background: var(--panel); border-radius: 14px; padding: 14px 18px; }
+  .fun div::before { content: "💬 "; }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s, transform .7s; }
+  .reveal.in { opacity: 1; transform: none; }
+  footer { padding: 40px 0 60px; color: var(--muted); font-size: .9rem; }
+  .disclaimer { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal, .msg { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="blob one"></div><div class="blob two"></div>
+  <div class="lang"><a href="pkc-for-po-qc.en.html">English →</a></div>
+  <div class="wrap" style="position:relative">
+    <span class="pill">PKC · Product Knowledge Compiler</span>
+    <h1>Sổ tay sản phẩm,<br><span class="grad">viết ra từ chính code.</span></h1>
+    <p class="lead">PKC đọc source code của hệ thống và biến nó thành một kho kiến thức viết bằng ngôn ngữ dễ hiểu.
+      Việc còn lại của bạn chỉ là <b>hỏi trợ lý AI</b>: “Tính năng này chạy thế nào?”, “Ai được phép làm việc này?”, “Cần những test case nào?”</p>
+  </div>
+</header>
+
+<section class="wrap reveal">
+  <h2>Vì sao cần?</h2>
+  <p class="sub">Sản phẩm thật sự chạy thế nào thì code mới là thứ biết rõ nhất, mà không phải ai cũng đọc được code.</p>
+  <div class="cards">
+    <div class="card"><div class="emoji">📚</div><h3>Tài liệu dễ lỗi thời</h3><p>Spec mô tả những gì đã dự định làm. Code mới là thứ đang thật sự chạy.</p></div>
+    <div class="card"><div class="emoji">🧑‍💻</div><h3>Dev lúc nào cũng bận</h3><p>“Hỏi nhanh chút về rule…” rồi thành 30 phút bị gián đoạn.</p></div>
+    <div class="card"><div class="emoji">🔍</div><h3>Case biên hay bị sót</h3><p>Phân quyền, validation và các nhánh lỗi rất dễ bị bỏ sót khi viết test case.</p></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>PKC hoạt động thế nào</h2>
+  <p class="sub">4 bước, hoàn toàn tự động. Khi tạo sổ tay, PKC không dùng AI và không gửi code đi đâu cả.</p>
+  <div class="steps">
+    <div class="step"><div class="n"></div><div><h3>🗺️ Nhìn tổng quan</h3><p>Vẽ bản đồ hệ thống trước: có những app nào, phần nào là test, thư viện bên ngoài hay file build. Những phần này được bỏ qua.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>📖 Đọc kỹ</h3><p>Chỉ đọc code do team tự viết: màn hình, API, rule, điều kiện kiểm tra và dữ liệu.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>🔗 Nối các điểm</h3><p>Nối từng nút bấm trên màn hình với API phía sau, rồi tới các rule và thay đổi dữ liệu mà nó gây ra.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>📝 Viết sổ tay</h3><p>Tạo các trang tính năng và quy trình bằng ngôn ngữ dễ hiểu, kèm danh sách rõ ràng những gì nó <i>chưa</i> chứng minh được.</p></div></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>Kết nối với AI thế nào</h2>
+  <p class="sub">AI đọc sổ tay chứ không đọc source code, và chỉ mở những trang cần cho câu hỏi của bạn.</p>
+  <div class="flow">
+    <div class="node"><span class="emoji">💾</span><b>Source code</b><small>nằm yên trên máy công ty</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">⚙️</span><b>PKC</b><small>chạy tại máy, không dùng AI</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">📘</span><b>Kho kiến thức</b><small>tính năng · quy trình · rule · điểm chưa rõ</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">🤖</span><b>Trợ lý AI</b><small>Claude / Codex</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">🙋</span><b>Bạn</b><small>PO · QC · BA</small></div>
+  </div>
+  <p class="note">Kho kiến thức là một thư mục có sẵn hướng dẫn “cách trả lời”. Mở thư mục đó bằng trợ lý AI mà công ty cho phép rồi hỏi thôi.
+    Lần nào nó cũng trả lời theo cùng một format: trả lời ngắn → rule → case biên → <span style="color:var(--warn)">chưa chứng minh</span> → trang liên quan.</p>
+</section>
+
+<section class="wrap reveal">
+  <h2>Thử xem (ví dụ)</h2>
+  <p class="sub">Một shop online giả định, chỉ để minh hoạ cách AI trả lời.</p>
+  <div class="chat" id="chat"></div>
+  <button class="replay" id="replay">↻ Xem lại</button>
+  <p class="disclaimer">Ví dụ chỉ mang tính minh hoạ, không lấy từ hệ thống thật nào của công ty.</p>
+</section>
+
+<section class="wrap reveal">
+  <h2>Vài điều vui vui</h2>
+  <div class="fun">
+    <div>Giống như có một đồng nghiệp mới thức trắng một đêm đọc hết code, viết xong sổ tay, mà vẫn dám nói “cái này tôi chưa chắc” khi chưa chắc.</div>
+    <div>Không tốn một token AI nào để tạo ra kho kiến thức này. Tất cả chạy 100% tại máy.</div>
+    <div>Hỏi tiếng Việt thì trả lời tiếng Việt. Hỏi tiếng Anh thì trả lời tiếng Anh.</div>
+    <div>Nó không đoán mò theo tên hàm. Cái gì chưa chứng minh được, nó nói thẳng.</div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>Cần biết</h2>
+  <div class="cards">
+    <div class="card"><div class="emoji">✅</div><h3>Code làm gì thì nói nấy</h3><p>Câu trả lời mô tả hệ thống đang thật sự chạy thế nào, chứ không phải spec nói nó nên chạy thế nào.</p></div>
+    <div class="card"><div class="emoji">⚠️</div><h3>Chỗ nào chưa rõ thì nói rõ</h3><p>Phần nào chưa phân tích được đều được liệt kê và đếm rõ, để bạn biết khi nào cần hỏi lại team.</p></div>
+    <div class="card"><div class="emoji">🔒</div><h3>Không lộ code</h3><p>Kho kiến thức không chứa file source, chỉ trích các điều kiện ngắn của rule. Câu trả lời luôn bằng ngôn ngữ nghiệp vụ.</p></div>
+  </div>
+</section>
+
+<footer class="wrap">PKC · Product Knowledge Compiler · <a href="pkc-for-po-qc.en.html">View in English</a></footer>
+
+<script>
+  const script = [
+    { who: "you", text: "Khi nào khách hàng được huỷ đơn?" },
+    { who: "ai", html: "<b>Trả lời ngắn</b>\nChỉ khi đơn còn ở trạng thái “Chờ xử lý” hoặc “Đã thanh toán”, và chỉ chủ đơn hoặc admin mới được huỷ.\n\n<b>Rule</b>\n• Đơn đã giao cho vận chuyển sẽ bị từ chối với thông báo “Đơn đã được giao”.\n• Huỷ đơn đã thanh toán sẽ kích hoạt hoàn tiền.\n\n<span class='unk'><b style='color:inherit'>Chưa chứng minh</b>\n• Khách có nhận email xác nhận hay không: chưa thấy bằng chứng.</span>\n\n<b>Liên quan</b> · Quản lý đơn hàng › Huỷ đơn" },
+    { who: "you", text: "Ok, cho mình test case nhé." },
+    { who: "ai", html: "<b>TC1</b> · Đơn chờ xử lý, chủ đơn huỷ → huỷ thành công ✅ <i>(đã chứng minh)</i>\n<b>TC2</b> · Đơn đã giao → báo “Đơn đã được giao” ✅ <i>(đã chứng minh)</i>\n<b>TC3</b> · Khách khác cố huỷ → bị từ chối ✅ <i>(đã chứng minh)</i>\n<b>TC4</b> · Nhận được email xác nhận 💡 <i>(suy luận, cần xác nhận)</i>" }
+  ];
+  const chat = document.getElementById("chat");
+  let timers = [];
+  function play() {
+    timers.forEach(clearTimeout); timers = []; chat.innerHTML = "";
+    let t = 300;
+    script.forEach(m => {
+      if (m.who === "ai") {
+        timers.push(setTimeout(() => {
+          const d = document.createElement("div"); d.className = "msg ai show typing"; d.id = "typing";
+          d.innerHTML = "<i></i><i></i><i></i>"; chat.appendChild(d);
+        }, t));
+        t += 1100;
+      }
+      timers.push(setTimeout(() => {
+        const typing = document.getElementById("typing"); if (typing) typing.remove();
+        const d = document.createElement("div"); d.className = "msg " + m.who;
+        if (m.html) d.innerHTML = m.html; else d.textContent = m.text;
+        chat.appendChild(d); requestAnimationFrame(() => d.classList.add("show"));
+      }, t));
+      t += m.who === "you" ? 900 : 2200;
+    });
+  }
+  document.getElementById("replay").onclick = play;
+  function reveal() {
+    document.querySelectorAll(".reveal:not(.in)").forEach(el => {
+      if (el.getBoundingClientRect().top < innerHeight * 0.85) {
+        el.classList.add("in");
+        if (el.contains(chat) && !chat.dataset.played) { chat.dataset.played = 1; play(); }
+      }
+    });
+  }
+  addEventListener("scroll", reveal, { passive: true });
+  addEventListener("resize", reveal);
+  addEventListener("load", reveal);
+  reveal();
+</script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PKC — your product handbook, written from the code</title>
+<style>
+  :root {
+    --bg: #0f1226; --panel: #171b36; --ink: #eef0ff; --muted: #a7acd6;
+    --a: #7c5cff; --b: #22d3ee; --c: #34d399; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  a { color: var(--b); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  header { min-height: 88vh; display: flex; align-items: center; position: relative; overflow: hidden; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .35; animation: float 14s ease-in-out infinite; }
+  .blob.one { width: 420px; height: 420px; background: var(--a); top: -80px; left: -120px; }
+  .blob.two { width: 360px; height: 360px; background: var(--b); bottom: -120px; right: -80px; animation-delay: -6s; }
+  @keyframes float { 50% { transform: translate(40px, 30px) scale(1.08); } }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.1; margin: 0 0 16px; }
+  .grad { background: linear-gradient(90deg, var(--a), var(--b), var(--c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 1.25rem; color: var(--muted); max-width: 640px; }
+  .lang { position: absolute; top: 20px; right: 24px; font-size: .9rem; z-index: 2; }
+  .pill { display: inline-block; padding: 6px 14px; border-radius: 999px; background: rgba(124,92,255,.18); color: #cfc4ff; font-size: .9rem; margin-bottom: 18px; }
+  section { padding: 72px 0; }
+  h2 { font-size: 2rem; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: 18px; padding: 22px; transition: transform .25s, border-color .25s; }
+  .card:hover { transform: translateY(-4px); border-color: rgba(124,92,255,.5); }
+  .emoji { font-size: 2rem; }
+  .card h3 { margin: 8px 0 6px; }
+  .card p { margin: 0; color: var(--muted); }
+  .steps { counter-reset: s; display: grid; gap: 16px; }
+  .step { display: flex; gap: 18px; align-items: flex-start; background: var(--panel); border-radius: 18px; padding: 20px 22px; border-left: 4px solid var(--a); }
+  .step:nth-child(2) { border-color: var(--b); } .step:nth-child(3) { border-color: var(--c); } .step:nth-child(4) { border-color: var(--warn); }
+  .step .n { counter-increment: s; flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; background: rgba(255,255,255,.08); }
+  .step .n::before { content: counter(s); }
+  .step h3 { margin: 0 0 4px; }
+  .step p { margin: 0; color: var(--muted); }
+  .flow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .node { flex: 1 1 110px; min-width: 110px; text-align: center; background: var(--panel); border-radius: 18px; padding: 16px 10px; border: 1px solid rgba(255,255,255,.08); }
+  .node .emoji { display: block; }
+  .node b { display: block; margin-top: 6px; }
+  .node small { color: var(--muted); }
+  .pipe { flex: 0 0 22px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); position: relative; overflow: hidden; }
+  .pipe::after { content: ""; position: absolute; top: 0; left: -30%; width: 30%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, var(--b), transparent); animation: flow 1.8s linear infinite; }
+  @keyframes flow { to { left: 100%; } }
+  .note { margin-top: 18px; color: var(--muted); font-size: .95rem; }
+  .chat { background: var(--panel); border-radius: 22px; padding: 22px; min-height: 420px; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; margin: 10px 0; opacity: 0; transform: translateY(8px); transition: opacity .4s, transform .4s; white-space: pre-line; }
+  .msg.show { opacity: 1; transform: none; }
+  .msg.you { margin-left: auto; background: linear-gradient(135deg, var(--a), #5b3fd6); }
+  .msg.ai { background: #22274a; border: 1px solid rgba(255,255,255,.06); }
+  .msg.ai b { color: var(--b); }
+  .msg.ai .unk { color: var(--warn); }
+  .typing { display: inline-flex; gap: 4px; padding: 12px 16px; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .replay { margin-top: 10px; background: none; border: 1px solid rgba(255,255,255,.2); color: var(--ink); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+  .fun { display: grid; gap: 12px; }
+  .fun div { background: var(--panel); border-radius: 14px; padding: 14px 18px; }
+  .fun div::before { content: "💬 "; }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s, transform .7s; }
+  .reveal.in { opacity: 1; transform: none; }
+  footer { padding: 40px 0 60px; color: var(--muted); font-size: .9rem; }
+  .disclaimer { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal, .msg { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="blob one"></div><div class="blob two"></div>
+  <div class="lang"><a href="pkc-for-po-qc.vi.html">Tiếng Việt →</a></div>
+  <div class="wrap" style="position:relative">
+    <span class="pill">PKC · Product Knowledge Compiler</span>
+    <h1>Your product handbook,<br><span class="grad">written from the code.</span></h1>
+    <p class="lead">PKC reads your system's source code and turns it into a plain-language knowledge base.
+      Then you just <b>ask an AI assistant</b>: “How does this feature work?”, “Who is allowed to do this?”, “Which test cases do I need?”</p>
+  </div>
+</header>
+
+<section class="wrap reveal">
+  <h2>Why?</h2>
+  <p class="sub">The truth about how the product behaves lives in the code, and not everyone can read code.</p>
+  <div class="cards">
+    <div class="card"><div class="emoji">📚</div><h3>Docs get stale</h3><p>Specs describe what was planned. The code is what actually runs.</p></div>
+    <div class="card"><div class="emoji">🧑‍💻</div><h3>Devs are busy</h3><p>“Quick question about the rules…” turns into a 30-minute interruption.</p></div>
+    <div class="card"><div class="emoji">🔍</div><h3>Edge cases hide</h3><p>Permissions, validations and error paths are easy to miss when writing test cases.</p></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>How PKC works</h2>
+  <p class="sub">Four steps, fully automatic. Building the handbook uses no AI and sends no code anywhere.</p>
+  <div class="steps">
+    <div class="step"><div class="n"></div><div><h3>🗺️ Look around</h3><p>Maps the system first: which apps exist, which parts are tests, third-party libraries or build output. The noise gets skipped.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>📖 Read carefully</h3><p>Reads only your team's own code: screens, APIs, rules, checks and data.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>🔗 Connect the dots</h3><p>Links each button on a screen to the API behind it, then to the rules and data changes it triggers.</p></div></div>
+    <div class="step"><div class="n"></div><div><h3>📝 Write the handbook</h3><p>Produces feature and workflow pages in plain language, including a clear list of what it could <i>not</i> prove.</p></div></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>How it plugs into AI</h2>
+  <p class="sub">The AI reads the handbook, not the source code, and opens only the pages your question needs.</p>
+  <div class="flow">
+    <div class="node"><span class="emoji">💾</span><b>Source code</b><small>stays on the company machine</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">⚙️</span><b>PKC</b><small>runs locally, no AI</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">📘</span><b>Knowledge base</b><small>features · workflows · rules · unknowns</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">🤖</span><b>AI assistant</b><small>Claude / Codex</small></div>
+    <div class="pipe"></div>
+    <div class="node"><span class="emoji">🙋</span><b>You</b><small>PO · QC · BA</small></div>
+  </div>
+  <p class="note">The knowledge base is a folder with a built-in “how to answer” guide. Open that folder in the company-approved AI assistant and start asking.
+    It follows the same answer format every time: short answer → rules → edge cases → <span style="color:var(--warn)">not proven</span> → related pages.</p>
+</section>
+
+<section class="wrap reveal">
+  <h2>Try it (example)</h2>
+  <p class="sub">An invented online shop, just to show the style of answers.</p>
+  <div class="chat" id="chat"></div>
+  <button class="replay" id="replay">↻ Replay</button>
+  <p class="disclaimer">Illustrative example only. It is not taken from any real company system.</p>
+</section>
+
+<section class="wrap reveal">
+  <h2>A few fun facts</h2>
+  <div class="fun">
+    <div>It's like a new teammate who read every line of code overnight, wrote the handbook, and still says “I'm not sure” when they aren't.</div>
+    <div>No AI tokens were harmed in the making of this knowledge base. Building it is 100% local.</div>
+    <div>Ask in Vietnamese, get Vietnamese. Ask in English, get English.</div>
+    <div>It never guesses from a function's name. If it can't prove it, it tells you.</div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>Good to know</h2>
+  <div class="cards">
+    <div class="card"><div class="emoji">✅</div><h3>What the code does</h3><p>Answers describe what the system actually does today, not what a spec says it should do.</p></div>
+    <div class="card"><div class="emoji">⚠️</div><h3>Honest gaps</h3><p>Anything it couldn't analyze is listed and counted, so you know when to double-check with the team.</p></div>
+    <div class="card"><div class="emoji">🔒</div><h3>No code in answers</h3><p>The knowledge base holds no source files, only short rule conditions. Answers are written in business language.</p></div>
+  </div>
+</section>
+
+<footer class="wrap">PKC · Product Knowledge Compiler · <a href="pkc-for-po-qc.vi.html">Xem bản tiếng Việt</a></footer>
+
+<script>
+  const script = [
+    { who: "you", text: "When can a customer cancel an order?" },
+    { who: "ai", html: "<b>Short answer</b>\nOnly while the order is still “Pending” or “Paid”, and only the order owner or an admin can do it.\n\n<b>Rules</b>\n• Shipped orders are rejected with “Order already shipped”.\n• Cancelling a paid order starts a refund.\n\n<span class='unk'><b style='color:inherit'>Not proven</b>\n• Whether the customer gets a confirmation email: no evidence found.</span>\n\n<b>Related</b> · Order management › Cancel order" },
+    { who: "you", text: "Great, give me test cases." },
+    { who: "ai", html: "<b>TC1</b> · Pending order, owner cancels → cancelled ✅ <i>(proven)</i>\n<b>TC2</b> · Shipped order → “Order already shipped” ✅ <i>(proven)</i>\n<b>TC3</b> · Another customer tries → rejected ✅ <i>(proven)</i>\n<b>TC4</b> · Confirmation email arrives 💡 <i>(inferred, needs confirmation)</i>" }
+  ];
+  const chat = document.getElementById("chat");
+  let timers = [];
+  function play() {
+    timers.forEach(clearTimeout); timers = []; chat.innerHTML = "";
+    let t = 300;
+    script.forEach(m => {
+      if (m.who === "ai") {
+        timers.push(setTimeout(() => {
+          const d = document.createElement("div"); d.className = "msg ai show typing"; d.id = "typing";
+          d.innerHTML = "<i></i><i></i><i></i>"; chat.appendChild(d);
+        }, t));
+        t += 1100;
+      }
+      timers.push(setTimeout(() => {
+        const typing = document.getElementById("typing"); if (typing) typing.remove();
+        const d = document.createElement("div"); d.className = "msg " + m.who;
+        if (m.html) d.innerHTML = m.html; else d.textContent = m.text;
+        chat.appendChild(d); requestAnimationFrame(() => d.classList.add("show"));
+      }, t));
+      t += m.who === "you" ? 900 : 2200;
+    });
+  }
+  document.getElementById("replay").onclick = play;
+  function reveal() {
+    document.querySelectorAll(".reveal:not(.in)").forEach(el => {
+      if (el.getBoundingClientRect().top < innerHeight * 0.85) {
+        el.classList.add("in");
+        if (el.contains(chat) && !chat.dataset.played) { chat.dataset.played = 1; play(); }
+      }
+    });
+  }
+  addEventListener("scroll", reveal, { passive: true });
+  addEventListener("resize", reveal);
+  addEventListener("load", reveal);
+  reveal();
+</script>
+</body>
+</html>
