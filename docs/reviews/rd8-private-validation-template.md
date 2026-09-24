@@ -2,17 +2,11 @@
 
 Status: TEMPLATE ONLY — NOT EVIDENCE / NOT ACCEPTANCE
 
-Use this file as the structure for the sanitized RD8 review after executing `docs/plans/2026-09-24-rd8-current-main-validation-runbook.md` inside the approved source-enabled/company environment.
+Use this structure after executing `docs/plans/2026-09-24-rd8-current-main-validation-runbook.md` inside the approved source-enabled/company environment.
 
 Do not commit proprietary repository names, paths, endpoints, source snippets, raw fact payloads, config values, secrets, credentials, or generated private `.pkc/` contents.
 
-Copy this template to a dated review file, for example:
-
-```text
-docs/reviews/2026-09-24-rd8-private-validation.md
-```
-
-Then replace every placeholder with actual sanitized evidence.
+Copy to a dated review file and replace every placeholder with actual sanitized evidence.
 
 ---
 
@@ -20,33 +14,63 @@ Then replace every placeholder with actual sanitized evidence.
 
 ```text
 RD8: <PASS | PARTIAL | FAIL>
-E0:  <PASS only if RD8 closes all E0 bullets; otherwise ACTIVE>
+E0:  <PASS only if RD8 closes every E0 bullet; otherwise ACTIVE>
 ```
 
-Reason in one paragraph:
+Reason:
 
 `<concise decision rationale>`
 
 ## Candidate identity
 
 ```text
-PKC main HEAD:             <sha>
-latest production ancestor:<sha if HEAD is docs-only, otherwise same SHA>
-PKC build:                 Release / net10.0
-private target identity:   <sanitized operator-local label only, no internal URL/name>
-measurement method:        <how elapsed + peak process-tree memory were measured>
+PKC main HEAD:              <sha>
+latest production ancestor: <sha if docs-only HEAD; otherwise same SHA>
+PKC build:                  Release / net10.0
+private target identity:    <sanitized operator-local label only>
+measurement method:         <elapsed + peak process-tree memory method>
 ```
 
 Working-state note:
 
-`<clean/known local state; mention any approved local-only instrumentation that did not alter PKC behavior>`
+`<clean/known local state; approved local-only instrumentation if any>`
+
+## Phase C0 — runtime-plugin exact-shape inspection
+
+The intended target is already known, from sanitized reconnaissance, to contain reflection-loaded plugins delivered by a custom post-build copy without a host project reference. `N/A` is not a valid disposition for this target.
+
+Record only sanitized syntax classes:
+
+```text
+loader syntax family:               <sanitized actual shape>
+build/copy syntax family:           <sanitized actual shape>
+solution build-dependency involved: <yes/no + sanitized role>
+current-main discovery result:      <proven edge / unresolved / missing>
+```
+
+Do not write guessed implementation names. Examples such as `Directory.GetFiles`, `Assembly.LoadFrom`, `PostBuildEvent`, `xcopy`, `Target`, or `.sln ProjectDependencies` belong here only when actually observed.
+
+Current-main capability assessment:
+
+`<SUPPORTED / MISSING SHAPE / AMBIGUOUS + short rationale>`
+
+If a repair was required:
+
+```text
+synthetic regression: <test/fixture identifier>
+pre-fix result:       <RED / exact reason>
+implementation:       <generic behavior only>
+negative regressions: <what remains fail-closed>
+local verification:   <focused / related / broader results>
+implementation SHA:   <sha>
+```
 
 ## Phase A — fresh operability run
 
 Freshness conditions:
 
 ```text
-[ ] disposable target copy
+[ ] approved disposable target copy
 [ ] previous .pkc removed before acceptance run
 [ ] no --resume
 [ ] no product-source edits made to help PKC pass
@@ -63,13 +87,19 @@ Freshness conditions:
 | Production hosts | `<count>` |
 | Planned semantic files | `<count>` |
 | Test-evidence files | `<count>` |
-| Light-index files | `<count>` |
+| Light/runtime-index files | `<count>` |
 | Excluded areas/files | `<count>` |
 | UNKNOWN areas/files | `<count>` |
+| Runtime-plugin authoritative edges | `<count>` |
+| Runtime-plugin unresolved findings | `<count>` |
 
-Operator plausibility assessment:
+Repository-boundary plausibility:
 
-`<PASS/PARTIAL/FAIL + short sanitized rationale>`
+`<PASS/PARTIAL/FAIL + sanitized rationale>`
+
+Known runtime-plugin topology disposition:
+
+`<PASS/PARTIAL/FAIL + whether intended plugin path is represented deterministically>`
 
 ### Full `pkc run`
 
@@ -91,7 +121,7 @@ Artifact failures:
 
 Operability assessment:
 
-`<PASS/PARTIAL/FAIL + why the behavior is or is not practical on the approved demo environment>`
+`<PASS/PARTIAL/FAIL + why behavior is/is not practical>`
 
 ## Artifact and coverage plausibility
 
@@ -111,12 +141,11 @@ Operability assessment:
 
 Protocol: `docs/benchmarks/product-value-benchmark-protocol.md`.
 
-Keep detailed Phase-1 answers and source-known cross-checks inside the approved company environment when they contain proprietary detail. The committed report should contain only sanitized behavior-level scoring and misses.
+Keep detailed Phase-1 answers and source-known cross-checks inside the approved company environment when proprietary. Commit only sanitized behavior-level scoring and misses.
 
 ### Probe 1 — quantity-adjustment visibility
 
 ```text
-Selected because: reruns the private probe that drove 48ce2f10
 Phase-1 workspace answer recorded before source inspection: <YES/NO>
 ```
 
@@ -142,7 +171,7 @@ Selection rationale:
 
 | Dimension | Result |
 | --- | --- |
-| Business correctness | `<PASS/PARTIAL/FAIL + score if useful>` |
+| Business correctness | `<PASS/PARTIAL/FAIL + score>` |
 | Material condition/effect completeness | `<PASS/PARTIAL/FAIL + score>` |
 | Unsupported additions | `<none / sanitized miss>` |
 | Uncertainty calibration | `<PASS/PARTIAL/FAIL>` |
@@ -156,21 +185,17 @@ Concrete sanitized miss, if any:
 
 ### Probe 3 — `<optional question id / sanitized label>`
 
-Use only when needed to cover materially different behavior or when the first two probes reveal broader risk.
+Use only when needed for materially different behavior.
 
 | Dimension | Result |
 | --- | --- |
-| Business correctness | `<PASS/PARTIAL/FAIL + score if useful>` |
+| Business correctness | `<PASS/PARTIAL/FAIL + score>` |
 | Material condition/effect completeness | `<PASS/PARTIAL/FAIL + score>` |
 | Unsupported additions | `<none / sanitized miss>` |
 | Uncertainty calibration | `<PASS/PARTIAL/FAIL>` |
 | Business wording | `<PASS/PARTIAL/FAIL>` |
 | Evidence/trace completeness | `<PASS/PARTIAL/FAIL + score>` |
 | Overall | `<PASS/PARTIAL/FAIL>` |
-
-Concrete sanitized miss, if any:
-
-`<behavior-level description only>`
 
 ### Level-1 summary
 
@@ -182,27 +207,29 @@ Concrete sanitized miss, if any:
 
 Product-value disposition:
 
-`<Are answers materially useful and correctly uncertain? Identify any blocker without source dump.>`
+`<Are answers materially useful and correctly uncertain?>`
 
-## Phase C — runtime/plugin applicability
+## Phase C2 — runtime/plugin real-target proof
 
 ```text
-Disposition: <PASS | accepted N/A | PARTIAL | FAIL>
+Disposition: <PASS | PARTIAL | FAIL>
 ```
+
+`accepted N/A` is intentionally absent because target applicability is already proven.
 
 Sanitized basis:
 
-`<state whether the approved target contains applicable runtime/plugin topology; if absent, say absence was source-checked; if present elsewhere, summarize real-corpus validation without internal names>`
-
-Checks when applicable:
+`<how current-main discovery represents the known reflection-loader + build-delivery plugin topology>`
 
 | Check | Result |
 | --- | --- |
-| loader identity provenance | `<PASS/PARTIAL/FAIL/N/A>` |
-| build/copy delivery provenance | `<PASS/PARTIAL/FAIL/N/A>` |
-| host ownership | `<PASS/PARTIAL/FAIL/N/A>` |
+| loader provenance | `<PASS/PARTIAL/FAIL>` |
+| plugin identity provenance | `<PASS/PARTIAL/FAIL>` |
+| build/copy delivery provenance | `<PASS/PARTIAL/FAIL>` |
+| correct host ownership | `<PASS/PARTIAL/FAIL>` |
 | test-only load isolation | `<PASS/PARTIAL/FAIL/N/A>` |
-| ambiguous identity remains unresolved/UNKNOWN | `<PASS/PARTIAL/FAIL/N/A>` |
+| ambiguous/incomplete identity remains unresolved/UNKNOWN | `<PASS/PARTIAL/FAIL>` |
+| no name/proximity-only authoritative linking | `<PASS/PARTIAL/FAIL>` |
 
 ## RD8 acceptance matrix
 
@@ -220,7 +247,7 @@ Checks when applicable:
 | workspace generated and usable | `<PASS/PARTIAL/FAIL>` | `<note>` |
 | summaries/coverage internally plausible | `<PASS/PARTIAL/FAIL>` | `<note>` |
 | Level-1 answers useful + correctly uncertain | `<PASS/PARTIAL/FAIL>` | `<note>` |
-| runtime/plugin applicability disposition explicit | `<PASS/PARTIAL/FAIL>` | `<note>` |
+| intended runtime-plugin topology deterministically represented | `<PASS/PARTIAL/FAIL>` | `<note>` |
 
 ## Concrete blockers / non-blocking gaps
 
@@ -230,7 +257,7 @@ Checks when applicable:
 
 ### Non-blocking gaps / E1 candidates
 
-- `<gap; do not promote to E1 work until E0 is explicitly PASS>`
+- `<gap; do not promote to E1 work until E0 PASS>`
 
 ## Required next action
 
@@ -238,20 +265,20 @@ If RD8 PASS:
 
 ```text
 update status/handoff/milestones/acceptance plan
-→ mark RD8 PASS
-→ mark E0 PASS if all E0 bullets are satisfied
-→ unlock only E1
+-> mark RD8 PASS
+-> mark E0 PASS only if all E0 bullets are satisfied
+-> unlock only E1
 ```
 
 If RD8 PARTIAL/FAIL:
 
 ```text
-choose the highest-ROI concrete blocker
-→ reproduce with a synthetic PKC regression fixture
-→ minimum generic repair
-→ focused/related/broader local verification
-→ one coherent commit/push
-→ rerun only the affected RD8 evidence
+choose highest-ROI concrete blocker
+-> synthetic regression
+-> minimum generic repair
+-> focused/related/broader local verification
+-> one coherent commit/push
+-> rerun only affected RD8 evidence
 ```
 
-Do not use CI as the edit/test loop and do not start the next milestone while RD8/E0 remain open.
+Do not use CI as the edit/test loop and do not start E1 while RD8/E0 remain open.

@@ -3,21 +3,31 @@
 Date: 2026-09-24
 Status: OPERATOR PACKET / NO ACCEPTANCE CLAIM
 
-This runbook makes the active V0.4.7-E0 / RD8 external gate reproducible. It does **not** mark RD8 or E0 PASS.
+This runbook makes V0.4.7-E0 / RD8 reproducible inside the approved source-enabled/company environment. It does **not** mark RD8 or E0 PASS.
 
-Use it only inside the approved source-enabled/company environment against an approved disposable copy of the private target repository. Do not export proprietary source, raw `.pkc/facts.json`, config values, internal repository names, endpoints, or source snippets into the PKC repository.
+Do not export proprietary source, raw `.pkc/facts.json`, config values, internal repository names/endpoints, credentials or source snippets into the PKC repository. Commit only sanitized behavior-level evidence.
 
-Authoritative state remains `docs/status.md` and `docs/handoff.md`.
+Authoritative state remains `docs/status.md`, `docs/handoff.md` and `docs/v0.4.7-acceptance-plan.md`.
 
 ## Goal
 
-Produce enough sanitized evidence to decide RD8 without confusing three different questions:
+Close three distinct questions:
 
-1. **Operability:** does fresh current-main PKC complete practically on the intended repository class?
-2. **Product value:** can the generated workspace answer selected PO/QC questions correctly and with calibrated uncertainty?
-3. **Applicability:** were runtime/plugin shapes actually exercised, or are they legitimately absent/N/A for this repository?
+1. **Operability (A):** does fresh current-main PKC complete practically on the intended repository class?
+2. **Product value (B):** can the generated workspace answer selected PO/QC questions correctly and with calibrated uncertainty?
+3. **Runtime topology (C):** does PKC correctly recover the intended target's known runtime-plugin topology?
 
 A successful process exit or generated workspace alone is not RD8 acceptance.
+
+## Important Phase-C correction
+
+A saved sanitized reconnaissance proves the intended target **does contain runtime plugins** loaded by reflection and delivered by a custom post-build copy, without a host project reference.
+
+Therefore `runtime/plugin = N/A` is **not** an available disposition for this intended target.
+
+Earlier private PKC output that did not show the runtime-plugin relationship must be treated as missing discovery yield, not proof that the architecture lacks it.
+
+See `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`.
 
 ## Phase 0 — freeze the candidate
 
@@ -32,12 +42,10 @@ dotnet --info
 
 Requirements:
 
-- use current `main`; do not reset to an older production SHA named by historical notes;
-- if `main` moved after this runbook was written, reread `docs/status.md` and `docs/handoff.md` before running;
-- record the exact PKC HEAD used in the sanitized review report;
-- build from a clean enough checkout that local PKC edits cannot contaminate the measurement.
-
-The CLI is `src/Pkc.Cli/Pkc.Cli.csproj`, assembly/tool name `pkc`, target framework `net10.0`.
+- use current `main`; do not reset to an old production SHA;
+- if `main` moved, reread status/handoff first;
+- record exact PKC HEAD in the sanitized report;
+- do not measure from a checkout containing unreviewed local PKC behavior changes.
 
 Build once in Release:
 
@@ -46,22 +54,70 @@ dotnet build PKC.sln -c Release
 $PkcDll = (Resolve-Path '.\src\Pkc.Cli\bin\Release\net10.0\pkc.dll').Path
 ```
 
-Use the built DLL directly for the measurement so the measured command is not a package/tool wrapper:
+Use the built DLL directly:
 
 ```powershell
 dotnet $PkcDll <command> <repository-path>
 ```
 
+## Phase C0 — bounded runtime-plugin defect-shape inspection
+
+Do this before implementing any Phase-C repair.
+
+The sanitized architecture already proves this high-level shape:
+
+```text
+host
+  -> reflection-based runtime load from an output subfolder
+  -> plugin projects are not host project references
+
+build delivery
+  -> custom post-build copy into host runtime output
+```
+
+Inspect only enough approved private source/build metadata to classify the deterministic syntax shape.
+
+Record locally:
+
+```text
+loader syntax family:               <sanitized shape>
+build/copy syntax family:           <sanitized shape>
+solution build-dependency involved: <yes/no + sanitized role>
+current PKC discovery result:       <edge / unresolved / missing>
+```
+
+Examples such as `Directory.GetFiles`, `Assembly.LoadFrom`, `PostBuildEvent`, `xcopy`, an MSBuild `Target`, or a `.sln` `ProjectDependencies` section are **not assumptions**. Record them only if actually observed.
+
+Do not copy proprietary names or literal paths. Replace them with neutral fixture names such as `Host`, `PluginA`, `PluginB`, `plugins/`.
+
+### C0 decision
+
+If current main already represents the exact target shape with deterministic loader identity + delivery provenance, retain evidence and proceed to C2.
+
+If current main does not represent it:
+
+```text
+exact sanitized defect shape
+-> create a focused synthetic regression fixture
+-> verify current main fails that regression for the intended reason
+-> implement the minimum generic repair
+-> add negative regressions for ambiguous / incomplete evidence
+-> run focused, related and full relevant local verification
+-> one coherent implementation commit/push
+```
+
+Never create an authoritative runtime edge from names, folder proximity, copy-only evidence, loader-only evidence or ambiguous identity.
+
 ## Phase A — fresh operability validation
 
-### A1. Prepare a disposable target copy
+### A1. Prepare an approved disposable target copy
 
-Use an approved disposable copy of the private repository. On that copy only:
+On the disposable target only:
 
-- close editors/terminals whose current directory is inside `.pkc/workspace`;
-- remove any previous `.pkc` directory before the acceptance run;
+- close editors/terminals locking `.pkc/workspace`;
+- remove previous `.pkc` before the acceptance run;
 - do not modify product source to help PKC pass;
-- do not use `--resume` for the acceptance measurement.
+- do not use `--resume`.
 
 Example:
 
@@ -72,23 +128,26 @@ if (Test-Path "$Target\.pkc") {
 }
 ```
 
-### A2. Run discovery only
+### A2. Discovery only
 
 ```powershell
 $discover = [System.Diagnostics.Stopwatch]::StartNew()
 dotnet $PkcDll discover $Target
+$discoverExit = $LASTEXITCODE
 $discover.Stop()
 $discover.Elapsed
+$discoverExit
 ```
 
 Record:
 
-- exit code;
-- elapsed time;
-- discovered hosts/components;
+- exit code and elapsed;
+- repository files and components/hosts;
 - planned semantic files;
-- excluded/test/light-index/UNKNOWN counts;
-- whether repository shape looks plausible to an operator familiar with the target.
+- test-evidence/light-index/runtime-index counts;
+- excluded and UNKNOWN counts;
+- whether boundaries look plausible to an operator familiar with the target;
+- **whether the known runtime-plugin topology is now represented or explicitly unresolved for a deterministic reason.**
 
 Inspect locally:
 
@@ -97,49 +156,47 @@ Inspect locally:
 .pkc/discovery/scan-plan.json
 ```
 
-Do not copy proprietary paths or names into the public/sanitized report.
+Do not publish proprietary paths or names.
 
-### A3. Run a fresh full scan
+### A3. Fresh full run
 
 Run without `--resume`:
 
 ```powershell
 $run = [System.Diagnostics.Stopwatch]::StartNew()
 dotnet $PkcDll run $Target
-$exitCode = $LASTEXITCODE
+$runExit = $LASTEXITCODE
 $run.Stop()
 $run.Elapsed
-$exitCode
+$runExit
 ```
 
-Capture peak memory with an approved local process monitor/sampler. Measure the `dotnet pkc` process tree rather than only a console wrapper. Record the measurement method in the report so later numbers are comparable.
+Capture peak memory with an approved local process monitor/sampler. Measure the `dotnet pkc` process tree rather than only a wrapper console and record the method.
 
 Required measurements:
 
 - full-run elapsed time;
-- peak working set / peak resident memory;
+- peak working set / resident memory;
 - exit code;
-- facts;
-- relations;
-- workflow candidates;
-- product features;
-- workspace path and file count;
-- artifact-write failures, if any.
+- facts and relations;
+- workflow candidates and product features;
+- workspace path/file count;
+- artifact-write failures.
 
-Compare with the historical supporting evidence only as context:
+Historical context only:
 
 ```text
 original failure: ~41.5 min / ~18.6 GB / OOM during write
 patched pre-integration run: ~29 min / ~7.5 GB / exit 0
 ```
 
-There is no universal numeric RAM threshold. RD8 requires materially improved behavior and practical completion on the approved demo environment.
+There is no universal RAM threshold. PASS requires materially improved behavior and practical completion on the approved demo environment.
 
-If the fresh run still peaks near the prior ~7.5 GB observation, profile the retained-memory phase before implementing another optimization. Do not optimize speculatively.
+If the fresh run remains near the previous ~7.5 GB peak, profile the retained-memory phase before changing code; do not optimize speculatively.
 
-### A4. Inspect final artifacts
+### A4. Artifact plausibility
 
-Inspect locally after the run:
+Inspect locally:
 
 ```text
 .pkc/RUN_SUMMARY.md
@@ -151,119 +208,99 @@ Inspect locally after the run:
 .pkc/workspace/_meta/coverage.json
 ```
 
-If workspace replacement was blocked, the summary may correctly point at `.pkc/workspace.new`; use the path actually reported by the current run.
+If workspace replacement was blocked, use the actual path reported by the current summary, including `.pkc/workspace.new` when applicable.
 
-Plausibility checks:
+Check:
 
 - summary counts agree with persisted artifacts;
 - coverage does not claim analyzed areas that were withheld/unsupported;
-- UNKNOWN remains explicit rather than disappearing;
-- test evidence does not become production authority;
+- UNKNOWN remains explicit;
+- tests do not become production authority;
 - final workspace exists at the path named by the summary;
-- no source/config bodies are exported into the portable workspace;
-- no artifact failure is hidden behind a successful-looking summary.
+- portable workspace contains no source/config bodies;
+- artifact failures are visible.
 
 ## Phase B — targeted Level-1 product-value benchmark
 
 Follow `docs/benchmarks/product-value-benchmark-protocol.md` exactly.
 
-For every selected probe:
+For each selected probe:
 
 ```text
 Phase 1: generated .pkc/workspace only
-         → record answer before any source inspection
+         -> record answer before source inspection
 
 Phase 2: approved source-enabled environment
-         → establish the source-known answer
+         -> establish the source-known answer
 
 Phase 3: compare and score
 ```
 
 Never let source knowledge leak back into the recorded Phase-1 answer.
 
-Recommended probe mix:
+Recommended mix:
 
-1. **Mandatory rerun:** the quantity-adjustment visibility probe that drove `48ce2f10`.
-2. **Condition/temporal probe:** one of the scheduled-update / bundle-pricing questions from `docs/question-trainning.md`.
-3. **Workflow/permission/routing probe:** one of CustomerWeb access, inbound-email WO routing, or Worklog lifecycle from `docs/question-trainning.md`.
+1. mandatory rerun: quantity-adjustment visibility probe that drove `48ce2f10`;
+2. condition/temporal probe from `docs/question-trainning.md`;
+3. workflow/permission/routing probe when a third question adds materially different coverage.
 
-Two probes are enough if they cover the changed semantics well; use three when the first results expose materially different behavior.
+Score:
 
-For each probe score:
-
-- correctness of the business answer;
-- completeness of material conditions/effects;
-- unsupported additions / hallucinations;
+- business correctness;
+- material condition/effect completeness;
+- unsupported additions;
 - uncertainty calibration;
-- business wording rather than raw-code restatement;
+- business wording;
 - evidence/trace completeness.
 
-Use protocol labels `PASS`, `PARTIAL`, `FAIL`, `N/A`.
+Use `PASS`, `PARTIAL`, `FAIL`, `N/A` per the benchmark protocol. Any materially wrong or overconfident answer is a blocker.
 
-Interpretation for RD8:
+Keep proprietary detailed answers/source-known cross-checks inside the approved environment. Commit only sanitized scoring and behavior-level misses.
 
-- any materially wrong or overconfident answer is a blocker;
-- an honestly incomplete answer may remain `PARTIAL`, but the missing behavior must be explicit and must receive an acceptance disposition;
-- do not weaken evidence authority merely to improve benchmark yield.
+## Phase C2 — runtime/plugin real-target proof
 
-Keep the Phase-1 answer and source-known cross-check in the approved company environment if they contain proprietary detail. Commit only sanitized behavior-level scoring and misses.
+After any necessary repair, rerun `pkc discover` on a clean approved target copy and inspect the discovery metadata.
 
-## Phase C — runtime/plugin applicability disposition
+RD8-C PASS requires deterministic proof appropriate to the actual source shape:
 
-The first private repository did not exercise runtime-dependency-index or runtime-plugin cases.
+- loader provenance is visible;
+- plugin identity is proven rather than guessed;
+- build/copy delivery provenance is visible;
+- correct host ownership follows from the proven edge;
+- test-only loads stay test evidence;
+- ambiguous/non-literal/unproven alternatives stay unresolved/UNKNOWN;
+- the intended runtime plugin modules are no longer falsely absent from topology merely because the host has no project reference.
 
-RD4 deterministic/synthetic coverage remains valid, but RD8 needs an explicit real-repository disposition:
+The report may use aliases/counts only; do not publish real project names or paths.
 
-### Option 1 — accepted N/A
-
-Use only when the approved target is source-checked and demonstrably contains no applicable runtime/plugin shape.
-
-Record sanitized evidence such as:
-
-```text
-runtime/plugin applicability: N/A
-reason: approved target has no supported runtime-loaded plugin topology after source-enabled inspection
-```
-
-Do not publish internal plugin/project names.
-
-### Option 2 — validate on another approved real corpus
-
-If applicable runtime/plugin shapes exist elsewhere, validate:
-
-- loader identity provenance;
-- build/copy delivery provenance;
-- correct host ownership;
-- test-only loads remaining test evidence;
-- ambiguous/non-literal identities staying unresolved/UNKNOWN.
-
-Do not promote deterministic synthetic evidence into a claim that the private target exercised the same shape.
-
-## Phase D — decision
+## Decision
 
 Create a sanitized review from `docs/reviews/rd8-private-validation-template.md`.
 
-RD8 can be marked PASS only when all current acceptance bullets have an explicit disposition:
+RD8 can be PASS only when:
 
 ```text
-fresh current-main run completes practically
+A: fresh current-main run completes practically
 + elapsed/memory/coverage/workspace evidence recorded
 + summaries/artifacts plausible
-+ targeted Level-1 answers useful and correctly uncertain
-+ no materially misleading answer accepted
-+ runtime/plugin applicability explicitly PASS or accepted N/A
+
+B: targeted Level-1 answers are useful and correctly uncertain
++ no materially misleading answer is accepted
+
+C: known applicable runtime-plugin topology is deterministically represented on the intended target
++ incomplete/ambiguous variants remain fail-closed
 ```
 
-If a concrete blocker appears:
+If another concrete blocker appears:
 
 ```text
 private observation
-→ sanitize the defect shape
-→ reproduce with a synthetic PKC regression fixture
-→ minimum generic repair
-→ focused + related + broader local verification
-→ one coherent commit/push
-→ rerun only the affected RD8 evidence
+-> sanitize defect shape
+-> reproduce with synthetic regression
+-> minimum generic repair
+-> focused + related + broader local verification
+-> one coherent commit/push
+-> rerun only affected RD8 evidence
 ```
 
-Do not start E1 merely because RD8 found an interesting semantic gap. E1 remains locked until RD8 and E0 are explicitly PASS.
+Do not start E1 while RD8/E0 remain open.
