@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-24
 
-## Current milestone state
+## Current priority state
 
 ```text
 V0.4.4 Loren knowledge readiness                   PASS / COMPLETE
@@ -12,110 +12,94 @@ V0.4.7-A origin and copy timing                    PASS / COMPLETE
 V0.4.7-B computation and later change              PASS / COMPLETE
 V0.4.7-C backend to API                            PASS / COMPLETE
 V0.4.7-D / R7.9 API to rendered value              PASS / COMPLETE
-V0.4.7-D / R7.10 joint visibility                  REPAIRED / EXACT-SHA GATES PASS / PENDING REREVIEW #18
-V0.4.7-D overall                                   OPEN / PENDING INDEPENDENT REREVIEW #18
-V0.4.7-E0 repository discovery + bounded run       LOCKED behind D
+V0.4.7-D / R7.10 joint visibility                  OPEN / REVIEW PAUSED / NOT ACCEPTED
+V0.4.7-E0 repository discovery + bounded run       ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
+V0.4.7-E0 current sub-checkpoint                   RD1 inventory + safe exclusion
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
 V0.5 Azure DevOps input evidence                   LOCKED
 ```
 
-R7.10 has been repaired after independent rereview #17, but D remains an independent-review gate. This implementation continuation MUST NOT self-certify the repair or unlock E0/RD1.
+## Explicit priority override
 
-## Exact production candidate
+The user explicitly reprioritized the demo-critical path because the current whole-root `pkc run` is not operationally usable on the intended large mixed legacy repository.
+
+The private observation of roughly 9 GB RAM before useful completion is evidence of a product-operability defect, not a universal numeric threshold.
+
+Repository Discovery / bounded execution is therefore authorized now as bounded infrastructure prework even though formal R7.10/D independent acceptance remains open.
+
+This does NOT mark D PASS and does NOT allow E0 to weaken or redefine existing semantic authority.
+
+Authoritative override:
+
+`docs/plans/2026-09-24-demo-scan-priority-override.md`
+
+## Current main checkpoint before E0 implementation
+
+At authorization time `main` was:
 
 ```text
-a67abfa4caded980bd8abec317598afd0ea16a42
-fix: fail closed unsupported Angular alias expressions
+087fa6368ebfc028f91ea9d6b34ecd39a82fdb70
+fix: require proven Angular component import bindings
 ```
 
-Repair chain from the rereview #17 docs checkpoint:
+All five GitHub checks visible for that HEAD were green, including test, PokeTrade, Jellyfin, Loren and Loren-main. Formal R7.10 independent acceptance remains separate.
+
+## Active implementation checkpoint — RD1
+
+RD1 is explicitly unlocked and is now the only production implementation checkpoint.
+
+Goal:
 
 ```text
-6435e3b04cba7cbb4ff1fad31c859eb8fee69b02
-fix: fail closed semicolonless Angular import aliases
-
-5613477cf225d852501e1d02bb5562a60ea20e61
-fix: cover TypeScript ASI line terminators
-
-a67abfa4caded980bd8abec317598afd0ea16a42
-fix: fail closed unsupported Angular alias expressions
+cheap deterministic repository inventory
++ safe exclusion only when strongly proven
++ discovery/plan state before expensive semantic scans
 ```
 
-The follow-up commits were justified by adversarial TypeScript 5.8.3 evidence before acceptance, not speculative CI debugging: first lone CR/U+2028/U+2029 ASI, then a line terminator inside a block comment. The final repair stops trying to model partial ASI grammar and conservatively fails closed from the unsupported alias/expression identifier prefix.
+Regression-first mixed-repository fixture must include at least:
 
-## Net change
+- multiple .NET applications/libraries/tests;
+- Angular workspace;
+- legacy JavaScript;
+- generated/restorable directories;
+- infrastructure/configuration;
+- first-party files under ambiguous vendor/legacy-looking directory names.
+
+Required negative rule:
 
 ```text
-src/Pkc.Frontend/AngularUnsupportedComponentImportIndirectionAuthorityFilter.cs
-tests/Pkc.CSharp.Tests/AngularSemicolonlessComponentImportIndirectionAuthorityRegressionTests.cs
+legacy / vendor / plugins / themes / Scripts / Content / old / packages
 ```
 
-Net diff from rereview #17 docs checkpoint:
+must never become exclusion authority by name alone.
+
+Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
+
+Do not start RD2 until RD1 is explicitly locally PASS and documented.
+
+## E0 runtime constraint — zero required AI tokens
+
+Repository Discovery and normal PKC compilation must be deterministic/local product code.
+
+E0 MUST NOT require Claude/OpenAI/Gemini APIs, hosted model calls, API keys, user tokens, or source upload to an LLM.
+
+Claude/LLM reconnaissance is research/oracle evidence only.
+
+Target cost model:
 
 ```text
-1 production regex line changed
-1 focused regression file added
-no unrelated production refactor
+PKC compilation = local CPU + RAM + disk = zero required AI tokens
 ```
 
-The guard recognizes unsupported alias/indirection from:
+An AI may optionally consume `.pkc/workspace` after PKC generates it.
+
+## E0 sequence
+
+Execute sequentially:
 
 ```text
-const|let|var <identifier> = <identifier>
-```
-
-without requiring a particular source terminator. If that prefix continues into a call/member/binary or other expression shape that PKC has not proven as supported component-import topology, conservative fail-close is intentional. Ordinary supported direct/local-array framework imports remain positive-regression protected.
-
-Focused coverage includes semicolonless LF, duplicate identifiers across scopes, lone CR, U+2028, U+2029 and a line terminator inside a block comment. Existing semicolon/default-reexport negative coverage and ordinary supported framework-array positive coverage remain.
-
-## Verification
-
-Local execution environment limitation:
-
-```text
-.NET SDK                              unavailable
-shell external DNS/network            unavailable
-TypeScript 5.8.3 / Node               available
-```
-
-No repository-local `.NET` test claim is made.
-
-Local TypeScript 5.8.3 evidence:
-
-```text
-LF ASI                                  PASS
-CR ASI                                  PASS
-U+2028 ASI                              PASS
-U+2029 ASI                              PASS
-block-comment-contained line terminator PASS
-same block comment without line break   compile FAIL
-```
-
-Exact-SHA clean-environment gates:
-
-```text
-CI / full tests / WorkPlay / PokeTrade   35939834957 PASS
-Loren pinned/external                    35939834993 PASS
-Loren-main canary                        35939834966 PASS
-Jellyfin parity                          35939834845 PASS
-```
-
-These gates are regression evidence only; they do not replace independent rereview #18.
-
-Fresh review request:
-
-```text
-docs/reviews/2026-09-24-v0.4.7-d-r7.10-rereview-18-request.md
-```
-
-## Demo-critical roadmap
-
-Only after independent rereview #18 PASS explicitly closes D:
-
-```text
-E0 Repository Discovery + bounded run readiness
 RD1 inventory + safe exclusion
 → RD2 application boundaries + ownership
 → RD3 vendor/custom frontend classification
@@ -123,30 +107,29 @@ RD1 inventory + safe exclusion
 → RD5 deterministic ScanPlan
 → RD6 scoped/bounded semantic execution
 → RD7 coverage + observability + plan-only inspection
-→ RD8 private large-repo validation
-→ prove pkc run can practically produce .pkc/workspace
-→ E1 remaining semantic richness
-→ E2 final product acceptance
+→ RD8 private large-repository validation
+→ prove normal pkc run practically produces .pkc/workspace
 ```
 
-The private mixed legacy repository observation (~9 GB RAM before useful completion) remains evidence of a real product-operability problem, not a universal hard threshold. Scope reduction/discovery is the first demo priority once D closes.
+No parallel production checkpoints.
 
-## E0 invariants — prepared, still locked
+## E0 invariants
 
 - discovery precedes expensive semantic scanning;
 - repository is a graph, not one homogeneous root;
-- application boundaries matter;
-- source role and scan mode are separate concepts;
-- only strongly proven generated/restorable areas may auto-exclude;
-- name-only heuristics never create exclusion authority;
-- THIRD_PARTY_RUNTIME is not automatically irrelevant;
-- modified vendor areas require narrow first-party carve-outs;
-- UNKNOWN remains valid;
+- source role and scan mode remain separate;
+- only strongly proven generated/restorable areas auto-exclude;
+- third-party runtime remains visible without default deep scan;
+- modified vendor receives narrow deterministic first-party carve-outs;
+- UNKNOWN is valid and never silently discarded;
 - tests are evidence, not production authority;
-- runtime/plugin edges require deterministic provenance;
 - similar names never create dependency edges;
-- discovery remains shallow and bounded;
-- private source/config values never leak into portable output.
+- runtime/plugin edges require deterministic provenance;
+- discovery stays shallow and bounded;
+- private source/config values never leak into portable output;
+- accepted semantic fail-closed boundaries remain unchanged inside selected scope.
+
+## Parked work
 
 Fix #4 remains parked off-main:
 
@@ -155,19 +138,19 @@ branch  fix/product-value-construction-state
 commit  35c8e5c5f856e15568aa963bb2d76268008c5570
 ```
 
+Do not merge during E0.
+
+## Formal D state
+
+R7.10/D remains OPEN and not accepted. The prior rereview lane is paused by product-priority decision, not passed.
+
+Before final V0.4.7 acceptance, a fresh independent review must still accept the then-current R7.10 production state.
+
 ## Exact next action
 
 ```text
-fresh independent rereview #18 of exact
-a67abfa4caded980bd8abec317598afd0ea16a42
+start RD1 now, regression-first
+→ finish and locally verify RD1
+→ update status/handoff with exact implementation HEAD and verification
+→ only then start RD2
 ```
-
-If PASS:
-
-```text
-mark R7.10 + V0.4.7-D PASS / COMPLETE
-→ explicitly unlock E0/RD1
-→ start RD1 only, regression-first
-```
-
-If FAIL, keep later checkpoints locked and return to the minimum generic R7.10 repair.
