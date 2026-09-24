@@ -256,6 +256,8 @@ public sealed class ResumableRunRegressionTests
         Assert.Contains("rules 60%", console, StringComparison.Ordinal);
         Assert.Contains("26m 30s", console, StringComparison.Ordinal);
         Assert.Contains("Product features not written: disk full", console, StringComparison.Ordinal);
+        Assert.Contains(".pkc/workspace (4,709 files)", console, StringComparison.Ordinal);
+        Assert.Contains(".pkc/workspace.new (4,709 files)", (summary with { WorkspaceRelativePath = ".pkc/workspace.new" }).RenderConsole(), StringComparison.Ordinal);
         Assert.Contains("| Permissions | 350 | 9% |", markdown, StringComparison.Ordinal);
         Assert.Contains("| Orders | 400 |", markdown, StringComparison.Ordinal);
         Assert.Contains("**not written** — disk full", markdown, StringComparison.Ordinal);

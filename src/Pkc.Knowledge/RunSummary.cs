@@ -78,6 +78,9 @@ public sealed record RunSummary(
     public const string MarkdownRelativePath = ".pkc/RUN_SUMMARY.md";
     public const string JsonRelativePath = ".pkc/run-summary.json";
 
+    /// <summary>Where the generated workspace ended up; <c>.pkc/workspace.new</c> when it could not replace the current one.</summary>
+    public string WorkspaceRelativePath { get; init; } = ".pkc/workspace";
+
     public double TotalSeconds => Timings.Sum(timing => timing.Seconds);
 
     public static IReadOnlyList<AreaCount> TopAreasOf(IEnumerable<FeatureKnowledge> workflows, int take = 10) =>
@@ -108,7 +111,7 @@ public sealed record RunSummary(
                                   $"state changes {Pct(g.WithStateChanges, g.Workflows)} | UI steps {Pct(g.WithUiSteps, g.Workflows)}");
         var phases = string.Join(" | ", Timings.Where(t => t.Seconds >= 1).Select(t => $"{t.Phase} {Duration(t.Seconds)}"));
         Line(builder, "Time", phases.Length == 0 ? Duration(TotalSeconds) : $"{Duration(TotalSeconds)} ({phases})");
-        Line(builder, "Workspace", $".pkc/workspace ({N(WorkspaceFiles)} files)");
+        Line(builder, "Workspace", $"{WorkspaceRelativePath} ({N(WorkspaceFiles)} files)");
         Line(builder, "Summary", $"{MarkdownRelativePath} | {JsonRelativePath}");
         foreach (var failed in Artifacts.Where(artifact => !artifact.Written))
         {
@@ -137,7 +140,7 @@ public sealed record RunSummary(
         builder.AppendLine($"| Analyzed deeply | {N(r.ExecutedSemanticFiles)} of {N(r.PlannedSemanticFiles)} planned files |");
         builder.AppendLine($"| Evidence extracted | {N(Facts)} facts · {N(Relations)} relations |");
         builder.AppendLine($"| Knowledge generated | {N(ProductFeatures)} product features · {N(g.Workflows)} workflows · {N(Areas)} areas |");
-        builder.AppendLine($"| Workspace | `.pkc/workspace` — {N(WorkspaceFiles)} files ({N(KnowledgeFiles)} knowledge files) |");
+        builder.AppendLine($"| Workspace | `{WorkspaceRelativePath}` — {N(WorkspaceFiles)} files ({N(KnowledgeFiles)} knowledge files) |");
         builder.AppendLine();
         builder.AppendLine("## What was analyzed");
         builder.AppendLine();
@@ -195,7 +198,7 @@ public sealed record RunSummary(
         builder.AppendLine();
         builder.AppendLine("## Use it");
         builder.AppendLine();
-        builder.AppendLine("Open `.pkc/workspace` (not the repository root) in the company-approved AI assistant and ask product or QA questions.");
+        builder.AppendLine($"Open `{WorkspaceRelativePath}` (not the repository root) in the company-approved AI assistant and ask product or QA questions.");
         builder.AppendLine("If a later step failed after scanning, re-run with `--resume` to reuse this scan.");
         return builder.ToString();
     }

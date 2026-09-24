@@ -254,6 +254,7 @@ try
             };
             Progress("workspace", "Writing AI workspace...");
             string? workspacePath = null;
+            string? unswappedWorkspacePath = null;
             var workspaceTarget = Path.Combine(outputDirectory, "workspace");
             try
             {
@@ -265,6 +266,7 @@ try
             }
             catch (WorkspaceReplaceException exception)
             {
+                unswappedWorkspacePath = exception.NewWorkspacePath;
                 writes.Record("AI workspace", exception.NewWorkspacePath, false, exception.Message);
                 Progress("workspace", exception.Message);
             }
@@ -273,7 +275,9 @@ try
 
             summary = summary with
             {
-                WorkspaceFiles = CountFiles(workspacePath ?? workspaceTarget),
+                // A workspace that could not replace the current one is counted where it was preserved, never the old one.
+                WorkspaceFiles = CountFiles(workspacePath ?? unswappedWorkspacePath ?? workspaceTarget),
+                WorkspaceRelativePath = RelativeTo(repositoryPath, workspacePath ?? unswappedWorkspacePath ?? workspaceTarget),
                 Timings = timings.ToArray(),
                 Artifacts = writes.Results
                     .Select(result => new RunArtifact(result.Name, RelativeTo(repositoryPath, result.Path), result.Succeeded, result.Error))
