@@ -1,37 +1,29 @@
 # Demo-Critical Sequential Execution Plan
 
 Date: 2026-09-24
-Status: ACTIVE — SCAN OPERABILITY PREWORK AUTHORIZED NOW
+Status: ACTIVE — RD8 CURRENT-MAIN VALIDATION
 
 This plan is superseded where necessary by:
 
 `docs/plans/2026-09-24-demo-scan-priority-override.md`
 
-The current product priority is to make the normal PKC scan/run path practical on the intended large mixed repository before investing in more semantic richness.
-
-Formal R7.10 / V0.4.7-D remains OPEN and NOT ACCEPTED. Repository Discovery is authorized as bounded infrastructure prework under that open gate. No E0 work may claim D PASS or weaken existing semantic authority.
+Formal R7.10 / V0.4.7-D remains OPEN and NOT ACCEPTED. Repository Discovery / bounded execution is authorized as bounded infrastructure prework under that open gate. No E0 work may claim D PASS or weaken existing semantic authority.
 
 ## Product decision
 
-The demo path is credible only if the normal product command can actually produce a trustworthy AI workspace on the intended repository class.
+The demo path is credible only if the normal PKC command can practically produce a trustworthy AI workspace on the intended repository class **and** that workspace can answer selected known product questions usefully and honestly.
 
-A private mixed legacy enterprise repository exposed the current structural problem:
+The original private-repository failure mode was:
 
 ```text
-pkc run <large-repository>
-→ expensive whole-root C# scan starts immediately
-→ whole-root frontend scan follows
-→ repository/application/vendor/test boundaries are not planned first
-→ observed resource use reached roughly 9 GB RAM before useful completion
+whole-root style expensive analysis
+→ large retained semantic state
+→ post-scan artifact write pressure
+→ ~18.6 GB peak on first RD7 private run
+→ OOM before a usable workspace
 ```
 
-Visible progress alone does not solve this. Adding semantic passes first makes it worse.
-
-Therefore:
-
-> Make repository discovery and bounded execution operational first. Improve semantic richness second. Complete formal/product acceptance after that.
-
-The roughly 9 GB observation is a private operator baseline, not a universal hard limit.
+Repository discovery, scoped execution and large-run repairs materially changed that architecture. The active question is now whether the **integrated current main** passes the real private-repository gate.
 
 ## Runtime product constraint
 
@@ -39,30 +31,32 @@ PKC Repository Discovery and repository compilation must be local/deterministic 
 
 Do not add runtime calls to Claude/OpenAI/Gemini or any hosted LLM. Do not require API keys. Do not upload source to an LLM.
 
-LLM reconnaissance is research/oracle evidence only.
+LLM use is allowed only after compilation for product/QA consumption or benchmark/oracle work in an approved environment.
 
 ## Authoritative active order
 
 ```text
 E0 Repository Discovery + bounded run prework — ACTIVE
         ↓
-RD1 inventory + safe exclusion — CURRENT
+RD1 inventory + safe exclusion — PASS / COMPLETE
         ↓
-RD2 application boundaries + ownership
+RD2 application boundaries + ownership — PASS / COMPLETE
         ↓
-RD3 vendor/custom frontend classification
+RD3 vendor/custom frontend classification — PASS / COMPLETE
         ↓
-RD4 runtime/plugin provenance
+RD4 runtime/plugin provenance — PASS / COMPLETE (deterministic/synthetic gate)
         ↓
-RD5 deterministic ScanPlan
+RD5 deterministic ScanPlan — PASS / COMPLETE
         ↓
-RD6 scoped/bounded semantic execution
+RD6 scoped/bounded semantic execution — PASS / COMPLETE
         ↓
-RD7 coverage + observability + plan-only inspection
+RD7 coverage + observability + plan-only inspection — PASS / COMPLETE
         ↓
-RD8 private large-repository validation
+RD8 current-main private large-repository validation — ACTIVE
         ↓
-prove normal pkc run produces .pkc/workspace practically
+practical workspace + targeted product-value sign-off
+        ↓
+E0 PASS
         ↓
 E1 remaining semantic/product-value gaps
         ↓
@@ -73,118 +67,148 @@ E2 real-project PO/QC product acceptance
 
 Production checkpoints remain sequential.
 
-## RD1 — deterministic inventory + safe exclusion — ACTIVE
+## Repository state entering RD8
 
-Goal:
+Immediately before the docs reconciliation, remote `main` was:
 
-- inventory repository shape cheaply;
-- identify manifests/workspaces/projects/languages;
-- classify only strongly proven generated/restorable areas as safe exclusions;
-- preserve ambiguous legacy/vendor-looking areas;
-- establish discovery/plan state before expensive semantic scanning in the new run architecture.
+```text
+9ef914f57c558e3b2963b9ba4dd187a6ecd6603f
+Add question in demo
+```
 
-Required mixed-repository regression fixture includes:
+Latest production-code commit beneath it:
 
-- multiple .NET apps/libraries/tests;
-- Angular workspace;
-- legacy JavaScript;
-- generated/restorable directories;
-- infrastructure/configuration;
-- first-party source in ambiguous vendor/legacy-looking folder names.
+```text
+fa30e3eb140357da5453702090be307417abb4e2
+fix: report the preserved workspace when it could not replace the current one
+```
 
-Required negative behavior:
+Current descendant HEAD completed all four observed GitHub Actions workflows successfully.
 
-`legacy`, `vendor`, `plugins`, `themes`, `Scripts`, `Content`, `old`, `packages` or similar names never become exclusion authority by themselves.
+Key merged current-main production work:
 
-Checkpoint exit:
+```text
+612fa998  large-run streaming/atomic writes + shared workspace + resume + run summary
+48ce2f10  sole-implementation + mapped-field/gate/guard/custom-auth rule surface
+fa30e3eb  accurate workspace.new summary/reporting fallback
+```
 
-- focused regression PASS;
-- related tests PASS;
-- deterministic ordering/output proven;
-- no deep semantic scan required to obtain inventory;
-- orchestration proves discovery/plan exists before expensive semantic scanner execution;
-- diff reviewed;
-- one coherent commit/push;
-- status/handoff updated.
+## RD1-RD7 reconciliation
 
-Do not start RD2 before RD1 PASS.
+RD1-RD7 no longer have pending push/CI gates. Their implementation commits and evidence are on `main`, and later descendant CI is green.
 
-## RD2 — application boundaries + ownership
+The detailed historical acceptance evidence remains in the per-RD review files. This plan records only the current execution state.
 
-After RD1 PASS only.
+## RD8 — current-main private large-repository validation — ACTIVE
 
-Model runtime/application nodes and shared ownership from deterministic evidence. Tests cannot create production authority. Similar names cannot create edges.
+### Existing supporting evidence
 
-## RD3 — vendor/custom frontend classification
+Sanitized first private exercise:
 
-After RD2 PASS only.
+```text
+repository: ~26.9k files / 18 hosts
+planned semantic files: ~16.8k
+facts: ~263.6k
+relations: ~2.04M
+workflow candidates: 4,186
 
-Separate first-party JS, third-party runtime, generated/minified/bundled output, wrappers/adapters and locally modified vendor code. Runtime dependency identity does not imply deep-scan internals.
+discover: ~98 s
+run 1 (RD7): 41.5 min / ~18.6 GB / OOM at write
+run 2 (resource-patched): 29 min / ~7.5 GB / exit 0 / workspace generated
+```
 
-## RD4 — runtime/plugin provenance
+Run 2 generated about 703 product features and 4,709 workspace files.
 
-After RD3 PASS only.
+The resource repairs used by run 2 are now merged in `612fa998`, but the successful run predates the fully integrated current production state. It is therefore supporting evidence only.
 
-Authoritative runtime plugin edges require deterministic loader + build/copy/dependency + resolvable identity provenance. Unsupported identity remains UNKNOWN.
+### RD8-A — fresh current-main operability
 
-## RD5 — deterministic ScanPlan
+Run only in the approved source-enabled/company environment against an approved repository copy:
 
-After RD4 PASS only.
+```text
+build PKC Release from current main
+pkc discover <private-repo-copy>
+pkc run <private-repo-copy>          # no --resume for acceptance measurement
+```
 
-Convert repository/application/source graph into an inspectable stable plan carrying source role, scan mode, scanner set, evidence/reason, confidence, exclusions and coverage effect.
+Capture sanitized:
 
-Plan metadata should make staleness diagnosable where possible without leaking source bodies.
+- discovery elapsed time;
+- full-run elapsed time;
+- peak working set;
+- application/plan/coverage counts;
+- planned/executed/withheld/UNKNOWN semantic coverage;
+- facts, relations, workflows/product features;
+- artifact write status;
+- generated workspace path and file count.
 
-## RD6 — scoped/bounded semantic execution
+Confirm:
 
-After RD5 PASS only.
+- `RUN_SUMMARY.md` / `run-summary.json` are plausible;
+- coverage remains honest;
+- the workspace is usable;
+- blocked workspace replacement, if encountered, reports `.pkc/workspace.new` correctly.
 
-Make existing semantic scanners consume planned areas/application waves rather than the whole repository indiscriminately.
+There is no universal hard RAM threshold. PASS means the normal product path materially improves the original failure mode and completes practically on the approved demo environment.
 
-Required:
+If the fresh run remains memory-heavy near the prior ~7.5 GB observation, profile the actual retained-memory phase before optimizing. Do not perform speculative Roslyn/memory refactors.
 
-- SAFE_AUTO_EXCLUDE never reaches deep scanners;
-- RUNTIME_DEPENDENCY_INDEX internals never deep-scan by default;
-- targeted shared code follows supported ownership/reachability;
-- tests stay separate;
-- UNKNOWN is not silently dropped;
-- accepted semantic/fail-closed behavior is unchanged inside selected scope;
-- heavy analysis state can be released/disposed between bounded waves when safe.
+### RD8-B — targeted Level-1 product-value benchmark
 
-Optimize semantic internals only after scope reduction evidence exists.
+After a fresh workspace is produced, run 2-3 known-answer probes under:
 
-## RD7 — coverage + observability + plan-only inspection
+`docs/benchmarks/product-value-benchmark-protocol.md`
 
-After RD6 PASS only.
+Preferred inputs:
 
-Users must be able to inspect detection and planned scope before expensive execution. The exact CLI surface may be `pkc discover`, `pkc run --plan-only`, or another equivalent contract selected during implementation.
+- selected questions in `docs/question-trainning.md`;
+- the quantity-adjustment probe that drove `48ce2f10`.
 
-Persist local discovery/plan/coverage artifacts under `.pkc` without exporting source bodies or sensitive config values.
+For each probe:
 
-## RD8 — private large-repository validation
+```text
+workspace-only answer first
+→ source-enabled known-answer cross-check second
+→ score third
+```
 
-After RD7 PASS only.
+Score:
 
-Validate the approved private mixed legacy repository using sanitized measurements only:
+- correctness;
+- completeness of material conditions/business effects;
+- unsupported additions;
+- uncertainty calibration;
+- business-language quality;
+- evidence/trace completeness.
 
-- application/deployable boundaries;
-- frontend generations;
-- first-party/vendor separation;
-- modified-vendor carve-outs;
-- runtime/plugin topology;
-- shared ownership;
-- test isolation;
-- generated/restorable exclusion;
-- UNKNOWN preservation;
-- semantic scope reduction;
-- elapsed time and peak memory delta;
-- successful `.pkc/workspace` generation sufficient for the demo flow.
+Do not accept a benchmark merely because the agent returned text or because PKC generated a workspace.
 
-Do not publish proprietary names, paths, endpoints, source snippets or configuration values.
+### RD8-C — runtime/plugin real-repository applicability
+
+The first private repository did not exercise runtime-dependency-index or runtime-plugin cases.
+
+Before RD8 PASS:
+
+- record `N/A` only if the repository is demonstrably free of those shapes and the reviewer explicitly accepts that absence; or
+- validate another approved real repository/corpus that contains them.
+
+RD4 synthetic/deterministic coverage remains PASS but is not a substitute for claiming those shapes were exercised in the first private repository.
+
+## RD8 exit
+
+RD8 is PASS only when RD8-A, RD8-B and RD8-C are explicitly closed.
 
 ## E0 completion rule
 
-E0 is PASS only when RD1–RD8 complete sequentially and the normal PKC product path produces the intended workspace practically on the approved private large repository with honest coverage.
+E0 is PASS only when:
+
+```text
+RD1-RD7 complete
++ RD8 PASS
++ normal product path practically produces the intended workspace
++ coverage is honest
++ selected demo answers are useful and correctly uncertain
+```
 
 JSON output alone is insufficient.
 
@@ -192,12 +216,14 @@ JSON output alone is insufficient.
 
 Only after E0 PASS.
 
-The validated construction candidate remains parked during E0:
+Parked construction candidate:
 
 ```text
 35c8e5c5f856e15568aa963bb2d76268008c5570
 fix: prove observable constructed state
 ```
+
+Candidate gaps observed in the first private workspace include mediator dispatch, legacy-UI linkage and remaining rule-language cleanup. Do not implement them speculatively during RD8; let the fresh benchmark choose the next actual repair.
 
 ## Formal D boundary
 
@@ -205,22 +231,25 @@ R7.10/D remains OPEN. The independent gate is paused, not passed. Resume and com
 
 ## Explicitly deferred
 
-Unless an E0 regression proves a dependency is unavoidable, do not mix in:
+Unless RD8 exposes a direct blocker, do not mix in:
 
-- remaining product-value semantic features;
 - continuous update/diff;
 - Azure DevOps evidence;
 - generic JavaScript dataflow;
 - arbitrary runtime instrumentation;
 - automatic dead-code deletion;
-- source cleanup recommendations;
-- LLM-dependent repository classification.
+- unrelated source cleanup recommendations;
+- LLM-dependent repository classification;
+- parked construction/default/computation work.
 
 ## Execution discipline
 
+When RD8 exposes a concrete implementation blocker:
+
 ```text
-inspect
-→ regression
+inspect evidence
+→ focused synthetic regression
+→ confirm regression represents the real defect
 → minimum generic fix
 → focused tests
 → related tests
@@ -229,12 +258,18 @@ inspect
 → one coherent commit
 → one push
 → CI final verification
-→ status/handoff
-→ next RD checkpoint only after explicit PASS
+→ status/handoff update
 ```
+
+Do not use GitHub Actions as the edit-test loop.
 
 ## Immediate next action
 
 ```text
-START RD1 NOW.
+RUN RD8-A ON CURRENT MAIN NOW
+→ fresh discover
+→ fresh full run without --resume
+→ sanitized resource/coverage/workspace evidence
+→ RD8-B targeted Level-1 benchmark
+→ RD8-C applicability disposition
 ```

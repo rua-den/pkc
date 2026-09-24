@@ -7,9 +7,9 @@ This decision supersedes older ordering clauses that required V0.4.7-D/R7.10 ind
 
 It does **not** mark R7.10 or V0.4.7-D PASS. The formal R7.10 independent-review gate remains open and must be completed before V0.4.7 can be accepted.
 
-The product priority changed because the current normal `pkc run <large-repository>` path is not operationally usable on the intended demo repository class: a private mixed legacy repository reached roughly 9 GB RAM before useful completion while whole-root C# and frontend semantic scanners ran before repository scope planning.
+The product priority changed because the normal `pkc run <large-repository>` path was not operationally usable on the intended demo repository class. A private mixed legacy repository first reached ~18.6 GB peak and failed before a usable workspace during the RD7-era run.
 
-The immediate product risk is therefore scan operability, not additional semantic richness.
+Repository Discovery, scoped execution and large-run repairs are now implemented. The active product risk has moved from “can we scope the repository at all?” to “does the fully integrated current main complete practically and produce useful, correctly uncertain answers?”
 
 ## Active checkpoint
 
@@ -17,28 +17,50 @@ The immediate product risk is therefore scan operability, not additional semanti
 V0.4.7-E0 Repository Discovery + bounded run
 ACTIVE AS BOUNDED PREWORK UNDER OPEN V0.4.7-D
 
-current sub-checkpoint: RD1 inventory + safe exclusion
+RD1 inventory + safe exclusion                    PASS / COMPLETE
+RD2 application boundaries + ownership            PASS / COMPLETE
+RD3 vendor/custom frontend classification         PASS / COMPLETE
+RD4 runtime/plugin provenance                     PASS / COMPLETE (deterministic/synthetic gate)
+RD5 deterministic ScanPlan                        PASS / COMPLETE
+RD6 scoped/bounded semantic execution             PASS / COMPLETE
+RD7 coverage + observability                      PASS / COMPLETE
+RD8 current-main private large-repository gate    ACTIVE / PARTIAL EVIDENCE / NOT PASS
 ```
 
-Production work is sequential:
+Production order remains:
 
 ```text
-RD1 inventory + safe exclusion
-→ RD2 application boundaries + ownership
-→ RD3 vendor/custom frontend classification
-→ RD4 runtime/plugin provenance
-→ RD5 deterministic ScanPlan
-→ RD6 scoped/bounded semantic execution
-→ RD7 coverage + observability + plan-only inspection
-→ RD8 private large-repository validation
-→ prove normal pkc run can practically produce .pkc/workspace
+RD8 current-main private validation
+→ practical workspace + targeted Level-1 product-value sign-off
+→ E0 PASS
+→ E1 remaining semantic/product-value repairs
+→ formal R7.10/D independent acceptance if still open
+→ E2 final real-project PO/QC acceptance
 ```
 
-Only after E0 PASS should the project resume remaining semantic-richness work and then return to the still-open formal R7.10/D acceptance gate before final V0.4.7 acceptance if that gate has not already been completed independently.
+## Repository-state reconciliation
+
+Immediately before the docs reconciliation, remote `main` was:
+
+```text
+9ef914f57c558e3b2963b9ba4dd187a6ecd6603f
+Add question in demo
+```
+
+Latest production-code commit beneath it:
+
+```text
+fa30e3eb140357da5453702090be307417abb4e2
+fix: report the preserved workspace when it could not replace the current one
+```
+
+Current descendant HEAD completed all four observed GitHub Actions workflows successfully.
+
+Therefore older `PUSH + CI PENDING` wording for RD1-RD7 is obsolete.
 
 ## Runtime constraint: zero LLM dependency
 
-Repository Discovery and the normal PKC compilation path MUST be deterministic/local product code.
+Repository Discovery and the normal PKC compilation path MUST remain deterministic/local product code.
 
 E0 MUST NOT require:
 
@@ -50,9 +72,7 @@ E0 MUST NOT require:
 - user AI tokens;
 - source upload to an LLM.
 
-Claude/other LLM reconnaissance is research/oracle evidence only. It must never become a runtime prerequisite.
-
-The target product cost model is:
+The target product cost model remains:
 
 ```text
 PKC repository compilation
@@ -60,11 +80,11 @@ PKC repository compilation
 = zero required AI tokens
 ```
 
-An AI may optionally consume the generated `.pkc/workspace` afterward. That is outside repository compilation itself.
+An AI may consume the generated `.pkc/workspace` afterward. That is outside repository compilation.
 
 ## E0 architecture contract
 
-Target flow:
+The implemented target flow is:
 
 ```text
 repository
@@ -72,14 +92,12 @@ repository
 → RepositoryProfile
 → application/source/runtime graph
 → deterministic ScanPlan
-→ bounded scanner execution waves
-→ existing semantic evidence
-→ knowledge/workspace
+→ scoped semantic execution
+→ cross-stack/product knowledge
+→ AI workspace + coverage/run summary
 ```
 
-Discovery should use cheap structural evidence first: filesystem/VCS shape, `.sln`/`.slnx`, `.csproj`, project references, package/workspace manifests, Angular/TypeScript config, bundle/layout/build/deployment metadata, and only bounded composition/runtime entry evidence when necessary.
-
-Do not turn discovery into another full semantic scan.
+Discovery uses structural evidence first. Unsupported or ambiguous areas remain visible/UNKNOWN rather than being silently dropped.
 
 ## Non-negotiable safety rules
 
@@ -94,67 +112,63 @@ Do not turn discovery into another full semantic scan.
 - Similar names never create application/dependency edges.
 - Runtime/plugin edges require deterministic provenance.
 - Private source bodies, secrets and raw configuration values must not leak into portable output.
+- Existing accepted semantic/fail-closed authority remains intact unless a separately accepted semantic repair changes it explicitly.
 
-## RD1 authorization
+## RD8 current evidence
 
-RD1 is explicitly authorized now.
-
-Regression-first fixture must prove deterministic inventory and safe exclusion on a mixed repository containing at least:
-
-- multiple .NET apps/libraries/tests;
-- Angular workspace;
-- legacy JavaScript;
-- generated/restorable directories;
-- infrastructure/configuration;
-- first-party files under ambiguous vendor/legacy-looking folder names.
-
-Required negative regression: folder names alone never cause exclusion.
-
-Required structural regression: expensive C#/frontend semantic scanning cannot begin before discovery/plan state exists in the new run architecture.
-
-Do not implement RD2 until RD1 is explicitly locally PASS and the checkpoint state is updated.
-
-## Git / CI discipline
-
-For each RD checkpoint:
+First private exercise, sanitized:
 
 ```text
-inspect
-→ focused regression
-→ minimum generic implementation
-→ focused tests
-→ related tests
-→ broader relevant verification
-→ review full diff
-→ one coherent implementation commit
-→ one push
-→ CI final verification
-→ update status/handoff
-→ next RD checkpoint
+discover: about 98 s
+RD7 run: 41.5 min / ~18.6 GB / OOM at artifact write
+resource-patched run: 29 min / ~7.5 GB / exit 0 / workspace generated
 ```
 
-Do not use GitHub Actions as the normal edit-test loop.
+The resource-patched run generated about 703 product features and 4,709 workspace files.
+
+Those resource repairs are now merged in `612fa998`, and later production work `48ce2f10` + `fa30e3eb` is also on main.
+
+Because the successful private run predates the fully integrated current production state, RD8 remains open.
+
+## RD8 authorization and exit
+
+The next authorized product work is **not** another speculative semantic feature. It is the current-main RD8 gate:
+
+```text
+fresh pkc discover
+→ fresh full pkc run without --resume
+→ sanitized elapsed/peak-memory/coverage/workspace evidence
+→ 2-3 targeted Level-1 known-answer probes
+→ runtime/plugin applicability disposition
+```
+
+RD8 PASS requires all of:
+
+1. practical current-main completion on the approved private repository;
+2. honest plausible coverage/run-summary/workspace output;
+3. useful, correctly uncertain targeted product answers under the benchmark protocol;
+4. explicit disposition of runtime/plugin applicability (`N/A` only when absence is proven/accepted, otherwise another approved real corpus).
+
+There is no universal numeric RAM threshold. If the fresh run remains around the prior ~7.5 GB observation, profile the retained-memory phase before optimizing.
 
 ## Formal D boundary
 
-R7.10/D remains OPEN. No E0 work may claim that D passed or weaken accepted fail-closed semantic authority.
+R7.10/D remains OPEN. No E0 work may claim D passed or weaken accepted fail-closed semantic authority.
 
-E0 is infrastructure/operability prework authorized by explicit product-priority decision, not a retroactive acceptance of D.
-
-If E0 touches code that affects R7.10 semantics, existing R7.10 regressions and exact authority boundaries must remain green; do not opportunistically repair/redefine R7.10 while implementing scan scope.
+E0 is infrastructure/operability prework authorized by explicit product-priority decision, not retroactive acceptance of D.
 
 ## Demo exit condition
 
-E0 is not complete merely because JSON discovery artifacts exist.
+E0 is not complete merely because discovery JSON or a workspace exists.
 
 The demo-critical exit is:
 
 ```text
-normal PKC command
+normal current-main PKC command
 → deterministic discovery + inspectable plan
-→ bounded semantic execution
-→ materially improved resource behavior on the approved private large repository
-→ successful .pkc/workspace generation
+→ scoped semantic execution
+→ practical completion on approved private large repository
+→ honest coverage + run summary
+→ usable workspace
+→ targeted known-answer benchmark demonstrates useful correctly-calibrated product answers
 ```
-
-Coverage must remain honest (`READY` / `PARTIAL` / `FAILED` or equivalent) for unsupported or UNKNOWN areas.
