@@ -39,6 +39,11 @@ public sealed record DiscoveryFirstScanResult(
     public RepositoryProfile Profile => State.Profile;
 
     public IReadOnlyList<SemanticStageExecution> Executions { get; init; } = [];
+
+    /// <summary>Coverage of the executed stages; null for a plan-only run (no stages).</summary>
+    public ScanCoverage? Coverage { get; init; }
+
+    public string? CoveragePath { get; init; }
 }
 
 /// <summary>
@@ -92,7 +97,20 @@ public sealed class DiscoveryFirstScanPipeline
             }
         }
 
-        return new DiscoveryFirstScanResult(state, documents) { Executions = executions };
+        if (stages.Count == 0)
+        {
+            RepositoryDiscoveryArtifacts.DeleteCoverage(repositoryPath);
+            return new DiscoveryFirstScanResult(state, documents);
+        }
+
+        var coverage = ScanCoverage.Build(state, executions, _scoped);
+        var coveragePath = await RepositoryDiscoveryArtifacts.WriteCoverageAsync(repositoryPath, coverage, cancellationToken);
+        return new DiscoveryFirstScanResult(state, documents)
+        {
+            Executions = executions,
+            Coverage = coverage,
+            CoveragePath = coveragePath
+        };
     }
 
     private static SemanticStageExecution Execution(ScanPlan plan, SemanticScanStage stage, bool scoped)

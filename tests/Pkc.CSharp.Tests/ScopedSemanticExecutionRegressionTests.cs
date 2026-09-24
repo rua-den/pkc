@@ -9,13 +9,13 @@ namespace Pkc.CSharp.Tests;
 
 public sealed class ScopedSemanticExecutionRegressionTests
 {
-    private const string TestProjectDirectory = "src/Shop.Api.Tests/";
-    private const string DeclaredVendorFile = "src/Shop.Api/wwwroot/lib/vendorkit/vendor-api.ts";
-    private const string UndeclaredVendorFile = "src/Shop.Api/wwwroot/lib/vendorkit/local-patch-api.ts";
-    private const string UnknownVendorFile = "src/Shop.Api/wwwroot/lib/unknownkit/unknown-api.ts";
-    private const string BuildOutputFile = "web/public-out/stale-api.ts";
-    private const string KnowledgeFile = "src/Shop.Api/knowledge/NotesController.cs";
-    private const string FrontendBuildToolFile = "web/build/release-api.ts";
+    internal const string TestProjectDirectory = "src/Shop.Api.Tests/";
+    internal const string DeclaredVendorFile = "src/Shop.Api/wwwroot/lib/vendorkit/vendor-api.ts";
+    internal const string UndeclaredVendorFile = "src/Shop.Api/wwwroot/lib/vendorkit/local-patch-api.ts";
+    internal const string UnknownVendorFile = "src/Shop.Api/wwwroot/lib/unknownkit/unknown-api.ts";
+    internal const string BuildOutputFile = "web/public-out/stale-api.ts";
+    internal const string KnowledgeFile = "src/Shop.Api/knowledge/NotesController.cs";
+    internal const string FrontendBuildToolFile = "web/build/release-api.ts";
 
     [Fact]
     public async Task Run_scope_withholds_test_vendor_and_generated_sources_but_keeps_production_and_unknown()
@@ -168,7 +168,7 @@ public sealed class ScopedSemanticExecutionRegressionTests
 
     private static string Json<T>(IEnumerable<T> items) => JsonSerializer.Serialize(items.ToArray());
 
-    private sealed class ScopeFixture : IDisposable
+    internal sealed class ScopeFixture : IDisposable
     {
         private ScopeFixture(string root) => Root = root;
 

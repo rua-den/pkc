@@ -11,6 +11,7 @@ public sealed class AiWorkspaceRenderer
     public const string AnswerContractRelativePath = "_policy/answer-contract.md";
     public const string ManifestRelativePath = "_meta/manifest.json";
     public const string CatalogRelativePath = "_meta/catalog.json";
+    public const string CoverageRelativePath = "_meta/coverage.json";
 
     public IReadOnlyDictionary<string, string> Render(
         IReadOnlyDictionary<string, string> canonicalKnowledgeFiles,
@@ -165,6 +166,7 @@ public sealed class AiWorkspaceRenderer
 - Prefer `unknown`, `not proven`, or a bounded partial answer over an unsupported claim.
 - Never let frontend evidence upgrade weaker backend authority, or vice versa.
 - Do not treat code-observed behavior as approved product intent unless explicit intent evidence exists.
+- `_meta/coverage.json` counts what PKC did not semantically analyze (test evidence, indexed generated/infrastructure/runtime-dependency files, not-analyzable and unknown areas); when an answer may depend on those areas, say it is not proven.
 """;
     }
 

@@ -9,9 +9,9 @@ using Pkc.Frontend;
 using Pkc.Knowledge;
 
 var command = args.Length > 0 ? args[0] : string.Empty;
-if (args.Length != 2 || (command != "scan" && command != "build" && command != "run"))
+if (args.Length != 2 || (command != "discover" && command != "scan" && command != "build" && command != "run"))
 {
-    Console.Error.WriteLine("Usage: pkc <scan|build|run> <repository-path>");
+    Console.Error.WriteLine("Usage: pkc <discover|scan|build|run> <repository-path>");
     return 2;
 }
 
@@ -27,11 +27,12 @@ try
     Progress("start", $"PKC {command} started.");
 
     // Discovery establishes and persists the repository profile and scan plan before any expensive semantic scanner
-    // starts. `run` executes the scanners inside the plan scope; `scan` and `build` keep their whole-root scope.
+    // starts. `discover` stops there (plan only); `run` executes the scanners inside the plan scope; `scan` and
+    // `build` keep their whole-root scope.
     Progress("discover", "Discovering repository shape before semantic analysis...");
     var scan = await new DiscoveryFirstScanPipeline(ReportDiscovery, ReportStage, scoped: command == "run").RunAsync(
         repositoryPath,
-        [
+        command == "discover" ? [] : [
             new SemanticScanStage("csharp", async (_, _) =>
             {
                 Progress("scan:csharp", "Scanning C# repository evidence...");
@@ -59,6 +60,16 @@ try
                 InScannerSourceScope = FrontendScanner.IsInSourceScope
             }
         ]);
+
+    if (command == "discover")
+    {
+        Console.WriteLine("PKC discover complete (plan only): no semantic scanner started.");
+        Console.WriteLine(scan.State.ProfilePath);
+        Console.WriteLine(scan.State.PlanPath);
+        return 0;
+    }
+
+    ReportCoverage(scan.Coverage!, scan.CoveragePath!);
     var csharpFacts = scan.Documents[0];
     var frontendFacts = scan.Documents[1];
 
@@ -145,9 +156,12 @@ try
         if (command == "run")
         {
             Progress("workspace", "Rendering AI workspace...");
-            var workspaceFiles = new AiWorkspaceRenderer().Render(
-                canonicalKnowledgeFiles,
-                sourceRepositoryLabel);
+            var workspaceFiles = new Dictionary<string, string>(
+                new AiWorkspaceRenderer().Render(canonicalKnowledgeFiles, sourceRepositoryLabel),
+                StringComparer.Ordinal)
+            {
+                [AiWorkspaceRenderer.CoverageRelativePath] = ScanCoverageSerializer.SerializePortable(scan.Coverage!.ToPortable())
+            };
             Progress("workspace", "Writing AI workspace...");
             var workspacePath = await new AiWorkspaceWriter().WriteAsync(
                 repositoryPath,
@@ -250,6 +264,20 @@ static void ReportStage(SemanticStageExecution execution)
             ? $"Plan scope: {execution.PlannedFiles} planned semantic files; {execution.ExecutableFiles} within the scanner source scope, " +
               $"{execution.WithheldByScannerScope.Count} withheld by scanner name scope."
             : $"Whole-root scope ({execution.PlannedFiles} planned semantic files; plan scope applies to `pkc run`).");
+}
+
+static void ReportCoverage(ScanCoverage coverage, string coveragePath)
+{
+    Progress(
+        "coverage",
+        $"Semantic: {coverage.Stages.Sum(stage => stage.ExecutableFiles)} of {coverage.Stages.Sum(stage => stage.PlannedFiles)} planned files executable" +
+        $" ({coverage.Stages.Sum(stage => stage.WithheldByScannerScope.Count)} withheld by scanner name scope); " +
+        (coverage.Scoped
+            ? $"withheld by plan: test-evidence {coverage.Withheld(ScanMode.TestEvidence)}, light-index {coverage.Withheld(ScanMode.LightIndex)}, " +
+              $"runtime-index {coverage.Withheld(ScanMode.RuntimeDependencyIndex)} files, excluded {coverage.ExcludedAreas} areas; "
+            : "whole-root scope (plan not applied); ") +
+        $"not-analyzable {coverage.Coverage(PlanCoverage.NotAnalyzable)} files, unknown {coverage.Coverage(PlanCoverage.Unknown)} files / {coverage.UnknownAreas.Count} areas.");
+    Progress("coverage", $"Scan coverage: {coveragePath}");
 }
 
 static bool ShouldReportProgress(int completed, int total) =>

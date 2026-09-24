@@ -31,11 +31,22 @@ public static class ScanPlanSerializer
         JsonSerializer.Serialize(plan, DiscoveryJson.Options) + "\n";
 }
 
+public static class ScanCoverageSerializer
+{
+    /// <summary>Byte-stable serialization: no timestamps, no absolute paths, '\n' line endings.</summary>
+    public static string Serialize(ScanCoverage coverage) =>
+        JsonSerializer.Serialize(coverage, DiscoveryJson.Options) + "\n";
+
+    public static string SerializePortable(PortableScanCoverage coverage) =>
+        JsonSerializer.Serialize(coverage, DiscoveryJson.Options) + "\n";
+}
+
 /// <summary>Local-only discovery artifacts under <c>.pkc/discovery</c>; never part of the portable workspace.</summary>
 public static class RepositoryDiscoveryArtifacts
 {
     public const string ProfileRelativePath = ".pkc/discovery/repository-profile.json";
     public const string ScanPlanRelativePath = ".pkc/discovery/scan-plan.json";
+    public const string ScanCoverageRelativePath = ".pkc/discovery/scan-coverage.json";
 
     public static async Task<(string ProfilePath, string PlanPath)> WriteAsync(
         string repositoryPath,
@@ -48,13 +59,32 @@ public static class RepositoryDiscoveryArtifacts
         return (profilePath, planPath);
     }
 
+    public static Task<string> WriteCoverageAsync(
+        string repositoryPath,
+        ScanCoverage coverage,
+        CancellationToken cancellationToken = default) =>
+        WriteFileAsync(repositoryPath, ScanCoverageRelativePath, ScanCoverageSerializer.Serialize(coverage), cancellationToken);
+
+    /// <summary>A plan-only run removes the previous execution's coverage so it cannot be mistaken for the new plan's.</summary>
+    public static void DeleteCoverage(string repositoryPath)
+    {
+        var path = FullPath(repositoryPath, ScanCoverageRelativePath);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static string FullPath(string repositoryPath, string relativePath) =>
+        Path.Combine(Path.GetFullPath(repositoryPath), relativePath.Replace('/', Path.DirectorySeparatorChar));
+
     private static async Task<string> WriteFileAsync(
         string repositoryPath,
         string relativePath,
         string content,
         CancellationToken cancellationToken)
     {
-        var path = Path.Combine(Path.GetFullPath(repositoryPath), relativePath.Replace('/', Path.DirectorySeparatorChar));
+        var path = FullPath(repositoryPath, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllTextAsync(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), cancellationToken);
         return path;
