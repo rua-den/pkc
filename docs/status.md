@@ -16,7 +16,8 @@ V0.4.7-D / R7.10 joint visibility                  OPEN / REVIEW PAUSED / NOT AC
 V0.4.7-E0 repository discovery + bounded run       ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
 V0.4.7-E0 / RD1 inventory + safe exclusion         LOCAL PASS at fd3428f / PUSH + CI PENDING
 V0.4.7-E0 / RD2 application boundaries + ownership LOCAL PASS at 05eadb1 / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD3 vendor/custom frontend classification
+V0.4.7-E0 / RD3 vendor/custom frontend            LOCAL PASS at ac3efd9 / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD4 runtime/plugin provenance
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -78,9 +79,23 @@ Evidence: `docs/reviews/2026-09-24-rd2-application-boundaries-evidence.md`.
 - Release build 0 warnings; `Pkc.CSharp.Tests` 308/308, `Pkc.Frontend.Tests` 23/23; RD1 + RD2 + CLI focused tests 17/17; test-ownership mutation caught.
 - Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
 
-## Active implementation checkpoint — RD3
+## RD3 — LOCAL PASS
 
-RD3 vendor/custom frontend classification is unlocked by RD2 local PASS and is now the only production implementation checkpoint.
+```text
+ac3efd9f2b3f26bd99ab6cf141b8716325165578
+feat: classify vendor and generated frontend files in discovery
+```
+
+Evidence: `docs/reviews/2026-09-24-rd3-vendor-frontend-classification-evidence.md`.
+
+- Profile schema `0.3.0-discovery`: `THIRD_PARTY_RUNTIME` / `THIRD_PARTY_MODIFIED` / `THIRD_PARTY_UNKNOWN`, `RUNTIME_DEPENDENCY_INDEX`, generated artifacts with input provenance, byte-comparison list.
+- Vendor authority only from restored NuGet package content (byte comparison) and LibMan file lists; generated authority only from `bundleconfig.json` and resolvable source maps; names/banners/copies never classify.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 313/313, `Pkc.Frontend.Tests` 23/23; focused discovery tests 22/22; modified-vendor mutation caught.
+- Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
+
+## Active implementation checkpoint — RD4
+
+RD4 runtime/plugin provenance is unlocked by RD3 local PASS and is now the only production implementation checkpoint.
 
 ## RD1 acceptance record
 
@@ -113,7 +128,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1 is locally PASS and documented; RD2 was unlocked and is locally PASS; RD3 is unlocked.
+RD1, RD2 and RD3 are locally PASS and documented; RD4 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -185,9 +200,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (RD1 fd3428f, RD2 05eadb1 + docs) and confirm CI green
-implementation: RD3 vendor/custom frontend classification, regression-first
-→ finish and locally verify RD3
+operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9 + docs) and confirm CI green
+implementation: RD4 runtime/plugin provenance, regression-first
+→ finish and locally verify RD4
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD4
+→ only then start RD5
 ```

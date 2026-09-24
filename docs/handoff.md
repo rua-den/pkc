@@ -17,11 +17,16 @@ implementation                   05eadb1e44152f23bcf06134adfc89ae70572e47
                                  feat: model application boundaries in repository discovery
 evidence                         docs/reviews/2026-09-24-rd2-application-boundaries-evidence.md
 
+RD3 vendor/custom frontend       LOCAL PASS
+implementation                   ac3efd9f2b3f26bd99ab6cf141b8716325165578
+                                 feat: classify vendor and generated frontend files in discovery
+evidence                         docs/reviews/2026-09-24-rd3-vendor-frontend-classification-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD3                              ACTIVE
+RD4                              ACTIVE
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1/RD2 remotely, verify with `git ls-remote origin` that `main` contains `05eadb1` (and its docs successor), then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD3 remotely, verify with `git ls-remote origin` that `main` contains `ac3efd9` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -62,10 +67,26 @@ RD2 application boundaries + ownership
 LOCAL PASS at 05eadb1 / push + CI pending
 
 RD3 vendor/custom frontend classification
+LOCAL PASS at ac3efd9 / push + CI pending
+
+RD4 runtime/plugin provenance
 ACTIVE
 ```
 
-## RD3 scope
+## RD4 scope
+
+Add provenance-bearing runtime/plugin edges to the same profile component graph:
+
+- a plugin project absent from host project references, copied by deterministic build metadata into a host-loaded location and loaded by deterministic identity → `runtime-plugin-load` edge with loader, copy and identity evidence;
+- copy without loader → no authoritative runtime edge;
+- loader without resolvable plugin identity → UNKNOWN;
+- test-only plugin load → test evidence, not a production edge.
+
+Loader evidence is Tier-2 bounded composition evidence: inspect only the minimum files needed, never recursive business semantics. Unsupported loader shapes stay UNKNOWN.
+
+Do not start RD5 until RD4 is explicitly PASS.
+
+## RD3 scope (completed)
 
 Extend the same `RepositoryProfile` (areas + file-pattern overrides) so a legacy frontend tree can be separated into:
 
@@ -80,7 +101,7 @@ Evidence must be deterministic and manifest/layout/banner based (package/manifes
 
 Do not implement runtime plugin edges (RD4) or scoped scanner execution (RD6).
 
-Do not start RD4 until RD3 is explicitly PASS.
+RD3 is locally PASS (see evidence above).
 
 ## RD2 scope (completed)
 
@@ -262,8 +283,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f and 05eadb1
-implementation: RD3 vendor/custom frontend classification, regression-first
+operator: push main and confirm CI green for fd3428f, 05eadb1 and ac3efd9
+implementation: RD4 runtime/plugin provenance, regression-first
 ```
 
-After RD3 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD4 only.
+After RD4 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD5 only.
