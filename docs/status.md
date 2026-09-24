@@ -1,14 +1,14 @@
 # PKC Status
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ## Repository state reviewed
 
-Current `main` immediately before this state-correction checkpoint:
+Current `main` immediately before this support-matrix checkpoint:
 
 ```text
-3f1b481c1d909953b657b4cf0b142f894a0e0121
-docs: audit RD8 runtime plugin real-repo evidence [skip ci]
+06f0f01f522650db7b2304a4a8295d2d5b118724
+docs: correct RD8 runtime plugin target applicability [skip ci]
 ```
 
 Latest production-code ancestor remains:
@@ -18,7 +18,7 @@ fa30e3eb140357da5453702090be307417abb4e2
 fix: report the preserved workspace when it could not replace the current one
 ```
 
-Important merged production checkpoints beneath current docs HEAD:
+Important merged RD8 production checkpoints beneath this docs HEAD:
 
 ```text
 612fa998da6983662a90eed2836714c9928243b5
@@ -31,7 +31,7 @@ fa30e3eb140357da5453702090be307417abb4e2
 fix: report the preserved workspace when it could not replace the current one
 ```
 
-This update is documentation/state correction only. It does not change production behavior.
+This checkpoint is documentation/audit only. It does not change production behavior or runtime authority.
 
 ## Current priority state
 
@@ -48,71 +48,65 @@ V0.4.7-E0 repository discovery + bounded run        ACTIVE / USER-AUTHORIZED BOU
 V0.4.7-E0 / RD1 inventory + safe exclusion          PASS / COMPLETE
 V0.4.7-E0 / RD2 application boundaries + ownership PASS / COMPLETE
 V0.4.7-E0 / RD3 vendor/custom frontend              PASS / COMPLETE
-V0.4.7-E0 / RD4 runtime/plugin provenance           PASS / COMPLETE (deterministic/synthetic coverage)
+V0.4.7-E0 / RD4 runtime/plugin provenance           PASS / COMPLETE (deterministic/synthetic gate)
 V0.4.7-E0 / RD5 deterministic ScanPlan              PASS / COMPLETE
 V0.4.7-E0 / RD6 scoped/bounded semantic execution   PASS / COMPLETE
 V0.4.7-E0 / RD7 coverage + observability            PASS / COMPLETE
-V0.4.7-E0 / RD8 private large-repository validation ACTIVE / KNOWN BLOCKER / NOT PASS
+V0.4.7-E0 / RD8 private large-repository validation ACTIVE / KNOWN RUNTIME-PLUGIN BLOCKER / NOT PASS
 V0.4.7-E1 remaining product-value repairs           LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14          LOCKED behind E1
 continuous update/diff                              LOCKED
 V0.5 Azure DevOps input evidence                    LOCKED
 ```
 
-## Priority boundary
-
-The user explicitly authorized E0 before formal R7.10/D acceptance because scan operability is required for a credible demo.
-
-That override remains active, but it does **not** mark R7.10/D PASS and does not allow E0 work to weaken accepted semantic/fail-closed authority.
-
-Authoritative decision:
-
-`docs/plans/2026-09-24-demo-scan-priority-override.md`
+The E0 priority override remains active because practical scan operability is required for the demo. It does not self-certify R7.10/D and does not permit weaker semantic/runtime authority.
 
 ## RD1-RD7
 
-RD1-RD7 are `PASS / COMPLETE`. Their implementation commits are ancestors of current `main`, their evidence documents remain in the repository, and descendant production-equivalent workflow runs were green.
+RD1-RD7 remain `PASS / COMPLETE`.
 
-RD4 is specifically a deterministic/synthetic acceptance of the supported runtime-plugin provenance rule. It was never proof that the intended private repository's runtime topology had been recovered.
+RD4 specifically accepted the currently supported fail-closed runtime-plugin rule. It did not prove that every real runtime loader/copy topology is supported.
+
+Current RD4 authority is:
+
+```text
+production host loader
++ unique literal assembly identity
++ deterministic build/copy delivery into the host tree
+-> HIGH runtime-plugin-load edge
+```
+
+Unsupported or ambiguous shapes remain unresolved/UNKNOWN.
 
 ## RD8 supporting evidence
 
-The first approved private large-repository exercise produced useful but incomplete evidence.
+Historical approved private exercise remains supporting evidence only:
 
-Sanitized scale:
+```text
+repository scale: about 26.9k files / 18 hosts
+planned semantic files: about 16.8k
+facts / relations: about 263.6k / 2.04M
+workflow candidates: 4,186
 
-- about 26.9k files;
-- 18 hosts;
-- about 16.8k planned semantic files;
-- 1,982 test-evidence files and 41 light-index files withheld by plan;
-- 138 excluded areas;
-- about 263.6k facts and 2.04M relations;
-- 4,186 workflow candidates.
+run 1: ~41.5 min / ~18.6 GB / OOM during artifact write
+run 2 with resource repairs: ~29 min / ~7.5 GB / exit 0
+pkc discover: about 98 s
+run-2 workspace: about 703 product features / 4,709 files
+```
 
-Observed runs:
-
-| Run | PKC state | Result | Elapsed | Peak memory |
-| --- | --- | --- | --- | --- |
-| 1 | `cf20b29` (RD7) | failed at artifact write (OOM) | 41.5 min | ~18.6 GB |
-| 2 | `cf20b29` + then-working resource repairs | exit 0; workspace generated | 29 min | ~7.5 GB |
-
-`pkc discover` alone took about 98 seconds. Run 2 generated about 703 product features and 4,709 workspace files.
-
-The resource repairs used by run 2 are now merged in `612fa998`. Later semantic/output fixes `48ce2f10` and `fa30e3eb` are also merged. Therefore the old successful run remains supporting evidence, not current-main RD8 acceptance.
+The old successful run predates the fully integrated current production state and cannot close RD8-A or RD8-B.
 
 ## RD8 Gate A — fresh current-main operability
 
 Still required in the approved source-enabled/company environment:
 
 ```text
-build PKC Release at current main
+build PKC Release from current main
 pkc discover <approved-private-copy>
 pkc run <approved-private-copy>      # fresh acceptance run; no --resume
 ```
 
-Record sanitized elapsed time, peak process-tree memory, coverage, evidence counts, artifact status, final workspace path and file count. Confirm `RUN_SUMMARY.md`, `run-summary.json`, discovery/coverage/checkpoint metadata and the generated workspace are internally plausible.
-
-No universal hard RAM threshold exists. The run must materially improve the original failure mode and complete practically on the approved demo environment.
+Record sanitized elapsed time, peak process-tree memory, coverage, evidence counts, artifact status, final workspace path and file count. Confirm run summaries, discovery/coverage/checkpoint metadata and workspace output are internally plausible.
 
 ## RD8 Gate B — targeted Level-1 product value
 
@@ -126,55 +120,63 @@ phase 3: compare and score
 
 Prefer the quantity-adjustment probe plus materially different questions from `docs/question-trainning.md`.
 
-A compiler exit, non-zero facts or generated workspace alone is not product-value acceptance.
+A compiler exit or generated workspace alone is not product-value acceptance.
 
 ## RD8 Gate C — runtime/plugin target blocker
 
-A recovered sanitized reconnaissance corrects the previous applicability assumption.
-
-The intended large-repository class **does contain runtime-loaded plugin modules**:
+The intended large-repository class is now known to contain runtime-loaded plugins:
 
 ```text
 host
-  -> reflection-based plugin load from an output subfolder
-  -> plugin modules not project-referenced by the host
+  -> reflection-based plugin load from runtime output
+  -> plugin projects are not host project references
 
 build delivery
-  -> custom post-build copy into the runtime output
+  -> custom post-build copy into runtime output
 ```
 
-The sanitized reconnaissance also identifies solution/build dependency evidence and post-build copy targets as the evidence needed to model those runtime edges.
+Therefore target applicability is `YES`; the old `N/A` path is invalid. Earlier PKC output without runtime-plugin edges is missing discovery yield, not proof that the topology is absent.
 
-Therefore:
+### Repo-local audit completed on 2026-09-25
+
+Current production support was re-audited against RD4 regressions and code.
+
+Supported loader identity shapes include direct string-literal assembly names and direct literal `.dll` names in supported reflection load APIs. Supported delivery shapes are literal `OutputPath`/`OutDir`/`BaseOutputPath`, supported MSBuild `<Copy>` forms, or the existing unconditional project-reference fallback.
+
+Current production intentionally fails closed for important candidate target shapes including:
+
+- folder enumeration such as `GetFiles(..., "*.dll")` followed by a variable-path assembly load;
+- post-build `copy` / `xcopy` / `<Exec>` command delivery;
+- loaders implemented in shared libraries rather than the production host's own project;
+- configuration-driven plugin identities;
+- solution-level `ProjectDependencies` as dependency provenance.
+
+The `.sln` parser currently records solution project membership only; it does not model `ProjectDependencies`.
+
+This is not a newly introduced defect. RD4's own acceptance record explicitly carried folder-scan loaders and post-build shell copy commands as known fail-closed gaps for RD8 to measure.
+
+Authoritative audit/decision aid:
+
+`docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
+
+### Repair authority remains locked to exact target syntax
+
+No production repair is authorized from architectural resemblance alone.
+
+Phase C0 must return only a sanitized classification:
 
 ```text
-runtime/plugin applicability on intended target: YES
-N/A disposition for intended target:             NOT VALID
-previous PKC private-profile runtime edge yield: MISSING / NOT PROVEN
-RD8-C:                                           OPEN / KNOWN BLOCKER
+loader ownership: host | shared library | other
+identity shape: direct literal | folder scan | config/list | other
+load API family: Assembly.* | AssemblyLoadContext.* | custom
+copy shape: OutputPath | MSBuild Copy | PostBuildEvent | Exec/copy/xcopy | external script
+solution ProjectDependencies: relevant | unrelated | absent
+current PKC result: edge count + unresolved-reason counts
 ```
 
-The earlier statement that the private repository “did not exercise” runtime-plugin cases is now interpreted as **PKC did not recover the applicable topology**, not that the topology was absent.
+If exact target inspection confirms a currently unsupported shape, then use regression-first synthetic coverage and the minimum generic repair.
 
-The safe summary does not expose enough exact loader/copy syntax to implement a generic parser without guessing. Phase C therefore requires a narrow source-enabled inspection of the actual loader + delivery syntax, sanitized into a regression shape. If current main cannot represent that deterministic provenance:
-
-```text
-exact sanitized defect shape
--> red synthetic regression
--> minimum generic fix
--> negative fail-closed regressions
--> focused / related / full relevant local verification
--> one coherent commit/push
--> rerun affected RD8-C discovery evidence
-```
-
-Do not create runtime authority from similar names, folder proximity, or copy/load hints that do not jointly prove identity and delivery.
-
-Evidence:
-
-- `docs/reviews/2026-09-24-rd4-runtime-plugin-provenance-evidence.md`
-- `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
-- `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
+For a folder-scan repair, HIGH authority must still require deterministic composition of the loader directory/pattern, actual assembly-load operation, unique plugin identity, and delivery of that exact plugin output into the same runtime directory. Solution build dependency alone is never runtime-use authority.
 
 ## E0 completion rule
 
@@ -184,7 +186,7 @@ E0 is PASS only when:
 RD1-RD7 PASS / COMPLETE
 + RD8-A fresh current-main run closes
 + RD8-B targeted Level-1 product value closes
-+ RD8-C applicable runtime-plugin topology is correctly handled or explicitly accepted with deterministic evidence
++ RD8-C applicable runtime-plugin topology is deterministically represented on the real target
 + normal product path practically produces the workspace
 + coverage remains honest
 ```
@@ -193,7 +195,7 @@ Only then may E1 unlock.
 
 ## Parked work
 
-Construction/default/computation candidate remains parked until E0 PASS:
+Construction/default/computation remains parked until E0 PASS:
 
 ```text
 branch  fix/product-value-construction-state
@@ -204,21 +206,27 @@ Do not merge it during RD8.
 
 ## Formal D state
 
-R7.10/D remains OPEN and not accepted. The prior rereview lane is paused by product priority, not passed. A fresh independent review is still required before final V0.4.7 acceptance.
+R7.10/D remains OPEN and not accepted. The prior independent-review lane is paused by product priority, not passed. A fresh independent review is still required before final V0.4.7 acceptance.
 
 ## Exact next action
 
 ```text
-RD8-C first:
-  approved source-enabled inspection of the target's actual reflection loader + build/copy syntax
-  -> sanitize the exact deterministic defect shape
-  -> if current main misses it, regression-first generic repair
-  -> rerun discovery and prove the applicable runtime-plugin edge/fail-closed behavior
+RD8-C Phase C0 in approved source-enabled environment:
+  fill the sanitized support-matrix checklist only
+  -> identify exact loader + delivery + solution-dependency syntax family
+  -> record current PKC edge/unresolved counts
 
-Then / in the same approved environment:
+If the exact shape is unsupported:
+  focused red synthetic regression
+  -> minimum generic fail-closed repair
+  -> negative regressions
+  -> focused / related / full relevant local verification
+  -> one coherent implementation commit/push
+  -> rerun only affected RD8-C discovery evidence
+
+Then / alongside approved-environment validation:
   RD8-A fresh discover + full run without --resume
-  -> sanitized resource/coverage/workspace evidence
-  RD8-B 2-3 Level-1 known-answer probes
+  -> RD8-B 2-3 Level-1 probes
 
 Do not start E1 until RD8 and E0 are explicitly PASS.
 ```

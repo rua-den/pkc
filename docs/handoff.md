@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ## Read first
 
@@ -14,29 +14,30 @@ Last updated: 2026-09-24
 8. `docs/plans/2026-09-24-demo-scan-priority-override.md`
 9. `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md`
 10. `docs/plans/2026-09-24-rd8-current-main-validation-runbook.md`
-11. `docs/benchmarks/product-value-benchmark-protocol.md`
-12. `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
-13. `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
+11. `docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
+12. `docs/benchmarks/product-value-benchmark-protocol.md`
+13. `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
+14. `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
 
 Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because a handoff names one.
 
 ## Repository state at this handoff
 
-Current `main` immediately before this documentation checkpoint:
+Current `main` immediately before this support-matrix checkpoint:
 
 ```text
-3f1b481c1d909953b657b4cf0b142f894a0e0121
-docs: audit RD8 runtime plugin real-repo evidence [skip ci]
+06f0f01f522650db7b2304a4a8295d2d5b118724
+docs: correct RD8 runtime plugin target applicability [skip ci]
 ```
 
-Latest production-code ancestor:
+Latest production-code ancestor remains:
 
 ```text
 fa30e3eb140357da5453702090be307417abb4e2
 fix: report the preserved workspace when it could not replace the current one
 ```
 
-This handoff update is docs/state only.
+This handoff update is docs/audit only. It does not change production behavior.
 
 ## Current checkpoint state
 
@@ -50,7 +51,7 @@ RD4 runtime/plugin provenance       PASS / COMPLETE (deterministic/synthetic gat
 RD5 deterministic ScanPlan          PASS / COMPLETE
 RD6 scoped semantic execution       PASS / COMPLETE
 RD7 coverage + observability        PASS / COMPLETE
-RD8 private large-repository gate   ACTIVE / KNOWN BLOCKER / NOT PASS
+RD8 private large-repository gate   ACTIVE / KNOWN RUNTIME-PLUGIN BLOCKER / NOT PASS
 E1 remaining semantic repairs       LOCKED behind E0
 E2 final product acceptance         LOCKED behind E1
 ```
@@ -72,7 +73,7 @@ These provide streamed/atomic writes, shared `MSBuildWorkspace` use, checkpoint/
 
 ## RD8 supporting evidence
 
-The first approved private exercise remains supporting evidence only:
+Historical approved private exercise remains supporting evidence only:
 
 ```text
 repository scale: about 26.9k files / 18 hosts
@@ -88,69 +89,136 @@ run-2 workspace: about 703 product features / 4,709 files
 
 The successful run predates the fully integrated current production state and cannot close RD8-A or RD8-B.
 
-## Important correction — the intended target DOES contain runtime plugins
+## Intended target runtime topology
 
-A saved sanitized reconnaissance of the intended large mixed repository was recovered after the earlier real-repository artifact audit.
-
-It proves the target architecture includes runtime plugin modules with this sanitized shape:
+A saved sanitized reconnaissance proves the intended large mixed repository has runtime plugin modules with this shape:
 
 ```text
-WEB_API_A
-  -> [runtime reflection load; no project reference]
-       SHARED_MODULE_P1
-       SHARED_MODULE_P2
+production host
+  -> reflection-based runtime load from an output subfolder
+  -> plugin projects not project-referenced by the host
 
 plugin delivery
-  -> copied into a runtime output subfolder by a custom post-build step
+  -> custom post-build copy into runtime output
 ```
 
-The reconnaissance explicitly states that a project-reference-only graph would miss these plugins and recommends combining host loader evidence with solution build-dependency declarations and post-build copy targets.
+The reconnaissance also names solution/build-dependency declarations and post-build copy targets as relevant evidence for the relationship.
 
-This changes RD8-C materially:
+Therefore:
 
 ```text
-old interpretation:
-  private target may have no applicable runtime/plugin topology -> N/A could be possible
-
-corrected interpretation:
-  private target applicability = YES
-  previous PKC discovery did not recover the applicable topology
-  N/A is not valid for this intended target
+runtime/plugin applicability on intended target: YES
+accepted N/A path:                            CLOSED
+previous PKC runtime-edge yield:              MISSING / NOT PROVEN
+RD8-C:                                        OPEN / KNOWN BLOCKER
 ```
 
-The previous statement that the private repository “did not exercise runtime-plugin cases” referred to generated PKC evidence, not the real architecture.
+## Repo-local RD8-C audit completed
 
-Review:
+Current production and RD4 regressions were re-audited before any repair.
 
-`docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
+Current support:
 
-## Why production code is not being changed yet
+```text
+loader:
+  supported Assembly.Load / LoadFrom / LoadFile / UnsafeLoadFrom
+  supported AssemblyLoadContext name/path load APIs
+  identity promoted only from accepted direct string-literal name/.dll evidence
 
-The saved sanitized reconnaissance proves the architectural shape but intentionally does not include proprietary source bodies or enough exact syntax to identify which unsupported RD4 form is present.
+delivery:
+  OutputPath / OutDir / BaseOutputPath literal prefix into host
+  supported MSBuild <Copy> from plugin output or host copy from plugin tree
+  unconditional host ProjectReference fallback
 
-Do **not** guess the implementation from likely patterns such as `Directory.GetFiles`, `Assembly.LoadFrom`, `PostBuildEvent`, `xcopy`, or a particular MSBuild target.
+identity:
+  unique literal AssemblyName or default project-file assembly name
+  ambiguous/missing identity fails closed
+```
 
-The next source-enabled inspection needs only the deterministic syntax shape:
+Known fail-closed gaps carried by RD4 and relevant to the intended target class:
 
-1. loader syntax family;
-2. build/copy syntax family;
-3. whether solution-level build dependencies contribute to plugin identity/delivery;
-4. sanitized evidence sufficient to construct a synthetic regression.
+```text
+folder scan GetFiles(..., "*.dll") -> variable-path load
+PostBuildEvent / Exec copy / xcopy / robocopy
+loader in shared library
+configuration-driven identities
+VB/custom loader shapes
+solution-level ProjectDependencies provenance
+```
 
-If current main misses that exact deterministic shape:
+The current solution parser records solution project membership only. It does not parse `.sln` `ProjectSection(ProjectDependencies)` into dependency evidence.
+
+Full matrix and repair authority:
+
+`docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
+
+## Why production code is still unchanged
+
+The repo-local audit narrows the likely gap but does not prove which unsupported syntax the private target actually uses.
+
+Do not guess `Directory.GetFiles`, `PostBuildEvent`, `xcopy`, `<Exec>`, or `.sln ProjectDependencies` merely because those forms are plausible.
+
+The exact source-enabled inspection now has a bounded output contract and needs no proprietary source dump.
+
+Return only:
+
+```text
+A. loader ownership
+   host own project | shared library | other/unknown
+
+B. identity/enumeration
+   direct literal name | direct literal .dll | folder scan + variable path | config/list | other
+
+C. load API family
+   Assembly.* | AssemblyLoadContext.* | custom/other
+
+D. delivery syntax
+   OutputPath | MSBuild Copy | PostBuildEvent | Exec/copy/xcopy/robocopy | external script/other
+
+E. solution dependency
+   ProjectDependencies relevant | unrelated | absent
+
+F. current PKC result
+   runtime-plugin-load edge count
+   runtime-loader-identity-unresolved count
+   runtime-plugin-copy-unproven count
+   plugin-copy-without-identified-loader count
+   any other relevant unresolved reason + count
+```
+
+No real project names, paths, source snippets, assembly identities, config values or endpoints are needed.
+
+## Repair authority if Phase C0 confirms a gap
+
+Never promote runtime authority from name similarity, folder proximity, solution build order, copy-only evidence or loader-only evidence.
+
+If the target is a folder-scan loader, the minimum generic HIGH rule must compose:
+
+```text
+host enumerates a deterministic runtime directory/pattern
++ enumerated file is passed to an assembly-load operation
++ plugin has unique deterministic assembly identity
++ build metadata delivers that exact plugin output to the same loader runtime directory
+```
+
+Ambiguous identity, unresolved directory, delivery to a different directory, broad dynamic command expansion or test-only loaders remain fail-closed.
+
+Solution `ProjectDependencies` may contribute build provenance but is never runtime-use evidence by itself.
+
+If Phase C0 confirms a currently unsupported shape:
 
 ```text
 private observation
--> sanitize defect shape
--> add focused red synthetic regression
+-> sanitize exact defect shape
+-> focused red synthetic regression
 -> minimum generic repair
--> add negative fail-closed regressions
+-> negative fail-closed regressions
 -> focused + related + full relevant local verification
--> one coherent commit/push
--> rerun affected RD8-C discovery evidence
+-> one coherent implementation commit/push
+-> rerun only affected RD8-C discovery evidence
 ```
 
-Never link plugins by similar names, nearby folders, or copy/load hints without deterministic identity + delivery provenance.
+Do not combine folder-loader, shell-copy and solution-dependency support speculatively. Implement only the real-target shape that the evidence requires.
 
 ## RD8-A — still required
 
@@ -175,19 +243,6 @@ phase 3 compare and score
 ```
 
 Include the quantity-adjustment probe and one or two materially different questions from `docs/question-trainning.md`.
-
-## RD8-C — now a known blocker
-
-Current state:
-
-```text
-applicable topology exists                 YES
-current-main proof on intended target      MISSING / NOT PROVEN
-accepted N/A path for intended target      CLOSED
-exact deterministic defect shape           EXTERNAL SOURCE-ENABLED INSPECTION REQUIRED
-```
-
-Jellyfin and Loren remain useful evidence that their pinned sources do not exercise this shape; they cannot substitute for the intended target. Do not spend a GitHub runner on the existing manual benchmark corpus merely to reproduce another no-applicable-shape result.
 
 ## E0 completion rule
 
@@ -220,11 +275,14 @@ R7.10/D remains OPEN. The independent-review lane is paused, not passed. A fresh
 
 ```text
 approved source-enabled environment:
-  inspect only the actual runtime loader + build/copy provenance shape
-  -> sanitize exact syntax/evidence pattern
+  fill the RD8-C Phase-C0 support-matrix checklist only
+  -> loader ownership + identity/enumeration + load API
+  -> delivery syntax
+  -> solution ProjectDependencies role
+  -> current PKC edge/unresolved counts
 
-implementation, only if current main misses that pattern:
-  regression-first generic RD8-C repair
+implementation, only if exact target shape is unsupported:
+  regression-first minimum generic repair
   -> local verification
   -> one coherent commit/push
 
