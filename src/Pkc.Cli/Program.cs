@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
@@ -8,18 +9,31 @@ using Pkc.CSharp;
 using Pkc.Frontend;
 using Pkc.Knowledge;
 
-var command = args.Length > 0 ? args[0] : string.Empty;
-if (args.Length != 2 || (command != "discover" && command != "scan" && command != "build" && command != "run"))
+var resume = args.Contains("--resume", StringComparer.Ordinal);
+var arguments = args.Where(argument => argument != "--resume").ToArray();
+var command = arguments.Length > 0 ? arguments[0] : string.Empty;
+if (arguments.Length != 2 ||
+    (command != "discover" && command != "scan" && command != "build" && command != "run") ||
+    (resume && command is not ("build" or "run")))
 {
-    Console.Error.WriteLine("Usage: pkc <discover|scan|build|run> <repository-path>");
+    Console.Error.WriteLine("Usage: pkc <discover|scan|build|run> <repository-path> [--resume]");
+    Console.Error.WriteLine("  --resume  (build/run) reuse the last completed scan when repository structure and PKC scanners are unchanged.");
     return 2;
 }
 
-var repositoryPath = Path.GetFullPath(args[1]);
+var repositoryPath = Path.GetFullPath(arguments[1]);
 if (!Directory.Exists(repositoryPath))
 {
     Console.Error.WriteLine($"Repository path does not exist: {repositoryPath}");
     return 2;
+}
+
+var timings = new List<PhaseTiming>();
+var phaseClock = Stopwatch.StartNew();
+void Timed(string phase)
+{
+    timings.Add(new PhaseTiming(phase, phaseClock.Elapsed.TotalSeconds));
+    phaseClock.Restart();
 }
 
 try
@@ -30,59 +44,19 @@ try
     // starts. `discover` stops there (plan only); `run` executes the scanners inside the plan scope; `scan` and
     // `build` keep their whole-root scope.
     Progress("discover", "Discovering repository shape before semantic analysis...");
-    var scan = await new DiscoveryFirstScanPipeline(ReportDiscovery, ReportStage, scoped: command == "run").RunAsync(
-        repositoryPath,
-        command == "discover" ? [] : [
-            new SemanticScanStage("csharp", async (_, _) =>
-            {
-                Progress("scan:csharp", "Scanning C# repository evidence...");
-                var document = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
-                Progress(
-                    "scan:csharp",
-                    $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
-                return document;
-            })
-            {
-                Scanner = ScanPlanner.CSharpScanner,
-                InScannerSourceScope = CSharpEvidenceScanner.IsInSourceScope
-            },
-            new SemanticScanStage("frontend", async (_, _) =>
-            {
-                Progress("scan:frontend", "Scanning frontend repository evidence...");
-                var document = await new FrontendScanner().ScanAsync(repositoryPath);
-                Progress(
-                    "scan:frontend",
-                    $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
-                return document;
-            })
-            {
-                Scanner = ScanPlanner.FrontendScanner,
-                InScannerSourceScope = FrontendScanner.IsInSourceScope
-            }
-        ]);
+    var scoped = command == "run";
+    var pipeline = new DiscoveryFirstScanPipeline(ReportDiscovery, ReportStage, scoped: command == "run");
+    var state = await pipeline.DiscoverAsync(repositoryPath);
+    Timed("discover");
 
     if (command == "discover")
     {
+        await pipeline.ExecuteAsync(repositoryPath, state, []);
         Console.WriteLine("PKC discover complete (plan only): no semantic scanner started.");
-        Console.WriteLine(scan.State.ProfilePath);
-        Console.WriteLine(scan.State.PlanPath);
+        Console.WriteLine(state.ProfilePath);
+        Console.WriteLine(state.PlanPath);
         return 0;
     }
-
-    ReportCoverage(scan.Coverage!, scan.CoveragePath!);
-    var csharpFacts = scan.Documents[0];
-    var frontendFacts = scan.Documents[1];
-
-    Progress("merge", "Merging repository evidence...");
-    var facts = Merge(csharpFacts, frontendFacts);
-    Progress("merge", $"Complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations.");
-
-    Progress("link", "Building cross-stack workflow candidates...");
-    var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
-    Progress("enrich", "Enriching workflow candidates with validation and visibility evidence...");
-    candidates = new ValidationConsistencyCandidateEnricher().Enrich(candidates, facts);
-    candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
-    Progress("link", $"Complete: {candidates.Candidates.Count} workflow candidates.");
 
     var outputDirectory = Path.Combine(repositoryPath, ".pkc");
     Directory.CreateDirectory(outputDirectory);
@@ -94,13 +68,115 @@ try
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    Progress("write", "Writing scan artifacts...");
     var factsPath = Path.Combine(outputDirectory, "facts.json");
-    await File.WriteAllTextAsync(factsPath, JsonSerializer.Serialize(facts, options));
+    var scannerIdentity = ScanCheckpoint.IdentityOf([typeof(CSharpEvidenceScanner).Assembly, typeof(FrontendScanner).Assembly]);
+    ScanCheckpoint? checkpoint = null;
+    if (resume)
+    {
+        Progress("resume", "Checking the last scan checkpoint...");
+        (checkpoint, var reason) = await ScanCheckpoint.TryLoadAsync(repositoryPath, state.Plan.InputFingerprint, scannerIdentity, scoped);
+        if (checkpoint is null)
+        {
+            Progress("resume", $"Cannot resume: {reason}. Running a full scan instead.");
+        }
+    }
+
+    FactDocument facts;
+    ScanCoverage coverage;
+    if (checkpoint is not null)
+    {
+        Progress(
+            "resume",
+            $"Reusing the scan from {checkpoint.CreatedUtc.ToLocalTime():yyyy-MM-dd HH:mm} ({checkpoint.Facts} facts, {checkpoint.Relations} relations). " +
+            "Source edits made after that scan are not reflected; run without --resume for a fresh scan.");
+        facts = await ScanCheckpoint.LoadFactsAsync(repositoryPath, checkpoint, options);
+        coverage = checkpoint.Coverage;
+        ReportCoverage(coverage, await RepositoryDiscoveryArtifacts.WriteCoverageAsync(repositoryPath, coverage));
+        Timed("load scan");
+    }
+    else
+    {
+        // A full scan is about to replace facts.json: an older checkpoint must never outlive the facts it describes.
+        ScanCheckpoint.Delete(repositoryPath);
+        var scan = await pipeline.ExecuteAsync(
+            repositoryPath,
+            state,
+            [
+                new SemanticScanStage("csharp", async (_, _) =>
+                {
+                    Progress("scan:csharp", "Scanning C# repository evidence...");
+                    var document = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
+                    Progress(
+                        "scan:csharp",
+                        $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
+                    return document;
+                })
+                {
+                    Scanner = ScanPlanner.CSharpScanner,
+                    InScannerSourceScope = CSharpEvidenceScanner.IsInSourceScope
+                },
+                new SemanticScanStage("frontend", async (_, _) =>
+                {
+                    Progress("scan:frontend", "Scanning frontend repository evidence...");
+                    var document = await new FrontendScanner().ScanAsync(repositoryPath);
+                    Progress(
+                        "scan:frontend",
+                        $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
+                    return document;
+                })
+                {
+                    Scanner = ScanPlanner.FrontendScanner,
+                    InScannerSourceScope = FrontendScanner.IsInSourceScope
+                }
+            ]);
+
+        coverage = scan.Coverage!;
+        ReportCoverage(coverage, scan.CoveragePath!);
+
+        Progress("merge", "Merging repository evidence...");
+        facts = Merge(scan.Documents[0], scan.Documents[1]);
+        Progress("merge", $"Complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations.");
+        Timed("scan");
+    }
+
+    // Artifact writes after the scan are best-effort: a failure is reported in the summary instead of discarding the
+    // analysis. Once facts.json is written, a checkpoint lets a later failure be resumed without re-scanning.
+    var writes = new ArtifactWriteLog();
+    if (checkpoint is null)
+    {
+        Progress("write", "Writing scan evidence...");
+        if (await writes.TryWriteJsonAsync("Evidence (facts)", factsPath, facts, options))
+        {
+            try
+            {
+                await ScanCheckpoint.WriteAsync(
+                    repositoryPath,
+                    await ScanCheckpoint.CreateAsync(repositoryPath, state.Plan.InputFingerprint, scannerIdentity, facts, timings[^1].Seconds, coverage));
+                writes.Record("Scan checkpoint (for --resume)", Path.Combine(repositoryPath, ScanCheckpoint.RelativePath), true);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                writes.Record("Scan checkpoint (for --resume)", Path.Combine(repositoryPath, ScanCheckpoint.RelativePath), false, exception.Message);
+            }
+        }
+
+        Timed("write evidence");
+    }
+    else
+    {
+        writes.Record("Evidence (facts, reused)", factsPath, true);
+    }
+
+    Progress("link", "Building cross-stack workflow candidates...");
+    var candidates = new CrossStackFeatureCandidateBuilder().Build(facts);
+    Progress("enrich", "Enriching workflow candidates with validation and visibility evidence...");
+    candidates = new ValidationConsistencyCandidateEnricher().Enrich(candidates, facts);
+    candidates = new JointVisibilityCandidateEnricher().Enrich(candidates, facts);
+    Progress("link", $"Complete: {candidates.Candidates.Count} workflow candidates.");
 
     var candidatesPath = Path.Combine(outputDirectory, "feature-candidates.json");
-    await File.WriteAllTextAsync(candidatesPath, JsonSerializer.Serialize(candidates, options));
-    Progress("write", "Scan artifacts written.");
+    await writes.TryWriteJsonAsync("Workflow candidates", candidatesPath, candidates, options);
+    Timed("link");
 
     Console.WriteLine($"PKC scan complete: {facts.Facts.Count} facts, {facts.Relations.Count} relations, {candidates.Candidates.Count} workflow candidates");
     Console.WriteLine(factsPath);
@@ -129,10 +205,12 @@ try
             }
         }
 
+        Timed("synthesize");
+
         Progress("product", "Building product features...");
         var productFeatures = new ProductFeatureBuilder().Build(workflows);
         var productFeaturesPath = Path.Combine(outputDirectory, "product-features.json");
-        await File.WriteAllTextAsync(productFeaturesPath, JsonSerializer.Serialize(productFeatures, options));
+        await writes.TryWriteJsonAsync("Product features", productFeaturesPath, productFeatures, options);
         Console.WriteLine(productFeaturesPath);
         Progress("product", $"Complete: {productFeatures.Features.Count} product features.");
 
@@ -152,30 +230,69 @@ try
         canonicalKnowledgeFiles[PortableKnowledgePackRenderer.InstructionsRelativePath] =
             packRenderer.RenderInstructions(sourceRepositoryLabel);
         Progress("knowledge", $"Complete: {canonicalKnowledgeFiles.Count} canonical files ready.");
+        Timed("knowledge");
 
         if (command == "run")
         {
+            var summary = BuildRunSummary(
+                command,
+                checkpoint?.CreatedUtc,
+                state,
+                coverage,
+                facts,
+                candidates.Candidates.Count,
+                productFeatures.Features.Count,
+                workflows,
+                canonicalKnowledgeFiles.Count);
+
             Progress("workspace", "Rendering AI workspace...");
             var workspaceFiles = new Dictionary<string, string>(
-                new AiWorkspaceRenderer().Render(canonicalKnowledgeFiles, sourceRepositoryLabel),
+                new AiWorkspaceRenderer().Render(canonicalKnowledgeFiles, sourceRepositoryLabel, WorkspaceOverview.From(summary)),
                 StringComparer.Ordinal)
             {
-                [AiWorkspaceRenderer.CoverageRelativePath] = ScanCoverageSerializer.SerializePortable(scan.Coverage!.ToPortable())
+                [AiWorkspaceRenderer.CoverageRelativePath] = ScanCoverageSerializer.SerializePortable(coverage.ToPortable())
             };
             Progress("workspace", "Writing AI workspace...");
-            var workspacePath = await new AiWorkspaceWriter().WriteAsync(
-                repositoryPath,
-                workspaceFiles);
-            Progress("workspace", $"Complete: {workspaceFiles.Count} workspace files written.");
+            string? workspacePath = null;
+            var workspaceTarget = Path.Combine(outputDirectory, "workspace");
+            try
+            {
+                workspacePath = await new AiWorkspaceWriter().WriteAsync(
+                    repositoryPath,
+                    workspaceFiles);
+                writes.Record("AI workspace", workspacePath, true);
+                Progress("workspace", $"Complete: {workspaceFiles.Count} workspace files written.");
+            }
+            catch (WorkspaceReplaceException exception)
+            {
+                writes.Record("AI workspace", exception.NewWorkspacePath, false, exception.Message);
+                Progress("workspace", exception.Message);
+            }
 
-            Console.WriteLine($"PKC run complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features");
-            Console.WriteLine($"PKC AI workspace generated: {workspacePath}");
-            Console.WriteLine("Workspace status: PREVIEW (pkc verify / READY-PARTIAL-FAILED is not implemented yet).");
-            Console.WriteLine();
-            Console.WriteLine("Open the generated workspace, not the source root:");
-            Console.WriteLine($"  Claude Code: cd \"{workspacePath}\" then run `claude`.");
-            Console.WriteLine("  Codex-compatible agent: open the workspace directory; AGENTS.md is the bootstrap.");
-            Console.WriteLine("  PRODUCT mode is default. TRACE/ENGINEERING require explicit user intent.");
+            Timed("workspace");
+
+            summary = summary with
+            {
+                WorkspaceFiles = CountFiles(workspacePath ?? workspaceTarget),
+                Timings = timings.ToArray(),
+                Artifacts = writes.Results
+                    .Select(result => new RunArtifact(result.Name, RelativeTo(repositoryPath, result.Path), result.Succeeded, result.Error))
+                    .ToArray()
+            };
+            await WriteRunSummaryAsync(repositoryPath, summary, sourceRepositoryLabel, options);
+            Console.Write(summary.RenderConsole());
+
+            if (workspacePath is not null)
+            {
+                Console.WriteLine($"PKC run complete: {workflows.Count} workflows, {productFeatures.Features.Count} product features");
+                Console.WriteLine($"PKC AI workspace generated: {workspacePath}");
+                Console.WriteLine("Workspace status: PREVIEW (pkc verify / READY-PARTIAL-FAILED is not implemented yet).");
+                Console.WriteLine();
+                Console.WriteLine("Open the generated workspace, not the source root:");
+                Console.WriteLine($"  Claude Code: cd \"{workspacePath}\" then run `claude`.");
+                Console.WriteLine("  Codex-compatible agent: open the workspace directory; AGENTS.md is the bootstrap.");
+                Console.WriteLine("  PRODUCT mode is default. TRACE/ENGINEERING require explicit user intent.");
+            }
         }
         else
         {
@@ -210,13 +327,95 @@ try
         }
     }
 
+    foreach (var failure in writes.Failures)
+    {
+        Console.Error.WriteLine($"PKC {command}: {failure.Name} was not written ({failure.Error}).");
+    }
+
+    if (writes.Failures.Any())
+    {
+        Console.Error.WriteLine(checkpoint is null && File.Exists(Path.Combine(repositoryPath, ScanCheckpoint.RelativePath))
+            ? $"PKC {command} completed with write failures. Fix the cause and re-run with --resume to reuse this scan."
+            : $"PKC {command} completed with write failures.");
+        return 1;
+    }
+
     return 0;
 }
 catch (Exception exception)
 {
     Console.Error.WriteLine($"PKC {command} failed: {exception.Message}");
+    if (command is "build" or "run" && File.Exists(Path.Combine(repositoryPath, ScanCheckpoint.RelativePath)))
+    {
+        Console.Error.WriteLine($"The completed scan was kept. Re-run `pkc {command} <repository-path> --resume` to continue without scanning again.");
+    }
+
     return 1;
 }
+
+static RunSummary BuildRunSummary(
+    string command,
+    DateTimeOffset? resumedFromScanUtc,
+    DiscoveryState state,
+    ScanCoverage coverage,
+    FactDocument facts,
+    int workflowCandidates,
+    int productFeatures,
+    IReadOnlyCollection<FeatureKnowledge> workflows,
+    int knowledgeFiles)
+{
+    int Components(OwnershipStatus ownership) => state.Profile.Components.Count(component => component.Ownership == ownership);
+
+    return new RunSummary(
+        RunSummary.CurrentSchemaVersion,
+        command,
+        coverage.Scoped,
+        resumedFromScanUtc,
+        new RunRepositoryStats(
+            coverage.Files,
+            Components(OwnershipStatus.Host),
+            Components(OwnershipStatus.Owned),
+            Components(OwnershipStatus.TestOnly),
+            Components(OwnershipStatus.Unknown),
+            coverage.Stages.Sum(stage => stage.PlannedFiles),
+            coverage.Stages.Sum(stage => stage.ExecutableFiles),
+            coverage.Stages.Sum(stage => stage.WithheldByScannerScope.Count),
+            coverage.Coverage(PlanCoverage.TestEvidence),
+            coverage.Coverage(PlanCoverage.Indexed),
+            coverage.Coverage(PlanCoverage.NotAnalyzable),
+            coverage.ExcludedAreas,
+            coverage.UnknownAreas.Count),
+        facts.Facts.Count,
+        facts.Relations.Count,
+        workflowCandidates,
+        productFeatures,
+        workflows.Select(workflow => workflow.Area).Distinct(StringComparer.Ordinal).Count(),
+        knowledgeFiles,
+        0,
+        KnowledgeGrounding.From(workflows),
+        RunSummary.TopAreasOf(workflows),
+        [],
+        []);
+}
+
+static async Task WriteRunSummaryAsync(string repositoryPath, RunSummary summary, string repositoryLabel, JsonSerializerOptions options)
+{
+    try
+    {
+        await File.WriteAllTextAsync(Resolve(repositoryPath, RunSummary.MarkdownRelativePath), summary.RenderMarkdown(repositoryLabel));
+        await JsonArtifactFile.WriteAsync(Resolve(repositoryPath, RunSummary.JsonRelativePath), summary, options);
+    }
+    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+    {
+        Progress("summary", $"Run summary was not written: {exception.Message}");
+    }
+}
+
+static int CountFiles(string directory) =>
+    Directory.Exists(directory) ? Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Count() : 0;
+
+static string RelativeTo(string repositoryPath, string path) =>
+    Path.GetRelativePath(repositoryPath, path).Replace('\\', '/');
 
 static void Progress(string phase, string message) =>
     Console.Error.WriteLine($"[pkc:{phase}] {message}");

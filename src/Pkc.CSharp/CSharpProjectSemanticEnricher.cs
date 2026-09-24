@@ -346,6 +346,15 @@ public sealed class CSharpProjectSemanticEnricher
         return false;
     }
 
+    /// <summary>A project already loaded into the shared workspace as another project's reference.</summary>
+    private static Project? FindLoadedProject(Workspace workspace, string projectFile)
+    {
+        var fullPath = Path.GetFullPath(projectFile);
+        return workspace.CurrentSolution.Projects.FirstOrDefault(project =>
+            project.FilePath is not null &&
+            string.Equals(Path.GetFullPath(project.FilePath), fullPath, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static bool IsAttribute(INamedTypeSymbol type, string name) =>
         string.Equals(type.Name, name, StringComparison.Ordinal);
 
@@ -374,19 +383,23 @@ public sealed class CSharpProjectSemanticEnricher
             var projectFailures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var diagnostics = new List<string>();
 
+            // One workspace for the whole pass: a project referenced by several others is loaded and compiled once
+            // and shared, instead of once per referencing project with every copy kept alive by its semantic models.
+            using var workspace = MSBuildWorkspace.Create();
+            var projectDiagnostics = new List<string>();
+            workspace.WorkspaceFailed += (_, args) => projectDiagnostics.Add(args.Diagnostic.Message);
+
             foreach (var projectFile in projectFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var projectPath = NormalizePath(Path.GetRelativePath(rootPath, projectFile));
                 var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(projectFile)) ?? rootPath;
-                var projectDiagnostics = new List<string>();
+                projectDiagnostics.Clear();
 
                 try
                 {
-                    using var workspace = MSBuildWorkspace.Create();
-                    workspace.WorkspaceFailed += (_, args) => projectDiagnostics.Add(args.Diagnostic.Message);
-
-                    var project = await workspace.OpenProjectAsync(projectFile, cancellationToken: cancellationToken);
+                    var project = FindLoadedProject(workspace, projectFile) ??
+                                  await workspace.OpenProjectAsync(projectFile, cancellationToken: cancellationToken);
                     var compilation = await project.GetCompilationAsync(cancellationToken);
                     if (compilation is null)
                     {

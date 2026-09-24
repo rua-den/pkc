@@ -73,6 +73,13 @@ public sealed class DiscoveryFirstScanPipeline
         IReadOnlyList<SemanticScanStage> stages,
         CancellationToken cancellationToken = default)
     {
+        var state = await DiscoverAsync(repositoryPath, cancellationToken);
+        return await ExecuteAsync(repositoryPath, state, stages, cancellationToken);
+    }
+
+    /// <summary>Discovery and scan plan only: persisted, reported, and no semantic stage started.</summary>
+    public async Task<DiscoveryState> DiscoverAsync(string repositoryPath, CancellationToken cancellationToken = default)
+    {
         var profile = new RepositoryDiscovery().Discover(repositoryPath, cancellationToken);
         var plan = ScanPlanner.Build(repositoryPath, profile);
         var (profilePath, planPath) = await RepositoryDiscoveryArtifacts.WriteAsync(repositoryPath, profile, plan, cancellationToken);
@@ -81,7 +88,17 @@ public sealed class DiscoveryFirstScanPipeline
             Scope = SemanticSourceScope.FromProfile(repositoryPath, profile)
         };
         _onDiscovered?.Invoke(state);
+        return state;
+    }
 
+    /// <summary>Runs the semantic stages for an established discovery state and persists their coverage.</summary>
+    public async Task<DiscoveryFirstScanResult> ExecuteAsync(
+        string repositoryPath,
+        DiscoveryState state,
+        IReadOnlyList<SemanticScanStage> stages,
+        CancellationToken cancellationToken = default)
+    {
+        var plan = state.Plan;
         var documents = new List<FactDocument>(stages.Count);
         var executions = new List<SemanticStageExecution>(stages.Count);
         foreach (var stage in stages)

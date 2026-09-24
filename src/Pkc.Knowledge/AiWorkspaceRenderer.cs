@@ -15,7 +15,8 @@ public sealed class AiWorkspaceRenderer
 
     public IReadOnlyDictionary<string, string> Render(
         IReadOnlyDictionary<string, string> canonicalKnowledgeFiles,
-        string? sourceRepositoryLabel = null)
+        string? sourceRepositoryLabel = null,
+        WorkspaceOverview? overview = null)
     {
         ArgumentNullException.ThrowIfNull(canonicalKnowledgeFiles);
 
@@ -23,7 +24,7 @@ public sealed class AiWorkspaceRenderer
         {
             [ClaudeRelativePath] = RenderBootstrap("Claude Code"),
             [AgentsRelativePath] = RenderBootstrap("Codex-compatible agents"),
-            [StartHereRelativePath] = RenderStartHere(sourceRepositoryLabel),
+            [StartHereRelativePath] = RenderStartHere(sourceRepositoryLabel, overview),
             [AnswerContractRelativePath] = RenderAnswerContract(),
             [ManifestRelativePath] = RenderManifest(canonicalKnowledgeFiles, sourceRepositoryLabel),
             [CatalogRelativePath] = RenderCatalog(canonicalKnowledgeFiles)
@@ -76,7 +77,7 @@ public sealed class AiWorkspaceRenderer
         return builder.ToString();
     }
 
-    private static string RenderStartHere(string? sourceRepositoryLabel)
+    private static string RenderStartHere(string? sourceRepositoryLabel, WorkspaceOverview? overview)
     {
         var builder = new StringBuilder();
         builder.AppendLine("# Start here");
@@ -85,6 +86,11 @@ public sealed class AiWorkspaceRenderer
         if (!string.IsNullOrWhiteSpace(sourceRepositoryLabel))
         {
             builder.AppendLine($"Source repository label: `{sourceRepositoryLabel}` (identifier only, not approved product naming).");
+        }
+
+        if (overview is not null)
+        {
+            RenderOverview(builder, overview);
         }
 
         builder.AppendLine();
@@ -116,6 +122,58 @@ public sealed class AiWorkspaceRenderer
         builder.AppendLine();
         builder.AppendLine("This first `pkc run` workspace is a PREVIEW productization slice. `pkc verify` / READY-PARTIAL-FAILED verification is not implemented yet.");
         return builder.ToString();
+    }
+
+    private static void RenderOverview(StringBuilder builder, WorkspaceOverview overview)
+    {
+        var g = overview.Grounding;
+        builder.AppendLine();
+        builder.AppendLine("## What this workspace contains");
+        builder.AppendLine();
+        builder.AppendLine($"- {RunSummary.N(overview.ProductFeatures)} product features, {RunSummary.N(overview.Workflows)} workflows, {RunSummary.N(overview.Areas)} areas.");
+        builder.AppendLine($"- Built from {RunSummary.N(overview.AnalyzedFiles)} deeply analyzed files; {RunSummary.N(overview.TestEvidenceFiles)} test files were kept out of product knowledge; " +
+                           $"{RunSummary.N(overview.NotAnalyzedFiles)} files were not analyzed; {RunSummary.N(overview.UnknownAreas)} unknown areas (details: `_meta/coverage.json`).");
+        if (overview.TopAreas.Count > 0)
+        {
+            builder.AppendLine("- Largest areas: " + string.Join(", ", overview.TopAreas.Select(area => $"{area.Area} ({RunSummary.N(area.Workflows)})")) + ".");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("| Grounded evidence in workflows | Share |");
+        builder.AppendLine("| --- | ---: |");
+        builder.AppendLine($"| Business rules / conditions | {RunSummary.Pct(g.WithRules, g.Workflows)} |");
+        builder.AppendLine($"| Permissions | {RunSummary.Pct(g.WithPermissions, g.Workflows)} |");
+        builder.AppendLine($"| State / data changes | {RunSummary.Pct(g.WithStateChanges, g.Workflows)} |");
+        builder.AppendLine($"| Side effects | {RunSummary.Pct(g.WithSideEffects, g.Workflows)} |");
+        builder.AppendLine($"| UI steps | {RunSummary.Pct(g.WithUiSteps, g.Workflows)} |");
+        builder.AppendLine();
+        builder.AppendLine("What this means for answers:");
+        foreach (var limit in Limits(g))
+        {
+            builder.AppendLine($"- {limit}");
+        }
+    }
+
+    private static IEnumerable<string> Limits(KnowledgeGrounding g)
+    {
+        static bool Rare(int count, int total) => total == 0 || count * 20 < total;
+
+        if (Rare(g.WithUiSteps + g.WithUiToBackend, g.Workflows))
+        {
+            yield return "Screen/UI questions (where a button is, what a page shows) are mostly not grounded here; answer them as ⚠️ not proven.";
+        }
+
+        if (g.Workflows > 0 && g.WithPermissions * 2 < g.Workflows)
+        {
+            yield return "Permission evidence exists for only part of the workflows; when a workflow lists none, say permissions are ⚠️ not proven rather than \"no restriction\".";
+        }
+
+        if (Rare(g.WithSideEffects, g.Workflows))
+        {
+            yield return "Side effects (emails, notifications, integrations) are rarely grounded; do not assume they happen.";
+        }
+
+        yield return "Rules are strongest where a workflow lists conditions; translate them into business language and keep unclear ones as ⚠️.";
     }
 
     private static string RenderAnswerContract()
@@ -167,6 +225,57 @@ public sealed class AiWorkspaceRenderer
 - Never let frontend evidence upgrade weaker backend authority, or vice versa.
 - Do not treat code-observed behavior as approved product intent unless explicit intent evidence exists.
 - `_meta/coverage.json` counts what PKC did not semantically analyze (test evidence, indexed generated/infrastructure/runtime-dependency files, not-analyzable and unknown areas); when an answer may depend on those areas, say it is not proven.
+
+## Answer format
+
+Every answer uses the same shape so readers can scan it. Follow these rules first:
+
+- Answer in the user's language (Vietnamese question → Vietnamese answer). Keep product terms, field names and status names as they appear in the knowledge.
+- Translate code conditions into business language ("the organization number is required when creating from the registry"), never paste raw expressions such as `x == null` in PRODUCT/QA answers. If a condition cannot be translated with certainty, say it is unclear instead of paraphrasing it.
+- Mark certainty explicitly: ✅ proven by generated knowledge, ⚠️ not proven / unknown, 💡 inferred idea (QA only).
+- When the knowledge has no grounded information for the question, say so in one line, name what is missing, and suggest who or what can confirm it (the team, or ENGINEERING mode in an approved environment). Do not fill the gap.
+- Keep it short: no preamble, no restating the question, no filler. Prefer bullets and tables over paragraphs.
+
+### PRODUCT answers
+
+```
+**Short answer:** <1–3 sentences that answer the question directly>
+
+### Rules and conditions
+| When | Then |
+| --- | --- |
+| <business condition> | <outcome / error message> |
+
+### Permissions
+- <who may do it> ✅ | ⚠️ not proven
+
+### Errors and edge cases
+- <proven failure paths only>
+
+### ⚠️ Not proven / unknown
+- <gaps, Important unknowns, coverage limits>
+
+### Related
+- [<feature or workflow title>](<workspace-relative path>)
+```
+
+Omit a section only when it has nothing grounded to say. Keep "⚠️ Not proven / unknown" whenever anything relevant is unproven.
+
+### QA test cases
+
+```
+| ID | Scenario | Preconditions | Steps | Expected result | Basis |
+| --- | --- | --- | --- | --- | --- |
+| TC1 | <happy path> | ... | ... | ... | ✅ proven |
+| TC2 | <negative / permission / validation case> | ... | ... | ... | ✅ proven |
+| TC3 | <idea not grounded in knowledge> | ... | ... | ... | 💡 inferred |
+```
+
+Follow the table with "⚠️ Not covered" listing behavior the knowledge could not prove (for example UI steps or side effects).
+
+### TRACE answers (explicit request only)
+
+Give the short answer, then an "Evidence" list: backend entry point, workflow document, and source path with line range from the workflow's Evidence section. Never include code bodies.
 """;
     }
 

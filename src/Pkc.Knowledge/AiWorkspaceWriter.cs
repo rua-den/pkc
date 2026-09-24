@@ -7,6 +7,9 @@ public sealed class AiWorkspaceWriter
     public const string WorkspaceDirectoryName = "workspace";
     public const string GitIsolationRelativePath = "_meta/git-isolation.json";
     public const string SourceContextRelativePath = "_meta/source-context.json";
+    public const string StagingDirectoryName = "workspace.staging";
+    public const string PreviousDirectoryName = "workspace.previous";
+    public const string UnswappedDirectoryName = "workspace.new";
 
     public async Task<string> WriteAsync(
         string repositoryPath,
@@ -22,13 +25,32 @@ public sealed class AiWorkspaceWriter
             ".pkc",
             WorkspaceDirectoryName));
 
-        if (Directory.Exists(workspaceRoot))
+        var pkcRoot = Path.GetDirectoryName(workspaceRoot)!;
+        var stagingRoot = Path.Combine(pkcRoot, StagingDirectoryName);
+
+        // Everything is written to a staging folder first; the current workspace is only replaced once the new one is
+        // complete, so a failed write never destroys the last good workspace.
+        DeleteDirectoryIfExists(stagingRoot);
+        Directory.CreateDirectory(stagingRoot);
+        try
         {
-            Directory.Delete(workspaceRoot, recursive: true);
+            await WriteContentAsync(repositoryRoot, stagingRoot, files, cancellationToken);
+        }
+        catch
+        {
+            TryDeleteDirectory(stagingRoot);
+            throw;
         }
 
-        Directory.CreateDirectory(workspaceRoot);
+        return Swap(pkcRoot, workspaceRoot, stagingRoot);
+    }
 
+    private static async Task WriteContentAsync(
+        string repositoryRoot,
+        string workspaceRoot,
+        IReadOnlyDictionary<string, string> files,
+        CancellationToken cancellationToken)
+    {
         foreach (var pair in files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -77,8 +99,76 @@ public sealed class AiWorkspaceWriter
                 },
                 jsonOptions),
             cancellationToken);
+    }
 
-        return workspaceRoot;
+    /// <summary>
+    /// Replaces the current workspace with the staged one and keeps the replaced workspace as
+    /// <see cref="PreviousDirectoryName"/>. If the current workspace cannot be moved (for example because an assistant
+    /// session has it open), the new workspace is preserved as <see cref="UnswappedDirectoryName"/> instead of lost.
+    /// </summary>
+    private static string Swap(string pkcRoot, string workspaceRoot, string stagingRoot)
+    {
+        var previousRoot = Path.Combine(pkcRoot, PreviousDirectoryName);
+        var movedCurrent = false;
+        try
+        {
+            if (Directory.Exists(workspaceRoot))
+            {
+                DeleteDirectoryIfExists(previousRoot);
+                Directory.Move(workspaceRoot, previousRoot);
+                movedCurrent = true;
+            }
+
+            Directory.Move(stagingRoot, workspaceRoot);
+            return workspaceRoot;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            if (movedCurrent && !Directory.Exists(workspaceRoot))
+            {
+                try
+                {
+                    Directory.Move(previousRoot, workspaceRoot);
+                }
+                catch (Exception inner) when (inner is IOException or UnauthorizedAccessException)
+                {
+                    // Keep going: the new workspace is still preserved below.
+                }
+            }
+
+            var unswappedRoot = Path.Combine(pkcRoot, UnswappedDirectoryName);
+            try
+            {
+                DeleteDirectoryIfExists(unswappedRoot);
+                Directory.Move(stagingRoot, unswappedRoot);
+            }
+            catch (Exception inner) when (inner is IOException or UnauthorizedAccessException)
+            {
+                unswappedRoot = stagingRoot;
+            }
+
+            throw new WorkspaceReplaceException(workspaceRoot, unswappedRoot, exception);
+        }
+    }
+
+    private static void DeleteDirectoryIfExists(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            DeleteDirectoryIfExists(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Best-effort cleanup of an incomplete staging folder.
+        }
     }
 
     private static string ResolveInsideWorkspace(string workspaceRoot, string relativePath)
@@ -101,4 +191,16 @@ public sealed class AiWorkspaceWriter
 
         return fullPath;
     }
+}
+
+/// <summary>The new workspace was generated completely but could not replace the current one.</summary>
+public sealed class WorkspaceReplaceException(string workspacePath, string newWorkspacePath, Exception inner)
+    : IOException(
+        $"The new workspace was generated but could not replace {workspacePath} ({inner.Message}). " +
+        $"It is preserved at {newWorkspacePath}; close programs using the workspace and rename it, or re-run.",
+        inner)
+{
+    public string WorkspacePath { get; } = workspacePath;
+
+    public string NewWorkspacePath { get; } = newWorkspacePath;
 }
