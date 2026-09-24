@@ -15,7 +15,8 @@ V0.4.7-D / R7.9 API to rendered value              PASS / COMPLETE
 V0.4.7-D / R7.10 joint visibility                  OPEN / REVIEW PAUSED / NOT ACCEPTED
 V0.4.7-E0 repository discovery + bounded run       ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
 V0.4.7-E0 / RD1 inventory + safe exclusion         LOCAL PASS at fd3428f / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD2 application boundaries + ownership
+V0.4.7-E0 / RD2 application boundaries + ownership LOCAL PASS at 05eadb1 / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD3 vendor/custom frontend classification
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -63,9 +64,23 @@ Evidence: `docs/reviews/2026-09-24-rd1-inventory-safe-exclusion-evidence.md`.
 - Push/CI pending: the implementing environment could not push (SSH key rejected; HTTPS push not permitted by session tool policy). Operator must push `main`; CI on that push is the final verification.
 - RD1 does not yet reduce semantic scope or memory; scanner-internal name scopes are unchanged and must be reconciled in RD6.
 
-## Active implementation checkpoint — RD2
+## RD2 — LOCAL PASS
 
-RD2 application boundaries + ownership is unlocked by RD1 local PASS and is now the only production implementation checkpoint.
+```text
+05eadb1e44152f23bcf06134adfc89ae70572e47
+feat: model application boundaries in repository discovery
+```
+
+Evidence: `docs/reviews/2026-09-24-rd2-application-boundaries-evidence.md`.
+
+- Profile schema `0.2.0-discovery` adds manifest-derived components, `project-reference` edges, unresolved references and solution membership.
+- Shared modules list every production host that reaches them through unconditional resolved references; tests are `TEST_ONLY` and never own; similar names never link; ambiguous identity/references stay UNKNOWN.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 308/308, `Pkc.Frontend.Tests` 23/23; RD1 + RD2 + CLI focused tests 17/17; test-ownership mutation caught.
+- Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
+
+## Active implementation checkpoint — RD3
+
+RD3 vendor/custom frontend classification is unlocked by RD2 local PASS and is now the only production implementation checkpoint.
 
 ## RD1 acceptance record
 
@@ -98,7 +113,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1 is locally PASS and documented; RD2 is unlocked.
+RD1 is locally PASS and documented; RD2 was unlocked and is locally PASS; RD3 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -170,9 +185,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (fd3428f + docs) and confirm CI green for RD1
-implementation: RD2 application boundaries + ownership, regression-first
-→ finish and locally verify RD2
+operator: push main (RD1 fd3428f, RD2 05eadb1 + docs) and confirm CI green
+implementation: RD3 vendor/custom frontend classification, regression-first
+→ finish and locally verify RD3
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD3
+→ only then start RD4
 ```

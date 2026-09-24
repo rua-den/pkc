@@ -11,11 +11,17 @@ RD1 inventory + safe exclusion   LOCAL PASS
 implementation                   fd3428f06bae7089a749f59b3d802d5a4e36b160
                                  feat: discover repository shape before semantic scans
 evidence                         docs/reviews/2026-09-24-rd1-inventory-safe-exclusion-evidence.md
+
+RD2 application boundaries       LOCAL PASS
+implementation                   05eadb1e44152f23bcf06134adfc89ae70572e47
+                                 feat: model application boundaries in repository discovery
+evidence                         docs/reviews/2026-09-24-rd2-application-boundaries-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD2                              ACTIVE
+RD3                              ACTIVE
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1 remotely, verify with `git ls-remote origin` that `main` contains `fd3428f`, then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1/RD2 remotely, verify with `git ls-remote origin` that `main` contains `05eadb1` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -53,10 +59,30 @@ RD1 inventory + safe exclusion
 LOCAL PASS at fd3428f / push + CI pending
 
 RD2 application boundaries + ownership
+LOCAL PASS at 05eadb1 / push + CI pending
+
+RD3 vendor/custom frontend classification
 ACTIVE
 ```
 
-## RD2 scope
+## RD3 scope
+
+Extend the same `RepositoryProfile` (areas + file-pattern overrides) so a legacy frontend tree can be separated into:
+
+- first-party JavaScript;
+- third-party runtime distributions (indexed, not deep-scanned);
+- minified/generated output;
+- tracked bundles and their declared inputs;
+- first-party wrappers/adapters;
+- locally added or modified files inside a vendor tree (narrow first-party carve-out).
+
+Evidence must be deterministic and manifest/layout/banner based (package/manifest membership, license/version banners, minified/source-map relationships, bundle configuration, restore manifests). Directory names alone never classify. Vendor internals never enter DEEP_SCAN merely because the vendor is runtime-used. Unclear files stay UNKNOWN/included.
+
+Do not implement runtime plugin edges (RD4) or scoped scanner execution (RD6).
+
+Do not start RD4 until RD3 is explicitly PASS.
+
+## RD2 scope (completed)
 
 Extend the RD1 `RepositoryProfile` (do not create a competing model) with deterministic application/component boundaries and ownership:
 
@@ -69,7 +95,7 @@ Extend the RD1 `RepositoryProfile` (do not create a competing model) with determ
 
 Discovery must stay shallow (manifests first). Do not implement vendor/frontend classification (RD3), runtime plugin edges (RD4) or scoped scanner execution (RD6).
 
-Do not start RD3 until RD2 is explicitly PASS.
+RD2 is locally PASS (see evidence above).
 
 ## Why RD1 was first
 
@@ -236,8 +262,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f
-implementation: RD2 application boundaries + ownership, regression-first
+operator: push main and confirm CI green for fd3428f and 05eadb1
+implementation: RD3 vendor/custom frontend classification, regression-first
 ```
 
-After RD2 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD3 only.
+After RD3 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD4 only.
