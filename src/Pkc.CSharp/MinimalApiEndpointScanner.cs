@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pkc.Core;
+using Pkc.Core.Discovery;
 
 namespace Pkc.CSharp;
 
@@ -334,7 +335,8 @@ internal sealed class MinimalApiEndpointScanner
     {
         var relative = Path.GetRelativePath(rootPath, path);
         return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => ExcludedDirectoryNames.Contains(segment));
+            .Any(segment => ExcludedDirectoryNames.Contains(segment)) ||
+            SemanticSourceScope.Excludes(rootPath, path);
     }
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');

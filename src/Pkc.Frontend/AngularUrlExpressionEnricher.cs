@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Pkc.Core;
+using Pkc.Core.Discovery;
 
 namespace Pkc.Frontend;
 
@@ -29,6 +30,7 @@ internal sealed class AngularUrlExpressionEnricher
 
         var analyzerPath = Path.Combine(Path.GetTempPath(), $"pkc-angular-url-{Guid.NewGuid():N}.cjs");
         var resolverPath = Path.Combine(Path.GetTempPath(), $"pkc-angular-url-resolver-{Guid.NewGuid():N}.cjs");
+        string? scopePath = null;
         try
         {
             await File.WriteAllTextAsync(analyzerPath, NodeScript, cancellationToken);
@@ -46,6 +48,7 @@ internal sealed class AngularUrlExpressionEnricher
             startInfo.ArgumentList.Add(rootPath);
             startInfo.ArgumentList.Add(typeScriptPath);
             startInfo.ArgumentList.Add(resolverPath);
+            scopePath = NodeSemanticScope.Apply(startInfo, rootPath);
 
             using var process = new Process { StartInfo = startInfo };
             try
@@ -121,6 +124,7 @@ internal sealed class AngularUrlExpressionEnricher
         {
             TryDelete(analyzerPath);
             TryDelete(resolverPath);
+            NodeSemanticScope.TryDelete(scopePath);
         }
     }
 
@@ -173,7 +177,8 @@ internal sealed class AngularUrlExpressionEnricher
     {
         var relative = Path.GetRelativePath(rootPath, path);
         return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => ExcludedDirectoryNames.Contains(segment));
+            .Any(segment => ExcludedDirectoryNames.Contains(segment)) ||
+            SemanticSourceScope.Excludes(rootPath, path);
     }
 
     private static bool IsUnderRoot(string rootPath, string path)
@@ -224,6 +229,9 @@ const ts = require(process.argv[3]);
 const { createResolver } = require(process.argv[4]);
 const resolver = createResolver(ts, root);
 const excluded = new Set(['.git', '.pkc', 'bin', 'obj', 'node_modules', 'dist', 'build', 'coverage', 'knowledge']);
+const semanticScope = process.env.PKC_SEMANTIC_SCOPE ? JSON.parse(fs.readFileSync(process.env.PKC_SEMANTIC_SCOPE, 'utf8')) : null;
+const excludedAreas = new Set(semanticScope ? semanticScope.excludedAreas : []);
+const withheldFiles = new Set(semanticScope ? semanticScope.withheldFiles : []);
 const httpMethods = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const facts = [];
 
@@ -231,8 +239,8 @@ function walk(dir, result = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory() && excluded.has(entry.name)) continue;
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(full, result);
-    else if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) result.push(full);
+    if (entry.isDirectory()) { if (!excludedAreas.has(relative(full))) walk(full, result); }
+    else if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts') && !withheldFiles.has(relative(full))) result.push(full);
   }
   return result;
 }

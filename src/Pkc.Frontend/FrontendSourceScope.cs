@@ -1,3 +1,5 @@
+using Pkc.Core.Discovery;
+
 namespace Pkc.Frontend;
 
 internal static class FrontendSourceScope
@@ -33,7 +35,11 @@ internal static class FrontendSourceScope
         ".test.jsx"
     ];
 
-    public static bool IsProductSource(string relativePath)
+    public static bool IsProductSource(string relativePath) =>
+        IsProductSourceByName(relativePath) && !SemanticSourceScope.Excludes(relativePath);
+
+    /// <summary>The accepted scanner-internal product-source scope, independent of any scan plan.</summary>
+    public static bool IsProductSourceByName(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
         {

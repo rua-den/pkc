@@ -4,6 +4,10 @@ namespace Pkc.CSharp;
 
 public sealed class CSharpEvidenceScanner
 {
+    /// <summary>The accepted C# source scope (by path name), independent of any scan plan.</summary>
+    public static bool IsInSourceScope(string relativePath) =>
+        !CSharpSourceScope.IsExcludedByName(relativePath);
+
     public async Task<FactDocument> ScanAsync(
         string repositoryPath,
         CancellationToken cancellationToken = default)

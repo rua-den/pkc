@@ -6,13 +6,16 @@ function analyze(rootArg, tsPath, apiFactsPath) {
   const root = path.resolve(rootArg);
   const ts = require(tsPath);
   const excluded = new Set(['.git','.pkc','bin','obj','node_modules','dist','build','coverage','knowledge']);
+  const semanticScope = process.env.PKC_SEMANTIC_SCOPE ? JSON.parse(fs.readFileSync(process.env.PKC_SEMANTIC_SCOPE,'utf8')) : null;
+  const excludedAreas = new Set(semanticScope ? semanticScope.excludedAreas : []);
+  const withheldFiles = new Set(semanticScope ? semanticScope.withheldFiles : []);
   const apiFacts = JSON.parse(fs.readFileSync(apiFactsPath,'utf8'));
   const sourceCache = new Map();
 
   function norm(p){ return p.split(path.sep).join('/'); }
   function rel(p){ return norm(path.relative(root,p)); }
   function under(p){ const r=path.relative(root,path.resolve(p)); return r==='' || (r!=='..'&&!r.startsWith('..'+path.sep)&&!path.isAbsolute(r)); }
-  function walk(dir,out=[]){ for(const e of fs.readdirSync(dir,{withFileTypes:true})){ if(e.isDirectory()&&excluded.has(e.name))continue; const f=path.join(dir,e.name); if(e.isDirectory())walk(f,out); else if(e.isFile()&&e.name.endsWith('.ts')&&!e.name.endsWith('.d.ts'))out.push(f);} return out; }
+  function walk(dir,out=[]){ for(const e of fs.readdirSync(dir,{withFileTypes:true})){ if(e.isDirectory()&&excluded.has(e.name))continue; const f=path.join(dir,e.name); if(e.isDirectory()){ if(!excludedAreas.has(rel(f)))walk(f,out); } else if(e.isFile()&&e.name.endsWith('.ts')&&!e.name.endsWith('.d.ts')&&!withheldFiles.has(rel(f)))out.push(f);} return out; }
   function load(file){ file=path.resolve(file); if(!under(file)||!fs.existsSync(file))return null; if(sourceCache.has(file))return sourceCache.get(file); const text=fs.readFileSync(file,'utf8'); const sf=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS); sourceCache.set(file,{sf,text}); return {sf,text}; }
   function decorators(node){ return ts.canHaveDecorators&&ts.getDecorators ? ts.getDecorators(node)||[] : node.decorators||[]; }
   function propName(node){ if(!node)return null; if(ts.isIdentifier(node)||ts.isStringLiteral(node)||ts.isNumericLiteral(node))return node.text; return node.getText(); }

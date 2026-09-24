@@ -1,3 +1,5 @@
+using Pkc.Core.Discovery;
+
 namespace Pkc.CSharp;
 
 internal static class CSharpSourceScope
@@ -16,9 +18,13 @@ internal static class CSharpSourceScope
         };
 
     public static bool IsExcluded(string rootPath, string path) =>
-        IsExcludedRelativePath(Path.GetRelativePath(rootPath, path));
+        IsExcludedByName(Path.GetRelativePath(rootPath, path)) || SemanticSourceScope.Excludes(rootPath, path);
 
     public static bool IsExcludedRelativePath(string relativePath) =>
+        IsExcludedByName(relativePath) || SemanticSourceScope.Excludes(relativePath);
+
+    /// <summary>The accepted scanner-internal name scope, independent of any scan plan.</summary>
+    public static bool IsExcludedByName(string relativePath) =>
         relativePath
             .Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries)
             .Any(segment => ExcludedDirectoryNames.Contains(segment));

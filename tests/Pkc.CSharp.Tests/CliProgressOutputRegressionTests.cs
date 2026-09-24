@@ -61,6 +61,24 @@ public sealed class CliProgressOutputRegressionTests
     }
 
     [Fact]
+    public void Run_executes_semantic_stages_inside_the_plan_scope_while_scan_and_build_keep_whole_root()
+    {
+        var source = File.ReadAllText(FindProgramSource());
+
+        Assert.Contains("scoped: command == \"run\"", source, StringComparison.Ordinal);
+        foreach (var binding in new[]
+                 {
+                     "Scanner = ScanPlanner.CSharpScanner",
+                     "InScannerSourceScope = CSharpEvidenceScanner.IsInSourceScope",
+                     "Scanner = ScanPlanner.FrontendScanner",
+                     "InScannerSourceScope = FrontendScanner.IsInSourceScope"
+                 })
+        {
+            Assert.Contains(binding, source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Progress_lines_use_stderr_with_a_stable_pkc_stage_prefix()
     {
         var source = File.ReadAllText(FindProgramSource());

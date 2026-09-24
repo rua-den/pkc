@@ -6,6 +6,10 @@ public sealed class FrontendScanner
 {
     private readonly IReadOnlyList<IFrontendAdapter> _adapters;
 
+    /// <summary>The accepted frontend product-source scope (by path name), independent of any scan plan.</summary>
+    public static bool IsInSourceScope(string relativePath) =>
+        FrontendSourceScope.IsProductSourceByName(relativePath);
+
     public FrontendScanner(IEnumerable<IFrontendAdapter>? adapters = null)
     {
         _adapters = (adapters ?? DefaultAdapters()).ToArray();

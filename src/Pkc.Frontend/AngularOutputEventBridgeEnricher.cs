@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Pkc.Core;
+using Pkc.Core.Discovery;
 
 namespace Pkc.Frontend;
 
@@ -42,6 +43,7 @@ internal sealed class AngularOutputEventBridgeEnricher
 
         var analyzerPath = Path.Combine(Path.GetTempPath(), $"pkc-angular-output-bridge-{Guid.NewGuid():N}.cjs");
         var apiFactsPath = Path.Combine(Path.GetTempPath(), $"pkc-angular-output-bridge-api-{Guid.NewGuid():N}.json");
+        string? scopePath = null;
         try
         {
             await File.WriteAllTextAsync(
@@ -68,6 +70,7 @@ internal sealed class AngularOutputEventBridgeEnricher
             startInfo.ArgumentList.Add(rootPath);
             startInfo.ArgumentList.Add(typeScriptPath);
             startInfo.ArgumentList.Add(apiFactsPath);
+            scopePath = NodeSemanticScope.Apply(startInfo, rootPath);
 
             using var process = new Process { StartInfo = startInfo };
             try
@@ -194,6 +197,7 @@ internal sealed class AngularOutputEventBridgeEnricher
         {
             TryDelete(analyzerPath);
             TryDelete(apiFactsPath);
+            NodeSemanticScope.TryDelete(scopePath);
         }
     }
 
@@ -230,7 +234,8 @@ internal sealed class AngularOutputEventBridgeEnricher
     {
         var relative = Path.GetRelativePath(rootPath, path);
         return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => ExcludedDirectoryNames.Contains(segment));
+            .Any(segment => ExcludedDirectoryNames.Contains(segment)) ||
+            SemanticSourceScope.Excludes(rootPath, path);
     }
 
     private static bool IsUnderRoot(string rootPath, string path)

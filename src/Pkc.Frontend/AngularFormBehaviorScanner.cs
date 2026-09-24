@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Pkc.Core;
+using Pkc.Core.Discovery;
 
 namespace Pkc.Frontend;
 
@@ -933,7 +934,8 @@ internal sealed class AngularFormBehaviorScanner
         var relative = Path.GetRelativePath(rootPath, path);
         return relative
             .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => ExcludedDirectoryNames.Contains(segment));
+            .Any(segment => ExcludedDirectoryNames.Contains(segment)) ||
+            SemanticSourceScope.Excludes(rootPath, path);
     }
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');

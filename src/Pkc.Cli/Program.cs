@@ -26,10 +26,10 @@ try
 {
     Progress("start", $"PKC {command} started.");
 
-    // Discovery establishes and persists the repository profile before any expensive semantic scanner starts.
-    // RD1 keeps each scanner's existing whole-root semantic scope; scoped execution belongs to a later checkpoint.
+    // Discovery establishes and persists the repository profile and scan plan before any expensive semantic scanner
+    // starts. `run` executes the scanners inside the plan scope; `scan` and `build` keep their whole-root scope.
     Progress("discover", "Discovering repository shape before semantic analysis...");
-    var scan = await new DiscoveryFirstScanPipeline(ReportDiscovery).RunAsync(
+    var scan = await new DiscoveryFirstScanPipeline(ReportDiscovery, ReportStage, scoped: command == "run").RunAsync(
         repositoryPath,
         [
             new SemanticScanStage("csharp", async (_, _) =>
@@ -40,7 +40,11 @@ try
                     "scan:csharp",
                     $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
                 return document;
-            }),
+            })
+            {
+                Scanner = ScanPlanner.CSharpScanner,
+                InScannerSourceScope = CSharpEvidenceScanner.IsInSourceScope
+            },
             new SemanticScanStage("frontend", async (_, _) =>
             {
                 Progress("scan:frontend", "Scanning frontend repository evidence...");
@@ -50,6 +54,10 @@ try
                     $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
                 return document;
             })
+            {
+                Scanner = ScanPlanner.FrontendScanner,
+                InScannerSourceScope = FrontendScanner.IsInSourceScope
+            }
         ]);
     var csharpFacts = scan.Documents[0];
     var frontendFacts = scan.Documents[1];
@@ -232,6 +240,16 @@ static void ReportDiscovery(DiscoveryState state)
         $"excluded {plan.Summary.Exclusions} areas, unknown {plan.Summary.UnknownAreas} areas.");
     Progress("discover", $"Repository profile: {state.ProfilePath}");
     Progress("plan", $"Scan plan: {state.PlanPath}");
+}
+
+static void ReportStage(SemanticStageExecution execution)
+{
+    Progress(
+        $"scope:{execution.Name}",
+        execution.Scoped
+            ? $"Plan scope: {execution.PlannedFiles} planned semantic files; {execution.ExecutableFiles} within the scanner source scope, " +
+              $"{execution.WithheldByScannerScope.Count} withheld by scanner name scope."
+            : $"Whole-root scope ({execution.PlannedFiles} planned semantic files; plan scope applies to `pkc run`).");
 }
 
 static bool ShouldReportProgress(int completed, int total) =>
