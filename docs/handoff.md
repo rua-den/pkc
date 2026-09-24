@@ -27,11 +27,16 @@ implementation                   a37d936fc68c82e599f23da8b64bcb6ea85ef9fb
                                  feat: prove runtime plugin edges in repository discovery
 evidence                         docs/reviews/2026-09-24-rd4-runtime-plugin-provenance-evidence.md
 
+RD5 deterministic ScanPlan       LOCAL PASS
+implementation                   c440eea592c0360e0b9cde3456b1dcbf39727cb0
+                                 feat: build a deterministic scan plan before semantic scans
+evidence                         docs/reviews/2026-09-24-rd5-deterministic-scan-plan-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD5                              ACTIVE
+RD6                              ACTIVE
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD4 remotely, verify with `git ls-remote origin` that `main` contains `a37d936` (and its docs successor), then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD5 remotely, verify with `git ls-remote origin` that `main` contains `c440eea` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -78,10 +83,28 @@ RD4 runtime/plugin provenance
 LOCAL PASS at a37d936 / push + CI pending
 
 RD5 deterministic ScanPlan
+LOCAL PASS at c440eea / push + CI pending
+
+RD6 scoped/bounded semantic execution
 ACTIVE
 ```
 
-## RD5 scope
+## RD6 scope
+
+Make the existing semantic scanners consume the persisted plan in `pkc run` instead of the whole root:
+
+- SAFE_AUTO_EXCLUDE areas and RUNTIME_DEPENDENCY_INDEX internals never reach deep semantic scanners;
+- targeted shared code is analyzed from owning application scope (plan waves), not by whole-root sweep;
+- test evidence stays separate and never gains production authority;
+- UNKNOWN areas are not silently discarded: they stay in scope (fail-open for visibility) or are reported with coverage effect;
+- accepted semantic/fail-closed behavior is unchanged inside the selected scope (sample `.pkc` semantic artifacts stay byte-identical where the plan selects the same files);
+- scanner-internal name scopes (`CSharpSourceScope`, `FrontendSourceScope`) are reconciled with the plan without widening production authority;
+- heavy analysis state is released between bounded waves when safe;
+- `scan` / `build` keep their current whole-root behavior until an explicit migration decision.
+
+Do not optimize Roslyn internals before scope-reduction evidence exists. Do not start RD7 until RD6 is explicitly PASS.
+
+## RD5 scope (completed)
 
 Convert the discovery profile (areas, overrides, components, edges, generated artifacts) into a stable, inspectable plan:
 
@@ -93,7 +116,7 @@ Convert the discovery profile (areas, overrides, components, edges, generated ar
 
 RD5 produces and persists the plan; it must not yet change what the semantic scanners receive (RD6).
 
-Do not start RD6 until RD5 is explicitly PASS.
+RD5 is locally PASS (see evidence above).
 
 ## RD4 scope (completed)
 
@@ -305,8 +328,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9 and a37d936
-implementation: RD5 deterministic ScanPlan, regression-first
+operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936 and c440eea
+implementation: RD6 scoped/bounded semantic execution, regression-first
 ```
 
-After RD5 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD6 only.
+After RD6 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD7 only.

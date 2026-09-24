@@ -18,7 +18,8 @@ V0.4.7-E0 / RD1 inventory + safe exclusion         LOCAL PASS at fd3428f / PUSH 
 V0.4.7-E0 / RD2 application boundaries + ownership LOCAL PASS at 05eadb1 / PUSH + CI PENDING
 V0.4.7-E0 / RD3 vendor/custom frontend            LOCAL PASS at ac3efd9 / PUSH + CI PENDING
 V0.4.7-E0 / RD4 runtime/plugin provenance         LOCAL PASS at a37d936 / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD5 deterministic ScanPlan
+V0.4.7-E0 / RD5 deterministic ScanPlan            LOCAL PASS at c440eea / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD6 scoped/bounded semantic execution
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -108,9 +109,22 @@ Evidence: `docs/reviews/2026-09-24-rd4-runtime-plugin-provenance-evidence.md`.
 - Release build 0 warnings; `Pkc.CSharp.Tests` 317/317, `Pkc.Frontend.Tests` 23/23; focused discovery tests 26/26; delivery-proof mutation caught.
 - Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
 
-## Active implementation checkpoint — RD5
+## RD5 — LOCAL PASS
 
-RD5 deterministic ScanPlan is unlocked by RD4 local PASS and is now the only production implementation checkpoint.
+```text
+c440eea592c0360e0b9cde3456b1dcbf39727cb0
+feat: build a deterministic scan plan before semantic scans
+```
+
+Evidence: `docs/reviews/2026-09-24-rd5-deterministic-scan-plan-evidence.md`.
+
+- Plan schema `0.1.0-scan-plan` persisted to `.pkc/discovery/scan-plan.json` before any semantic stage: every enumerated file in exactly one scope with role, scan mode, scanners, coverage and evidence; explicit exclusions and UNKNOWN areas; host/unowned/test/unattributed waves; input fingerprint over discovery reads.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 322/322, `Pkc.Frontend.Tests` 23/23; focused discovery/plan/CLI tests 31/31; test-scope-isolation mutation caught.
+- Sample `.pkc` semantic artifacts still byte-identical to `ab24363`; scanners still receive the whole root.
+
+## Active implementation checkpoint — RD6
+
+RD6 scoped/bounded semantic execution is unlocked by RD5 local PASS and is now the only production implementation checkpoint.
 
 ## RD1 acceptance record
 
@@ -143,7 +157,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1–RD4 are locally PASS and documented; RD5 is unlocked.
+RD1–RD5 are locally PASS and documented; RD6 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -215,9 +229,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936 + docs) and confirm CI green
-implementation: RD5 deterministic ScanPlan, regression-first
-→ finish and locally verify RD5
+operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936, RD5 c440eea + docs) and confirm CI green
+implementation: RD6 scoped/bounded semantic execution, regression-first
+→ finish and locally verify RD6
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD6
+→ only then start RD7
 ```
