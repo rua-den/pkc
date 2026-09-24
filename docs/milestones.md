@@ -26,7 +26,8 @@ mutation-causality repair                 PASS / CLOSED
 | E0 / RD1 | Can PKC inventory repository shape and safely exclude only proven generated/restorable areas before expensive semantic scanning? | **LOCAL PASS at `fd3428f` / push + CI pending** |
 | E0 / RD2 | Can PKC model application boundaries and shared ownership from deterministic evidence without tests or similar names creating production edges? | **LOCAL PASS at `05eadb1` / push + CI pending** |
 | E0 / RD3 | Can PKC separate first-party, third-party runtime, generated/minified/bundled, wrapper and locally modified vendor frontend code without name-only authority? | **LOCAL PASS at `ac3efd9` / push + CI pending** |
-| E0 / RD4 | Can PKC prove runtime/plugin edges only from deterministic loader + build/copy + identity provenance? | **ACTIVE** |
+| E0 / RD4 | Can PKC prove runtime/plugin edges only from deterministic loader + build/copy + identity provenance? | **LOCAL PASS at `a37d936` / push + CI pending** |
+| E0 / RD5 | Can PKC turn the repository graph into a stable, inspectable, privacy-safe ScanPlan? | **ACTIVE** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
@@ -116,12 +117,12 @@ finish current RD checkpoint
 ## Current exact action
 
 ```text
-RD4 runtime/plugin provenance — ACTIVE (RD1–RD3 local PASS; push + CI pending)
+RD5 deterministic ScanPlan — ACTIVE (RD1–RD4 local PASS; push + CI pending)
 ```
 
 ## Version semantics
 
 ```text
-roadmap: V0.4.7-E0 bounded prework active; RD1–RD3 local PASS; RD4 current; R7.10/D still open
+roadmap: V0.4.7-E0 bounded prework active; RD1–RD4 local PASS; RD5 current; R7.10/D still open
 package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

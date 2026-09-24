@@ -17,7 +17,8 @@ V0.4.7-E0 repository discovery + bounded run       ACTIVE / USER-AUTHORIZED BOUN
 V0.4.7-E0 / RD1 inventory + safe exclusion         LOCAL PASS at fd3428f / PUSH + CI PENDING
 V0.4.7-E0 / RD2 application boundaries + ownership LOCAL PASS at 05eadb1 / PUSH + CI PENDING
 V0.4.7-E0 / RD3 vendor/custom frontend            LOCAL PASS at ac3efd9 / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD4 runtime/plugin provenance
+V0.4.7-E0 / RD4 runtime/plugin provenance         LOCAL PASS at a37d936 / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD5 deterministic ScanPlan
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -93,9 +94,23 @@ Evidence: `docs/reviews/2026-09-24-rd3-vendor-frontend-classification-evidence.m
 - Release build 0 warnings; `Pkc.CSharp.Tests` 313/313, `Pkc.Frontend.Tests` 23/23; focused discovery tests 22/22; modified-vendor mutation caught.
 - Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
 
-## Active implementation checkpoint — RD4
+## RD4 — LOCAL PASS
 
-RD4 runtime/plugin provenance is unlocked by RD3 local PASS and is now the only production implementation checkpoint.
+```text
+a37d936fc68c82e599f23da8b64bcb6ea85ef9fb
+feat: prove runtime plugin edges in repository discovery
+```
+
+Evidence: `docs/reviews/2026-09-24-rd4-runtime-plugin-provenance-evidence.md`.
+
+- Profile schema `0.4.0-discovery`: `runtime-plugin-load` edges require a host loader call, a unique literal assembly identity and build/copy delivery into the host tree; everything less is reported as unresolved; test loads are test references only.
+- Bounded composition probe reads only host/test project C# files and records per-component counts.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 317/317, `Pkc.Frontend.Tests` 23/23; focused discovery tests 26/26; delivery-proof mutation caught.
+- Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
+
+## Active implementation checkpoint — RD5
+
+RD5 deterministic ScanPlan is unlocked by RD4 local PASS and is now the only production implementation checkpoint.
 
 ## RD1 acceptance record
 
@@ -128,7 +143,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1, RD2 and RD3 are locally PASS and documented; RD4 is unlocked.
+RD1–RD4 are locally PASS and documented; RD5 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -200,9 +215,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9 + docs) and confirm CI green
-implementation: RD4 runtime/plugin provenance, regression-first
-→ finish and locally verify RD4
+operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936 + docs) and confirm CI green
+implementation: RD5 deterministic ScanPlan, regression-first
+→ finish and locally verify RD5
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD5
+→ only then start RD6
 ```

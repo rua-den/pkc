@@ -22,11 +22,16 @@ implementation                   ac3efd9f2b3f26bd99ab6cf141b8716325165578
                                  feat: classify vendor and generated frontend files in discovery
 evidence                         docs/reviews/2026-09-24-rd3-vendor-frontend-classification-evidence.md
 
+RD4 runtime/plugin provenance    LOCAL PASS
+implementation                   a37d936fc68c82e599f23da8b64bcb6ea85ef9fb
+                                 feat: prove runtime plugin edges in repository discovery
+evidence                         docs/reviews/2026-09-24-rd4-runtime-plugin-provenance-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD4                              ACTIVE
+RD5                              ACTIVE
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD3 remotely, verify with `git ls-remote origin` that `main` contains `ac3efd9` (and its docs successor), then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD4 remotely, verify with `git ls-remote origin` that `main` contains `a37d936` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -70,10 +75,27 @@ RD3 vendor/custom frontend classification
 LOCAL PASS at ac3efd9 / push + CI pending
 
 RD4 runtime/plugin provenance
+LOCAL PASS at a37d936 / push + CI pending
+
+RD5 deterministic ScanPlan
 ACTIVE
 ```
 
-## RD4 scope
+## RD5 scope
+
+Convert the discovery profile (areas, overrides, components, edges, generated artifacts) into a stable, inspectable plan:
+
+- every enumerated file accounted for exactly once with source role, scan mode, scanner set, evidence reason, confidence and coverage effect;
+- explicit exclusions (with evidence) and UNKNOWN areas listed, never dropped;
+- application waves derived from host ownership (hosts + owned components; shared nodes listed once per wave that owns them; unowned UNKNOWN components kept in a separate wave);
+- stable ordering, no timestamps, no absolute paths, no source/config values;
+- staleness diagnosable without source bodies (e.g., input fingerprint from sorted paths + sizes of manifests actually read).
+
+RD5 produces and persists the plan; it must not yet change what the semantic scanners receive (RD6).
+
+Do not start RD6 until RD5 is explicitly PASS.
+
+## RD4 scope (completed)
 
 Add provenance-bearing runtime/plugin edges to the same profile component graph:
 
@@ -84,7 +106,7 @@ Add provenance-bearing runtime/plugin edges to the same profile component graph:
 
 Loader evidence is Tier-2 bounded composition evidence: inspect only the minimum files needed, never recursive business semantics. Unsupported loader shapes stay UNKNOWN.
 
-Do not start RD5 until RD4 is explicitly PASS.
+RD4 is locally PASS (see evidence above).
 
 ## RD3 scope (completed)
 
@@ -283,8 +305,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f, 05eadb1 and ac3efd9
-implementation: RD4 runtime/plugin provenance, regression-first
+operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9 and a37d936
+implementation: RD5 deterministic ScanPlan, regression-first
 ```
 
-After RD4 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD5 only.
+After RD5 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD6 only.
