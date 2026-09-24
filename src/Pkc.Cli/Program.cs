@@ -211,7 +211,7 @@ static void ReportDiscovery(RepositoryProfile profile, string profilePath)
     Progress(
         "discover",
         $"Scope: deep {Files(ScanMode.DeepScan)} files, test-evidence {Files(ScanMode.TestEvidence)} files, " +
-        $"light-index {Files(ScanMode.LightIndex)} files, safe-auto-exclude {Areas(ScanMode.SafeAutoExclude)} areas, " +
+        $"light-index {Files(ScanMode.LightIndex)} files, runtime-index {Files(ScanMode.RuntimeDependencyIndex)} files, safe-auto-exclude {Areas(ScanMode.SafeAutoExclude)} areas, " +
         $"unknown-mode {Areas(ScanMode.Unknown)} areas, unknown-role {unknownRoleFiles} files.");
     Progress(
         "discover",

@@ -13,9 +13,9 @@ namespace Pkc.Core.Discovery;
 /// structural fact other than its own name proves it is generated or restorable (a sibling manifest
 /// whose tool owns that output, a declared build output path, or a restored package archive).
 /// </summary>
-public sealed class RepositoryDiscovery
+public sealed partial class RepositoryDiscovery
 {
-    public const string SchemaVersion = "0.2.0-discovery";
+    public const string SchemaVersion = "0.3.0-discovery";
 
     public RepositoryProfile Discover(string repositoryPath, CancellationToken cancellationToken = default)
     {
@@ -32,7 +32,7 @@ public sealed class RepositoryDiscovery
         return walk.BuildProfile();
     }
 
-    private sealed class DiscoveryWalk(string rootPath, CancellationToken cancellationToken)
+    private sealed partial class DiscoveryWalk
     {
         private const long MaxManifestBytes = 4 * 1024 * 1024;
         private const string TestProjectTypeGuid = "3AC096D0-A1C2-E12C-1390-A8335801FDAB";
@@ -87,7 +87,15 @@ public sealed class RepositoryDiscovery
         private readonly List<DotnetProjectRecord> _dotnetProjects = [];
         private readonly List<AngularProjectRecord> _angularProjects = [];
         private readonly List<SolutionRecord> _solutions = [];
+        private readonly string _rootPath;
+        private readonly CancellationToken _cancellationToken;
         private int _directories;
+
+        public DiscoveryWalk(string rootPath, CancellationToken cancellationToken)
+        {
+            _rootPath = rootPath;
+            _cancellationToken = cancellationToken;
+        }
 
         public void Visit(
             DirectoryInfo directory,
@@ -95,7 +103,7 @@ public sealed class RepositoryDiscovery
             MsBuildOutputLayout inheritedLayout,
             string? inheritedOutputTypeDeclaredBy)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            _cancellationToken.ThrowIfCancellationRequested();
             _directories++;
             if (relativeDirectory == DiscoveryPaths.Root)
             {
@@ -219,11 +227,14 @@ public sealed class RepositoryDiscovery
         public RepositoryProfile BuildProfile()
         {
             var files = _files.OrderBy(path => path, StringComparer.Ordinal).ToArray();
+            var frontend = ClassifyFrontendDependencies(files);
             var provisional = new RepositoryProfile(
                 RepositoryDiscovery.SchemaVersion,
                 new RepositoryInventory(0, 0, [], [], []),
                 [],
                 _areas.Values.Select(builder => builder.Build(0, [], _ => 0)).ToArray(),
+                [],
+                [],
                 [],
                 [],
                 [],
@@ -281,7 +292,14 @@ public sealed class RepositoryDiscovery
                 areas,
                 components,
                 edges,
-                unresolved,
+                unresolved
+                    .Concat(frontend.Unresolved)
+                    .OrderBy(reference => reference.From, StringComparer.Ordinal)
+                    .ThenBy(reference => reference.Reference, StringComparer.Ordinal)
+                    .ThenBy(reference => reference.Reason, StringComparer.Ordinal)
+                    .ToArray(),
+                frontend.Artifacts,
+                frontend.ByteComparisons,
                 _contentReads.ToArray())
             {
                 Files = files
@@ -591,7 +609,7 @@ public sealed class RepositoryDiscovery
                 return;
             }
 
-            var configFile = new FileInfo(Path.Combine(rootPath, configPath.Replace('/', Path.DirectorySeparatorChar)));
+            var configFile = new FileInfo(Path.Combine(_rootPath, configPath.Replace('/', Path.DirectorySeparatorChar)));
             using var document = configFile.Exists ? ReadJsonManifest(configFile, configPath) : null;
             if (document is null ||
                 document.RootElement.ValueKind != JsonValueKind.Object ||
@@ -676,7 +694,7 @@ public sealed class RepositoryDiscovery
 
         private bool CanRead(FileInfo file, string relativePath)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            _cancellationToken.ThrowIfCancellationRequested();
             if (file.Length > MaxManifestBytes)
             {
                 return false;
@@ -769,6 +787,11 @@ public sealed class RepositoryDiscovery
                  name.EndsWith(".config", StringComparison.OrdinalIgnoreCase)))
             {
                 return "runtime-configuration";
+            }
+
+            if (name.EndsWith(".map", StringComparison.OrdinalIgnoreCase))
+            {
+                return "source-map";
             }
 
             if (name.StartsWith("webpack.config.", StringComparison.OrdinalIgnoreCase))

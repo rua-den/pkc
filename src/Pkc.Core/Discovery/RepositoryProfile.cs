@@ -12,7 +12,16 @@ public enum SourceRole
     TestEvidence,
     GeneratedOrRestorable,
     Infrastructure,
-    ToolState
+    ToolState,
+
+    /// <summary>Declared by a restore manifest and byte-identical to (or listed by) the declared distribution.</summary>
+    ThirdPartyRuntime,
+
+    /// <summary>At a declared vendor content path but different from the declared distribution.</summary>
+    ThirdPartyModified,
+
+    /// <summary>Inside a declared vendor destination whose exact file set is not declared.</summary>
+    ThirdPartyUnknown
 }
 
 /// <summary>
@@ -25,7 +34,10 @@ public enum ScanMode
     LightIndex,
     TestEvidence,
     SafeAutoExclude,
-    Unknown
+    Unknown,
+
+    /// <summary>Runtime-visible dependency: identity/ownership indexed, internals not deep-scanned.</summary>
+    RuntimeDependencyIndex
 }
 
 public enum DiscoveryConfidence
@@ -132,6 +144,14 @@ public sealed record UnresolvedReference(
     string Reason,
     IReadOnlyList<DiscoveryEvidence> Evidence);
 
+/// <summary>A tracked file proven to be generated from other repository files (bundle output or source-mapped output).</summary>
+public sealed record GeneratedArtifact(
+    string Path,
+    string Kind,
+    IReadOnlyList<string> Inputs,
+    IReadOnlyList<string> UnresolvedInputs,
+    IReadOnlyList<DiscoveryEvidence> Evidence);
+
 public sealed record FileClassification(
     string AreaPath,
     SourceRole Role,
@@ -150,6 +170,8 @@ public sealed record RepositoryProfile(
     IReadOnlyList<RepositoryComponent> Components,
     IReadOnlyList<ComponentEdge> Edges,
     IReadOnlyList<UnresolvedReference> UnresolvedReferences,
+    IReadOnlyList<GeneratedArtifact> GeneratedArtifacts,
+    IReadOnlyList<string> ByteComparisons,
     IReadOnlyList<string> ContentReads)
 {
     // Keyed to the Areas instance so `with { Areas = ... }` copies never reuse a stale lookup.
