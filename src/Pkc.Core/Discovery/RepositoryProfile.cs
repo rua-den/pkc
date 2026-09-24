@@ -152,6 +152,9 @@ public sealed record GeneratedArtifact(
     IReadOnlyList<string> UnresolvedInputs,
     IReadOnlyList<DiscoveryEvidence> Evidence);
 
+/// <summary>Bounded Tier-2 composition probe: how many of a component's own source files were read for loader calls.</summary>
+public sealed record CompositionProbe(string Component, int Files);
+
 public sealed record FileClassification(
     string AreaPath,
     SourceRole Role,
@@ -172,6 +175,7 @@ public sealed record RepositoryProfile(
     IReadOnlyList<UnresolvedReference> UnresolvedReferences,
     IReadOnlyList<GeneratedArtifact> GeneratedArtifacts,
     IReadOnlyList<string> ByteComparisons,
+    IReadOnlyList<CompositionProbe> CompositionProbes,
     IReadOnlyList<string> ContentReads)
 {
     // Keyed to the Areas instance so `with { Areas = ... }` copies never reuse a stale lookup.

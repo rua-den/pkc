@@ -15,7 +15,7 @@ namespace Pkc.Core.Discovery;
 /// </summary>
 public sealed partial class RepositoryDiscovery
 {
-    public const string SchemaVersion = "0.3.0-discovery";
+    public const string SchemaVersion = "0.4.0-discovery";
 
     public RepositoryProfile Discover(string repositoryPath, CancellationToken cancellationToken = default)
     {
@@ -238,6 +238,7 @@ public sealed partial class RepositoryDiscovery
                 [],
                 [],
                 [],
+                [],
                 []);
 
             var areaFiles = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -283,7 +284,8 @@ public sealed partial class RepositoryDiscovery
                 roleCounts.OrderBy(pair => pair.Key).Select(pair => new RoleCount(pair.Key, pair.Value)).ToArray(),
                 scanModeCounts.OrderBy(pair => pair.Key).Select(pair => new ScanModeCount(pair.Key, pair.Value)).ToArray());
 
-            var (components, edges, unresolved) = ComponentGraph.Build(_dotnetProjects, _angularProjects, _solutions);
+            var (loaders, probes) = ScanRuntimeLoaders(files);
+            var (components, edges, unresolved) = ComponentGraph.Build(_dotnetProjects, _angularProjects, _solutions, loaders);
 
             return new RepositoryProfile(
                 RepositoryDiscovery.SchemaVersion,
@@ -300,6 +302,7 @@ public sealed partial class RepositoryDiscovery
                     .ToArray(),
                 frontend.Artifacts,
                 frontend.ByteComparisons,
+                probes,
                 _contentReads.ToArray())
             {
                 Files = files

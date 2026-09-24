@@ -219,7 +219,8 @@ static void ReportDiscovery(RepositoryProfile profile, string profilePath)
         $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.Owned)} owned, " +
         $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.TestOnly)} test, " +
         $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.Unknown)} unknown-ownership; " +
-        $"{profile.Edges.Count} references, {profile.UnresolvedReferences.Count} unresolved.");
+        $"{profile.Edges.Count} references ({profile.Edges.Count(edge => edge.Kind == "runtime-plugin-load")} runtime-plugin), " +
+        $"{profile.UnresolvedReferences.Count} unresolved.");
     Progress("discover", $"Repository profile: {profilePath}");
 }
 

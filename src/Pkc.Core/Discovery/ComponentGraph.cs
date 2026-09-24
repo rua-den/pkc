@@ -4,13 +4,25 @@ namespace Pkc.Core.Discovery;
 
 internal sealed record ProjectReferenceRecord(string Include, bool Conditional);
 
+internal sealed record CopyTaskRecord(string SourceFiles, string DestinationFolder);
+
 internal sealed record DotnetProjectRecord(
     string Manifest,
     string AreaPath,
     ComponentKind Kind,
     DiscoveryConfidence Confidence,
     IReadOnlyList<DiscoveryEvidence> Evidence,
-    IReadOnlyList<ProjectReferenceRecord> References);
+    IReadOnlyList<ProjectReferenceRecord> References)
+{
+    /// <summary>Literal assembly name (declared or file-name default); null when it depends on unevaluated properties.</summary>
+    public string? AssemblyName { get; init; }
+
+    public IReadOnlyList<string> OutputPaths { get; init; } = [];
+
+    public IReadOnlyList<CopyTaskRecord> Copies { get; init; } = [];
+}
+
+internal sealed record RuntimeLoaderFinding(string ComponentManifest, string LoaderFile, string? Identity);
 
 internal sealed record AngularProjectRecord(
     string Id,
@@ -40,6 +52,9 @@ internal static class DotnetProjectIdentity
     {
         var root = document.Root!;
         var references = new List<ProjectReferenceRecord>();
+        var assemblyNames = new SortedSet<string>(StringComparer.Ordinal);
+        var outputPaths = new SortedSet<string>(StringComparer.Ordinal);
+        var copies = new List<CopyTaskRecord>();
         var outputTypes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         var projectTypeGuids = string.Empty;
         var sdks = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -57,6 +72,15 @@ internal static class DotnetProjectIdentity
                     break;
                 case "OutputType":
                     outputTypes.Add(element.Value.Trim());
+                    break;
+                case "AssemblyName":
+                    assemblyNames.Add(element.Value.Trim());
+                    break;
+                case "OutputPath" or "OutDir" or "BaseOutputPath":
+                    outputPaths.Add(element.Value.Trim());
+                    break;
+                case "Copy" when element.Attribute("DestinationFolder") is { } destination:
+                    copies.Add(new CopyTaskRecord(element.Attribute("SourceFiles")?.Value ?? string.Empty, destination.Value));
                     break;
                 case "ProjectTypeGuids":
                     projectTypeGuids += element.Value;
@@ -78,7 +102,18 @@ internal static class DotnetProjectIdentity
 
         var (kind, confidence, evidence) = Classify(
             manifest, sdks, outputTypes, projectTypeGuids, testEvidenceKinds, outputTypeDeclaredBy);
-        return new DotnetProjectRecord(manifest, areaPath, kind, confidence, evidence, references);
+        var assemblyName = assemblyNames.Count switch
+        {
+            0 => Path.GetFileNameWithoutExtension(manifest),
+            1 when !assemblyNames.Single().Contains('$') => assemblyNames.Single(),
+            _ => null
+        };
+        return new DotnetProjectRecord(manifest, areaPath, kind, confidence, evidence, references)
+        {
+            AssemblyName = assemblyName,
+            OutputPaths = outputPaths.ToArray(),
+            Copies = copies
+        };
     }
 
     public static DotnetProjectRecord Unreadable(string manifest, string areaPath) =>
@@ -180,7 +215,8 @@ internal static class ComponentGraph
     public static (IReadOnlyList<RepositoryComponent> Components, IReadOnlyList<ComponentEdge> Edges, IReadOnlyList<UnresolvedReference> Unresolved) Build(
         IReadOnlyList<DotnetProjectRecord> projects,
         IReadOnlyList<AngularProjectRecord> angularProjects,
-        IReadOnlyList<SolutionRecord> solutions)
+        IReadOnlyList<SolutionRecord> solutions,
+        IReadOnlyList<RuntimeLoaderFinding> loaders)
     {
         var projectIndex = new ManifestIndex(projects.Select(project => project.Manifest));
 
@@ -207,7 +243,7 @@ internal static class ComponentGraph
             }
         }
 
-        var edges = new Dictionary<(string From, string To), ComponentEdge>();
+        var edges = new Dictionary<(string From, string To, string Kind), ComponentEdge>();
         var unresolved = new List<UnresolvedReference>();
         foreach (var project in projects)
         {
@@ -249,13 +285,15 @@ internal static class ComponentGraph
 
                 var to = DotnetId(target);
                 var confidence = reference.Conditional ? DiscoveryConfidence.Unknown : DiscoveryConfidence.High;
-                if (!edges.TryGetValue((from, to), out var existing) ||
+                if (!edges.TryGetValue((from, to, "project-reference"), out var existing) ||
                     (existing.Confidence != DiscoveryConfidence.High && confidence == DiscoveryConfidence.High))
                 {
-                    edges[(from, to)] = new ComponentEdge(from, to, "project-reference", confidence, [evidence]);
+                    edges[(from, to, "project-reference")] = new ComponentEdge(from, to, "project-reference", confidence, [evidence]);
                 }
             }
         }
+
+        AddRuntimePluginEdges(projects, loaders, nodes, edges, unresolved);
 
         var productionAdjacency = edges.Values
             .Where(edge => edge.Confidence == DiscoveryConfidence.High)
@@ -322,6 +360,7 @@ internal static class ComponentGraph
             edges.Values
                 .OrderBy(edge => edge.From, StringComparer.Ordinal)
                 .ThenBy(edge => edge.To, StringComparer.Ordinal)
+                .ThenBy(edge => edge.Kind, StringComparer.Ordinal)
                 .ToArray(),
             unresolved
                 .Distinct()
@@ -329,6 +368,184 @@ internal static class ComponentGraph
                 .ThenBy(reference => reference.Reference, StringComparer.Ordinal)
                 .ThenBy(reference => reference.Reason, StringComparer.Ordinal)
                 .ToArray());
+    }
+
+    private static readonly string[] OwnOutputTokens =
+        ["$(TargetPath)", "$(TargetDir)", "$(TargetFileName)", "$(OutDir)", "$(OutputPath)", "@(IntermediateAssembly)"];
+
+    private static readonly string[] ProjectDirectoryTokens =
+        ["$(MSBuildProjectDirectory)", "$(MSBuildThisFileDirectory)", "$(ProjectDir)"];
+
+    /// <summary>
+    /// A runtime plugin edge needs a production host loader, a unique literal assembly identity, and build/copy
+    /// provenance delivering the plugin output into the host tree. Anything less is reported, never promoted.
+    /// </summary>
+    private static void AddRuntimePluginEdges(
+        IReadOnlyList<DotnetProjectRecord> projects,
+        IReadOnlyList<RuntimeLoaderFinding> loaders,
+        IReadOnlyDictionary<string, Node> nodes,
+        IDictionary<(string From, string To, string Kind), ComponentEdge> edges,
+        ICollection<UnresolvedReference> unresolved)
+    {
+        var byManifest = projects.ToDictionary(project => project.Manifest, StringComparer.Ordinal);
+        var byAssembly = projects
+            .Where(project => project.AssemblyName is not null)
+            .GroupBy(project => project.AssemblyName!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var finding in loaders
+                     .OrderBy(finding => finding.ComponentManifest, StringComparer.Ordinal)
+                     .ThenBy(finding => finding.LoaderFile, StringComparer.Ordinal)
+                     .ThenBy(finding => finding.Identity, StringComparer.Ordinal))
+        {
+            var from = DotnetId(finding.ComponentManifest);
+            var test = nodes[from].Kind == ComponentKind.TestProject;
+            var loaderEvidence = new DiscoveryEvidence("runtime-loader", finding.LoaderFile);
+
+            if (finding.Identity is null)
+            {
+                if (!test)
+                {
+                    unresolved.Add(new UnresolvedReference(from, finding.LoaderFile, "runtime-loader-identity-unresolved", [loaderEvidence]));
+                }
+
+                continue;
+            }
+
+            var matches = byAssembly.GetValueOrDefault(finding.Identity) ?? [];
+            if (matches.Length != 1)
+            {
+                if (!test)
+                {
+                    unresolved.Add(new UnresolvedReference(
+                        from,
+                        finding.Identity,
+                        matches.Length == 0 ? "runtime-plugin-identity-not-found" : "runtime-plugin-identity-ambiguous",
+                        [loaderEvidence]));
+                }
+
+                continue;
+            }
+
+            var plugin = matches[0];
+            var to = DotnetId(plugin.Manifest);
+            if (to == from)
+            {
+                continue;
+            }
+
+            if (test)
+            {
+                nodes[to].TestReferences.Add(from);
+                continue;
+            }
+
+            var copy = CopyProvenance(plugin, byManifest[finding.ComponentManifest], edges);
+            if (copy is null)
+            {
+                unresolved.Add(new UnresolvedReference(from, finding.Identity, "runtime-plugin-copy-unproven", [loaderEvidence]));
+                continue;
+            }
+
+            var evidence = new[] { loaderEvidence, new DiscoveryEvidence("runtime-plugin-identity", plugin.Manifest), copy };
+            var key = (from, to, "runtime-plugin-load");
+            edges[key] = edges.TryGetValue(key, out var existing)
+                ? existing with { Evidence = existing.Evidence.Concat(evidence).Distinct().ToArray() }
+                : new ComponentEdge(from, to, "runtime-plugin-load", DiscoveryConfidence.High, evidence);
+        }
+
+        foreach (var plugin in projects.Where(project => nodes[DotnetId(project.Manifest)].Kind != ComponentKind.TestProject))
+        {
+            foreach (var host in projects.Where(project => HostKinds.Contains(nodes[DotnetId(project.Manifest)].Kind) && project != plugin))
+            {
+                var delivered = OutputDelivery(plugin, host);
+                if (delivered is not null && !edges.ContainsKey((DotnetId(host.Manifest), DotnetId(plugin.Manifest), "runtime-plugin-load")))
+                {
+                    unresolved.Add(new UnresolvedReference(
+                        DotnetId(plugin.Manifest), DotnetId(host.Manifest), "plugin-copy-without-identified-loader", [delivered]));
+                }
+            }
+        }
+
+        foreach (var edge in edges.Values.Where(edge => edge.Kind == "runtime-plugin-load").ToArray())
+        {
+            // Normalize evidence order for byte-stable output.
+            edges[(edge.From, edge.To, edge.Kind)] = edge with
+            {
+                Evidence = edge.Evidence
+                    .OrderBy(evidence => evidence.Kind, StringComparer.Ordinal)
+                    .ThenBy(evidence => evidence.Path, StringComparer.Ordinal)
+                    .ToArray()
+            };
+        }
+    }
+
+    private static DiscoveryEvidence? CopyProvenance(
+        DotnetProjectRecord plugin,
+        DotnetProjectRecord host,
+        IDictionary<(string From, string To, string Kind), ComponentEdge> edges) =>
+        OutputDelivery(plugin, host) ??
+        (edges.TryGetValue((DotnetId(host.Manifest), DotnetId(plugin.Manifest), "project-reference"), out var reference) &&
+         reference.Confidence == DiscoveryConfidence.High
+            ? new DiscoveryEvidence("project-reference-output-copy", host.Manifest)
+            : null);
+
+    /// <summary>Explicit build metadata that places the plugin's output inside the host's tree.</summary>
+    private static DiscoveryEvidence? OutputDelivery(DotnetProjectRecord plugin, DotnetProjectRecord host)
+    {
+        var pluginDirectory = DiscoveryPaths.Parent(plugin.Manifest);
+        var hostDirectory = DiscoveryPaths.Parent(host.Manifest);
+        bool IntoHost(string? destination) =>
+            destination is not null &&
+            DiscoveryPaths.IsUnder(destination, host.AreaPath) &&
+            !DiscoveryPaths.IsUnder(destination, plugin.AreaPath);
+
+        if (plugin.OutputPaths.Any(output => IntoHost(ResolveLiteralPrefix(pluginDirectory, output))))
+        {
+            return new DiscoveryEvidence("msbuild-output-path-into-host", plugin.Manifest);
+        }
+
+        if (plugin.Copies.Any(copy =>
+                OwnOutputTokens.Any(token => copy.SourceFiles.Contains(token, StringComparison.OrdinalIgnoreCase)) &&
+                IntoHost(ResolveLiteralPrefix(pluginDirectory, copy.DestinationFolder))))
+        {
+            return new DiscoveryEvidence("msbuild-copy-into-host", plugin.Manifest);
+        }
+
+        if (host.Copies.Any(copy =>
+                ResolveLiteralPrefix(hostDirectory, copy.SourceFiles) is { } source &&
+                DiscoveryPaths.IsUnder(source, plugin.AreaPath) &&
+                IntoHost(ResolveLiteralPrefix(hostDirectory, copy.DestinationFolder))))
+        {
+            return new DiscoveryEvidence("msbuild-copy-into-host", host.Manifest);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves the literal leading part of an MSBuild path (project-directory properties allowed as a prefix);
+    /// stops at the first segment that needs evaluation. Null when nothing literal remains.
+    /// </summary>
+    private static string? ResolveLiteralPrefix(string baseDirectory, string value)
+    {
+        var text = value.Trim().Replace('\\', '/');
+        foreach (var token in ProjectDirectoryTokens)
+        {
+            if (text.StartsWith(token, StringComparison.OrdinalIgnoreCase))
+            {
+                text = text[token.Length..].TrimStart('/');
+                break;
+            }
+        }
+
+        var literal = text
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .TakeWhile(segment => !segment.Contains("$(") && !segment.Contains("@(") && !segment.Contains("%(") && !segment.Contains(';'))
+            .ToArray();
+        return literal.Length == 0 || text.StartsWith("$(", StringComparison.Ordinal)
+            ? null
+            : DiscoveryPaths.Resolve(baseDirectory, string.Join('/', literal));
     }
 
     private static string DotnetId(string manifest) => "dotnet:" + manifest;
