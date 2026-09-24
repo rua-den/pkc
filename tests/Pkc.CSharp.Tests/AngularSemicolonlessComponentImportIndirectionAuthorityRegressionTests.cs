@@ -46,6 +46,49 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
             """);
     }
 
+    [Fact]
+    public async Task Typed_scalar_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup("const IMPORTS: readonly unknown[] = SHARED_IMPORTS;"));
+    }
+
+    [Fact]
+    public async Task Parenthesized_scalar_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup("const IMPORTS = (SHARED_IMPORTS);"));
+    }
+
+    [Fact]
+    public async Task Object_destructuring_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup(
+                """
+                const holder = { imports: SHARED_IMPORTS };
+                const { imports: IMPORTS } = holder;
+                """));
+    }
+
+    [Fact]
+    public async Task Array_destructuring_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup(
+                """
+                const groups = [SHARED_IMPORTS];
+                const [IMPORTS] = groups;
+                """));
+    }
+
+    [Fact]
+    public async Task Multiple_declarator_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup("const noop = 1, IMPORTS = SHARED_IMPORTS;"));
+    }
+
     private static string BuildComponentSource(string lineTerminator, bool duplicateAlias)
     {
         var lines = new List<string>
@@ -76,6 +119,23 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
         lines.Add("}");
         return string.Join(lineTerminator, lines);
     }
+
+    private static string BuildComponentSourceWithSetup(string setup) =>
+        """
+        import { Component } from '@angular/core';
+        import { SHARED_IMPORTS } from './shared-imports';
+
+        __SETUP__
+
+        @Component({
+          selector: 'app-price',
+          imports: [IMPORTS],
+          template: `<div ext-shell>{{ displayPrice }}</div>`
+        })
+        export class PriceComponent {
+          displayPrice = 42;
+        }
+        """.Replace("__SETUP__", setup, StringComparison.Ordinal);
 
     private static async Task AssertScalarAliasRejectedAsync(string componentSource)
     {

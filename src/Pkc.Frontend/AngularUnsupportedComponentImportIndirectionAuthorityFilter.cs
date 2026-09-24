@@ -17,8 +17,20 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         @"[A-Za-z_$][A-Za-z0-9_$]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private static readonly Regex ScalarAliasRegex = new(
-        @"\b(?:const|let|var)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?<target>[A-Za-z_$][A-Za-z0-9_$]*)\b",
+    private static readonly Regex UnsupportedSimpleVariableBindingRegex = new(
+        @"\b(?:const|let|var)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex UnsupportedContinuationVariableBindingRegex = new(
+        @",\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)\s*=",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ObjectDestructuringBindingRegex = new(
+        @"\b(?:const|let|var)\s*\{(?<binding>[\s\S]*?)\}\s*=",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ArrayDestructuringBindingRegex = new(
+        @"\b(?:const|let|var)\s*\[(?<binding>[\s\S]*?)\]\s*=",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex LocalImportRegex = new(
@@ -103,10 +115,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
 
         foreach (var source in sources.Values)
         {
-            var scalarAliases = ScalarAliasRegex.Matches(source.Text)
-                .Cast<Match>()
-                .Select(match => match.Groups["name"].Value)
-                .ToHashSet(StringComparer.Ordinal);
+            var unsupportedVariableBindings = FindUnsupportedVariableBindings(source.Text);
             var imports = ReadLocalImports(source, sources);
 
             foreach (Match component in ComponentDecoratorRegex.Matches(source.Text))
@@ -121,7 +130,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
                     .Select(match => match.Value)
                     .ToHashSet(StringComparer.Ordinal);
 
-                var unsupportedScalarAlias = identifiers.Overlaps(scalarAliases);
+                var unsupportedVariableBinding = identifiers.Overlaps(unsupportedVariableBindings);
                 var unsupportedDefaultReExport = imports.Any(imported =>
                     identifiers.Contains(imported.LocalName) &&
                     HasDefaultReExport(
@@ -130,7 +139,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
                         sources,
                         new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
 
-                if (!unsupportedScalarAlias && !unsupportedDefaultReExport)
+                if (!unsupportedVariableBinding && !unsupportedDefaultReExport)
                 {
                     continue;
                 }
@@ -146,6 +155,37 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         }
 
         return blocked;
+    }
+
+    private static HashSet<string> FindUnsupportedVariableBindings(string text)
+    {
+        var bindings = UnsupportedSimpleVariableBindingRegex.Matches(text)
+            .Cast<Match>()
+            .Select(match => match.Groups["name"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (Match match in UnsupportedContinuationVariableBindingRegex.Matches(text))
+        {
+            bindings.Add(match.Groups["name"].Value);
+        }
+
+        AddDestructuringBindings(ObjectDestructuringBindingRegex, text, bindings);
+        AddDestructuringBindings(ArrayDestructuringBindingRegex, text, bindings);
+        return bindings;
+    }
+
+    private static void AddDestructuringBindings(
+        Regex pattern,
+        string text,
+        HashSet<string> bindings)
+    {
+        foreach (Match match in pattern.Matches(text))
+        {
+            foreach (Match identifier in IdentifierRegex.Matches(match.Groups["binding"].Value))
+            {
+                bindings.Add(identifier.Value);
+            }
+        }
     }
 
     private static IReadOnlyList<LocalImport> ReadLocalImports(
