@@ -89,6 +89,25 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
             BuildComponentSourceWithSetup("const noop = 1, IMPORTS = SHARED_IMPORTS;"));
     }
 
+    [Fact]
+    public async Task Typed_multiple_declarator_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup(
+                "const noop = 1, IMPORTS: readonly unknown[] = SHARED_IMPORTS;"));
+    }
+
+    [Fact]
+    public async Task Typed_multiple_declarator_destructuring_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            BuildComponentSourceWithSetup(
+                """
+                const holder = { imports: SHARED_IMPORTS };
+                const noop = 1, { imports: IMPORTS }: { imports: unknown[] } = holder;
+                """));
+    }
+
     private static string BuildComponentSource(string lineTerminator, bool duplicateAlias)
     {
         var lines = new List<string>

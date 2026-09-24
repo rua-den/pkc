@@ -22,15 +22,15 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex UnsupportedContinuationVariableBindingRegex = new(
-        @",\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)\s*=",
+        @",\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)(?:\s*:[^=;]+?)?\s*=",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ObjectDestructuringBindingRegex = new(
-        @"\b(?:const|let|var)\s*\{(?<binding>[\s\S]*?)\}\s*=",
+        @"(?:\b(?:const|let|var)\s*|,\s*)\{(?<binding>[\s\S]*?)\}(?:\s*:[^=;]+?)?\s*=",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ArrayDestructuringBindingRegex = new(
-        @"\b(?:const|let|var)\s*\[(?<binding>[\s\S]*?)\]\s*=",
+        @"(?:\b(?:const|let|var)\s*|,\s*)\[(?<binding>[\s\S]*?)\](?:\s*:[^=;]+?)?\s*=",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex LocalImportRegex = new(
