@@ -193,7 +193,7 @@ public sealed class ResumableRunRegressionTests
     {
         var contract = new AiWorkspaceRenderer().Render(new Dictionary<string, string>())[AiWorkspaceRenderer.AnswerContractRelativePath];
 
-        foreach (var marker in new[] { "## Answer format", "**Short answer:**", "| When | Then |", "| ID | Scenario | Preconditions | Steps | Expected result | Basis |", "✅", "⚠️", "💡" })
+        foreach (var marker in new[] { "## Answer format", "**Short answer:**", "| When | Then |", "| ID | Scenario | Preconditions | Steps | Expected result | Basis |", "✅", "⚠️", "💡", "is true only when ALL of these hold", "the code condition decides" })
         {
             Assert.Contains(marker, contract, StringComparison.Ordinal);
         }

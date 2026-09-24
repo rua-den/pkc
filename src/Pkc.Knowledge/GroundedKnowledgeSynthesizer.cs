@@ -5,6 +5,7 @@ namespace Pkc.Knowledge;
 public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 {
     private static readonly string[] TrustedPublicationPrefixes = ["Publish", "Emit", "Enqueue", "Produce"];
+    private const int MaxListedUnresolvedDispatches = 5;
 
     public ValueTask<FeatureKnowledge> SynthesizeAsync(
         FeatureCandidate candidate,
@@ -25,7 +26,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         var sideEffects = BuildSideEffects(candidate);
         var flow = BuildFlow(candidate, factsById);
         var evidence = BuildEvidence(candidate, factsById, endpoint);
-        var unknowns = candidate.Unknowns.Select(FriendlyUnknown).ToArray();
+        var unknowns = candidate.Unknowns.Select(FriendlyUnknown).Concat(BuildUnresolvedDispatchUnknowns(candidate)).ToArray();
 
         var action = endpoint?.Name ?? candidate.Name;
         var summary = candidate.Coverage.Contains("frontend-static", StringComparer.Ordinal)
@@ -183,6 +184,13 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             {
                 permissions.Add($"Authorization required: {authorization}");
             }
+
+            if (endpoint.Metadata.TryGetValue("authorizationRequirements", out var requirements))
+            {
+                permissions.AddRange(requirements
+                    .Split(" | ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(requirement => $"Requires `{requirement}` (repository-specific authorization attribute; its exact semantics are defined in the repository)."));
+            }
         }
 
         permissions.AddRange(candidate.Facts
@@ -283,6 +291,27 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             }
         }
 
+        foreach (var guard in candidate.Facts.Where(fact => fact.Kind == "guard-condition"))
+        {
+            var exception = guard.Metadata.TryGetValue("exceptionType", out var exceptionType) ? $"throws `{exceptionType}`" : "throws";
+            var message = guard.Metadata.TryGetValue("message", out var text) ? $"; message: `{text}`" : string.Empty;
+            rules.Add($"Rejects ({exception}) when `{guard.Metadata.GetValueOrDefault("condition")}`{message}.");
+        }
+
+        foreach (var gate in candidate.Facts.Where(fact => fact.Kind == "boolean-gate"))
+        {
+            rules.Add(DescribeBooleanGate(gate));
+        }
+
+        foreach (var mapped in candidate.Facts.Where(fact => fact.Kind == "mapped-field-rule"))
+        {
+            rules.Add(DescribeMappedFieldRule(mapped));
+            if (mapped.Metadata.TryGetValue("documentation", out var documentation))
+            {
+                rules.Add($"Developer documentation for the rule behind `{mapped.Name}` (a code comment, not verified behavior; where it disagrees with the conditions above, the conditions are what the code does): \"{documentation}\"");
+            }
+        }
+
         foreach (var configured in candidate.Facts.Where(fact => fact.Kind == "configured-object"))
         {
             if (!configured.Metadata.TryGetValue("source", out var source) ||
@@ -343,6 +372,70 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
         }
 
         return rules.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string DescribeBooleanGate(EvidenceFact gate)
+    {
+        var target = gate.Metadata.GetValueOrDefault("target") ?? gate.Name;
+        var operands = Indexed(gate.Metadata, "operand").Select(pair =>
+        {
+            var setting = gate.Metadata.GetValueOrDefault($"operandSetting.{pair.Index}");
+            var source = gate.Metadata.GetValueOrDefault($"operandSource.{pair.Index}");
+            if (!string.IsNullOrWhiteSpace(setting))
+            {
+                return $"setting `{setting}` is on (`{pair.Value}` = `{source ?? pair.Value}`)";
+            }
+
+            return string.IsNullOrWhiteSpace(source) ? $"`{pair.Value}`" : $"`{pair.Value}` (= `{source}`)";
+        });
+        return $"`{target}` is true only when all of these hold: {string.Join("; ", operands)}.";
+    }
+
+    private static string DescribeMappedFieldRule(EvidenceFact rule)
+    {
+        var destination = rule.Metadata.GetValueOrDefault("destinationType") ?? rule.Container ?? "the result";
+        var ruleSource = rule.Metadata.GetValueOrDefault("ruleSource");
+        var location = rule.Metadata.GetValueOrDefault("ruleLocation");
+        var origin = string.Equals(ruleSource, "inline-lambda", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(ruleSource)
+            ? $"mapping rule at `{location ?? rule.Source.Path}`"
+            : $"rule `{ruleSource}` at `{location}`";
+        var conjuncts = Indexed(rule.Metadata, "conjunct").ToArray();
+        if (conjuncts.Length == 1)
+        {
+            return $"Result field `{rule.Name}` of `{destination}` is computed as `{conjuncts[0].Value}` ({origin}){Note(rule, 0)}.";
+        }
+
+        var lines = conjuncts.Select(pair => $"\n   {pair.Index + 1}. `{pair.Value}`{Note(rule, pair.Index)}");
+        return $"Result field `{rule.Name}` of `{destination}` is true only when ALL of these hold ({origin}):{string.Concat(lines)}";
+    }
+
+    private static string Note(EvidenceFact fact, int index) =>
+        fact.Metadata.TryGetValue($"note.{index}", out var note) ? $" — dev comment: \"{note}\"" : string.Empty;
+
+    private static IEnumerable<(int Index, string Value)> Indexed(IReadOnlyDictionary<string, string> metadata, string prefix)
+    {
+        for (var index = 0; metadata.TryGetValue($"{prefix}.{index}", out var value); index++)
+        {
+            yield return (index, value);
+        }
+    }
+
+    private static IEnumerable<string> BuildUnresolvedDispatchUnknowns(FeatureCandidate candidate)
+    {
+        var targets = candidate.Relations
+            .Where(relation => relation.Kind == "unresolved-dispatch")
+            .Select(relation => relation.Target)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (targets.Length == 0)
+        {
+            yield break;
+        }
+
+        var listed = string.Join(", ", targets.Take(MaxListedUnresolvedDispatches).Select(target => $"`{target}`"));
+        var more = targets.Length > MaxListedUnresolvedDispatches ? $" and {targets.Length - MaxListedUnresolvedDispatches} more" : string.Empty;
+        yield return $"Backend evidence stops at {targets.Length} interface call(s) whose implementation PKC could not prove (no direct DI registration and not exactly one implementing class): {listed}{more}. Behavior behind them is not proven.";
     }
 
     private static string DescribeBusinessPredicate(EvidenceFact fact, string expression)
@@ -461,7 +554,7 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
     {
         var flow = new List<string>();
         foreach (var relation in candidate.Relations.Where(relation =>
-                     relation.Kind is "invokes" or "dispatches"))
+                     relation.Kind is "invokes" or "dispatches" or "dispatches-sole-implementation"))
         {
             var source = factsById.TryGetValue(relation.FromFactId, out var sourceFact)
                 ? DisplayFact(sourceFact)
@@ -470,6 +563,15 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
             if (relation.Kind == "invokes")
             {
                 flow.Add($"{source} → {relation.Target}");
+                continue;
+            }
+
+            if (relation.Kind == "dispatches-sole-implementation")
+            {
+                var implementation = factsById.TryGetValue(relation.Target, out var implementationFact)
+                    ? DisplayFact(implementationFact)
+                    : relation.Target;
+                flow.Add($"{source} → {implementation} (inferred: the only implementing class, declared at {relation.Source.Path}:L{relation.Source.StartLine}; not proven by a DI registration)");
                 continue;
             }
 
@@ -493,6 +595,9 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                     "method" or
                     "condition" or
                     "business-predicate" or
+                    "boolean-gate" or
+                    "guard-condition" or
+                    "mapped-field-rule" or
                     "configured-object" or
                     "throw" or
                     "computed-property" or
@@ -623,6 +728,13 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
 
         "business-predicate" when fact.Metadata.TryGetValue("expression", out var predicate) =>
             $"Business predicate: {predicate}",
+
+        "boolean-gate" => $"Boolean gate for {fact.Name}",
+
+        "guard-condition" when fact.Metadata.TryGetValue("condition", out var guardCondition) =>
+            $"Guard {fact.Metadata.GetValueOrDefault("guard")}: {guardCondition}",
+
+        "mapped-field-rule" => $"Mapping rule for result field {fact.Container}.{fact.Name}",
 
         "configured-object"
             when fact.Metadata.TryGetValue("source", out var configuredSource) &&

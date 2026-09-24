@@ -507,7 +507,23 @@ public sealed class CSharpRepositoryScanner
         IDictionary<string, string> metadata,
         IEnumerable<AttributeListSyntax> lists)
     {
-        var authorizeAttributes = lists.SelectMany(list => list.Attributes)
+        var attributes = lists.SelectMany(list => list.Attributes).ToArray();
+
+        // Organization-specific authorization attributes (for example a claim or module requirement) are permission
+        // evidence too; they are recorded verbatim because their semantics are defined by the target repository.
+        var requirements = attributes
+            .Where(attribute => NormalizeAttributeName(attribute.Name.ToString()) is var name &&
+                                name != "Authorize" &&
+                                name.EndsWith("Authorize", StringComparison.Ordinal))
+            .Select(attribute => attribute.ToString())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (requirements.Length > 0)
+        {
+            metadata["authorizationRequirements"] = string.Join(" | ", requirements);
+        }
+
+        var authorizeAttributes = attributes
             .Where(attribute => NormalizeAttributeName(attribute.Name.ToString()) == "Authorize")
             .ToArray();
 

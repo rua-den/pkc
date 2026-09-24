@@ -17,7 +17,10 @@ public sealed partial class FeatureCandidateBuilder
         "constructs",
         "contains-loop",
         "handles-exception",
-        "returns-response"
+        "returns-response",
+        "applies-mapped-field-rule",
+        "contains-boolean-gate",
+        "contains-guard"
     };
 
     private static readonly Regex TemplateParameterRegex = new(@"\$\{[^}]+\}", RegexOptions.Compiled);
@@ -91,7 +94,13 @@ public sealed partial class FeatureCandidateBuilder
                     continue;
                 }
 
-                if (relation.Kind == "dispatches")
+                if (relation.Kind == "unresolved-dispatch")
+                {
+                    AddRelation(relation, includedRelations, seenRelations);
+                    continue;
+                }
+
+                if (relation.Kind is "dispatches" or "dispatches-sole-implementation")
                 {
                     AddRelation(relation, includedRelations, seenRelations);
                     if (factsById.TryGetValue(relation.Target, out var dispatchedFact))

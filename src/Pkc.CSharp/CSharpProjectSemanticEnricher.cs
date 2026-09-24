@@ -9,6 +9,12 @@ namespace Pkc.CSharp;
 
 public sealed class CSharpProjectSemanticEnricher
 {
+    /// <summary>Interface call resolved to the only concrete implementation in the loaded solution, not to a DI registration.</summary>
+    public const string SoleImplementationDispatchRelation = "dispatches-sole-implementation";
+
+    /// <summary>Call to an interface of the repository's own code whose implementation could not be proven.</summary>
+    public const string UnresolvedDispatchRelation = "unresolved-dispatch";
+
     private static readonly object RegistrationGate = new();
 
     public async Task<FactDocument> EnrichAsync(
@@ -89,6 +95,18 @@ public sealed class CSharpProjectSemanticEnricher
         }
 
         var registrations = FindDirectDiRegistrations(rootPath, load.Models);
+        var implementations = FindImplementations(rootPath, load.Models, cancellationToken);
+        var mappedFieldRules = CSharpRuleSurfaceAnalyzer.FindMappedFieldRules(
+            rootPath,
+            load.Models.Select(pair => new CSharpRuleSurfaceAnalyzer.RuleSource(
+                pair.Value.Tree,
+                pair.Value.SemanticModel,
+                NormalizePath(Path.GetRelativePath(rootPath, pair.Key)))),
+            cancellationToken);
+        var rulesByDestination = mappedFieldRules
+            .GroupBy(rule => rule.DestinationTypeKey, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        var ruleFacts = new List<EvidenceFact>(mappedFieldRules.Select(rule => rule.Fact));
 
         foreach (var fact in facts.Where(fact =>
                      projectFactIds.Contains(fact.Id) &&
@@ -140,8 +158,63 @@ public sealed class CSharpProjectSemanticEnricher
                         concrete.Id,
                         registrationSource));
                 }
+                else if (TryResolveSoleImplementation(
+                             methodSymbol,
+                             implementations,
+                             callableSymbols,
+                             out var sole,
+                             out var implementationSource))
+                {
+                    relations.Add(new EvidenceRelation(
+                        fact.Id,
+                        SoleImplementationDispatchRelation,
+                        sole.Id,
+                        implementationSource));
+                }
+                else if (IsOwnInterfaceMethod(rootPath, methodSymbol))
+                {
+                    relations.Add(new EvidenceRelation(
+                        fact.Id,
+                        UnresolvedDispatchRelation,
+                        GetMethodTarget(methodSymbol),
+                        GetLocation(invocation, fact.Source.Path)));
+                }
+            }
+
+            foreach (var gate in CSharpRuleSurfaceAnalyzer.FindBooleanGates(fact, scope, source.SemanticModel, cancellationToken))
+            {
+                ruleFacts.Add(gate);
+                relations.Add(new EvidenceRelation(fact.Id, CSharpRuleSurfaceAnalyzer.ContainsBooleanGateRelation, gate.Id, gate.Source));
+            }
+
+            foreach (var guard in CSharpRuleSurfaceAnalyzer.FindGuardConditions(fact, scope, source.SemanticModel, cancellationToken))
+            {
+                ruleFacts.Add(guard);
+                relations.Add(new EvidenceRelation(fact.Id, CSharpRuleSurfaceAnalyzer.ContainsGuardRelation, guard.Id, guard.Source));
+            }
+
+            if (rulesByDestination.Count > 0)
+            {
+                foreach (var typeKey in CSharpRuleSurfaceAnalyzer.FindProjectedTypeKeys(scope, source.SemanticModel, cancellationToken))
+                {
+                    if (!rulesByDestination.TryGetValue(typeKey, out var rules))
+                    {
+                        continue;
+                    }
+
+                    foreach (var rule in rules)
+                    {
+                        relations.Add(new EvidenceRelation(
+                            fact.Id,
+                            CSharpRuleSurfaceAnalyzer.AppliesMappedFieldRuleRelation,
+                            rule.Fact.Id,
+                            rule.Fact.Source));
+                    }
+                }
             }
         }
+
+        facts.AddRange(ruleFacts.GroupBy(rule => rule.Id, StringComparer.Ordinal).Select(group => group.First()));
 
         return new FactDocument(
             "0.4.4-csharp",
@@ -668,6 +741,91 @@ public sealed class CSharpProjectSemanticEnricher
         return true;
     }
 
+    /// <summary>
+    /// Non-generic interface → implementing class, over every concrete class declared in the loaded solution. Used
+    /// when no direct registration proves the dispatch (for example services registered by assembly scanning).
+    /// </summary>
+    private static IReadOnlyDictionary<string, SourceImplementation[]> FindImplementations(
+        string rootPath,
+        IReadOnlyDictionary<string, ProjectSemanticSource> models,
+        CancellationToken cancellationToken)
+    {
+        var implementations = new Dictionary<string, Dictionary<string, SourceImplementation>>(StringComparer.Ordinal);
+        foreach (var (fullPath, source) in models)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var declaration in source.Tree.GetRoot(cancellationToken).DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                if (declaration is InterfaceDeclarationSyntax ||
+                    source.SemanticModel.GetDeclaredSymbol(declaration, cancellationToken) is not INamedTypeSymbol type ||
+                    type.IsAbstract ||
+                    type.IsStatic ||
+                    type.IsGenericType)
+                {
+                    continue;
+                }
+
+                var typeKey = GetTypeKey(type);
+                var location = GetLocation(declaration, NormalizePath(Path.GetRelativePath(rootPath, fullPath)));
+                foreach (var implemented in type.AllInterfaces.Where(candidate => !candidate.IsGenericType))
+                {
+                    var interfaceKey = GetTypeKey(implemented);
+                    if (!implementations.TryGetValue(interfaceKey, out var byType))
+                    {
+                        implementations[interfaceKey] = byType = new Dictionary<string, SourceImplementation>(StringComparer.Ordinal);
+                    }
+
+                    byType.TryAdd(typeKey, new SourceImplementation(type, location));
+                }
+            }
+        }
+
+        return implementations.ToDictionary(pair => pair.Key, pair => pair.Value.Values.ToArray(), StringComparer.Ordinal);
+    }
+
+    private static bool TryResolveSoleImplementation(
+        IMethodSymbol interfaceMethod,
+        IReadOnlyDictionary<string, SourceImplementation[]> implementations,
+        IReadOnlyDictionary<string, EvidenceFact[]> callableSymbols,
+        out EvidenceFact concrete,
+        out SourceLocation implementationSource)
+    {
+        concrete = null!;
+        implementationSource = null!;
+        if (interfaceMethod.ContainingType is not { TypeKind: TypeKind.Interface, IsGenericType: false } interfaceType ||
+            interfaceMethod.IsStatic ||
+            !implementations.TryGetValue(GetTypeKey(interfaceType), out var candidates) ||
+            candidates.Length != 1)
+        {
+            return false;
+        }
+
+        var implementation = candidates[0];
+        var interfaceKey = GetTypeKey(interfaceType);
+        var interfaceMember = implementation.Type.AllInterfaces
+            .Where(candidate => GetTypeKey(candidate) == interfaceKey)
+            .SelectMany(candidate => candidate.GetMembers(interfaceMethod.Name).OfType<IMethodSymbol>())
+            .SingleOrDefault(candidate => HasSameSignature(candidate, interfaceMethod.OriginalDefinition));
+        if (interfaceMember is null ||
+            implementation.Type.FindImplementationForInterfaceMember(interfaceMember) is not IMethodSymbol implementationMethod ||
+            !callableSymbols.TryGetValue(GetSymbolKey(implementationMethod.OriginalDefinition), out var facts) ||
+            facts.Length != 1)
+        {
+            return false;
+        }
+
+        concrete = facts[0];
+        implementationSource = implementation.Location;
+        return true;
+    }
+
+    private static bool IsOwnInterfaceMethod(string rootPath, IMethodSymbol method) =>
+        method.ContainingType?.TypeKind == TypeKind.Interface &&
+        method.ContainingType.Locations.Any(location =>
+            location.IsInSource &&
+            !string.IsNullOrWhiteSpace(location.SourceTree?.FilePath) &&
+            IsUnderRoot(rootPath, location.SourceTree.FilePath));
+
     private static bool HasSameSignature(IMethodSymbol left, IMethodSymbol right) =>
         left.Name == right.Name &&
         left.Arity == right.Arity &&
@@ -710,6 +868,8 @@ public sealed class CSharpProjectSemanticEnricher
         IReadOnlyDictionary<string, ProjectSemanticSource> Models,
         IReadOnlyDictionary<string, string> ProjectFailures,
         string? FallbackReason);
+
+    private sealed record SourceImplementation(INamedTypeSymbol Type, SourceLocation Location);
 
     private sealed record DirectDiRegistration(
         string ServiceKey,
