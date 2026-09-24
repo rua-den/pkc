@@ -15,7 +15,7 @@ namespace Pkc.Core.Discovery;
 /// </summary>
 public sealed class RepositoryDiscovery
 {
-    public const string SchemaVersion = "0.1.0-discovery";
+    public const string SchemaVersion = "0.2.0-discovery";
 
     public RepositoryProfile Discover(string repositoryPath, CancellationToken cancellationToken = default)
     {
@@ -28,7 +28,7 @@ public sealed class RepositoryDiscovery
         }
 
         var walk = new DiscoveryWalk(rootPath, cancellationToken);
-        walk.Visit(new DirectoryInfo(rootPath), DiscoveryPaths.Root, MsBuildOutputLayout.Default);
+        walk.Visit(new DirectoryInfo(rootPath), DiscoveryPaths.Root, MsBuildOutputLayout.Default, inheritedOutputTypeDeclaredBy: null);
         return walk.BuildProfile();
     }
 
@@ -65,6 +65,10 @@ public sealed class RepositoryDiscovery
                 "xunit.core"
             };
 
+        private static readonly Regex SolutionProjectLine = new(
+            @"^\s*Project\(""\{[^}]+\}""\)\s*=\s*""[^""]*""\s*,\s*""(?<path>[^""]+)""",
+            RegexOptions.CultureInvariant);
+
         private static readonly Regex TestFileIncludeSegment = new(
             @"^\*\.(?<token>[A-Za-z0-9_-]+)\.(ts|tsx|js|jsx|mjs|cjs)$",
             RegexOptions.CultureInvariant);
@@ -80,9 +84,16 @@ public sealed class RepositoryDiscovery
         private readonly Dictionary<string, AreaBuilder> _areas = new(StringComparer.Ordinal);
         private readonly Dictionary<string, List<DiscoveryEvidence>> _declaredOutputs = new(StringComparer.Ordinal);
         private readonly SortedSet<string> _contentReads = new(StringComparer.Ordinal);
+        private readonly List<DotnetProjectRecord> _dotnetProjects = [];
+        private readonly List<AngularProjectRecord> _angularProjects = [];
+        private readonly List<SolutionRecord> _solutions = [];
         private int _directories;
 
-        public void Visit(DirectoryInfo directory, string relativeDirectory, MsBuildOutputLayout inheritedLayout)
+        public void Visit(
+            DirectoryInfo directory,
+            string relativeDirectory,
+            MsBuildOutputLayout inheritedLayout,
+            string? inheritedOutputTypeDeclaredBy)
         {
             cancellationToken.ThrowIfCancellationRequested();
             _directories++;
@@ -121,6 +132,11 @@ public sealed class RepositoryDiscovery
                     _manifests[relativeFile] = manifestKind;
                 }
 
+                if (manifestKind == "dotnet-solution")
+                {
+                    InspectSolution(file, relativeFile);
+                }
+
                 var infrastructureKind = InfrastructureKind(relativeFile, file.Name);
                 if (infrastructureKind is not null)
                 {
@@ -133,21 +149,30 @@ public sealed class RepositoryDiscovery
             }
 
             var directoryLayout = inheritedLayout;
+            var outputTypeDeclaredBy = inheritedOutputTypeDeclaredBy;
             foreach (var file in files.Where(file =>
                          file.Name.Equals("Directory.Build.props", StringComparison.OrdinalIgnoreCase) ||
                          file.Name.Equals("Directory.Build.targets", StringComparison.OrdinalIgnoreCase)))
             {
-                var document = ReadXmlManifest(file, DiscoveryPaths.Join(relativeDirectory, file.Name));
+                var relativeFile = DiscoveryPaths.Join(relativeDirectory, file.Name);
+                var document = ReadXmlManifest(file, relativeFile);
                 directoryLayout = directoryLayout.Combine(
                     document is null ? MsBuildOutputLayout.Unproven : MsBuildOutputLayout.From(document));
+                if (document is null || document.Descendants().Any(element => element.Name.LocalName == "OutputType"))
+                {
+                    outputTypeDeclaredBy ??= relativeFile;
+                }
             }
 
             var projects = files.Where(file => MsBuildProjectExtensions.Contains(file.Extension)).ToArray();
             var projectLayout = directoryLayout;
             foreach (var project in projects)
             {
-                projectLayout = projectLayout.Combine(
-                    InspectProject(project, DiscoveryPaths.Join(relativeDirectory, project.Name), relativeDirectory));
+                projectLayout = projectLayout.Combine(InspectProject(
+                    project,
+                    DiscoveryPaths.Join(relativeDirectory, project.Name),
+                    relativeDirectory,
+                    outputTypeDeclaredBy));
             }
 
             if (fileNames.Contains("package.json"))
@@ -187,7 +212,7 @@ public sealed class RepositoryDiscovery
                     continue;
                 }
 
-                Visit(child, relativeChild, directoryLayout);
+                Visit(child, relativeChild, directoryLayout, outputTypeDeclaredBy);
             }
         }
 
@@ -199,6 +224,9 @@ public sealed class RepositoryDiscovery
                 new RepositoryInventory(0, 0, [], [], []),
                 [],
                 _areas.Values.Select(builder => builder.Build(0, [], _ => 0)).ToArray(),
+                [],
+                [],
+                [],
                 []);
 
             var areaFiles = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -244,11 +272,16 @@ public sealed class RepositoryDiscovery
                 roleCounts.OrderBy(pair => pair.Key).Select(pair => new RoleCount(pair.Key, pair.Value)).ToArray(),
                 scanModeCounts.OrderBy(pair => pair.Key).Select(pair => new ScanModeCount(pair.Key, pair.Value)).ToArray());
 
+            var (components, edges, unresolved) = ComponentGraph.Build(_dotnetProjects, _angularProjects, _solutions);
+
             return new RepositoryProfile(
                 RepositoryDiscovery.SchemaVersion,
                 inventory,
                 _manifests.Select(pair => new RepositoryManifest(pair.Key, pair.Value)).ToArray(),
                 areas,
+                components,
+                edges,
+                unresolved,
                 _contentReads.ToArray())
             {
                 Files = files
@@ -322,7 +355,11 @@ public sealed class RepositoryDiscovery
             return null;
         }
 
-        private MsBuildOutputLayout InspectProject(FileInfo project, string relativeProject, string relativeDirectory)
+        private MsBuildOutputLayout InspectProject(
+            FileInfo project,
+            string relativeProject,
+            string relativeDirectory,
+            string? outputTypeDeclaredBy)
         {
             var area = Area(relativeDirectory);
             area.Kinds.Add("dotnet-project");
@@ -332,6 +369,7 @@ public sealed class RepositoryDiscovery
             if (document?.Root is null)
             {
                 area.Evidence.Add(new DiscoveryEvidence("manifest-unreadable", relativeProject));
+                _dotnetProjects.Add(DotnetProjectIdentity.Unreadable(relativeProject, relativeDirectory));
                 return MsBuildOutputLayout.Unproven;
             }
 
@@ -367,7 +405,55 @@ public sealed class RepositoryDiscovery
                 area.Evidence.AddRange(testEvidence.Select(kind => new DiscoveryEvidence(kind, relativeProject)));
             }
 
+            _dotnetProjects.Add(DotnetProjectIdentity.Describe(
+                document, relativeProject, relativeDirectory, testEvidence, outputTypeDeclaredBy));
             return MsBuildOutputLayout.From(document);
+        }
+
+        private void InspectSolution(FileInfo solution, string relativeSolution)
+        {
+            var solutionDirectory = DiscoveryPaths.Parent(relativeSolution);
+            var projectPaths = new SortedSet<string>(StringComparer.Ordinal);
+            if (solution.Extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase))
+            {
+                var document = ReadXmlManifest(solution, relativeSolution);
+                foreach (var path in document?.Descendants()
+                             .Where(element => element.Name.LocalName == "Project")
+                             .Select(element => element.Attribute("Path")?.Value)
+                             .OfType<string>() ?? [])
+                {
+                    AddSolutionProject(projectPaths, solutionDirectory, path);
+                }
+            }
+            else if (CanRead(solution, relativeSolution))
+            {
+                try
+                {
+                    foreach (var line in File.ReadLines(solution.FullName))
+                    {
+                        var match = SolutionProjectLine.Match(line);
+                        if (match.Success)
+                        {
+                            AddSolutionProject(projectPaths, solutionDirectory, match.Groups["path"].Value);
+                        }
+                    }
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    projectPaths.Clear();
+                }
+            }
+
+            _solutions.Add(new SolutionRecord(relativeSolution, projectPaths.ToArray()));
+        }
+
+        private static void AddSolutionProject(ISet<string> projectPaths, string solutionDirectory, string path)
+        {
+            if (MsBuildProjectExtensions.Contains(Path.GetExtension(path)) &&
+                DiscoveryPaths.Resolve(solutionDirectory, path) is { } resolved)
+            {
+                projectPaths.Add(resolved);
+            }
         }
 
         private void InspectAngularWorkspace(FileInfo workspaceFile, string relativeDirectory)
@@ -393,6 +479,8 @@ public sealed class RepositoryDiscovery
                     continue;
                 }
 
+                RegisterAngularProject(project.Name, project.Value, relativeDirectory, relativeWorkspaceFile);
+
                 var targets = GetObject(project.Value, "architect") ?? GetObject(project.Value, "targets");
                 if (targets is null)
                 {
@@ -405,6 +493,52 @@ public sealed class RepositoryDiscovery
                 RegisterAngularOutput(targets.Value, relativeDirectory, sourceRoot, relativeWorkspaceFile);
                 RegisterAngularTestFiles(targets.Value, relativeDirectory, relativeWorkspaceFile, area);
             }
+        }
+
+        private void RegisterAngularProject(string name, JsonElement project, string relativeDirectory, string relativeWorkspaceFile)
+        {
+            var declaredRoot = GetString(project, "root");
+            // An absent or empty Angular project root means the workspace root.
+            var areaPath = string.IsNullOrWhiteSpace(declaredRoot)
+                ? relativeDirectory
+                : DiscoveryPaths.Resolve(relativeDirectory, declaredRoot);
+            var (kind, evidenceKind) = GetString(project, "projectType") switch
+            {
+                "application" => (ComponentKind.AngularApplication, "angular-project-type"),
+                "library" => (ComponentKind.AngularLibrary, "angular-project-type"),
+                null => AngularBuilderKind(project),
+                _ => (ComponentKind.Unknown, "angular-project-type-unsupported")
+            };
+            if (areaPath is null)
+            {
+                (kind, evidenceKind) = (ComponentKind.Unknown, "angular-project-root-unresolved");
+            }
+
+            _angularProjects.Add(new AngularProjectRecord(
+                $"angular:{relativeWorkspaceFile}#{name}",
+                relativeWorkspaceFile,
+                areaPath ?? relativeDirectory,
+                kind,
+                kind == ComponentKind.Unknown ? DiscoveryConfidence.Unknown : DiscoveryConfidence.High,
+                [new DiscoveryEvidence(evidenceKind, relativeWorkspaceFile)]));
+        }
+
+        /// <summary>Only official Angular build builders identify the project type when projectType is absent.</summary>
+        private static (ComponentKind Kind, string EvidenceKind) AngularBuilderKind(JsonElement project)
+        {
+            var targets = GetObject(project, "architect") ?? GetObject(project, "targets");
+            var build = targets is null ? null : GetObject(targets.Value, "build");
+            var builder = build is null ? null : GetString(build.Value, "builder");
+            var official = builder is not null &&
+                           (builder.StartsWith("@angular-devkit/build-angular:", StringComparison.Ordinal) ||
+                            builder.StartsWith("@angular/build:", StringComparison.Ordinal));
+            var target = official ? builder![(builder!.IndexOf(':') + 1)..] : null;
+            return target switch
+            {
+                "application" or "browser" or "browser-esbuild" => (ComponentKind.AngularApplication, "angular-application-builder"),
+                "ng-packagr" => (ComponentKind.AngularLibrary, "angular-library-builder"),
+                _ => (ComponentKind.Unknown, "angular-project-type-undeclared")
+            };
         }
 
         private void RegisterAngularOutput(JsonElement targets, string relativeDirectory, string? sourceRoot, string relativeWorkspaceFile)

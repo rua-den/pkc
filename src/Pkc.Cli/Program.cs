@@ -213,6 +213,13 @@ static void ReportDiscovery(RepositoryProfile profile, string profilePath)
         $"Scope: deep {Files(ScanMode.DeepScan)} files, test-evidence {Files(ScanMode.TestEvidence)} files, " +
         $"light-index {Files(ScanMode.LightIndex)} files, safe-auto-exclude {Areas(ScanMode.SafeAutoExclude)} areas, " +
         $"unknown-mode {Areas(ScanMode.Unknown)} areas, unknown-role {unknownRoleFiles} files.");
+    Progress(
+        "discover",
+        $"Components: {profile.Components.Count(component => component.Ownership == OwnershipStatus.Host)} hosts, " +
+        $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.Owned)} owned, " +
+        $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.TestOnly)} test, " +
+        $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.Unknown)} unknown-ownership; " +
+        $"{profile.Edges.Count} references, {profile.UnresolvedReferences.Count} unresolved.");
     Progress("discover", $"Repository profile: {profilePath}");
 }
 

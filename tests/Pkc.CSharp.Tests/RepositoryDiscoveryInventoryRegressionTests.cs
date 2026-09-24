@@ -242,12 +242,12 @@ public sealed class RepositoryDiscoveryInventoryRegressionTests
         Assert.Contains(Area(profile, "src/Backoffice.Web").Kinds, kind => kind == "dotnet-project");
 
         // Discovery reads only bounded build/workspace manifests; never source bodies or runtime configuration.
-        var readableManifestSuffixes = new[] { ".csproj", ".vbproj", ".fsproj", "/Directory.Build.props", "/Directory.Build.targets", "/angular.json", ".json" };
+        var readableManifestSuffixes = new[] { ".csproj", ".vbproj", ".fsproj", ".sln", ".slnx", "/Directory.Build.props", "/Directory.Build.targets", "/angular.json", ".json" };
         Assert.NotEmpty(profile.ContentReads);
         foreach (var read in profile.ContentReads)
         {
             var kind = manifestKinds[read];
-            Assert.Contains(kind, new[] { "dotnet-project", "msbuild-directory-props", "msbuild-directory-targets", "angular-workspace", "typescript-config" });
+            Assert.Contains(kind, new[] { "dotnet-project", "dotnet-solution", "msbuild-directory-props", "msbuild-directory-targets", "angular-workspace", "typescript-config" });
             Assert.Contains(readableManifestSuffixes, suffix => ("/" + read).EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
         }
 

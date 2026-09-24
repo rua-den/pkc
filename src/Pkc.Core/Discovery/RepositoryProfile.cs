@@ -74,6 +74,64 @@ public sealed record RepositoryInventory(
     IReadOnlyList<RoleCount> FilesByRole,
     IReadOnlyList<ScanModeCount> FilesByScanMode);
 
+public enum ComponentKind
+{
+    Unknown,
+    WebHost,
+    WorkerHost,
+    ExecutableHost,
+    Library,
+    TestProject,
+    AngularApplication,
+    AngularLibrary
+}
+
+public enum OwnershipStatus
+{
+    /// <summary>No production host provably reaches this component.</summary>
+    Unknown,
+
+    /// <summary>A deployable/runtime host; it owns itself.</summary>
+    Host,
+
+    /// <summary>At least one production host reaches it through proven references.</summary>
+    Owned,
+
+    /// <summary>Test evidence; never a production owner or owned node.</summary>
+    TestOnly
+}
+
+/// <summary>
+/// A buildable unit declared by a manifest (.NET project or Angular workspace project).
+/// <see cref="Owners"/> lists production host component ids that reach this component through
+/// unconditional, resolved project references; tests and similar names never contribute.
+/// </summary>
+public sealed record RepositoryComponent(
+    string Id,
+    string Manifest,
+    string AreaPath,
+    ComponentKind Kind,
+    SourceRole Role,
+    DiscoveryConfidence Confidence,
+    IReadOnlyList<DiscoveryEvidence> Evidence,
+    IReadOnlyList<string> Solutions,
+    OwnershipStatus Ownership,
+    IReadOnlyList<string> Owners,
+    IReadOnlyList<string> TestReferences);
+
+public sealed record ComponentEdge(
+    string From,
+    string To,
+    string Kind,
+    DiscoveryConfidence Confidence,
+    IReadOnlyList<DiscoveryEvidence> Evidence);
+
+public sealed record UnresolvedReference(
+    string From,
+    string Reference,
+    string Reason,
+    IReadOnlyList<DiscoveryEvidence> Evidence);
+
 public sealed record FileClassification(
     string AreaPath,
     SourceRole Role,
@@ -89,6 +147,9 @@ public sealed record RepositoryProfile(
     RepositoryInventory Inventory,
     IReadOnlyList<RepositoryManifest> Manifests,
     IReadOnlyList<SourceArea> Areas,
+    IReadOnlyList<RepositoryComponent> Components,
+    IReadOnlyList<ComponentEdge> Edges,
+    IReadOnlyList<UnresolvedReference> UnresolvedReferences,
     IReadOnlyList<string> ContentReads)
 {
     // Keyed to the Areas instance so `with { Areas = ... }` copies never reuse a stale lookup.
