@@ -205,6 +205,35 @@ Follow-ups (proposals, not in code):
    - **UI linkage.** 0 workflows have `UI to backend` or `How to do it in the UI` evidence on this repository; screen-level answers are therefore weak. Needs frontend coverage for the legacy UI stacks actually present (per `_meta/coverage.json`, many files are not analyzable).
    - **Raw code expressions in knowledge.** Business rules and state changes are rendered as literal code conditions and initializers (sometimes multi-line). The workspace holds no source files, but it does hold these fragments. Either render them in business language or fence them clearly as evidence; until then, product wording must say "no source files, only short rule conditions".
    - Observed during source cross-checking: chained comparison expressions can mean something different from their apparent intent. PKC currently reports such conditions verbatim; it must never paraphrase them as simple intent without proof.
+7. **Probe "when is quantity adjustment shown on a customer-portal service?" (2026-09-24, run-2 workspace).** Result: **FAIL**, answered honestly as not proven. The source-known answer is a nine-part conjunction:
+   - a system setting;
+   - the portal user being an admin (claim);
+   - customer tenant presence;
+   - supplier capability, or the line is a bundle;
+   - subscription presence, or the line is a bundle;
+   - two line-level flags;
+   - not consumption-based;
+   - an invoice-stop-date condition;
+   - a product-group membership rule, with a separate bundle rule.
+
+   These are returned to the portal as one computed response field. PKC stopped at hop one. Missing capabilities, in ROI order (proposals):
+   - **Interface → implementation beyond direct `Program.cs` registrations.** `TryResolveDirectDiDispatch` accepts only unconditional `builder.Services.AddX<I, T>()` top-level statements in the same project. The repository registers application services through its own assembly scanner, so the controller → app-service hop is never followed. In the run-2 workspace, 3,750 of 3,997 workflow flows end at an own-code interface method, and 2,166 of those have neither permissions nor state changes. Candidate: a fail-closed "sole non-abstract implementation in the loaded solution" fallback with its own authority label (inferred, not DI-proven). It must refuse when there are zero or several implementations, or generic/decorator ambiguity. Reproduce with a synthetic scanner-registration fixture first.
+   - **Response-field lineage through mapping profiles.** A query projects entities with a mapping profile whose member rule is a reusable `Expression<Func<T, bool>>` factory. PKC should link the response field to that expression and extract its conditions.
+   - **Expression-factory rules.** Extract conjunctions from methods returning `Expression<Func<…>>` as rules, including the developer's inline comments and XML `<summary>` as a separate, labelled "developer-documented" authority.
+   - **Configuration toggles and claim-based conditions.** Setting reads and identity-claim checks (for example an admin claim ANDed into a request flag) should surface as rule conditions. Together with custom authorization attributes (item 6), these are permission evidence.
+   - **Honest dead-ends.** When a flow ends at an unresolved interface, name it under "Important unknowns" so answers can say exactly where evidence stops.
+   - Cross-check also found an invoice-stop-date condition whose inline comment contradicts its comparison. Reported to the operator; PKC must present such conditions literally and never paraphrase them from the comment.
+
+   **Implemented (working tree, not committed; regression `RuleSurfaceRegressionTests`, synthetic fixture):**
+   - `dispatches-sole-implementation` — `CSharpProjectSemanticEnricher.TryResolveSoleImplementation`. When no direct registration proves the dispatch, PKC follows a non-generic own interface to its only concrete, non-generic implementing class. Zero or several implementations are refused. The flow line says "inferred: the only implementing class … not proven by a DI registration".
+   - `unresolved-dispatch` — own-interface calls that remain unresolved are listed, capped at 5, under "Important unknowns".
+   - `mapped-field-rule`, `CSharpRuleSurfaceAnalyzer` — covers `ForMember(d => d.X, o => o.MapFrom(rule))` where `rule` is an inline lambda or a single-return `Expression<Func<…>>` factory:
+     - every `&&` conjunct is kept with its leading developer comment, plus the factory's XML `<summary>` as labelled developer documentation;
+     - the rule is linked to every callable whose return type or generic arguments include the destination type.
+   - `boolean-gate` — a member assigned from an `&&` conjunction. Local operands are resolved to their initializer, and static string keys (const, or initialized with a literal) are named as settings.
+   - `guard-condition` — static void guard helpers on throw/guard types with a leading `bool` condition (for example `Against<TException>(condition, message)`) become "Rejects … when …" rules.
+   - `authorizationRequirements` — repository-specific `*Authorize` attributes are recorded verbatim as permissions.
+   - The answer contract tells the assistant to answer a result-field rule with all of its conditions, to word them from the dev comments, and to let the code condition decide (flag any disagreement ⚠️).
 
 ## RD7 scope (completed)
 
