@@ -18,7 +18,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ScalarAliasRegex = new(
-        @"\b(?:const|let|var)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?<target>[A-Za-z_$][A-Za-z0-9_$]*)\s*;",
+        @"\b(?:const|let|var)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?<target>[A-Za-z_$][A-Za-z0-9_$]*)\b(?=[ \t]*(?:;|//[^\r\n]*(?:\r?\n|$)|/\*[\s\S]*?\*/[ \t]*(?:;|\r?\n|$)|\r?\n|$))",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex LocalImportRegex = new(
