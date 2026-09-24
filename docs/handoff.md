@@ -37,11 +37,16 @@ implementation                   280450cdaa77491b8a5ab6a45ae7f0cb8f0caa0d
                                  feat: run semantic scanners inside the scan plan scope
 evidence                         docs/reviews/2026-09-24-rd6-scoped-semantic-execution-evidence.md
 
+RD7 coverage + observability     LOCAL PASS
+implementation                   d0c1017bd83d0d4b732facb5ddeddc5facfe48ca
+                                 feat: add plan-only discovery and persisted scan coverage
+evidence                         docs/reviews/2026-09-24-rd7-coverage-observability-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD7                              ACTIVE
+RD8                              ACTIVE — operator-run external gate
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD6 remotely, verify with `git ls-remote origin` that `main` contains `280450c` (and its docs successor), then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD7 remotely, verify with `git ls-remote origin` that `main` contains `d0c1017` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -94,10 +99,35 @@ RD6 scoped/bounded semantic execution
 LOCAL PASS at 280450c / push + CI pending
 
 RD7 coverage + observability + plan-only inspection
-ACTIVE
+LOCAL PASS at d0c1017 / push + CI pending
+
+RD8 private large-repository validation
+ACTIVE — operator-run external gate
 ```
 
-## RD7 scope
+## RD8 scope
+
+Validate on the approved private mixed legacy repository, using sanitized measurements only, every bullet in `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md` § RD8 (boundaries, frontend generations, vendor separation and carve-outs, runtime/plugin topology, shared ownership, test isolation, generated/restorable exclusion, UNKNOWN preservation, semantic scope reduction, elapsed time and peak memory against the unbounded baseline, and `.pkc/workspace` generation).
+
+Run only inside the approved source-enabled/company environment, against the approved private repository, without modifying it (work on a disposable copy if `.pkc/` must not be written into the original checkout):
+
+```text
+1. build PKC at the current main (Release)
+2. pkc discover <private-repo-copy>
+   → review [pkc:discover]/[pkc:plan] counts and .pkc/discovery/scan-plan.json locally
+     (hosts/components, exclusions, test evidence, vendor/runtime-index, UNKNOWN areas)
+3. pkc run <private-repo-copy>, measuring elapsed time and peak working set
+   (e.g. PowerShell: Measure-Command + Get-Process peak WorkingSet64 sampling)
+4. compare with the recorded unbounded baseline (~9 GB RAM before useful completion)
+5. confirm .pkc/workspace is generated and _meta/coverage.json is plausible
+6. record sanitized measurements only in docs/reviews/<date>-rd8-private-validation.md:
+   counts, ratios, elapsed/peak memory, PASS/PARTIAL/FAIL per RD8 bullet —
+   no proprietary names, paths, endpoints, source snippets or configuration values
+```
+
+A PKC-source session without that environment must not claim RD8. If the operator's run exposes gaps, reproduce them with synthetic fixtures and fix them regression-first here.
+
+## RD7 scope (completed)
 
 Let users inspect detection and planned scope before expensive execution, and see honest coverage afterwards:
 
@@ -106,7 +136,7 @@ Let users inspect detection and planned scope before expensive execution, and se
 - surface a bounded, privacy-safe coverage summary at the generated workspace/verification boundary so product answers can state what was not analyzed;
 - progress messages must reflect actual phases and counts.
 
-Do not start RD8 until RD7 is explicitly PASS.
+RD7 is locally PASS (see evidence above).
 
 ## RD6 scope (completed)
 
@@ -347,8 +377,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936, c440eea and 280450c
-implementation: RD7 coverage + observability + plan-only inspection, regression-first
+operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936, c440eea, 280450c and d0c1017
+operator: run RD8 in the approved private environment (see RD8 scope) and record sanitized measurements
 ```
 
-After RD7 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD8 only.
+After RD8, fix any exposed gaps regression-first, then record E0 PASS only when the normal product path generates the workspace practically with honest coverage.

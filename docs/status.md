@@ -20,7 +20,8 @@ V0.4.7-E0 / RD3 vendor/custom frontend            LOCAL PASS at ac3efd9 / PUSH +
 V0.4.7-E0 / RD4 runtime/plugin provenance         LOCAL PASS at a37d936 / PUSH + CI PENDING
 V0.4.7-E0 / RD5 deterministic ScanPlan            LOCAL PASS at c440eea / PUSH + CI PENDING
 V0.4.7-E0 / RD6 scoped/bounded semantic execution LOCAL PASS at 280450c / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD7 coverage + observability + plan-only inspection
+V0.4.7-E0 / RD7 coverage + observability          LOCAL PASS at d0c1017 / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD8 private large-repository validation (operator-run; external gate)
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -138,9 +139,39 @@ Evidence: `docs/reviews/2026-09-24-rd6-scoped-semantic-execution-evidence.md`.
 - Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
 - Known gap: one bounded pass over the planned union (per-wave release deferred until RD8 measures).
 
-## Active implementation checkpoint — RD7
+## RD7 — LOCAL PASS
 
-RD7 coverage + observability + plan-only inspection is unlocked by RD6 local PASS and is now the only production implementation checkpoint.
+```text
+d0c1017bd83d0d4b732facb5ddeddc5facfe48ca
+feat: add plan-only discovery and persisted scan coverage
+```
+
+Evidence: `docs/reviews/2026-09-24-rd7-coverage-observability-evidence.md`.
+
+- `pkc discover <repo>` is the plan-only inspection contract: discovery + plan persisted, no semantic scanner, no facts/workspace.
+- Executing commands persist `.pkc/discovery/scan-coverage.json` and print `[pkc:coverage]`; `pkc run` adds a count-only `_meta/coverage.json` to the workspace and one answer-contract line.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 331/331, `Pkc.Frontend.Tests` 23/23; focused RD7 tests 4/4 (two via the real CLI); stale-coverage and privacy mutations caught.
+- Sample semantic artifacts and knowledge byte-identical to `ab24363`; intended additions only (coverage files, one contract line).
+
+## Active checkpoint — RD8 (external gate)
+
+RD8 private large-repository validation is unlocked by RD7 local PASS. It requires the approved private repository inside the approved source-enabled/company environment, which the implementing session does not have. RD8 is therefore an operator-run gate, not something a PKC-source session can self-certify.
+
+Run only inside the approved source-enabled/company environment, against the approved private repository, without modifying it (work on a disposable copy if `.pkc/` must not be written into the original checkout):
+
+```text
+1. build PKC at the current main (Release)
+2. pkc discover <private-repo-copy>
+   → review [pkc:discover]/[pkc:plan] counts and .pkc/discovery/scan-plan.json locally
+     (hosts/components, exclusions, test evidence, vendor/runtime-index, UNKNOWN areas)
+3. pkc run <private-repo-copy>, measuring elapsed time and peak working set
+   (e.g. PowerShell: Measure-Command + Get-Process peak WorkingSet64 sampling)
+4. compare with the recorded unbounded baseline (~9 GB RAM before useful completion)
+5. confirm .pkc/workspace is generated and _meta/coverage.json is plausible
+6. record sanitized measurements only in docs/reviews/<date>-rd8-private-validation.md:
+   counts, ratios, elapsed/peak memory, PASS/PARTIAL/FAIL per RD8 bullet —
+   no proprietary names, paths, endpoints, source snippets or configuration values
+```
 
 ## RD1 acceptance record
 
@@ -173,7 +204,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1–RD6 are locally PASS and documented; RD7 is unlocked.
+RD1–RD7 are locally PASS and documented; RD8 is unlocked and waits on an operator run in the approved private environment.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -245,9 +276,8 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936, RD5 c440eea, RD6 280450c + docs) and confirm CI green
-implementation: RD7 coverage + observability + plan-only inspection, regression-first
-→ finish and locally verify RD7
-→ update status/handoff with exact implementation HEAD and verification
-→ only then start RD8
+operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936, RD5 c440eea, RD6 280450c, RD7 d0c1017 + docs) and confirm CI green
+operator: run RD8 in the approved private environment (procedure above) and record sanitized measurements
+→ if RD8 exposes scope/resource gaps, fix them regression-first on the PKC source with synthetic fixtures
+→ only after RD8 PASS: practical workspace generation sign-off and E0 PASS
 ```
