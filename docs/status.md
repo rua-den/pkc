@@ -19,7 +19,8 @@ V0.4.7-E0 / RD2 application boundaries + ownership LOCAL PASS at 05eadb1 / PUSH 
 V0.4.7-E0 / RD3 vendor/custom frontend            LOCAL PASS at ac3efd9 / PUSH + CI PENDING
 V0.4.7-E0 / RD4 runtime/plugin provenance         LOCAL PASS at a37d936 / PUSH + CI PENDING
 V0.4.7-E0 / RD5 deterministic ScanPlan            LOCAL PASS at c440eea / PUSH + CI PENDING
-V0.4.7-E0 current sub-checkpoint                   RD6 scoped/bounded semantic execution
+V0.4.7-E0 / RD6 scoped/bounded semantic execution LOCAL PASS at 280450c / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD7 coverage + observability + plan-only inspection
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -122,9 +123,24 @@ Evidence: `docs/reviews/2026-09-24-rd5-deterministic-scan-plan-evidence.md`.
 - Release build 0 warnings; `Pkc.CSharp.Tests` 322/322, `Pkc.Frontend.Tests` 23/23; focused discovery/plan/CLI tests 31/31; test-scope-isolation mutation caught.
 - Sample `.pkc` semantic artifacts still byte-identical to `ab24363`; scanners still receive the whole root.
 
-## Active implementation checkpoint — RD6
+## RD6 — LOCAL PASS
 
-RD6 scoped/bounded semantic execution is unlocked by RD5 local PASS and is now the only production implementation checkpoint.
+```text
+280450cdaa77491b8a5ab6a45ae7f0cb8f0caa0d
+feat: run semantic scanners inside the scan plan scope
+```
+
+Evidence: `docs/reviews/2026-09-24-rd6-scoped-semantic-execution-evidence.md`.
+
+- `pkc run` executes the existing C# and frontend scanners inside a plan-derived `SemanticSourceScope`: safely excluded, generated/light-indexed, runtime-dependency and test-evidence files never reach deep scanners (including `MSBuildWorkspace` project sets and node TypeScript walkers); DEEP_SCAN and UNKNOWN stay visible; accepted name scopes remain as an extra filter and planned files they withhold are reported per stage.
+- `scan` / `build` keep their whole-root scope.
+- Release build 0 warnings; `Pkc.CSharp.Tests` 327/327, `Pkc.Frontend.Tests` 23/23; focused RD6 tests 4/4 + CLI source test; test-evidence and scope-entry mutations caught.
+- Sample `.pkc` semantic artifacts still byte-identical to `ab24363`.
+- Known gap: one bounded pass over the planned union (per-wave release deferred until RD8 measures).
+
+## Active implementation checkpoint — RD7
+
+RD7 coverage + observability + plan-only inspection is unlocked by RD6 local PASS and is now the only production implementation checkpoint.
 
 ## RD1 acceptance record
 
@@ -157,7 +173,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-RD1–RD5 are locally PASS and documented; RD6 is unlocked.
+RD1–RD6 are locally PASS and documented; RD7 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -229,9 +245,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936, RD5 c440eea + docs) and confirm CI green
-implementation: RD6 scoped/bounded semantic execution, regression-first
-→ finish and locally verify RD6
+operator: push main (RD1 fd3428f, RD2 05eadb1, RD3 ac3efd9, RD4 a37d936, RD5 c440eea, RD6 280450c + docs) and confirm CI green
+implementation: RD7 coverage + observability + plan-only inspection, regression-first
+→ finish and locally verify RD7
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD7
+→ only then start RD8
 ```

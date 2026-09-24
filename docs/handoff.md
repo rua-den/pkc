@@ -32,11 +32,16 @@ implementation                   c440eea592c0360e0b9cde3456b1dcbf39727cb0
                                  feat: build a deterministic scan plan before semantic scans
 evidence                         docs/reviews/2026-09-24-rd5-deterministic-scan-plan-evidence.md
 
+RD6 scoped semantic execution    LOCAL PASS
+implementation                   280450cdaa77491b8a5ab6a45ae7f0cb8f0caa0d
+                                 feat: run semantic scanners inside the scan plan scope
+evidence                         docs/reviews/2026-09-24-rd6-scoped-semantic-execution-evidence.md
+
 push / CI                        PENDING — operator must push main
-RD6                              ACTIVE
+RD7                              ACTIVE
 ```
 
-The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD5 remotely, verify with `git ls-remote origin` that `main` contains `c440eea` (and its docs successor), then confirm the CI run for that push is green.
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1–RD6 remotely, verify with `git ls-remote origin` that `main` contains `280450c` (and its docs successor), then confirm the CI run for that push is green.
 
 ## Read first
 
@@ -86,10 +91,24 @@ RD5 deterministic ScanPlan
 LOCAL PASS at c440eea / push + CI pending
 
 RD6 scoped/bounded semantic execution
+LOCAL PASS at 280450c / push + CI pending
+
+RD7 coverage + observability + plan-only inspection
 ACTIVE
 ```
 
-## RD6 scope
+## RD7 scope
+
+Let users inspect detection and planned scope before expensive execution, and see honest coverage afterwards:
+
+- a plan-only entry point (for example `pkc discover <repo>` or `pkc run --plan-only <repo>`; choose one contract) that runs discovery + plan, persists `.pkc/discovery/*`, prints the summary and starts no semantic scanner;
+- persist a local execution/coverage record under `.pkc/discovery/` (per stage: planned, executed, withheld by plan, withheld by scanner name scope, UNKNOWN) without source bodies or configuration values;
+- surface a bounded, privacy-safe coverage summary at the generated workspace/verification boundary so product answers can state what was not analyzed;
+- progress messages must reflect actual phases and counts.
+
+Do not start RD8 until RD7 is explicitly PASS.
+
+## RD6 scope (completed)
 
 Make the existing semantic scanners consume the persisted plan in `pkc run` instead of the whole root:
 
@@ -102,7 +121,7 @@ Make the existing semantic scanners consume the persisted plan in `pkc run` inst
 - heavy analysis state is released between bounded waves when safe;
 - `scan` / `build` keep their current whole-root behavior until an explicit migration decision.
 
-Do not optimize Roslyn internals before scope-reduction evidence exists. Do not start RD7 until RD6 is explicitly PASS.
+RD6 is locally PASS (see evidence above). Known gap: one bounded pass over the planned union; per-wave state release is deferred until RD8 measures memory.
 
 ## RD5 scope (completed)
 
@@ -328,8 +347,8 @@ The independent review must be resumed before final V0.4.7 acceptance, but it no
 ## Exact next action
 
 ```text
-operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936 and c440eea
-implementation: RD6 scoped/bounded semantic execution, regression-first
+operator: push main and confirm CI green for fd3428f, 05eadb1, ac3efd9, a37d936, c440eea and 280450c
+implementation: RD7 coverage + observability + plan-only inspection, regression-first
 ```
 
-After RD6 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD7 only.
+After RD7 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD8 only.

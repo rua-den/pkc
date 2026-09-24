@@ -28,7 +28,8 @@ mutation-causality repair                 PASS / CLOSED
 | E0 / RD3 | Can PKC separate first-party, third-party runtime, generated/minified/bundled, wrapper and locally modified vendor frontend code without name-only authority? | **LOCAL PASS at `ac3efd9` / push + CI pending** |
 | E0 / RD4 | Can PKC prove runtime/plugin edges only from deterministic loader + build/copy + identity provenance? | **LOCAL PASS at `a37d936` / push + CI pending** |
 | E0 / RD5 | Can PKC turn the repository graph into a stable, inspectable, privacy-safe ScanPlan? | **LOCAL PASS at `c440eea` / push + CI pending** |
-| E0 / RD6 | Can semantic scanners execute only planned scopes/waves without changing accepted semantics inside scope? | **ACTIVE** |
+| E0 / RD6 | Can semantic scanners execute only planned scopes/waves without changing accepted semantics inside scope? | **LOCAL PASS at `280450c` / push + CI pending** |
+| E0 / RD7 | Can users inspect detection, planned scope and honest coverage before and after expensive execution? | **ACTIVE** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
@@ -118,12 +119,12 @@ finish current RD checkpoint
 ## Current exact action
 
 ```text
-RD6 scoped/bounded semantic execution — ACTIVE (RD1–RD5 local PASS; push + CI pending)
+RD7 coverage + observability + plan-only inspection — ACTIVE (RD1–RD6 local PASS; push + CI pending)
 ```
 
 ## Version semantics
 
 ```text
-roadmap: V0.4.7-E0 bounded prework active; RD1–RD5 local PASS; RD6 current; R7.10/D still open
+roadmap: V0.4.7-E0 bounded prework active; RD1–RD6 local PASS; RD7 current; R7.10/D still open
 package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
