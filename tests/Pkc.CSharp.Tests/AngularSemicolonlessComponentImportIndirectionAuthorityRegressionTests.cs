@@ -8,27 +8,56 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
     [Fact]
     public async Task Semicolonless_scalar_alias_of_indirect_external_component_imports_fails_closed()
     {
-        await AssertScalarAliasRejectedAsync(
-            """
-            const IMPORTS = SHARED_IMPORTS
-            """);
+        await AssertScalarAliasRejectedAsync(BuildComponentSource("\n", duplicateAlias: false));
     }
 
     [Fact]
     public async Task Duplicate_semicolonless_scalar_alias_names_across_scopes_fail_closed()
     {
-        await AssertScalarAliasRejectedAsync(
-            """
-            const IMPORTS = SHARED_IMPORTS
-
-            function preserveScope() {
-              const IMPORTS = SHARED_IMPORTS
-              return IMPORTS
-            }
-            """);
+        await AssertScalarAliasRejectedAsync(BuildComponentSource("\n", duplicateAlias: true));
     }
 
-    private static async Task AssertScalarAliasRejectedAsync(string aliasSetup)
+    [Theory]
+    [InlineData("\r")]
+    [InlineData("\u2028")]
+    [InlineData("\u2029")]
+    public async Task Semicolonless_scalar_alias_respects_typescript_line_terminators(string lineTerminator)
+    {
+        await AssertScalarAliasRejectedAsync(BuildComponentSource(lineTerminator, duplicateAlias: false));
+    }
+
+    private static string BuildComponentSource(string lineTerminator, bool duplicateAlias)
+    {
+        var lines = new List<string>
+        {
+            "import { Component } from '@angular/core';",
+            "import { SHARED_IMPORTS } from './shared-imports';",
+            string.Empty,
+            "const IMPORTS = SHARED_IMPORTS"
+        };
+
+        if (duplicateAlias)
+        {
+            lines.Add(string.Empty);
+            lines.Add("function preserveScope() {");
+            lines.Add("  const IMPORTS = SHARED_IMPORTS");
+            lines.Add("  return IMPORTS");
+            lines.Add("}");
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("@Component({");
+        lines.Add("  selector: 'app-price',");
+        lines.Add("  imports: [IMPORTS],");
+        lines.Add("  template: `<div ext-shell>{{ displayPrice }}</div>`");
+        lines.Add("})");
+        lines.Add("export class PriceComponent {");
+        lines.Add("  displayPrice = 42;");
+        lines.Add("}");
+        return string.Join(lineTerminator, lines);
+    }
+
+    private static async Task AssertScalarAliasRejectedAsync(string componentSource)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -54,22 +83,6 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
                 import { ExternalShell } from '@vendor/ui';
                 export const SHARED_IMPORTS = [ExternalShell];
                 """);
-
-            var componentSource = """
-                import { Component } from '@angular/core';
-                import { SHARED_IMPORTS } from './shared-imports';
-
-                __ALIAS_SETUP__
-
-                @Component({
-                  selector: 'app-price',
-                  imports: [IMPORTS],
-                  template: `<div ext-shell>{{ displayPrice }}</div>`
-                })
-                export class PriceComponent {
-                  displayPrice = 42;
-                }
-                """.Replace("__ALIAS_SETUP__", aliasSetup, StringComparison.Ordinal);
             await File.WriteAllTextAsync(
                 Path.Combine(sourceRoot, "price.component.ts"),
                 componentSource);
