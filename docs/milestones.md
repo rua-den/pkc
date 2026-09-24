@@ -2,26 +2,9 @@
 
 Last updated: 2026-09-24
 
-PKC is a Product/System Knowledge Compiler. A milestone is accepted only when portable generated knowledge answers named product questions from deterministic evidence with explicit uncertainty, and the normal product flow can practically produce that knowledge on the intended repository class.
+PKC is a Product/System Knowledge Compiler. Acceptance requires deterministic portable product knowledge, honest uncertainty and a normal product flow that can practically produce the workspace on the intended repository class.
 
-## Permanent delivery rules
-
-```text
-question / acceptance boundary
-→ regression-first fixture
-→ deterministic implementation
-→ focused verification
-→ full relevant verification
-→ diff review
-→ coherent commit/push
-→ exact-SHA gates
-→ real-repository safety + product-value evidence
-→ independent review where required
-```
-
-A green workflow is not by itself a product benchmark pass. Likewise, a semantically strong compiler is not demo-ready if `pkc run` cannot practically produce the workspace on the target repository.
-
-## Accepted V0.4.x checkpoints
+## Accepted checkpoints
 
 ```text
 V0.4.4 Loren knowledge readiness          PASS / COMPLETE
@@ -36,7 +19,7 @@ mutation-causality repair                 PASS / CLOSED
 
 Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 
-## V0.4.7 — cross-layer PO-question + demo readiness — CURRENT
+## V0.4.7 — CURRENT
 
 | Checkpoint | Acceptance question | Current state |
 | --- | --- | --- |
@@ -44,47 +27,49 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B | Was it computed or later overwritten? | PASS / COMPLETE |
 | C | What backend value supplies the response field? | PASS / COMPLETE |
 | D / R7.9 | What API field feeds the rendered value? | PASS / COMPLETE |
-| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REREVIEW #17 FAIL / REPAIR REQUIRED** |
+| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REPAIRED / EXACT-SHA GATES PASS / PENDING REREVIEW #18** |
 | E0 | Can PKC discover, plan and boundedly scan a large mixed repository well enough to produce the AI workspace? | **LOCKED behind D / PREPARED** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
-Reviewed R7.10 production:
+Exact R7.10 production candidate:
 
 ```text
-96205a9a643864facaf9642a3b390ddcdbed59d9
-fix: tolerate duplicate Angular import aliases
+a67abfa4caded980bd8abec317598afd0ea16a42
+fix: fail closed unsupported Angular alias expressions
 ```
 
-Independent rereview #17 found that `AngularUnsupportedComponentImportIndirectionAuthorityFilter` recognizes scalar aliases only when a literal trailing semicolon is present. The equivalent TypeScript ASI form can therefore bypass the intended fail-closed boundary in the existing indirect external-component fixture shape.
+Rereview #17 blocker is repaired regression-first. The final filter no longer depends on semicolon/ASI terminator spelling; unsupported alias/expression indirection beginning with an identifier conservatively fails closed. Exact-SHA gates are green, but R7.10/D remain open until fresh independent rereview #18 accepts this SHA.
 
-Review record:
+Review request:
 
 ```text
-docs/reviews/2026-09-24-v0.4.7-d-r7.10-independent-rereview-17.md
+docs/reviews/2026-09-24-v0.4.7-d-r7.10-rereview-18-request.md
 ```
 
-R7.10 and V0.4.7-D remain open until a regression-first repair receives green local verification, exact-SHA gates, and fresh independent rereview #18.
+Exact-SHA gates:
+
+```text
+CI / full tests / WorkPlay / PokeTrade   35939834957 PASS
+Loren pinned/external                    35939834993 PASS
+Loren-main canary                        35939834966 PASS
+Jellyfin parity                          35939834845 PASS
+```
+
+Implementation environment lacked a local .NET SDK; Actions evidence must not be rewritten as local execution. Local TypeScript 5.8.3 compile checks prove LF/CR/U+2028/U+2029 and block-comment-contained line-terminator ASI variants are compile-valid.
 
 ## Current exact action
 
 ```text
-add semicolonless scalar-alias regression
-→ prove RED on current production
-→ minimum generic semicolon-independent fail-closed repair
-→ focused + related + broader local verification
-→ one coherent commit/push
-→ exact-SHA gates
-→ independent rereview #18
+fresh independent rereview #18 of exact
+a67abfa4caded980bd8abec317598afd0ea16a42
 ```
 
-Do not start E0/RD1, merge Fix #4, or start E1/E2 while D remains open.
+Do not start E0/RD1, merge Fix #4, or start E1/E2 before independent PASS explicitly closes D.
 
-## Demo-critical E sequencing
+## Demo-critical E sequence
 
-When and only when D passes, E executes sequentially.
-
-### E0 — Repository Discovery + bounded run readiness
+Once D passes, execute sequentially:
 
 ```text
 RD1 inventory + safe exclusion
@@ -95,103 +80,48 @@ RD1 inventory + safe exclusion
 → RD6 scoped/bounded semantic execution
 → RD7 coverage + observability + plan-only inspection
 → RD8 private large-repo validation
+→ prove pkc run practically produces .pkc/workspace
+→ E1 semantic richness
+→ E2 product acceptance
 ```
 
-E0 exists because a private mixed legacy repository demonstrated that current full-root scanning can become operationally impractical before useful output. The observed ~9 GB run is design evidence, not a universal numeric acceptance threshold.
+The private mixed legacy repository observation (~9 GB RAM before useful completion) remains design evidence, not a universal threshold. E0 must solve structural scope/discovery first.
 
-E0 acceptance requires structural scope reduction, bounded execution, honest coverage and successful practical workspace generation on the approved private validation repository. Discovery alone emitting JSON is not enough.
+RD1, once unlocked, is inventory + safe exclusion only. Name-only heuristics such as `legacy`, `vendor`, `plugins`, `themes`, `Scripts`, `Content`, `old` or `packages` never create exclusion authority. UNKNOWN remains valid, discovery precedes expensive semantic scans, and tests remain evidence rather than production authority.
 
-Technical packet:
+## E1
 
-```text
-docs/plans/2026-09-24-repository-discovery-scan-planning-plan.md
-docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md
-docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md
-```
-
-RD1, once unlocked, is inventory + safe exclusion only. Name-only heuristics such as `legacy`, `vendor`, `plugins`, `themes`, `Scripts`, `Content`, `old` or `packages` must never create exclusion authority by themselves. UNKNOWN remains valid, discovery precedes expensive semantic scans, and tests remain evidence rather than production authority.
-
-### E1 — Remaining product-value repairs
-
-Only after E0 PASS:
-
-1. re-evaluate/adopt the validated construction/default/computation candidate;
-2. close semantic integration-side-effect gaps;
-3. preserve grounded workflow rules in feature summaries.
-
-The existing Fix #4 candidate remains off `main` until E0 because it adds another semantic C# pass and RD6 changes scan orchestration/scope:
+Only after E0 PASS, re-evaluate remaining semantic richness including the parked construction/default/computation candidate:
 
 ```text
 branch  fix/product-value-construction-state
 commit  35c8e5c5f856e15568aa963bb2d76268008c5570
 ```
 
-### E2 — Real-project product acceptance
+Do not merge it during D or E0.
 
-Only after E1 PASS:
+## E2
 
-- R7.14 must produce positive unchanged-real-project cross-layer yield;
-- Level-2 known-answer benchmark must be rerun at the acceptance checkpoint;
-- workspace-only PO/QC answers must be useful, evidence-grounded and honest about unknowns;
-- portable privacy/no-source-leak requirements remain mandatory.
-
-Historical Level-2 selected-probe diagnostics remain context only:
-
-```text
-Agentic Users Update     ~94.5%
-Jin12 Contacts Update    100.0%
-Kesetovic PackOrder       82.5%
-selected-probe aggregate ~91.6%
-backend PO/QC core       ~95.3%
-```
-
-These are diagnostics, not acceptance thresholds.
-
-## Benchmark acceptance semantics
-
-Two independent properties remain necessary.
-
-### Safety / authority
-
-PASS requires unchanged pinned repos, honest execution result, no unsupported authority promotion, no portable source/raw leakage and preservation of accepted causality boundaries.
-
-Rereview #17 demonstrates why exact-SHA workflow success is necessary but not sufficient: a compile-valid adversarial source spelling can still violate authority semantics outside covered regressions.
-
-### Product value
-
-Known answers are scored independently against pinned source for endpoint/capability discovery, permissions, business preconditions, state transitions, defaults/computations, side effects, implementation behavior, UI interaction, UI→API linkage, feature-summary fidelity and cross-layer proof.
+Only after E1 PASS: R7.14 positive unchanged-real-project yield, Level-2 known-answer benchmark, useful workspace-only PO/QC answers, grounded feature/workflow fidelity and portable parity/no-source-leak.
 
 ## Sequential execution rule
 
-Do not parallelize production implementation across R7.10/D, E0 sub-checkpoints, E1, or E2.
-
-Independent source inspection, diff review, and non-conflicting verification may be parallelized inside the active checkpoint when useful, but the gate order remains:
-
 ```text
 finish current checkpoint
-→ verify locally
+→ verify
 → review diff
-→ commit/push once
-→ final CI
+→ coherent commit/push
+→ exact-SHA gates
 → independent gate where required
 → update status/handoff
 → only then start next checkpoint
 ```
 
-## Post-V0.4.7 roadmap
-
-After E0/E1/E2 complete and V0.4.7 closes:
-
-1. formal AI workspace `run/verify` refinements not already absorbed by E0;
-2. semantic `update/diff`;
-3. Azure DevOps intent/history evidence;
-4. later runtime/product insight work.
-
-Prepared packets remain useful but cannot override the active status/handoff ordering.
+Independent inspection and non-conflicting verification may be parallelized inside the active checkpoint; production checkpoints may not overlap.
 
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 rereview #17 FAIL; repair + rereview #18 required
-package:      RuaDen.Pkc.Tool 0.4.3-preview.2
+roadmap: V0.4.7-D / R7.10 repaired; exact-SHA gates PASS; independent rereview #18 pending
+package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
