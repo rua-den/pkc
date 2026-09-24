@@ -44,23 +44,45 @@ Accepted V0.4.6 production: `c310e893762997f34562a6b3a62dbab2b05c0c93`.
 | B | Was it computed or later overwritten? | PASS / COMPLETE |
 | C | What backend value supplies the response field? | PASS / COMPLETE |
 | D / R7.9 | What API field feeds the rendered value? | PASS / COMPLETE |
-| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REPAIRED / ALL GATES PASS / PENDING REREVIEW #17** |
+| D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **REREVIEW #17 FAIL / REPAIR REQUIRED** |
 | E0 | Can PKC discover, plan and boundedly scan a large mixed repository well enough to produce the AI workspace? | **LOCKED behind D / PREPARED** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
-Exact R7.10 candidate:
+Reviewed R7.10 production:
 
 ```text
 96205a9a643864facaf9642a3b390ddcdbed59d9
 fix: tolerate duplicate Angular import aliases
 ```
 
-Current external gate is independent rereview #17 of that exact SHA. Product/demo work does not self-certify it.
+Independent rereview #17 found that `AngularUnsupportedComponentImportIndirectionAuthorityFilter` recognizes scalar aliases only when a literal trailing semicolon is present. The equivalent TypeScript ASI form can therefore bypass the intended fail-closed boundary in the existing indirect external-component fixture shape.
+
+Review record:
+
+```text
+docs/reviews/2026-09-24-v0.4.7-d-r7.10-independent-rereview-17.md
+```
+
+R7.10 and V0.4.7-D remain open until a regression-first repair receives green local verification, exact-SHA gates, and fresh independent rereview #18.
+
+## Current exact action
+
+```text
+add semicolonless scalar-alias regression
+→ prove RED on current production
+→ minimum generic semicolon-independent fail-closed repair
+→ focused + related + broader local verification
+→ one coherent commit/push
+→ exact-SHA gates
+→ independent rereview #18
+```
+
+Do not start E0/RD1, merge Fix #4, or start E1/E2 while D remains open.
 
 ## Demo-critical E sequencing
 
-When D passes, E executes sequentially.
+When and only when D passes, E executes sequentially.
 
 ### E0 — Repository Discovery + bounded run readiness
 
@@ -87,6 +109,8 @@ docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md
 docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md
 ```
 
+RD1, once unlocked, is inventory + safe exclusion only. Name-only heuristics such as `legacy`, `vendor`, `plugins`, `themes`, `Scripts`, `Content`, `old` or `packages` must never create exclusion authority by themselves. UNKNOWN remains valid, discovery precedes expensive semantic scans, and tests remain evidence rather than production authority.
+
 ### E1 — Remaining product-value repairs
 
 Only after E0 PASS:
@@ -95,7 +119,12 @@ Only after E0 PASS:
 2. close semantic integration-side-effect gaps;
 3. preserve grounded workflow rules in feature summaries.
 
-The existing Fix #4 candidate remains off `main` until E0 because it adds another semantic C# pass and RD6 changes scan orchestration/scope.
+The existing Fix #4 candidate remains off `main` until E0 because it adds another semantic C# pass and RD6 changes scan orchestration/scope:
+
+```text
+branch  fix/product-value-construction-state
+commit  35c8e5c5f856e15568aa963bb2d76268008c5570
+```
 
 ### E2 — Real-project product acceptance
 
@@ -106,19 +135,7 @@ Only after E1 PASS:
 - workspace-only PO/QC answers must be useful, evidence-grounded and honest about unknowns;
 - portable privacy/no-source-leak requirements remain mandatory.
 
-## Benchmark acceptance semantics
-
-Two independent properties remain necessary:
-
-### Safety / authority
-
-PASS requires unchanged pinned repos, honest execution result, no unsupported authority promotion, no portable source/raw leakage and preservation of accepted causality boundaries.
-
-### Product value
-
-Known answers are scored independently against pinned source for endpoint/capability discovery, permissions, business preconditions, state transitions, defaults/computations, side effects, implementation behavior, UI interaction, UI→API linkage, feature-summary fidelity and cross-layer proof.
-
-Historical Level-2 selected-probe diagnostics after Fix #3:
+Historical Level-2 selected-probe diagnostics remain context only:
 
 ```text
 Agentic Users Update     ~94.5%
@@ -130,11 +147,25 @@ backend PO/QC core       ~95.3%
 
 These are diagnostics, not acceptance thresholds.
 
+## Benchmark acceptance semantics
+
+Two independent properties remain necessary.
+
+### Safety / authority
+
+PASS requires unchanged pinned repos, honest execution result, no unsupported authority promotion, no portable source/raw leakage and preservation of accepted causality boundaries.
+
+Rereview #17 demonstrates why exact-SHA workflow success is necessary but not sufficient: a compile-valid adversarial source spelling can still violate authority semantics outside covered regressions.
+
+### Product value
+
+Known answers are scored independently against pinned source for endpoint/capability discovery, permissions, business preconditions, state transitions, defaults/computations, side effects, implementation behavior, UI interaction, UI→API linkage, feature-summary fidelity and cross-layer proof.
+
 ## Sequential execution rule
 
-Do not parallelize production implementation across E0 sub-checkpoints or between E0/E1/E2.
+Do not parallelize production implementation across R7.10/D, E0 sub-checkpoints, E1, or E2.
 
-For demo-critical work:
+Independent source inspection, diff review, and non-conflicting verification may be parallelized inside the active checkpoint when useful, but the gate order remains:
 
 ```text
 finish current checkpoint
@@ -142,18 +173,9 @@ finish current checkpoint
 → review diff
 → commit/push once
 → final CI
+→ independent gate where required
 → update status/handoff
 → only then start next checkpoint
-```
-
-This intentionally favors a working end-to-end `pkc run` path over accumulating additional semantic features while the scan path is not usable on the target repository.
-
-## Current exact action
-
-```text
-independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
-→ PASS: close R7.10 + D, unlock E, start E0/RD1 only
-→ FAIL: regression-first minimum generic R7.10 repair, rerun exact-SHA gates, rereview
 ```
 
 ## Post-V0.4.7 roadmap
@@ -170,6 +192,6 @@ Prepared packets remain useful but cannot override the active status/handoff ord
 ## Version semantics
 
 ```text
-roadmap:      V0.4.7-D / R7.10 pending independent rereview #17; E0 is first checkpoint after D
+roadmap:      V0.4.7-D / R7.10 rereview #17 FAIL; repair + rereview #18 required
 package:      RuaDen.Pkc.Tool 0.4.3-preview.2
 ```

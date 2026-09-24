@@ -12,53 +12,101 @@ V0.4.7-A origin and copy timing                    PASS / COMPLETE
 V0.4.7-B computation and later change              PASS / COMPLETE
 V0.4.7-C backend to API                            PASS / COMPLETE
 V0.4.7-D / R7.9 API to rendered value              PASS / COMPLETE
-V0.4.7-D / R7.10 joint visibility                  REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
-V0.4.7-D overall                                   PENDING INDEPENDENT REREVIEW #17
-V0.4.7-E                                           LOCKED behind D
-E0 repository discovery + bounded run readiness    PREPARED / FIRST E CHECKPOINT WHEN D PASSES
-E1 remaining product-value repairs                 LOCKED behind E0
-E2 real-project product acceptance / R7.14         LOCKED behind E1
+V0.4.7-D / R7.10 joint visibility                  REREVIEW #17 FAIL / REPAIR REQUIRED
+V0.4.7-D overall                                   OPEN
+V0.4.7-E0 repository discovery + bounded run       LOCKED behind D
+V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
+V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
 V0.5 Azure DevOps input evidence                   LOCKED
 ```
 
-Formal D acceptance remains an independent-review gate. Product-value or demo-operability work must not self-certify R7.10/D.
+Formal D acceptance remains an independent-review gate. Rereview #17 found a new compile-valid scalar-alias authority bypass on exact production `96205a9a643864facaf9642a3b390ddcdbed59d9`. Product-value or demo-operability work must not self-certify or bypass this gate.
 
-## Current main
-
-This status belongs to the docs-only roadmap checkpoint created after:
+Independent review record:
 
 ```text
-ac328a197cbe3da755fbd051476947c67275e1e4
-docs: plan repository discovery from real-project research [skip ci]
+docs/reviews/2026-09-24-v0.4.7-d-r7.10-independent-rereview-17.md
+Decision: FAIL
 ```
 
-Latest validated production-code checkpoint below the docs-only planning commits:
+## Current main / reviewed checkpoint
+
+Rereview #17 started from:
+
+```text
+ce041a9326362c07ab2c1201492335ab54bf7da2
+docs: prioritize scan operability before demo [skip ci]
+```
+
+Reviewed exact R7.10 production:
+
+```text
+96205a9a643864facaf9642a3b390ddcdbed59d9
+fix: tolerate duplicate Angular import aliases
+```
+
+Latest validated production-code checkpoint below the docs-only roadmap commits remains:
 
 ```text
 79b0f9fec80a2afb87f43ec7a559a5d54cb87863
 fix: surface pkc run progress
 ```
 
-Exact-SHA validation for that production code is green:
+The exact R7.10 SHA itself has four green push workflows:
 
 ```text
-CI / full tests / WorkPlay / PokeTrade  35898219948 — PASS
-Loren pinned                            35898219784 — PASS
-Loren-main canary                       35898219957 — PASS
-Jellyfin parity                         35898219943 — PASS
+CI                         35832501567 PASS
+Loren pinned/external      35832501543 PASS
+Loren-main canary          35832501552 PASS
+Jellyfin parity            35832501534 PASS
 ```
+
+Green gates do not close the new rereview blocker.
+
+## R7.10 rereview #17 blocker
+
+The unsupported scalar-alias fail-closed filter currently recognizes only aliases ending in a literal semicolon, for example:
+
+```ts
+const IMPORTS = SHARED_IMPORTS;
+```
+
+TypeScript automatic semicolon insertion also permits the equivalent compile-valid form:
+
+```ts
+const IMPORTS = SHARED_IMPORTS
+
+@Component({
+  imports: [IMPORTS],
+  template: `<div ext-shell>{{ displayPrice }}</div>`
+})
+export class PriceComponent {}
+```
+
+The existing local-import closure does not propagate scalar aliases, while the final unsupported-indirection filter misses this semicolonless spelling. In the existing indirect external-component fixture shape this can let authoritative `ui-member-render` / downstream joint-visibility evidence survive without the required component-import proof.
+
+Independent local syntax evidence during review:
+
+```text
+TypeScript 5.8.3 noEmit compile of semicolonless form  PASS
+semicolon vs semicolonless emitted alias/decorator JS   equivalent
+```
+
+Repository-local .NET tests were not rerun in this review environment because the shell could not resolve `github.com` to obtain a working clone. No local PKC test claim is made. Exact-SHA production/regression sources and GitHub Actions evidence were reviewed through the authenticated connector.
 
 ## Demo-critical roadmap decision
 
 A private mixed legacy enterprise repository exposed a first-order product blocker: an unbounded `pkc run` entered expensive semantic scanning before understanding repository shape and was observed consuming roughly 9 GB RAM before producing useful output.
 
-The product cannot credibly demo PO/QC knowledge if the normal run path cannot practically produce a workspace on the target repository.
-
-Therefore, once D is independently accepted, V0.4.7-E must execute sequentially in this order:
+That remains the first demo-operability priority **after D passes**. The ordering is unchanged:
 
 ```text
-E0 Repository Discovery + bounded run readiness
+R7.10 repair
+→ exact-SHA gates
+→ independent rereview #18
+→ close V0.4.7-D only if PASS
+→ E0 Repository Discovery + bounded run readiness
    RD1 inventory + safe exclusion
 →  RD2 application boundaries + ownership
 →  RD3 vendor/custom frontend classification
@@ -67,29 +115,16 @@ E0 Repository Discovery + bounded run readiness
 →  RD6 scoped/bounded semantic execution
 →  RD7 coverage + observability + plan-only inspection
 →  RD8 private large-repo validation
-
-E1 Remaining product-value repairs
-→ construction/default/computation candidate review/adoption
-→ semantic side-effect synthesis
-→ feature-summary rule fidelity
-
-E2 Product acceptance
-→ R7.14 positive unchanged-real-project yield
-→ Level-2 known-answer benchmark
-→ portable workspace acceptance
+→ prove pkc run can practically produce .pkc/workspace
+→ E1 remaining semantic richness
+→ E2 final product acceptance
 ```
 
-No parallel production implementation is authorized across these checkpoints. Finish and locally verify one checkpoint before starting the next.
+No parallel production implementation is authorized across these checkpoints. Independent reading, diff inspection, and non-conflicting verification may be parallelized inside the active checkpoint, but milestone/gate order must remain sequential.
 
-Technical design packet:
+## E0 acceptance intent — still locked
 
-- `docs/plans/2026-09-24-repository-discovery-scan-planning-plan.md`
-- `docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md`
-- `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md`
-
-## E0 acceptance intent
-
-E0 is not accepted merely because discovery JSON exists. It must prove that PKC understands repository shape before expensive semantic work and that the planned execution is practically usable.
+E0 is not accepted merely because discovery JSON exists. Once unlocked it must prove that PKC understands repository shape before expensive semantic work and that planned execution is practically usable.
 
 At minimum:
 
@@ -107,6 +142,12 @@ At minimum:
 
 Do not invent a universal RAM threshold from the single ~9 GB observation. Prove structural boundedness first, then measure controlled before/after resource deltas.
 
+Technical design packet remains prepared but locked:
+
+- `docs/plans/2026-09-24-repository-discovery-scan-planning-plan.md`
+- `docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md`
+- `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md`
+
 ## Product-value state already achieved
 
 ```text
@@ -116,7 +157,12 @@ Fix #3 displayed-value lineage            PASS / COMPLETE for bounded Agentic em
 Fix #4 construction/default state         VALIDATED FUTURE CANDIDATE / NOT PRODUCTION
 ```
 
-Fix #4 remains off `main` and must not be merged before D is accepted and E0 is complete. RD6 changes scanner orchestration, so merging the extra semantic pass first would create avoidable architecture/performance churn.
+Fix #4 remains off `main` and must not be merged before D is accepted and E0 is complete:
+
+```text
+branch  fix/product-value-construction-state
+commit  35c8e5c5f856e15568aa963bb2d76268008c5570
+```
 
 Latest Level-2 diagnostic checkpoint remains useful evidence, not acceptance:
 
@@ -150,30 +196,30 @@ Level 1 — targeted semantic/product-value workflow
 Level 2 — full Agentic + Jin12 + Kesetovic only at checkpoint/release/demo
 ```
 
-Do not repeatedly run Level 2 during RD1–RD7. Use focused regressions and related suites locally; use CI as final verification for coherent checkpoints.
+Do not repeatedly run Level 2 during R7.10 repair or RD1–RD7. Use focused regressions and related suites locally; use CI as final verification for coherent checkpoints.
 
 ## Exact next action
 
-Current formal action is still:
-
 ```text
-independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
+R7.10 regression-first repair on top of current main
+→ add semicolonless scalar-alias negative regression
+→ prove RED on current production
+→ minimum generic semicolon-independent fail-closed repair
+→ focused R7.10 tests
+→ related frontend/render-authority tests
+→ broader relevant suite/build
+→ review full diff
+→ one coherent implementation commit
+→ one push
+→ exact-SHA gates
+→ independent rereview #18
 ```
 
-Then:
+Until rereview #18 passes:
 
 ```text
-PASS
-→ mark R7.10 + V0.4.7-D PASS / COMPLETE
-→ unlock V0.4.7-E
-→ start E0/RD1 only
-→ proceed RD1 → RD2 → RD3 → RD4 → RD5 → RD6 → RD7 → RD8 sequentially
-→ only after E0 PASS start E1
-
-FAIL
-→ regression-first minimum generic R7.10 repair
-→ rerun exact-SHA gates
-→ independent rereview again
+V0.4.7-D remains OPEN
+E0/RD1 remains LOCKED
+Fix #4 remains parked
+E1/E2 remain LOCKED
 ```
-
-The demo-critical ordering is deliberate: first make `pkc run` capable of producing trustworthy output on the target repository, then spend effort improving the remaining semantic richness of that output.
