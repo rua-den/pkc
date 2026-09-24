@@ -26,6 +26,26 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
         await AssertScalarAliasRejectedAsync(BuildComponentSource(lineTerminator, duplicateAlias: false));
     }
 
+    [Fact]
+    public async Task Semicolonless_scalar_alias_with_line_terminator_inside_block_comment_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            """
+            import { Component } from '@angular/core';
+            import { SHARED_IMPORTS } from './shared-imports';
+
+            const IMPORTS = SHARED_IMPORTS /*
+            */ @Component({
+              selector: 'app-price',
+              imports: [IMPORTS],
+              template: `<div ext-shell>{{ displayPrice }}</div>`
+            })
+            export class PriceComponent {
+              displayPrice = 42;
+            }
+            """);
+    }
+
     private static string BuildComponentSource(string lineTerminator, bool duplicateAlias)
     {
         var lines = new List<string>
