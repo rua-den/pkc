@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Pkc.Core;
+using Pkc.Core.Discovery;
 using Pkc.CSharp;
 using Pkc.Frontend;
 using Pkc.Knowledge;
@@ -25,17 +26,33 @@ try
 {
     Progress("start", $"PKC {command} started.");
 
-    Progress("scan:csharp", "Scanning C# repository evidence...");
-    var csharpFacts = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
-    Progress(
-        "scan:csharp",
-        $"Complete: {csharpFacts.Facts.Count} facts, {csharpFacts.Relations.Count} relations.");
-
-    Progress("scan:frontend", "Scanning frontend repository evidence...");
-    var frontendFacts = await new FrontendScanner().ScanAsync(repositoryPath);
-    Progress(
-        "scan:frontend",
-        $"Complete: {frontendFacts.Facts.Count} facts, {frontendFacts.Relations.Count} relations.");
+    // Discovery establishes and persists the repository profile before any expensive semantic scanner starts.
+    // RD1 keeps each scanner's existing whole-root semantic scope; scoped execution belongs to a later checkpoint.
+    Progress("discover", "Discovering repository shape before semantic analysis...");
+    var scan = await new DiscoveryFirstScanPipeline(ReportDiscovery).RunAsync(
+        repositoryPath,
+        [
+            new SemanticScanStage("csharp", async (_, _) =>
+            {
+                Progress("scan:csharp", "Scanning C# repository evidence...");
+                var document = await new CSharpEvidenceScanner().ScanAsync(repositoryPath);
+                Progress(
+                    "scan:csharp",
+                    $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
+                return document;
+            }),
+            new SemanticScanStage("frontend", async (_, _) =>
+            {
+                Progress("scan:frontend", "Scanning frontend repository evidence...");
+                var document = await new FrontendScanner().ScanAsync(repositoryPath);
+                Progress(
+                    "scan:frontend",
+                    $"Complete: {document.Facts.Count} facts, {document.Relations.Count} relations.");
+                return document;
+            })
+        ]);
+    var csharpFacts = scan.Documents[0];
+    var frontendFacts = scan.Documents[1];
 
     Progress("merge", "Merging repository evidence...");
     var facts = Merge(csharpFacts, frontendFacts);
@@ -181,6 +198,23 @@ catch (Exception exception)
 
 static void Progress(string phase, string message) =>
     Console.Error.WriteLine($"[pkc:{phase}] {message}");
+
+static void ReportDiscovery(RepositoryProfile profile, string profilePath)
+{
+    int Areas(ScanMode mode) => profile.Areas.Count(area => area.ScanMode == mode);
+    int Files(ScanMode mode) => profile.Inventory.FilesByScanMode.FirstOrDefault(count => count.ScanMode == mode)?.Files ?? 0;
+    var unknownRoleFiles = profile.Inventory.FilesByRole.FirstOrDefault(count => count.Role == SourceRole.Unknown)?.Files ?? 0;
+
+    Progress(
+        "discover",
+        $"Complete: {profile.Inventory.Files} files, {profile.Manifests.Count} manifests, {profile.Areas.Count} areas.");
+    Progress(
+        "discover",
+        $"Scope: deep {Files(ScanMode.DeepScan)} files, test-evidence {Files(ScanMode.TestEvidence)} files, " +
+        $"light-index {Files(ScanMode.LightIndex)} files, safe-auto-exclude {Areas(ScanMode.SafeAutoExclude)} areas, " +
+        $"unknown-mode {Areas(ScanMode.Unknown)} areas, unknown-role {unknownRoleFiles} files.");
+    Progress("discover", $"Repository profile: {profilePath}");
+}
 
 static bool ShouldReportProgress(int completed, int total) =>
     completed > 0 && total > 0 &&

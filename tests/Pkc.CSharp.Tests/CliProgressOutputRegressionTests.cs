@@ -40,6 +40,27 @@ public sealed class CliProgressOutputRegressionTests
     }
 
     [Fact]
+    public void Repository_discovery_runs_before_expensive_semantic_scanners()
+    {
+        var source = File.ReadAllText(FindProgramSource());
+
+        AssertBefore(
+            source,
+            "Progress(\"discover\", \"Discovering repository shape before semantic analysis...\");",
+            "new DiscoveryFirstScanPipeline(");
+
+        // Semantic scanners are constructed exactly once, and only as stages of the discovery-first pipeline.
+        foreach (var scanner in new[] { "new CSharpEvidenceScanner()", "new FrontendScanner()" })
+        {
+            var index = source.IndexOf(scanner, StringComparison.Ordinal);
+            Assert.True(index >= 0, $"Missing semantic scanner: {scanner}");
+            Assert.Equal(index, source.LastIndexOf(scanner, StringComparison.Ordinal));
+            AssertBefore(source, "new DiscoveryFirstScanPipeline(", scanner);
+            AssertBefore(source, "new SemanticScanStage(", scanner);
+        }
+    }
+
+    [Fact]
     public void Progress_lines_use_stderr_with_a_stable_pkc_stage_prefix()
     {
         var source = File.ReadAllText(FindProgramSource());
