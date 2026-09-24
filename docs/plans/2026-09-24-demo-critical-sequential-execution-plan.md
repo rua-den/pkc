@@ -1,79 +1,96 @@
 # Demo-Critical Sequential Execution Plan
 
 Date: 2026-09-24
-Status: AUTHORITATIVE ORDERING FOR V0.4.7-E AFTER D PASSES
+Status: ACTIVE — SCAN OPERABILITY PREWORK AUTHORIZED NOW
 
-This document changes execution order only. It does not self-certify V0.4.7-D/R7.10 and does not authorize production work while D remains pending independent rereview #17.
+This plan is superseded where necessary by:
 
-It supersedes any earlier informal or prepared ordering that would begin additional semantic product-value work before repository scan operability is proven.
+`docs/plans/2026-09-24-demo-scan-priority-override.md`
 
-Technical Repository Discovery design remains in:
+The current product priority is to make the normal PKC scan/run path practical on the intended large mixed repository before investing in more semantic richness.
 
-- `docs/plans/2026-09-24-repository-discovery-scan-planning-plan.md`
-- `docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md`
+Formal R7.10 / V0.4.7-D remains OPEN and NOT ACCEPTED. Repository Discovery is authorized as bounded infrastructure prework under that open gate. No E0 work may claim D PASS or weaken existing semantic authority.
 
 ## Product decision
 
-The demo path is only credible if the normal product command can actually produce a trustworthy AI workspace on the intended repository class.
+The demo path is credible only if the normal product command can actually produce a trustworthy AI workspace on the intended repository class.
 
-A private mixed legacy enterprise repository exposed the current ordering problem:
+A private mixed legacy enterprise repository exposed the current structural problem:
 
 ```text
 pkc run <large-repository>
-→ expensive whole-root semantic analysis starts immediately
+→ expensive whole-root C# scan starts immediately
+→ whole-root frontend scan follows
 → repository/application/vendor/test boundaries are not planned first
 → observed resource use reached roughly 9 GB RAM before useful completion
 ```
 
-Visible progress does not solve this. Adding more semantic passes does not solve this. The structural problem is that expensive scanners receive an unbounded repository before PKC has decided what the repository contains and what each scanner should analyze.
+Visible progress alone does not solve this. Adding semantic passes first makes it worse.
 
 Therefore:
 
-> Make the run path operational first. Improve remaining semantic richness second. Run final PO/QC acceptance third.
+> Make repository discovery and bounded execution operational first. Improve semantic richness second. Complete formal/product acceptance after that.
 
-The ~9 GB observation is a private operator baseline, not a portable hard limit.
+The roughly 9 GB observation is a private operator baseline, not a universal hard limit.
 
-## Formal gate remains first
+## Runtime product constraint
 
-Current formal action remains independent rereview #17 of:
+PKC Repository Discovery and repository compilation must be local/deterministic and require zero AI tokens.
 
-```text
-96205a9a643864facaf9642a3b390ddcdbed59d9
-fix: tolerate duplicate Angular import aliases
-```
+Do not add runtime calls to Claude/OpenAI/Gemini or any hosted LLM. Do not require API keys. Do not upload source to an LLM.
 
-If the rereview fails, repair D and rereview. Do not start E0 production implementation while D is unresolved.
+LLM reconnaissance is research/oracle evidence only.
 
-If the rereview passes, close D and unlock V0.4.7-E with E0 as its first checkpoint.
-
-## Authoritative sequential order
+## Authoritative active order
 
 ```text
-D independent acceptance
+E0 Repository Discovery + bounded run prework — ACTIVE
         ↓
-E0 Repository Discovery + bounded run readiness
+RD1 inventory + safe exclusion — CURRENT
         ↓
-E1 Remaining semantic/product-value gaps
+RD2 application boundaries + ownership
         ↓
-E2 Real-project PO/QC product acceptance
+RD3 vendor/custom frontend classification
         ↓
-V0.4.7 complete
+RD4 runtime/plugin provenance
+        ↓
+RD5 deterministic ScanPlan
+        ↓
+RD6 scoped/bounded semantic execution
+        ↓
+RD7 coverage + observability + plan-only inspection
+        ↓
+RD8 private large-repository validation
+        ↓
+prove normal pkc run produces .pkc/workspace practically
+        ↓
+E1 remaining semantic/product-value gaps
+        ↓
+formal R7.10/D independent acceptance if still open
+        ↓
+E2 real-project PO/QC product acceptance
 ```
 
-No parallel production implementation across these stages.
+Production checkpoints remain sequential.
 
-## E0 — Repository Discovery + bounded run readiness
-
-Execute strictly in order.
-
-### RD1 — deterministic inventory + safe exclusion
+## RD1 — deterministic inventory + safe exclusion — ACTIVE
 
 Goal:
 
 - inventory repository shape cheaply;
 - identify manifests/workspaces/projects/languages;
 - classify only strongly proven generated/restorable areas as safe exclusions;
-- preserve ambiguous legacy/vendor-looking areas.
+- preserve ambiguous legacy/vendor-looking areas;
+- establish discovery/plan state before expensive semantic scanning in the new run architecture.
+
+Required mixed-repository regression fixture includes:
+
+- multiple .NET apps/libraries/tests;
+- Angular workspace;
+- legacy JavaScript;
+- generated/restorable directories;
+- infrastructure/configuration;
+- first-party source in ambiguous vendor/legacy-looking folder names.
 
 Required negative behavior:
 
@@ -84,217 +101,122 @@ Checkpoint exit:
 - focused regression PASS;
 - related tests PASS;
 - deterministic ordering/output proven;
-- no deep semantic scanner required to obtain inventory.
+- no deep semantic scan required to obtain inventory;
+- orchestration proves discovery/plan exists before expensive semantic scanner execution;
+- diff reviewed;
+- one coherent commit/push;
+- status/handoff updated.
 
-### RD2 — application boundaries + ownership
+Do not start RD2 before RD1 PASS.
 
-Goal:
+## RD2 — application boundaries + ownership
 
-Model runtime/application nodes and shared ownership from deterministic evidence.
+After RD1 PASS only.
 
-Must cover supported fixtures for:
+Model runtime/application nodes and shared ownership from deterministic evidence. Tests cannot create production authority. Similar names cannot create edges.
 
-- API/composition host;
-- MVC application;
-- Angular application;
-- worker/service;
-- shared library/module;
-- test host;
-- shared module owned by multiple production hosts.
+## RD3 — vendor/custom frontend classification
 
-Tests cannot create production authority. Similar names cannot create edges.
+After RD2 PASS only.
 
-### RD3 — vendor/custom frontend classification
+Separate first-party JS, third-party runtime, generated/minified/bundled output, wrappers/adapters and locally modified vendor code. Runtime dependency identity does not imply deep-scan internals.
 
-Goal:
+## RD4 — runtime/plugin provenance
 
-Separate runtime dependency identity from business-source semantics in mixed legacy frontend trees.
+After RD3 PASS only.
 
-Supported fixture should include:
+Authoritative runtime plugin edges require deterministic loader + build/copy/dependency + resolvable identity provenance. Unsupported identity remains UNKNOWN.
 
-- first-party JS;
-- untouched vendor JS;
-- minified/generated output;
-- first-party wrapper/adapter;
-- custom code inside a vendor tree;
-- tracked bundle with mixed inputs.
+## RD5 — deterministic ScanPlan
 
-Third-party runtime stays visible but vendor internals do not enter DEEP_SCAN merely because they are runtime-used.
+After RD4 PASS only.
 
-### RD4 — runtime/plugin provenance
+Convert repository/application/source graph into an inspectable stable plan carrying source role, scan mode, scanner set, evidence/reason, confidence, exclusions and coverage effect.
 
-Goal:
+Plan metadata should make staleness diagnosable where possible without leaking source bodies.
 
-Represent supported runtime loading that project references alone cannot prove.
+## RD6 — scoped/bounded semantic execution
 
-Authoritative runtime plugin edge requires deterministic provenance such as:
+After RD5 PASS only.
 
-```text
-loader evidence
-+ build/copy/dependency evidence
-+ resolvable plugin identity
-→ runtime-plugin-load edge
-```
-
-Copy without loader is insufficient. Loader without resolvable identity remains UNKNOWN. Test-only loading remains test evidence.
-
-### RD5 — deterministic ScanPlan
-
-Goal:
-
-Convert repository/application/source-area graph into an inspectable machine-readable plan.
-
-At minimum every decision carries:
-
-```text
-area/application
-source role
-scan mode
-scanner set
-evidence/reason
-confidence
-explicit exclusions
-coverage effect
-```
-
-The plan must be stable and must not depend on timestamps or nondeterministic traversal order.
-
-Plan metadata should make staleness diagnosable. Where available include schema/version identity, repository snapshot/HEAD identity and dirty-state/fingerprint information without leaking source bodies.
-
-### RD6 — scoped/bounded semantic execution
-
-Goal:
-
-Make existing semantic scanners consume the ScanPlan instead of the whole repository indiscriminately.
+Make existing semantic scanners consume planned areas/application waves rather than the whole repository indiscriminately.
 
 Required:
 
-- SAFE_AUTO_EXCLUDE never reaches deep semantic scanners;
-- RUNTIME_DEPENDENCY_INDEX internals never reach deep scanners by default;
-- TARGETED shared code follows supported application ownership/reachability;
-- tests remain separate;
-- UNKNOWN is never silently dropped;
-- accepted semantic/fail-closed authority remains unchanged inside selected scope;
-- execution can occur in bounded application waves and release/dispose heavy analysis state when safe.
+- SAFE_AUTO_EXCLUDE never reaches deep scanners;
+- RUNTIME_DEPENDENCY_INDEX internals never deep-scan by default;
+- targeted shared code follows supported ownership/reachability;
+- tests stay separate;
+- UNKNOWN is not silently dropped;
+- accepted semantic/fail-closed behavior is unchanged inside selected scope;
+- heavy analysis state can be released/disposed between bounded waves when safe.
 
-Optimize semantic internals only after scope reduction evidence exists. Do not weaken authority to reduce memory.
+Optimize semantic internals only after scope reduction evidence exists.
 
-### RD7 — coverage + observability + plan-only inspection
+## RD7 — coverage + observability + plan-only inspection
 
-Goal:
+After RD6 PASS only.
 
-Make scan decisions visible before and during expensive execution.
-
-The product needs an inspectable preflight path, for example an eventual contract such as:
-
-```text
-pkc discover <repository>
-```
-
-or:
-
-```text
-pkc run <repository> --plan-only
-```
-
-The exact CLI surface is an implementation decision, but the capability is required: users must be able to inspect what PKC detected, intends to deep-scan, indexes lightly, excludes and leaves UNKNOWN before committing to expensive semantic execution.
+Users must be able to inspect detection and planned scope before expensive execution. The exact CLI surface may be `pkc discover`, `pkc run --plan-only`, or another equivalent contract selected during implementation.
 
 Persist local discovery/plan/coverage artifacts under `.pkc` without exporting source bodies or sensitive config values.
 
-Progress and coverage counts must come from actual plan state.
+## RD8 — private large-repository validation
 
-### RD8 — private large-repository validation
+After RD7 PASS only.
 
-Goal:
+Validate the approved private mixed legacy repository using sanitized measurements only:
 
-Prove E0 against the approved private mixed legacy repository without leaking it into PKC artifacts/reports.
-
-Validate sanitized properties only:
-
-- application/deployable boundary quality;
-- multiple frontend generations;
-- first-party/vendor JS separation;
-- modified-vendor carve-out;
+- application/deployable boundaries;
+- frontend generations;
+- first-party/vendor separation;
+- modified-vendor carve-outs;
 - runtime/plugin topology;
-- multi-owner shared modules;
+- shared ownership;
 - test isolation;
 - generated/restorable exclusion;
 - UNKNOWN preservation;
-- non-.NET production visibility where supported;
 - semantic scope reduction;
-- elapsed time and peak memory delta from the unbounded baseline;
-- successful generation of the intended `.pkc/workspace` far enough to exercise the demo flow.
+- elapsed time and peak memory delta;
+- successful `.pkc/workspace` generation sufficient for the demo flow.
 
-Do not publish exact internal names, paths, endpoints, source snippets or configuration values.
+Do not publish proprietary names, paths, endpoints, source snippets or configuration values.
 
 ## E0 completion rule
 
-E0 is PASS only when:
+E0 is PASS only when RD1–RD8 complete sequentially and the normal PKC product path produces the intended workspace practically on the approved private large repository with honest coverage.
 
-1. RD1–RD8 are complete in sequence;
-2. focused and related regressions are green;
-3. broader relevant suite is green;
-4. existing accepted authority/safety behavior remains green;
-5. private validation demonstrates practical bounded behavior and workspace generation;
-6. coverage semantics are honest about unsupported/omitted/UNKNOWN areas;
-7. status/handoff are updated with the exact accepted implementation HEAD and resource observations.
-
-Do not declare PASS merely because `repository-profile.json` or `scan-plan.json` exists.
+JSON output alone is insufficient.
 
 ## E1 — remaining semantic/product-value gaps
 
 Only after E0 PASS.
 
-Current expected order:
-
-```text
-construction/default/computation state
-→ semantic integration side effects
-→ feature-summary rule fidelity
-```
-
-The validated construction candidate:
+The validated construction candidate remains parked during E0:
 
 ```text
 35c8e5c5f856e15568aa963bb2d76268008c5570
 fix: prove observable constructed state
 ```
 
-must remain off `main` through E0. It adds another semantic pass and should be re-evaluated on top of the new scoped execution architecture rather than merged first.
+## Formal D boundary
 
-Each E1 repair remains regression-first and fail-closed.
+R7.10/D remains OPEN. The independent gate is paused, not passed. Resume and complete a fresh independent review before final V0.4.7 acceptance.
 
-## E2 — final product acceptance
-
-Only after E1 PASS.
-
-Required:
-
-```text
-R7.14 positive unchanged-real-project yield
-→ Level-2 Agentic + Jin12 + Kesetovic benchmark
-→ workspace-only PO/QC answer review
-→ portable privacy/parity verification
-```
-
-Historical selected-probe diagnostics are context, not an acceptance threshold.
-
-## Explicitly deferred until after V0.4.7
+## Explicitly deferred
 
 Unless an E0 regression proves a dependency is unavoidable, do not mix in:
 
+- remaining product-value semantic features;
 - continuous update/diff;
 - Azure DevOps evidence;
 - generic JavaScript dataflow;
 - arbitrary runtime instrumentation;
 - automatic dead-code deletion;
 - source cleanup recommendations;
-- LLM-dependent runtime repository classification;
-- broad semantic refactors unrelated to planned scope.
+- LLM-dependent repository classification.
 
 ## Execution discipline
-
-One active production checkpoint at a time.
 
 ```text
 inspect
@@ -308,13 +230,11 @@ inspect
 → one push
 → CI final verification
 → status/handoff
-→ next checkpoint
+→ next RD checkpoint only after explicit PASS
 ```
-
-Do not use CI as the edit/test loop. Do not push red speculative commits to `main`.
 
 ## Immediate next action
 
-Until independent rereview #17 resolves D, the only production-gating action is that review (or its regression-first repair if it fails).
-
-After D PASS, start `E0 / RD1` and nothing else.
+```text
+START RD1 NOW.
+```
