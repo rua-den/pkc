@@ -4,6 +4,19 @@ Last updated: 2026-09-24
 
 This handoff authorizes demo-critical Repository Discovery work immediately.
 
+## Latest checkpoint state
+
+```text
+RD1 inventory + safe exclusion   LOCAL PASS
+implementation                   fd3428f06bae7089a749f59b3d802d5a4e36b160
+                                 feat: discover repository shape before semantic scans
+evidence                         docs/reviews/2026-09-24-rd1-inventory-safe-exclusion-evidence.md
+push / CI                        PENDING — operator must push main
+RD2                              ACTIVE
+```
+
+The implementing session could not push: the SSH remote rejected its key and HTTPS push was not permitted by that session's tool policy. Before relying on RD1 remotely, verify with `git ls-remote origin` that `main` contains `fd3428f`, then confirm the CI run for that push is green.
+
 ## Read first
 
 1. root `CLAUDE.md`
@@ -37,12 +50,28 @@ V0.4.7-E0 Repository Discovery + bounded run
 ACTIVE AS BOUNDED PREWORK
 
 RD1 inventory + safe exclusion
-ACTIVE / IMPLEMENT NOW
+LOCAL PASS at fd3428f / push + CI pending
+
+RD2 application boundaries + ownership
+ACTIVE
 ```
 
-Do not start RD2 until RD1 is explicitly PASS.
+## RD2 scope
 
-## Why RD1 is now first
+Extend the RD1 `RepositoryProfile` (do not create a competing model) with deterministic application/component boundaries and ownership:
+
+- API/composition host, MVC app, Angular app, worker, shared library, test host;
+- a shared module referenced by two production hosts is one node with multiple owners;
+- project-reference edges come from MSBuild `ProjectReference` resolution only;
+- tests attach as test evidence and never create production ownership or edges;
+- similarly named applications/modules never become linked;
+- ambiguous host/application identity stays UNKNOWN.
+
+Discovery must stay shallow (manifests first). Do not implement vendor/frontend classification (RD3), runtime plugin edges (RD4) or scoped scanner execution (RD6).
+
+Do not start RD3 until RD2 is explicitly PASS.
+
+## Why RD1 was first
 
 Current `pkc run <repository>` starts whole-root C# and frontend semantic scanning before repository/application/vendor/test scope is planned.
 
@@ -198,10 +227,17 @@ R7.10/D remains OPEN. Do not mark it PASS from this thread.
 
 The independent review must be resumed before final V0.4.7 acceptance, but it no longer blocks demo-critical E0 infrastructure implementation.
 
+## Known gaps carried from RD1
+
+- RD1 does not reduce semantic scope or memory yet; scanners still receive the whole root.
+- Scanner-internal name scopes (`CSharpSourceScope`, `FrontendSourceScope`) are unchanged accepted semantic behavior; RD6 must reconcile them with the plan without silently dropping UNKNOWN areas.
+- VCS tracked state, libman/bower destinations, minified/vendor distributions and tracked bundles are not classified yet.
+
 ## Exact next action
 
 ```text
-START RD1 NOW.
+operator: push main and confirm CI green for fd3428f
+implementation: RD2 application boundaries + ownership, regression-first
 ```
 
-After RD1 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD2 only.
+After RD2 is PASS, document exact HEAD, tests, remaining gaps, then unlock RD3 only.

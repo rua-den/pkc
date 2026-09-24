@@ -14,7 +14,8 @@ V0.4.7-C backend to API                            PASS / COMPLETE
 V0.4.7-D / R7.9 API to rendered value              PASS / COMPLETE
 V0.4.7-D / R7.10 joint visibility                  OPEN / REVIEW PAUSED / NOT ACCEPTED
 V0.4.7-E0 repository discovery + bounded run       ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
-V0.4.7-E0 current sub-checkpoint                   RD1 inventory + safe exclusion
+V0.4.7-E0 / RD1 inventory + safe exclusion         LOCAL PASS at fd3428f / PUSH + CI PENDING
+V0.4.7-E0 current sub-checkpoint                   RD2 application boundaries + ownership
 V0.4.7-E1 remaining product-value repairs          LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
@@ -46,9 +47,29 @@ fix: require proven Angular component import bindings
 
 All five GitHub checks visible for that HEAD were green, including test, PokeTrade, Jellyfin, Loren and Loren-main. Formal R7.10 independent acceptance remains separate.
 
-## Active implementation checkpoint — RD1
+## RD1 — LOCAL PASS
 
-RD1 is explicitly unlocked and is now the only production implementation checkpoint.
+```text
+fd3428f06bae7089a749f59b3d802d5a4e36b160
+feat: discover repository shape before semantic scans
+```
+
+Evidence: `docs/reviews/2026-09-24-rd1-inventory-safe-exclusion-evidence.md`.
+
+- Release build 0 warnings; `Pkc.CSharp.Tests` 302/302, `Pkc.Frontend.Tests` 23/23; focused RD1 + CLI ordering tests 11/11.
+- `pkc scan|build|run` now discovers and persists `.pkc/discovery/repository-profile.json` before any semantic scanner stage (`DiscoveryFirstScanPipeline`).
+- `SAFE_AUTO_EXCLUDE` only with structural proof; name-only exclusion mutation is caught.
+- Sample `pkc run` artifacts (facts, candidates, product features, workspace) byte-identical to `ab24363`.
+- Push/CI pending: the implementing environment could not push (SSH key rejected; HTTPS push not permitted by session tool policy). Operator must push `main`; CI on that push is the final verification.
+- RD1 does not yet reduce semantic scope or memory; scanner-internal name scopes are unchanged and must be reconciled in RD6.
+
+## Active implementation checkpoint — RD2
+
+RD2 application boundaries + ownership is unlocked by RD1 local PASS and is now the only production implementation checkpoint.
+
+## RD1 acceptance record
+
+RD1 was the production implementation checkpoint before RD2.
 
 Goal:
 
@@ -77,7 +98,7 @@ must never become exclusion authority by name alone.
 
 Required structural rule: the new `pkc run` architecture must establish discovery/plan state before expensive C# or frontend semantic scanning begins.
 
-Do not start RD2 until RD1 is explicitly locally PASS and documented.
+RD1 is locally PASS and documented; RD2 is unlocked.
 
 ## E0 runtime constraint — zero required AI tokens
 
@@ -149,8 +170,9 @@ Before final V0.4.7 acceptance, a fresh independent review must still accept the
 ## Exact next action
 
 ```text
-start RD1 now, regression-first
-→ finish and locally verify RD1
+operator: push main (fd3428f + docs) and confirm CI green for RD1
+implementation: RD2 application boundaries + ownership, regression-first
+→ finish and locally verify RD2
 → update status/handoff with exact implementation HEAD and verification
-→ only then start RD2
+→ only then start RD3
 ```

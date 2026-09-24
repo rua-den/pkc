@@ -23,7 +23,8 @@ mutation-causality repair                 PASS / CLOSED
 | --- | --- | --- |
 | D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **OPEN / REVIEW PAUSED / NOT ACCEPTED** |
 | E0 | Can PKC discover, plan and boundedly scan a large mixed repository well enough to produce the AI workspace? | **ACTIVE AS USER-AUTHORIZED BOUNDED PREWORK** |
-| E0 / RD1 | Can PKC inventory repository shape and safely exclude only proven generated/restorable areas before expensive semantic scanning? | **ACTIVE** |
+| E0 / RD1 | Can PKC inventory repository shape and safely exclude only proven generated/restorable areas before expensive semantic scanning? | **LOCAL PASS at `fd3428f` / push + CI pending** |
+| E0 / RD2 | Can PKC model application boundaries and shared ownership from deterministic evidence without tests or similar names creating production edges? | **ACTIVE** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
@@ -113,12 +114,12 @@ finish current RD checkpoint
 ## Current exact action
 
 ```text
-RD1 inventory + safe exclusion — START NOW
+RD2 application boundaries + ownership — ACTIVE (RD1 local PASS; push + CI pending)
 ```
 
 ## Version semantics
 
 ```text
-roadmap: V0.4.7-E0 bounded prework active; RD1 current; R7.10/D still open
+roadmap: V0.4.7-E0 bounded prework active; RD1 local PASS; RD2 current; R7.10/D still open
 package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
