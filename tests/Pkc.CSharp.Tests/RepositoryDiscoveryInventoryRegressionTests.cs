@@ -277,16 +277,16 @@ public sealed class RepositoryDiscoveryInventoryRegressionTests
         var profilePath = Path.Combine(fixture.Root, ".pkc", "discovery", "repository-profile.json");
 
         var pipeline = new DiscoveryFirstScanPipeline(
-            onDiscovered: (profile, path) => observed.Add($"discovered:{profile.Areas.Count > 0}:{path == profilePath}"));
+            onDiscovered: state => observed.Add($"discovered:{state.Profile.Areas.Count > 0}:{state.ProfilePath == profilePath}"));
 
         var result = await pipeline.RunAsync(fixture.Root,
         [
-            new SemanticScanStage("csharp", (profile, _) =>
+            new SemanticScanStage("csharp", (state, _) =>
             {
-                observed.Add($"csharp:{File.Exists(profilePath)}:{profile.Files.Count > 0}");
+                observed.Add($"csharp:{File.Exists(profilePath)}:{state.Profile.Files.Count > 0}");
                 return Task.FromResult(new FactDocument("test", [], []));
             }),
-            new SemanticScanStage("frontend", (profile, _) =>
+            new SemanticScanStage("frontend", (_, _) =>
             {
                 observed.Add($"frontend:{File.Exists(profilePath)}");
                 return Task.FromResult(new FactDocument("test", [], []));

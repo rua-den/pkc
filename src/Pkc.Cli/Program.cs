@@ -199,8 +199,11 @@ catch (Exception exception)
 static void Progress(string phase, string message) =>
     Console.Error.WriteLine($"[pkc:{phase}] {message}");
 
-static void ReportDiscovery(RepositoryProfile profile, string profilePath)
+static void ReportDiscovery(DiscoveryState state)
 {
+    var profile = state.Profile;
+    var plan = state.Plan;
+    int Coverage(PlanCoverage coverage) => plan.Summary.FilesByCoverage.FirstOrDefault(count => count.Coverage == coverage)?.Files ?? 0;
     int Areas(ScanMode mode) => profile.Areas.Count(area => area.ScanMode == mode);
     int Files(ScanMode mode) => profile.Inventory.FilesByScanMode.FirstOrDefault(count => count.ScanMode == mode)?.Files ?? 0;
     var unknownRoleFiles = profile.Inventory.FilesByRole.FirstOrDefault(count => count.Role == SourceRole.Unknown)?.Files ?? 0;
@@ -221,7 +224,14 @@ static void ReportDiscovery(RepositoryProfile profile, string profilePath)
         $"{profile.Components.Count(component => component.Ownership == OwnershipStatus.Unknown)} unknown-ownership; " +
         $"{profile.Edges.Count} references ({profile.Edges.Count(edge => edge.Kind == "runtime-plugin-load")} runtime-plugin), " +
         $"{profile.UnresolvedReferences.Count} unresolved.");
-    Progress("discover", $"Repository profile: {profilePath}");
+    Progress(
+        "plan",
+        $"Scan plan: {plan.Scopes.Count} scopes, {plan.Summary.HostWaves} host waves; semantic {Coverage(PlanCoverage.Semantic)} files, " +
+        $"indexed {Coverage(PlanCoverage.Indexed)}, test-evidence {Coverage(PlanCoverage.TestEvidence)}, " +
+        $"not-analyzable {Coverage(PlanCoverage.NotAnalyzable)}, unknown {Coverage(PlanCoverage.Unknown)}; " +
+        $"excluded {plan.Summary.Exclusions} areas, unknown {plan.Summary.UnknownAreas} areas.");
+    Progress("discover", $"Repository profile: {state.ProfilePath}");
+    Progress("plan", $"Scan plan: {state.PlanPath}");
 }
 
 static bool ShouldReportProgress(int completed, int total) =>
