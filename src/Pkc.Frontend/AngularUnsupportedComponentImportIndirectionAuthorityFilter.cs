@@ -17,20 +17,12 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         @"[A-Za-z_$][A-Za-z0-9_$]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private static readonly Regex UnsupportedSimpleVariableBindingRegex = new(
-        @"\b(?:const|let|var)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)",
+    private static readonly Regex ImportRegex = new(
+        @"\bimport\s+(?<clause>[^;]+?)\s+from\s*[""'][^""']+[""']",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private static readonly Regex UnsupportedContinuationVariableBindingRegex = new(
-        @",\s*(?<name>[A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*=\s*\[)(?:\s*:[^=;]+?)?\s*=",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ObjectDestructuringBindingRegex = new(
-        @"(?:\b(?:const|let|var)\s*|,\s*)\{(?<binding>[\s\S]*?)\}(?:\s*:[^=;]+?)?\s*=",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ArrayDestructuringBindingRegex = new(
-        @"(?:\b(?:const|let|var)\s*|,\s*)\[(?<binding>[\s\S]*?)\](?:\s*:[^=;]+?)?\s*=",
+    private static readonly Regex NamespaceImportRegex = new(
+        @"\*\s+as\s+(?<local>[A-Za-z_$][A-Za-z0-9_$]*)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex LocalImportRegex = new(
@@ -115,7 +107,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
 
         foreach (var source in sources.Values)
         {
-            var unsupportedVariableBindings = FindUnsupportedVariableBindings(source.Text);
+            var directImportBindings = ReadDirectImportBindings(source.Text);
             var imports = ReadLocalImports(source, sources);
 
             foreach (Match component in ComponentDecoratorRegex.Matches(source.Text))
@@ -126,11 +118,13 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
                     continue;
                 }
 
-                var identifiers = IdentifierRegex.Matches(importsProperty.Groups["imports"].Value)
+                var importsExpression = importsProperty.Groups["imports"].Value;
+                var identifiers = IdentifierRegex.Matches(importsExpression)
                     .Select(match => match.Value)
                     .ToHashSet(StringComparer.Ordinal);
 
-                var unsupportedVariableBinding = identifiers.Overlaps(unsupportedVariableBindings);
+                var unsupportedImportExpression =
+                    !IsSupportedComponentImportsExpression(importsExpression, directImportBindings);
                 var unsupportedDefaultReExport = imports.Any(imported =>
                     identifiers.Contains(imported.LocalName) &&
                     HasDefaultReExport(
@@ -139,7 +133,7 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
                         sources,
                         new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
 
-                if (!unsupportedVariableBinding && !unsupportedDefaultReExport)
+                if (!unsupportedImportExpression && !unsupportedDefaultReExport)
                 {
                     continue;
                 }
@@ -157,35 +151,72 @@ internal sealed class AngularUnsupportedComponentImportIndirectionAuthorityFilte
         return blocked;
     }
 
-    private static HashSet<string> FindUnsupportedVariableBindings(string text)
+    private static HashSet<string> ReadDirectImportBindings(string text)
     {
-        var bindings = UnsupportedSimpleVariableBindingRegex.Matches(text)
-            .Cast<Match>()
-            .Select(match => match.Groups["name"].Value)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (Match match in UnsupportedContinuationVariableBindingRegex.Matches(text))
+        var bindings = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match imported in ImportRegex.Matches(text))
         {
-            bindings.Add(match.Groups["name"].Value);
+            var clause = imported.Groups["clause"].Value.Trim();
+            if (clause.StartsWith("type ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var namespaceImport = NamespaceImportRegex.Match(clause);
+            if (namespaceImport.Success)
+            {
+                bindings.Add(namespaceImport.Groups["local"].Value);
+            }
+
+            var openBrace = clause.IndexOf('{');
+            var closeBrace = clause.LastIndexOf('}');
+            if (openBrace >= 0 && closeBrace > openBrace)
+            {
+                foreach (var rawEntry in clause[(openBrace + 1)..closeBrace].Split(','))
+                {
+                    var entry = rawEntry.Trim();
+                    if (entry.Length == 0 || entry.StartsWith("type ", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var aliasIndex = entry.IndexOf(" as ", StringComparison.Ordinal);
+                    var localName = aliasIndex >= 0 ? entry[(aliasIndex + 4)..].Trim() : entry;
+                    if (IsIdentifier(localName))
+                    {
+                        bindings.Add(localName);
+                    }
+                }
+            }
+
+            var defaultCandidate = clause.Split(',', 2)[0].Trim();
+            if (!defaultCandidate.StartsWith("{", StringComparison.Ordinal) &&
+                !defaultCandidate.StartsWith("*", StringComparison.Ordinal) &&
+                IsIdentifier(defaultCandidate))
+            {
+                bindings.Add(defaultCandidate);
+            }
         }
 
-        AddDestructuringBindings(ObjectDestructuringBindingRegex, text, bindings);
-        AddDestructuringBindings(ArrayDestructuringBindingRegex, text, bindings);
         return bindings;
     }
 
-    private static void AddDestructuringBindings(
-        Regex pattern,
-        string text,
-        HashSet<string> bindings)
+    private static bool IsSupportedComponentImportsExpression(
+        string expression,
+        IReadOnlySet<string> directImportBindings)
     {
-        foreach (Match match in pattern.Matches(text))
+        var identifiers = IdentifierRegex.Matches(expression)
+            .Select(match => match.Value)
+            .ToArray();
+        if (identifiers.Any(identifier => !directImportBindings.Contains(identifier)))
         {
-            foreach (Match identifier in IdentifierRegex.Matches(match.Groups["binding"].Value))
-            {
-                bindings.Add(identifier.Value);
-            }
+            return false;
         }
+
+        var remainder = IdentifierRegex.Replace(expression, string.Empty);
+        return remainder.All(character =>
+            char.IsWhiteSpace(character) ||
+            character is '[' or ']' or ',');
     }
 
     private static IReadOnlyList<LocalImport> ReadLocalImports(

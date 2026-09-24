@@ -108,6 +108,28 @@ public sealed class AngularSemicolonlessComponentImportIndirectionAuthorityRegre
                 """));
     }
 
+    [Fact]
+    public async Task For_of_destructuring_alias_of_indirect_external_component_imports_fails_closed()
+    {
+        await AssertScalarAliasRejectedAsync(
+            """
+            import { Component } from '@angular/core';
+            import { SHARED_IMPORTS } from './shared-imports';
+
+            const holders = [{ imports: SHARED_IMPORTS }];
+            for (const { imports: IMPORTS } of holders) {
+              @Component({
+                selector: 'app-price',
+                imports: [IMPORTS],
+                template: `<div ext-shell>{{ displayPrice }}</div>`
+              })
+              class PriceComponent {
+                displayPrice = 42;
+              }
+            }
+            """);
+    }
+
     private static string BuildComponentSource(string lineTerminator, bool duplicateAlias)
     {
         var lines = new List<string>
