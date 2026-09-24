@@ -1,6 +1,6 @@
 # PKC Status
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 ## Current milestone state
 
@@ -11,37 +11,36 @@ V0.4.6 business logic reconstruction               PASS / COMPLETE
 V0.4.7-A origin and copy timing                    PASS / COMPLETE
 V0.4.7-B computation and later change              PASS / COMPLETE
 V0.4.7-C backend to API                            PASS / COMPLETE
-V0.4.7-D API to UI / R7.9 binding                  PASS / COMPLETE
-V0.4.7-D mutation-causality blocker                PASS / CLOSED
-V0.4.7-D API to UI / R7.10 joint visibility        REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
+V0.4.7-D / R7.9 API to rendered value              PASS / COMPLETE
+V0.4.7-D / R7.10 joint visibility                  REPAIRED / ALL GATES PASS / PENDING REREVIEW #17
 V0.4.7-D overall                                   PENDING INDEPENDENT REREVIEW #17
-V0.4.7-E product acceptance                        LOCKED behind D
-R7.14 real-project positive yield                  NOT PASS / REQUIRED FOR E
-real-repo safety benchmark                         PASS
-real-repo product-value benchmark                  NOT PASS / MATERIAL GAPS REMAIN
-product-value Fix #1 interface→concrete DI         PASS / COMPLETE FOR BOUNDED DIRECT-DI PATH
-product-value Fix #2 frontend URL + Output bridge  PASS / COMPLETE FOR BOUNDED PATHS
-product-value Fix #3 displayed-value lineage       PASS / COMPLETE FOR BOUNDED AGENTIC EMAIL PATH
-product-value Fix #4 construction/default state    VALIDATED FUTURE CANDIDATE / NOT PRODUCTION / E LOCKED
-AI workspace preview spike                         IMPLEMENTED / VALIDATED PREVIEW / USER-AUTHORIZED
-co-located workspace Git isolation                 IMPLEMENTED / VALIDATED
-formal AI-workspace W acceptance                   NOT UNLOCKED / NOT COMPLETE
+V0.4.7-E                                           LOCKED behind D
+E0 repository discovery + bounded run readiness    PREPARED / FIRST E CHECKPOINT WHEN D PASSES
+E1 remaining product-value repairs                 LOCKED behind E0
+E2 real-project product acceptance / R7.14         LOCKED behind E1
 continuous update/diff                             LOCKED
 V0.5 Azure DevOps input evidence                   LOCKED
 ```
 
-Formal D acceptance remains a separate independent-review gate. Product-value work must not self-certify R7.10/D or unlock E.
+Formal D acceptance remains an independent-review gate. Product-value or demo-operability work must not self-certify R7.10/D.
 
-## Current main production code checkpoint
+## Current main
 
-Production code on `main` before this docs-only checkpoint:
+This status belongs to the docs-only roadmap checkpoint created after:
+
+```text
+ac328a197cbe3da755fbd051476947c67275e1e4
+docs: plan repository discovery from real-project research [skip ci]
+```
+
+Latest validated production-code checkpoint below the docs-only planning commits:
 
 ```text
 79b0f9fec80a2afb87f43ec7a559a5d54cb87863
 fix: surface pkc run progress
 ```
 
-The CLI now reports long-running phases to stderr while preserving result/path output on stdout. Exact-SHA validation for that code checkpoint is green:
+Exact-SHA validation for that production code is green:
 
 ```text
 CI / full tests / WorkPlay / PokeTrade  35898219948 — PASS
@@ -50,86 +49,76 @@ Loren-main canary                       35898219957 — PASS
 Jellyfin parity                         35898219943 — PASS
 ```
 
-Runtime PokeTrade evidence confirms visible progress across C# scan, frontend scan, merge/link, synthesis and knowledge generation.
+## Demo-critical roadmap decision
 
-## Formal R7.10/D gate — unchanged
+A private mixed legacy enterprise repository exposed a first-order product blocker: an unbounded `pkc run` entered expensive semantic scanning before understanding repository shape and was observed consuming roughly 9 GB RAM before producing useful output.
 
-Independent-review target:
+The product cannot credibly demo PO/QC knowledge if the normal run path cannot practically produce a workspace on the target repository.
 
-```text
-96205a9a643864facaf9642a3b390ddcdbed59d9
-fix: tolerate duplicate Angular import aliases
-```
-
-Required request:
-
-`docs/reviews/2026-09-23-v0.4.7-d-r7.10-rereview-17-request.md`
-
-The next formal action is independent rereview #17. This implementation/product-value session cannot mark that review PASS itself.
-
-## Product-value repair state
-
-### Fix #1 — bounded interface → concrete DI
-
-PASS / COMPLETE for the direct, single-authority DI path. Jin12 targeted Level-1 recovered controller/interface → exact direct registration → concrete service behavior, including existence guard, seven contact mutations and persistence.
-
-Report:
-
-`docs/benchmarks/2026-09-23-fix1-jin12-di-product-value-benchmark.md`
-
-### Fix #2 — bounded frontend URL + Output-event bridge
-
-PASS / COMPLETE for the supported path:
+Therefore, once D is independently accepted, V0.4.7-E must execute sequentially in this order:
 
 ```text
-child UI action
-→ exact @Output event/discriminator
-→ parent handler/switch branch
-→ exact injected service
-→ normalized URL expression
-→ API call
-→ backend endpoint
+E0 Repository Discovery + bounded run readiness
+   RD1 inventory + safe exclusion
+→  RD2 application boundaries + ownership
+→  RD3 vendor/custom frontend classification
+→  RD4 runtime/plugin provenance
+→  RD5 deterministic ScanPlan
+→  RD6 scoped/bounded semantic execution
+→  RD7 coverage + observability + plan-only inspection
+→  RD8 private large-repo validation
+
+E1 Remaining product-value repairs
+→ construction/default/computation candidate review/adoption
+→ semantic side-effect synthesis
+→ feature-summary rule fidelity
+
+E2 Product acceptance
+→ R7.14 positive unchanged-real-project yield
+→ Level-2 known-answer benchmark
+→ portable workspace acceptance
 ```
 
-Unsupported or ambiguous shapes remain fail-closed.
+No parallel production implementation is authorized across these checkpoints. Finish and locally verify one checkpoint before starting the next.
 
-### Fix #3 — bounded Agentic displayed-value lineage
+Technical design packet:
 
-Targeted Agentic Level-1 is complete.
+- `docs/plans/2026-09-24-repository-discovery-scan-planning-plan.md`
+- `docs/reviews/2026-09-24-repository-discovery-scan-planning-self-review.md`
+- `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md`
 
-Pinned target:
+## E0 acceptance intent
+
+E0 is not accepted merely because discovery JSON exists. It must prove that PKC understands repository shape before expensive semantic work and that the planned execution is practically usable.
+
+At minimum:
+
+- discovery runs before deep C#/frontend semantic scanning;
+- only strongly proven generated/restorable areas are auto-excluded;
+- first-party, shared, vendor runtime, modified vendor, tests, infrastructure and UNKNOWN remain distinguishable;
+- application ownership and runtime/plugin edges require deterministic provenance;
+- `scan-plan` is stable, inspectable and privacy-safe;
+- semantic scanners receive only planned scopes/application waves;
+- UNKNOWN is explicit and cannot silently disappear;
+- workspace coverage cannot claim READY when required areas are omitted/unsupported;
+- a plan-only/discovery inspection path exists before expensive semantic execution;
+- private large-repo validation records elapsed time and peak memory versus the observed unbounded baseline without leaking proprietary source;
+- `pkc run` completes far enough to produce the intended AI workspace on the approved demo repository before E1/E2 are treated as demo-ready.
+
+Do not invent a universal RAM threshold from the single ~9 GB observation. Prove structural boundedness first, then measure controlled before/after resource deltas.
+
+## Product-value state already achieved
 
 ```text
-hackersandwizards/agentic-engineering-training-angular
-22f2aab64617f4de7984370a5bd40e8c9535dbf5
+Fix #1 interface→concrete direct DI       PASS / COMPLETE for bounded path
+Fix #2 frontend URL + Output bridge       PASS / COMPLETE for bounded path
+Fix #3 displayed-value lineage            PASS / COMPLETE for bounded Agentic email path
+Fix #4 construction/default state         VALIDATED FUTURE CANDIDATE / NOT PRODUCTION
 ```
 
-Run:
+Fix #4 remains off `main` and must not be merged before D is accepted and E0 is complete. RD6 changes scanner orchestration, so merging the extra semantic pass first would create avoidable architecture/performance churn.
 
-```text
-35899560821 — PASS
-```
-
-Bounded proven chain:
-
-```text
-MAT_DIALOG_DATA.data.email
-→ EditUserDialogComponent.form.email
-→ EditUserDialogComponent.displayed.email
-```
-
-Targeted score moved from Q3 50% / Q4 90% to Q3 100% / Q4 100% for this exact email displayed-value probe. Source cross-check found no mismatch. This does not solve unrelated Agentic behavior such as DbContext-managed `UpdatedAt`.
-
-## Level-2 product-value checkpoint
-
-Full Agentic + Jin12 + Kesetovic execution:
-
-```text
-wrapper  749e24406d050a2b738751e086f02320cd28cf86
-run      35900111059 — PASS, 3 / 3
-```
-
-Selected-probe diagnostic scores after workspace-only freeze and minimum source cross-check:
+Latest Level-2 diagnostic checkpoint remains useful evidence, not acceptance:
 
 ```text
 Agentic Users Update     ~94.5%
@@ -139,46 +128,9 @@ selected-probe aggregate ~91.6%
 backend PO/QC core       ~95.3%
 ```
 
-These are diagnostic measurements, not an acceptance threshold. The broad product-value gate remains NOT PASS because independent gaps still exist:
-
-1. construction/default/computation state;
-2. semantic integration side effects such as SignalR `OrderSignal`;
-3. feature-summary preservation of grounded workflow rules;
-4. positive unchanged-real-project R7.14 cross-layer yield.
-
-Detailed evidence:
-
-`docs/benchmarks/2026-09-23-product-value-level2-and-fix4-prework.md`
-
-## Fix #4 prework — validated future candidate only
-
-Formal E is still locked, so this candidate is intentionally NOT merged to `main`.
-
-```text
-branch  fix/product-value-construction-state
-commit  35c8e5c5f856e15568aa963bb2d76268008c5570
-        fix: prove observable constructed state
-```
-
-Bounded authority requires exact project-semantic local-object identity plus both a downstream whole-object invocation and a return-path whole-object invocation before object-initializer member assignments are promoted to state changes.
-
-Validation:
-
-```text
-Release build          PASS, 0 warnings / 0 errors
-focused regressions    8 / 8 PASS
-C# full suite          282 / 282 PASS
-frontend full suite     23 / 23 PASS
-real Kesetovic retry   35902984101 — PASS
-```
-
-Real-repository generation now reports Kesetovic AddOrder construction behavior including `OrderStatus.NEW` and `OrderPrice * 0.05` bonus computation.
-
-Do not merge this candidate until D is independently accepted and E is formally unlocked.
-
 ## Workspace / privacy boundary
 
-Preferred product UX:
+Preferred product UX remains:
 
 ```text
 pkc run <repository-path>
@@ -187,27 +139,41 @@ cd <repository-path>/.pkc/workspace
 
 - PRODUCT/TRACE: workspace only; no source fallback.
 - Benchmark phase 1: workspace only and frozen before source inspection.
-- ENGINEERING/benchmark phase 2: source allowed only in the approved environment and only as needed for cross-check.
-- Reports use paths, symbols, line ranges and business descriptions; do not copy proprietary source bodies.
+- Phase 2/source cross-check: minimum necessary source only in the approved environment.
+- Private-repository reports contain only sanitized counts, aliases, classifications, deltas and failure categories; no proprietary source bodies, internal names, endpoints or config values.
 
 ## Benchmark cadence
 
-Protocol:
-
-`docs/benchmarks/product-value-benchmark-protocol.md`
-
 ```text
 Level 0 — deterministic tests/build/smoke
-Level 1 — targeted AI/product-value benchmark for one semantic workflow
-Level 2 — full Agentic + Jin12 + Kesetovic at checkpoint/release/demo
+Level 1 — targeted semantic/product-value workflow
+Level 2 — full Agentic + Jin12 + Kesetovic only at checkpoint/release/demo
 ```
+
+Do not repeatedly run Level 2 during RD1–RD7. Use focused regressions and related suites locally; use CI as final verification for coherent checkpoints.
 
 ## Exact next action
 
+Current formal action is still:
+
 ```text
 independent rereview #17 of exact 96205a9a643864facaf9642a3b390ddcdbed59d9
-→ PASS: mark R7.10 + V0.4.7-D PASS / COMPLETE; unlock only E
-→ FAIL: regression-first minimum generic R7.10 repair; rerun exact-SHA gates and rereview
 ```
 
-No new milestone may start before that external gate is resolved.
+Then:
+
+```text
+PASS
+→ mark R7.10 + V0.4.7-D PASS / COMPLETE
+→ unlock V0.4.7-E
+→ start E0/RD1 only
+→ proceed RD1 → RD2 → RD3 → RD4 → RD5 → RD6 → RD7 → RD8 sequentially
+→ only after E0 PASS start E1
+
+FAIL
+→ regression-first minimum generic R7.10 repair
+→ rerun exact-SHA gates
+→ independent rereview again
+```
+
+The demo-critical ordering is deliberate: first make `pkc run` capable of producing trustworthy output on the target repository, then spend effort improving the remaining semantic richness of that output.
