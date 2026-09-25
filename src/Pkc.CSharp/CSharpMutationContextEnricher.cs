@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pkc.Core;
+using System.Text.Json;
 
 namespace Pkc.CSharp;
 
@@ -35,15 +36,20 @@ internal sealed class CSharpMutationContextEnricher
 
             foreach (var fact in group)
             {
-                var assignment = FindAssignment(root, fact);
-                if (assignment is null)
+                var mutation = FindMutation(root, fact);
+                if (mutation is null)
                 {
                     continue;
                 }
 
-                if (assignment.Ancestors().OfType<InitializerExpressionSyntax>().Any())
+                var branchPath = BranchPathFor(mutation);
+                var branchMetadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal);
+                branchMetadata["branchPath"] = JsonSerializer.Serialize(branchPath);
+                branchMetadata["branchConditional"] = (branchPath.Count > 0).ToString().ToLowerInvariant();
+
+                if (mutation is AssignmentExpressionSyntax assignment && assignment.Ancestors().OfType<InitializerExpressionSyntax>().Any())
                 {
-                    var initializerMetadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal)
+                    branchMetadata = new Dictionary<string, string>(branchMetadata, StringComparer.Ordinal)
                     {
                         ["mutationContext"] = "initializer",
                         ["stateMutationCandidate"] = "false",
@@ -53,17 +59,19 @@ internal sealed class CSharpMutationContextEnricher
                     facts[fact.Id] = fact with
                     {
                         Kind = "initializer-assignment",
-                        Metadata = initializerMetadata
+                        Metadata = branchMetadata
                     };
                     continue;
                 }
 
-                if (!TryGetRuntimePatternReceiver(assignment, out var receiver))
+                if (mutation is not AssignmentExpressionSyntax runtimeAssignment ||
+                    !TryGetRuntimePatternReceiver(runtimeAssignment, out var receiver))
                 {
+                    facts[fact.Id] = fact with { Metadata = branchMetadata };
                     continue;
                 }
 
-                var metadata = new Dictionary<string, string>(fact.Metadata, StringComparer.Ordinal)
+                var metadata = new Dictionary<string, string>(branchMetadata, StringComparer.Ordinal)
                 {
                     ["mutationReceiver"] = receiver,
                     ["mutationReceiverOrigin"] = "runtime-pattern-variable",
@@ -81,16 +89,102 @@ internal sealed class CSharpMutationContextEnricher
         };
     }
 
-    private static AssignmentExpressionSyntax? FindAssignment(SyntaxNode root, EvidenceFact fact)
+    private static SyntaxNode? FindMutation(SyntaxNode root, EvidenceFact fact)
     {
         fact.Metadata.TryGetValue("target", out var target);
         return root.DescendantNodes()
-            .OfType<AssignmentExpressionSyntax>()
-            .FirstOrDefault(assignment =>
-                StartLine(assignment) == fact.Source.StartLine &&
-                (string.IsNullOrWhiteSpace(target) ||
-                 string.Equals(assignment.Left.ToString(), target, StringComparison.Ordinal)));
+            .Where(node => node is AssignmentExpressionSyntax or PrefixUnaryExpressionSyntax or PostfixUnaryExpressionSyntax)
+            .FirstOrDefault(node =>
+            {
+                var candidate = node switch
+                {
+                    AssignmentExpressionSyntax assignment => assignment.Left.ToString(),
+                    PrefixUnaryExpressionSyntax prefix => prefix.Operand.ToString(),
+                    PostfixUnaryExpressionSyntax postfix => postfix.Operand.ToString(),
+                    _ => string.Empty
+                };
+                return StartLine(node) == fact.Source.StartLine &&
+                       (string.IsNullOrWhiteSpace(target) || string.Equals(candidate, target, StringComparison.Ordinal));
+            });
     }
+
+    private static IReadOnlyList<BranchStep> BranchPathFor(SyntaxNode mutation)
+    {
+        var sourcePath = mutation.SyntaxTree?.FilePath ?? string.Empty;
+        var callable = mutation.Ancestors().FirstOrDefault(node =>
+            node is BaseMethodDeclarationSyntax or LocalFunctionStatementSyntax or AnonymousFunctionExpressionSyntax);
+        if (callable is null)
+        {
+            return [];
+        }
+
+        var result = new List<(int Position, BranchStep Step)>();
+        foreach (var ancestor in mutation.Ancestors())
+        {
+            if (ReferenceEquals(ancestor, callable))
+            {
+                break;
+            }
+
+            if (ancestor is SwitchSectionSyntax section)
+            {
+                var switchStatement = section.Ancestors().OfType<SwitchStatementSyntax>().FirstOrDefault();
+                var constructStart = switchStatement?.SpanStart ?? ancestor.SpanStart;
+                var constructEnd = switchStatement?.Span.End ?? ancestor.Span.End;
+                var labels = section.Labels.Select(label => label.ToString()).ToArray();
+                var caseValues = labels
+                    .Where(label => label.StartsWith("case ", StringComparison.Ordinal))
+                    .Select(label => label[5..].TrimEnd(':').Trim())
+                    .ToArray();
+                var arm = caseValues.Length > 0
+                    ? $"case:{string.Join("|", caseValues)}"
+                    : "default";
+                var condition = caseValues.Length > 0 ? string.Join(" or ", caseValues) : null;
+                result.Add((ancestor.SpanStart, new BranchStep($"{sourcePath}:switch@{constructStart}-{constructEnd}", arm, condition)));
+            }
+            else if (ancestor is IfStatementSyntax condition && !IsElseIfChild(condition))
+            {
+                var (arm, text) = GetIfArm(condition, mutation);
+                result.Add((ancestor.SpanStart, new BranchStep($"{sourcePath}:if@{ancestor.SpanStart}-{ancestor.Span.End}", arm, text)));
+            }
+        }
+
+        return result.OrderBy(item => item.Position).Select(item => item.Step).ToArray();
+    }
+
+    private static bool IsElseIfChild(IfStatementSyntax condition) =>
+        condition.Parent is ElseClauseSyntax;
+
+    private static (string Arm, string? Condition) GetIfArm(IfStatementSyntax root, SyntaxNode mutation)
+    {
+        if (root.Statement.Span.Contains(mutation.Span))
+        {
+            return ("then", RenderableCondition(root.Condition));
+        }
+
+        var current = root;
+        var index = 1;
+        while (current.Else?.Statement is IfStatementSyntax next)
+        {
+            if (next.Statement.Span.Contains(mutation.Span))
+            {
+                var condition = RenderableCondition(next.Condition);
+                return ($"else-if#{index}", condition is null ? null : $"{condition} after earlier branches do not match");
+            }
+
+            current = next;
+            index++;
+        }
+
+        return ("else", index > 1 ? "all earlier branches do not match" : RenderableCondition(root.Condition));
+    }
+
+    private static string? RenderableCondition(ExpressionSyntax condition) =>
+        condition is IdentifierNameSyntax or MemberAccessExpressionSyntax or BinaryExpressionSyntax or PrefixUnaryExpressionSyntax or ParenthesizedExpressionSyntax
+            ? condition.ToString()
+            : null;
+
+    private sealed record BranchStep(string Id, string Arm, string? Condition);
 
     private static bool TryGetRuntimePatternReceiver(
         AssignmentExpressionSyntax assignment,

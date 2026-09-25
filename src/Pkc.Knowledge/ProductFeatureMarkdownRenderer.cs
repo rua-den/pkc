@@ -146,7 +146,7 @@ public sealed partial class ProductFeatureMarkdownRenderer
                 var actions = group.Select(item => item.Action).Distinct(StringComparer.Ordinal).ToArray();
                 return actions.Length > 1
                     ? group.Key
-                    : $"{actions[0]}: {group.Key}";
+                    : PrefixWorkflowAction(actions[0], group.Key);
             })
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -239,10 +239,50 @@ public sealed partial class ProductFeatureMarkdownRenderer
         {
             foreach (var item in items)
             {
-                builder.AppendLine($"- {item}");
+                AppendListItem(builder, item);
             }
         }
         builder.AppendLine();
+    }
+
+    private static string PrefixWorkflowAction(string action, string value)
+    {
+        var lines = value.Split('\n');
+        if (lines.Length == 0)
+        {
+            return $"{action}: {value}";
+        }
+
+        var builder = new StringBuilder();
+        builder.Append(action).Append(": ").Append(lines[0].TrimEnd('\r'));
+        foreach (var line in lines.Skip(1))
+        {
+            var normalized = line.TrimEnd('\r');
+            builder.Append('\n');
+            if (normalized.Length == 0)
+            {
+                continue;
+            }
+
+            builder.Append(char.IsWhiteSpace(normalized[0])
+                ? "  " + normalized
+                : "  - " + normalized);
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AppendListItem(StringBuilder builder, string item)
+    {
+        var lines = item.Split('\n');
+        builder.Append("- ").AppendLine(lines[0].TrimEnd('\r'));
+        foreach (var line in lines.Skip(1))
+        {
+            var normalized = line.TrimEnd('\r');
+            builder.AppendLine(normalized.Length == 0 || char.IsWhiteSpace(normalized[0])
+                ? normalized
+                : $"- {normalized}");
+        }
     }
 
     private static void AppendListSectionIfAny(StringBuilder builder, string title, IReadOnlyList<string> items)

@@ -260,3 +260,14 @@ later, separate tasks:
   (c) recurring jobs as workflow triggers
   RD8-OBS-1 mapped-field rule = 0 on real target
 ```
+
+## Repo-local conditional state-effect repair checkpoint — 2026-09-25
+
+Topic branch: `codex/rd8-c-runtime-plugin`
+Base HEAD: `a9ec45e`
+
+E1–E3 implementation is complete with synthetic coverage for branch context, honest mutually exclusive rendering, switch/stacked labels, nested/depth-bounded effects, deterministic output, mutation stability, and workflow/product Markdown consumers. Focused conditional tests: 10 passed. Related verification: 17 passed. Full solution tests: 418 passed. Release build: 0 warnings/errors.
+
+No private-target source or validation was used. This repo-local commit is not pushed. RD8-B remains **NOT PASS**; formal E0 and E1 remain incomplete.
+
+Next action: run `pkc run` on the approved disposable target and rerun RD8-B probe #1 to verify the calibration blocker is cleared.

@@ -84,11 +84,24 @@ public sealed partial class MarkdownKnowledgeRenderer
         {
             foreach (var item in items)
             {
-                builder.AppendLine($"- {item}");
+                AppendListItem(builder, item);
             }
         }
 
         builder.AppendLine();
+    }
+
+    private static void AppendListItem(StringBuilder builder, string item)
+    {
+        var lines = item.Split('\n');
+        builder.Append("- ").AppendLine(lines[0].TrimEnd('\r'));
+        foreach (var line in lines.Skip(1))
+        {
+            var normalized = line.TrimEnd('\r');
+            builder.AppendLine(normalized.Length == 0 || char.IsWhiteSpace(normalized[0])
+                ? normalized
+                : $"- {normalized}");
+        }
     }
 
     private static string Yaml(string value) =>

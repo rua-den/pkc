@@ -1,4 +1,5 @@
 using Pkc.Core;
+using System.Text.Json;
 
 namespace Pkc.Knowledge;
 
@@ -488,12 +489,176 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
     private static IReadOnlyList<string> BuildStateChanges(
         FeatureCandidate candidate,
         IReadOnlyDictionary<string, EvidenceFact> factsById,
-        EvidenceFact? endpoint) =>
-        candidate.Facts
+        EvidenceFact? endpoint)
+    {
+        var mutations = candidate.Facts
             .Where(fact => IsKnowledgeMutation(candidate, factsById, fact, endpoint))
-            .Select(DescribeMutation)
-            .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var result = new List<string>();
+        var renderedBranches = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var mutation in mutations)
+        {
+            var path = ReadBranchPath(mutation);
+            if (path.Count == 0)
+            {
+                var description = DescribeMutation(mutation);
+                if (!result.Contains(description, StringComparer.Ordinal))
+                {
+                    result.Add(description);
+                }
+
+                continue;
+            }
+
+            if (renderedBranches.Add(path[0].Id))
+            {
+                result.Add(RenderBranchGroup(mutations, path[0].Id));
+            }
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<BranchStep> ReadBranchPath(EvidenceFact fact)
+    {
+        if (!fact.Metadata.TryGetValue("branchPath", out var serialized) || string.IsNullOrWhiteSpace(serialized))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<BranchStep[]>(serialized) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string RenderBranchGroup(IReadOnlyList<EvidenceFact> mutations, string rootId)
+    {
+        var members = mutations
+            .Select(fact => (Fact: fact, Path: ReadBranchPath(fact)))
+            .Where(item => item.Path.Count > 0 && item.Path[0].Id == rootId)
+            .ToArray();
+        var builder = new System.Text.StringBuilder();
+        RenderBranchLevel(builder, members, 0, rootId, 0);
+        return builder.ToString().TrimEnd();
+    }
+
+    private static void RenderBranchLevel(
+        System.Text.StringBuilder builder,
+        IReadOnlyList<(EvidenceFact Fact, IReadOnlyList<BranchStep> Path)> members,
+        int pathIndex,
+        string constructId,
+        int depth)
+    {
+        var arms = members
+            .Where(item => item.Path.Count > pathIndex && item.Path[pathIndex].Id == constructId)
+            .GroupBy(item => item.Path[pathIndex].Arm, StringComparer.Ordinal)
+            .OrderBy(group => group.Min(item => item.Fact.Source.StartLine))
+            .ToArray();
+        var alternatives = arms.Length > 1;
+
+        if (depth >= 3)
+        {
+            foreach (var armGroup in arms)
+            {
+                var step = armGroup.First().Path[pathIndex];
+                builder.Append(' ', Indent(depth)).Append(BranchLabel(step, alternatives, armGroup.Key == "then")).AppendLine(":");
+                builder.Append(' ', Indent(depth + 1)).AppendLine("Under additional conditions:");
+                foreach (var item in armGroup.OrderBy(item => item.Fact.Source.StartLine))
+                {
+                    var remaining = item.Path.Skip(pathIndex + 1).ToArray();
+                    var description = DescribeMutation(item.Fact);
+                    if (remaining.Length > 0)
+                    {
+                        description = $"{LeafBranchLabel(remaining)} {description}";
+                    }
+
+                    builder.Append(' ', Indent(depth + 2)).Append("- ").AppendLine(description);
+                }
+            }
+
+            return;
+        }
+
+        foreach (var armGroup in arms)
+        {
+            var step = armGroup.First().Path[pathIndex];
+            var label = BranchLabel(step, alternatives, armGroup.Key == "then");
+            builder.Append(' ', Indent(depth)).Append(label).AppendLine(":");
+
+            foreach (var item in armGroup.Where(item => item.Path.Count == pathIndex + 1).OrderBy(item => item.Fact.Source.StartLine))
+            {
+                builder.Append(' ', Indent(depth + 1)).Append("- ").AppendLine(DescribeMutation(item.Fact));
+            }
+
+            foreach (var child in armGroup
+                         .Where(item => item.Path.Count > pathIndex + 1)
+                         .Select(item => item.Path[pathIndex + 1])
+                         .DistinctBy(step => step.Id, StringComparer.Ordinal)
+                         .OrderBy(step => armGroup.First(item => item.Path[pathIndex + 1].Id == step.Id).Fact.Source.StartLine))
+            {
+                RenderBranchLevel(builder, armGroup.ToArray(), pathIndex + 1, child.Id, depth + 1);
+            }
+        }
+    }
+
+    private static int Indent(int depth) => Math.Min(depth, 5) * 2;
+
+    private static string LeafBranchLabel(IReadOnlyList<BranchStep> path)
+    {
+        var labels = path.Select(step => step.Arm switch
+        {
+            "else" or "default" => "otherwise",
+            string arm when arm.StartsWith("case:", StringComparison.Ordinal) => $"`{arm}`",
+            _ when step.Condition is not null => $"`{step.Condition}`",
+            _ => "alternative branch"
+        });
+        return $"Under {string.Join("; then ", labels)}:";
+    }
+
+    private static string BranchLabel(BranchStep step, bool alternatives, bool isThen)
+    {
+        if (step.Arm == "else")
+        {
+            return step.Condition is null
+                ? "In an alternative branch (condition not shown)"
+                : step.Condition == "all earlier branches do not match"
+                    ? "Otherwise (when all earlier branches do not match)"
+                    : $"Otherwise (when `{step.Condition}` is false)";
+        }
+
+        if (step.Arm == "default")
+        {
+            return "Otherwise";
+        }
+
+        if (step.Arm.StartsWith("else-if#", StringComparison.Ordinal) && step.Condition is null)
+        {
+            return "In an alternative branch (condition not shown)";
+        }
+
+        if (step.Condition is null)
+        {
+            return alternatives && !isThen
+                ? "In an alternative branch (condition not shown)"
+                : "In one branch (condition not shown)";
+        }
+
+        return step.Arm.StartsWith("case:", StringComparison.Ordinal)
+            ? $"When `{step.Arm}`"
+            : step.Arm.StartsWith("else-if#", StringComparison.Ordinal)
+                ? step.Condition!.EndsWith(" after earlier branches do not match", StringComparison.Ordinal)
+                        ? $"When `{step.Condition[..^" after earlier branches do not match".Length]}` after earlier branches do not match"
+                        : $"When `{step.Condition}`"
+                : $"When `{step.Condition}`";
+    }
+
+    private sealed record BranchStep(string Id, string Arm, string? Condition);
 
     private static string DescribeMutation(EvidenceFact fact)
     {

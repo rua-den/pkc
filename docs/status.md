@@ -247,4 +247,13 @@ then:
   -> RD8-B 2-3 Level-1 probes
 
 Do not start E1 until RD8 and E0 are explicitly PASS.
+
 ```
+
+## Repo-local RD8-B repair checkpoint — 2026-09-25
+
+On topic branch `codex/rd8-c-runtime-plugin`, based at `a9ec45e`, E1–E3 of the exclusive/conditional state-effect repair are implemented locally. Synthetic regressions cover branch metadata, if/else and else-if exclusivity, switch alternatives and stacked labels, nested/depth-bounded rendering, initializer/lambda/local-function stability, deterministic output, and workflow/product Markdown rendering.
+
+Verification is green: focused conditional suite 10 passed; related verification 17 passed; full solution tests 418 passed; Release build succeeded with 0 warnings/errors. No private-target source or validation was used. This repo-local commit does not complete RD8-B, E0, or formal E1.
+
+Next action: rerun `pkc run` and RD8-B probe #1 in the approved environment. Preserve RD8-B **NOT PASS** until that rerun clears the calibration blocker.
