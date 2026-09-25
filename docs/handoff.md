@@ -18,7 +18,9 @@ Last updated: 2026-09-25
 12. `docs/benchmarks/product-value-benchmark-protocol.md`
 13. `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
 14. `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
-15. `docs/reviews/2026-09-25-rd8-c0-target-classification.md` — **implementation spec for the next task**
+15. `docs/reviews/2026-09-25-rd8-c0-target-classification.md` (RD8-C, done)
+16. `docs/reviews/2026-09-25-rd8-private-validation-result.md` (RD8-A/B/C results)
+17. `docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md` — **implementation spec for the next task**
 
 Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because a handoff names one.
 
@@ -243,19 +245,18 @@ Next, as regression-first repairs, each its own task:
 Then rerun RD8-A on the disposable copy and re-score #7/#1/#10.
 
 ```text
-implementer:
-  read docs/reviews/2026-09-25-rd8-c0-target-classification.md
-  -> red synthetic regressions in tests/Pkc.CSharp.Tests/RepositoryDiscoveryRuntimePluginRegressionTests.cs
-  -> implement R1-R4 minimum generic fail-closed repair
-  -> focused + related + full local verification, Release build
-  -> one coherent implementation commit on a topic branch (never push main directly)
+implementer (no private-target access needed):
+  read docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md
+  -> red regressions first (ConditionalStateEffectRegressionTests)
+  -> E1 branch context on mutation facts + E2 honest conditional/alternative rendering
+  -> focused + related + full tests, Release build
+  -> one coherent commit on a topic branch (never push main)
 
 approved-environment operator, after it lands:
-  pkc discover on a disposable copy of the target
-  -> expect runtime-plugin-load = 2, record sanitized counts = RD8-C proof
+  pkc run on the disposable target copy -> re-score RD8-B probe #1
 
-then:
-  fresh RD8-A run without --resume
-  -> RD8-B Level-1 probes
-  -> close RD8 only when A+B+C all pass
+later, separate tasks:
+  (b) command-queue producer -> handler linking
+  (c) recurring jobs as workflow triggers
+  RD8-OBS-1 mapped-field rule = 0 on real target
 ```
