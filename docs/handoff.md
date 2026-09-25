@@ -52,7 +52,7 @@ RD4 runtime/plugin provenance       PASS / COMPLETE (deterministic/synthetic gat
 RD5 deterministic ScanPlan          PASS / COMPLETE
 RD6 scoped semantic execution       PASS / COMPLETE
 RD7 coverage + observability        PASS / COMPLETE
-RD8 private large-repository gate   ACTIVE / C0 CLASSIFIED / REPAIR AUTHORIZED / NOT PASS
+RD8 private large-repository gate   ACTIVE / RD8-C REPAIR CANDIDATE VERIFIED (UNCOMMITTED) / NOT PASS
 E1 remaining semantic repairs       LOCKED behind E0
 E2 final product acceptance         LOCKED behind E1
 ```
@@ -229,6 +229,8 @@ commit  35c8e5c5f856e15568aa963bb2d76268008c5570
 R7.10/D remains OPEN. The independent-review lane is paused, not passed. A fresh independent review is still required before final V0.4.7 acceptance.
 
 ## Exact next action
+
+Update 2026-09-25: R1-R4 candidate is implemented and verified in the working tree of `codex/rd8-c-runtime-plugin` (408/408 tests, Release clean, real target 2 HIGH `runtime-plugin-load` edges). Remaining: commit, reproduce the count from the committed build, then RD8-A and RD8-B. Details: `docs/reviews/2026-09-25-rd8-c0-target-classification.md` section "Implementation candidate result".
 
 ```text
 implementer:
