@@ -182,7 +182,7 @@ expect runtime-plugin-load = 2 and no new unexplained unresolved reasons
 
 RD8-C passes only on that real-target discovery proof. RD8-A (fresh full run, no `--resume`) and RD8-B (Level-1 probes) remain required afterwards.
 
-## Implementation candidate result (2026-09-25, uncommitted working tree on `codex/rd8-c-runtime-plugin`)
+## Implementation result (2026-09-25, committed as `935ea94` on `codex/rd8-c-runtime-plugin`)
 
 R1-R4 implemented in `src/Pkc.Core/Discovery/RepositoryDiscovery.Runtime.cs` and `src/Pkc.Core/Discovery/ComponentGraph.cs`.
 
@@ -220,4 +220,4 @@ no runtime-* unresolved reasons
 discovery elapsed                  ~60 s
 ```
 
-This matches the expected result. RD8-C becomes PASS only after this candidate is committed and the same count is reproduced from the committed build (CLI `pkc discover` on a disposable copy, or the same in-process read-only probe).
+This matches the expected result. It was reproduced from the committed build, both in-process and by a fresh CLI `discover` + `run` on a disposable copy. **RD8-C: PASS.**
