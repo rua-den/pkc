@@ -18,16 +18,17 @@ Last updated: 2026-09-25
 12. `docs/benchmarks/product-value-benchmark-protocol.md`
 13. `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
 14. `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
+15. `docs/reviews/2026-09-25-rd8-c0-target-classification.md` — **implementation spec for the next task**
 
 Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because a handoff names one.
 
 ## Repository state at this handoff
 
-Current `main` immediately before this support-matrix checkpoint:
+Current `main` immediately before this Phase-C0 checkpoint:
 
 ```text
-06f0f01f522650db7b2304a4a8295d2d5b118724
-docs: correct RD8 runtime plugin target applicability [skip ci]
+ac1b8294d8f3ce183802dd6d4e36349fc67c2722
+docs: lock RD8 runtime plugin repair authority [skip ci]
 ```
 
 Latest production-code ancestor remains:
@@ -51,7 +52,7 @@ RD4 runtime/plugin provenance       PASS / COMPLETE (deterministic/synthetic gat
 RD5 deterministic ScanPlan          PASS / COMPLETE
 RD6 scoped semantic execution       PASS / COMPLETE
 RD7 coverage + observability        PASS / COMPLETE
-RD8 private large-repository gate   ACTIVE / KNOWN RUNTIME-PLUGIN BLOCKER / NOT PASS
+RD8 private large-repository gate   ACTIVE / C0 CLASSIFIED / REPAIR AUTHORIZED / NOT PASS
 E1 remaining semantic repairs       LOCKED behind E0
 E2 final product acceptance         LOCKED behind E1
 ```
@@ -152,73 +153,29 @@ Full matrix and repair authority:
 
 `docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
 
-## Why production code is still unchanged
+## Phase C0 result (2026-09-25) — repair now authorized
 
-The repo-local audit narrows the likely gap but does not prove which unsupported syntax the private target actually uses.
-
-Do not guess `Directory.GetFiles`, `PostBuildEvent`, `xcopy`, `<Exec>`, or `.sln ProjectDependencies` merely because those forms are plausible.
-
-The exact source-enabled inspection now has a bounded output contract and needs no proprietary source dump.
-
-Return only:
+Read-only inspection in the approved source-enabled environment classified the real target. Sanitized result:
 
 ```text
-A. loader ownership
-   host own project | shared library | other/unknown
-
-B. identity/enumeration
-   direct literal name | direct literal .dll | folder scan + variable path | config/list | other
-
-C. load API family
-   Assembly.* | AssemblyLoadContext.* | custom/other
-
-D. delivery syntax
-   OutputPath | MSBuild Copy | PostBuildEvent | Exec/copy/xcopy/robocopy | external script/other
-
-E. solution dependency
-   ProjectDependencies relevant | unrelated | absent
-
-F. current PKC result
-   runtime-plugin-load edge count
-   runtime-loader-identity-unresolved count
-   runtime-plugin-copy-unproven count
-   plugin-copy-without-identified-loader count
-   any other relevant unresolved reason + count
+A. loader ownership      production web host, own project
+B. identity/enumeration  folder scan: subdirectories of <runtime-base>/<M>/, load <subdir>/<subdir-name>.dll
+C. load API              Assembly.LoadFrom as a METHOD GROUP (no call parenthesis)
+D. delivery              plugin <Copy> in AfterTargets=Build target; SourceFiles=@(target-local item = $(TargetDir)**);
+                         DestinationFolder=<host>/$(OutDir)<M>/$(ProjectName)/%(RecursiveDir); 2 plugins
+E. solution dependency   .slnx BuildDependency present/relevant; build provenance only; not needed now
+F. current PKC           0 runtime-plugin-load; 0 for every runtime unresolved reason
 ```
 
-No real project names, paths, source snippets, assembly identities, config values or endpoints are needed.
+Why zero: `LoaderCall` requires `(` after the API (`src/Pkc.Core/Discovery/RepositoryDiscovery.Runtime.cs:24-26`), and `OutputDelivery` needs an own-output token literally in `SourceFiles` (`src/Pkc.Core/Discovery/ComponentGraph.cs:508-513`). Both hide even the unresolved signal.
 
-## Repair authority if Phase C0 confirms a gap
+Full spec — R1 method-group loads, R2 folder-scan composition, R3 target-local item copies, R4 HIGH composition rule, positive/negative regressions, verification:
 
-Never promote runtime authority from name similarity, folder proximity, solution build order, copy-only evidence or loader-only evidence.
+`docs/reviews/2026-09-25-rd8-c0-target-classification.md`
 
-If the target is a folder-scan loader, the minimum generic HIGH rule must compose:
+The implementer needs no private-target access and must not request target source; the synthetic shape in that spec is sufficient.
 
-```text
-host enumerates a deterministic runtime directory/pattern
-+ enumerated file is passed to an assembly-load operation
-+ plugin has unique deterministic assembly identity
-+ build metadata delivers that exact plugin output to the same loader runtime directory
-```
-
-Ambiguous identity, unresolved directory, delivery to a different directory, broad dynamic command expansion or test-only loaders remain fail-closed.
-
-Solution `ProjectDependencies` may contribute build provenance but is never runtime-use evidence by itself.
-
-If Phase C0 confirms a currently unsupported shape:
-
-```text
-private observation
--> sanitize exact defect shape
--> focused red synthetic regression
--> minimum generic repair
--> negative fail-closed regressions
--> focused + related + full relevant local verification
--> one coherent implementation commit/push
--> rerun only affected RD8-C discovery evidence
-```
-
-Do not combine folder-loader, shell-copy and solution-dependency support speculatively. Implement only the real-target shape that the evidence requires.
+Never promote runtime authority from name similarity, folder proximity, solution build order, copy-only evidence or loader-only evidence. Do not add `.sln`/`.slnx` dependency parsing, `PostBuildEvent`, `<Exec>`/xcopy, `GetFiles("*.dll")`, shared-library or config-driven loader support in this repair.
 
 ## RD8-A — still required
 
@@ -274,17 +231,16 @@ R7.10/D remains OPEN. The independent-review lane is paused, not passed. A fresh
 ## Exact next action
 
 ```text
-approved source-enabled environment:
-  fill the RD8-C Phase-C0 support-matrix checklist only
-  -> loader ownership + identity/enumeration + load API
-  -> delivery syntax
-  -> solution ProjectDependencies role
-  -> current PKC edge/unresolved counts
+implementer:
+  read docs/reviews/2026-09-25-rd8-c0-target-classification.md
+  -> red synthetic regressions in tests/Pkc.CSharp.Tests/RepositoryDiscoveryRuntimePluginRegressionTests.cs
+  -> implement R1-R4 minimum generic fail-closed repair
+  -> focused + related + full local verification, Release build
+  -> one coherent implementation commit on a topic branch (never push main directly)
 
-implementation, only if exact target shape is unsupported:
-  regression-first minimum generic repair
-  -> local verification
-  -> one coherent commit/push
+approved-environment operator, after it lands:
+  pkc discover on a disposable copy of the target
+  -> expect runtime-plugin-load = 2, record sanitized counts = RD8-C proof
 
 then:
   fresh RD8-A run without --resume

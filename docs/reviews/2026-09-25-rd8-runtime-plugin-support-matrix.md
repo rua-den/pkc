@@ -249,3 +249,7 @@ E1: LOCKED
 ```
 
 Exact next action is the small Phase-C0 operator checklist above. Once its sanitized result exists, the next implementation choice is deterministic rather than speculative.
+
+## Update 2026-09-25 — Phase C0 complete
+
+Phase C0 selected the "folder-scan loader" row (method-group `Assembly.LoadFrom` + subdirectory-named convention + target-local item `<Copy>`). Production repair is now authorized as specified in `docs/reviews/2026-09-25-rd8-c0-target-classification.md`. The decision block above is superseded only on the line `production repair authorized now`.

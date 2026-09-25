@@ -4,11 +4,11 @@ Last updated: 2026-09-25
 
 ## Repository state reviewed
 
-Current `main` immediately before this support-matrix checkpoint:
+Current `main` immediately before this Phase-C0 checkpoint:
 
 ```text
-06f0f01f522650db7b2304a4a8295d2d5b118724
-docs: correct RD8 runtime plugin target applicability [skip ci]
+ac1b8294d8f3ce183802dd6d4e36349fc67c2722
+docs: lock RD8 runtime plugin repair authority [skip ci]
 ```
 
 Latest production-code ancestor remains:
@@ -52,7 +52,7 @@ V0.4.7-E0 / RD4 runtime/plugin provenance           PASS / COMPLETE (determinist
 V0.4.7-E0 / RD5 deterministic ScanPlan              PASS / COMPLETE
 V0.4.7-E0 / RD6 scoped/bounded semantic execution   PASS / COMPLETE
 V0.4.7-E0 / RD7 coverage + observability            PASS / COMPLETE
-V0.4.7-E0 / RD8 private large-repository validation ACTIVE / KNOWN RUNTIME-PLUGIN BLOCKER / NOT PASS
+V0.4.7-E0 / RD8 private large-repository validation ACTIVE / C0 CLASSIFIED / RUNTIME-PLUGIN REPAIR AUTHORIZED / NOT PASS
 V0.4.7-E1 remaining product-value repairs           LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14          LOCKED behind E1
 continuous update/diff                              LOCKED
@@ -159,24 +159,31 @@ Authoritative audit/decision aid:
 
 `docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
 
-### Repair authority remains locked to exact target syntax
+### Phase C0 complete on 2026-09-25 — repair authorized
 
-No production repair is authorized from architectural resemblance alone.
-
-Phase C0 must return only a sanitized classification:
+Read-only source-enabled inspection classified the real target (sanitized; no names, paths or source):
 
 ```text
-loader ownership: host | shared library | other
-identity shape: direct literal | folder scan | config/list | other
-load API family: Assembly.* | AssemblyLoadContext.* | custom
-copy shape: OutputPath | MSBuild Copy | PostBuildEvent | Exec/copy/xcopy | external script
-solution ProjectDependencies: relevant | unrelated | absent
-current PKC result: edge count + unresolved-reason counts
+loader ownership:     production web host, own project
+identity shape:       folder scan of <runtime-base>/<M>/ subdirectories, load <subdir>/<subdir-name>.dll
+load API:             Assembly.LoadFrom passed as a method group (no call parenthesis)
+delivery:             plugin-owned MSBuild <Copy> in an AfterTargets=Build target,
+                      SourceFiles via a target-local item = $(TargetDir)**,
+                      destination <host>/$(OutDir)<M>/$(ProjectName)/%(RecursiveDir)
+                      (2 plugins; also copies into test projects and a conditional $(<external-dest>) copy)
+solution dependency:  .slnx BuildDependency present and relevant; build provenance only, not needed
+current PKC result:   0 runtime-plugin-load, 0 for every runtime unresolved reason
 ```
 
-If exact target inspection confirms a currently unsupported shape, then use regression-first synthetic coverage and the minimum generic repair.
+Root cause: the loader regex requires a call parenthesis, so the method-group load is never observed; the copy check requires an own-output token literally in `SourceFiles`, so item indirection hides delivery. Both gaps suppress even the unresolved signal.
 
-For a folder-scan repair, HIGH authority must still require deterministic composition of the loader directory/pattern, actual assembly-load operation, unique plugin identity, and delivery of that exact plugin output into the same runtime directory. Solution build dependency alone is never runtime-use authority.
+Decision: support-matrix row "folder-scan loader" applies. Regression-first minimum generic repair R1-R4 is authorized and fully specified in:
+
+`docs/reviews/2026-09-25-rd8-c0-target-classification.md`
+
+Out of scope for this repair: `.slnx`/`.sln` dependency parsing, `PostBuildEvent`, `<Exec>`/xcopy, `GetFiles("*.dll")`, shared-library loaders, config-driven identities.
+
+HIGH authority still requires deterministic composition of loader scan directory, actual assembly load, unique plugin identity, and unconditional delivery of that exact plugin output into the same runtime directory. Solution build dependency alone is never runtime-use authority.
 
 ## E0 completion rule
 
@@ -211,20 +218,19 @@ R7.10/D remains OPEN and not accepted. The prior independent-review lane is paus
 ## Exact next action
 
 ```text
-RD8-C Phase C0 in approved source-enabled environment:
-  fill the sanitized support-matrix checklist only
-  -> identify exact loader + delivery + solution-dependency syntax family
-  -> record current PKC edge/unresolved counts
-
-If the exact shape is unsupported:
-  focused red synthetic regression
+implementer (no private-target access needed):
+  implement R1-R4 from docs/reviews/2026-09-25-rd8-c0-target-classification.md
+  -> red synthetic regressions first (positive + listed negatives)
   -> minimum generic fail-closed repair
-  -> negative regressions
-  -> focused / related / full relevant local verification
-  -> one coherent implementation commit/push
-  -> rerun only affected RD8-C discovery evidence
+  -> focused / related / full local verification + Release build
+  -> one coherent implementation commit on a topic branch
 
-Then / alongside approved-environment validation:
+approved-environment operator, after it lands:
+  pkc discover on a disposable copy of the target
+  -> expect runtime-plugin-load = 2, no unexplained unresolved reasons
+  -> record sanitized counts = RD8-C proof
+
+then:
   RD8-A fresh discover + full run without --resume
   -> RD8-B 2-3 Level-1 probes
 
