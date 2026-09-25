@@ -232,7 +232,7 @@ R7.10/D remains OPEN. The independent-review lane is paused, not passed. A fresh
 
 ## Exact next action
 
-Update 2026-09-25: R1-R4 is committed as `935ea94` on `codex/rd8-c-runtime-plugin` (408/408 tests, Release clean, real target 2 HIGH `runtime-plugin-load` edges). Remaining: commit, reproduce the count from the committed build, then RD8-A and RD8-B. Details: `docs/reviews/2026-09-25-rd8-c0-target-classification.md` section "Implementation candidate result".
+Update 2026-09-25: RD8-C repair R1-R4 is `935ea94` on `codex/rd8-c-runtime-plugin` (details: `docs/reviews/2026-09-25-rd8-c0-target-classification.md`).
 
 Update 2026-09-25 (RD8 validation executed on `935ea94`): RD8-C PASS, RD8-A PASS (31.1 min, 5.42 GB peak), RD8-B **NOT PASS**. Probe results: #7 FAIL ~27%, #1 FAIL ~38% with a calibration blocker (exclusive-branch merge), #10 PARTIAL. Open observation RD8-OBS-1: current main emits 0 `applies-mapped-field-rule` on the real target. Full sanitized record: `docs/reviews/2026-09-25-rd8-private-validation-result.md`.
 
