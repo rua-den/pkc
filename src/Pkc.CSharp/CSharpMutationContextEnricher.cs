@@ -1,8 +1,9 @@
+using System.Globalization;
+using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pkc.Core;
-using System.Text.Json;
 
 namespace Pkc.CSharp;
 
@@ -92,20 +93,62 @@ internal sealed class CSharpMutationContextEnricher
     private static SyntaxNode? FindMutation(SyntaxNode root, EvidenceFact fact)
     {
         fact.Metadata.TryGetValue("target", out var target);
-        return root.DescendantNodes()
+        var candidates = root.DescendantNodes()
             .Where(node => node is AssignmentExpressionSyntax or PrefixUnaryExpressionSyntax or PostfixUnaryExpressionSyntax)
-            .FirstOrDefault(node =>
+            .Where(node =>
             {
-                var candidate = node switch
-                {
-                    AssignmentExpressionSyntax assignment => assignment.Left.ToString(),
-                    PrefixUnaryExpressionSyntax prefix => prefix.Operand.ToString(),
-                    PostfixUnaryExpressionSyntax postfix => postfix.Operand.ToString(),
-                    _ => string.Empty
-                };
+                var candidate = MutationTarget(node);
                 return StartLine(node) == fact.Source.StartLine &&
-                       (string.IsNullOrWhiteSpace(target) || string.Equals(candidate, target, StringComparison.Ordinal));
-            });
+                       (string.IsNullOrWhiteSpace(target) || string.Equals(candidate, target, StringComparison.Ordinal)) &&
+                       MatchesMutationFingerprint(node, fact);
+            })
+            .ToArray();
+
+        if (fact.Metadata.TryGetValue(CSharpBehaviorFactCollisionDisambiguator.MutationCollisionOrdinalMetadata, out var ordinalText) &&
+            int.TryParse(ordinalText, NumberStyles.None, CultureInfo.InvariantCulture, out var ordinal) &&
+            ordinal >= 0)
+        {
+            return candidates.ElementAtOrDefault(ordinal);
+        }
+
+        return candidates.FirstOrDefault();
+    }
+
+    private static string MutationTarget(SyntaxNode node) =>
+        node switch
+        {
+            AssignmentExpressionSyntax assignment => assignment.Left.ToString(),
+            PrefixUnaryExpressionSyntax prefix => prefix.Operand.ToString(),
+            PostfixUnaryExpressionSyntax postfix => postfix.Operand.ToString(),
+            _ => string.Empty
+        };
+
+    private static bool MatchesMutationFingerprint(SyntaxNode node, EvidenceFact fact)
+    {
+        fact.Metadata.TryGetValue("operator", out var expectedOperator);
+        var actualOperator = node switch
+        {
+            AssignmentExpressionSyntax assignment => assignment.OperatorToken.ValueText,
+            PrefixUnaryExpressionSyntax prefix => prefix.Kind().ToString(),
+            PostfixUnaryExpressionSyntax postfix => postfix.Kind().ToString(),
+            _ => string.Empty
+        };
+
+        if (!string.IsNullOrWhiteSpace(expectedOperator) &&
+            !string.Equals(actualOperator, expectedOperator, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!fact.Metadata.TryGetValue("value", out var expectedValue))
+        {
+            return true;
+        }
+
+        var actualValue = node is AssignmentExpressionSyntax assignmentNode
+            ? assignmentNode.Right.ToString()
+            : null;
+        return string.Equals(actualValue, expectedValue, StringComparison.Ordinal);
     }
 
     private static IReadOnlyList<BranchStep> BranchPathFor(SyntaxNode mutation)

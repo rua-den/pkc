@@ -600,7 +600,10 @@ public sealed class GroundedKnowledgeSynthesizer : IKnowledgeSynthesizer
                          .Where(item => item.Path.Count > pathIndex + 1)
                          .Select(item => item.Path[pathIndex + 1])
                          .DistinctBy(step => step.Id, StringComparer.Ordinal)
-                         .OrderBy(step => armGroup.First(item => item.Path[pathIndex + 1].Id == step.Id).Fact.Source.StartLine))
+                         .OrderBy(step => armGroup
+                             .Where(item => item.Path.Count > pathIndex + 1)
+                             .First(item => item.Path[pathIndex + 1].Id == step.Id)
+                             .Fact.Source.StartLine))
             {
                 RenderBranchLevel(builder, armGroup.ToArray(), pathIndex + 1, child.Id, depth + 1);
             }

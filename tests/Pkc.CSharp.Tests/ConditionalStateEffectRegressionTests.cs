@@ -279,9 +279,10 @@ public sealed class ConditionalStateEffectRegressionTests
         Assert.Equal(
             new[] { "Sets `entity.A` to `false`.", "Sets `entity.B` to `true`." },
             knowledge.StateChanges);
-        var markdown = new MarkdownKnowledgeRenderer().Render(knowledge);
+        var markdown = new MarkdownKnowledgeRenderer().Render(knowledge)
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
         Assert.Contains(
-            "## State changes\r\n\r\n- Sets `entity.A` to `false`.\r\n- Sets `entity.B` to `true`.\r\n\r\n## Side effects",
+            "## State changes\n\n- Sets `entity.A` to `false`.\n- Sets `entity.B` to `true`.\n\n## Side effects",
             markdown);
     }
 
