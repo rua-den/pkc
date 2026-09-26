@@ -181,3 +181,43 @@ expect runtime-plugin-load = 2 and no new unexplained unresolved reasons
 ```
 
 RD8-C passes only on that real-target discovery proof. RD8-A (fresh full run, no `--resume`) and RD8-B (Level-1 probes) remain required afterwards.
+
+## Implementation result (2026-09-25, committed as `935ea94` on `codex/rd8-c-runtime-plugin`)
+
+R1-R4 implemented in `src/Pkc.Core/Discovery/RepositoryDiscovery.Runtime.cs` and `src/Pkc.Core/Discovery/ComponentGraph.cs`.
+
+R2 design decision: composition is **file-scoped**, not data flow. The real target splits base directory, enumeration and projection across members of one type (helper method returning the enumerated directories, fluent projection chain in a property, method-group load at the end of the chain), so a line- or member-scoped rule cannot see it. Required in one production-host C# file:
+
+```text
+exactly one distinct Path.Combine(AppContext|AppDomain.CurrentDomain .BaseDirectory, "<literal>")
++ Directory.GetDirectories/EnumerateDirectories(...)
++ lambda projection  x => Path.Combine(x, $"{Path.GetFileName(x)}.dll")
++ path load: a call whose own arguments contain that projection with x a lambda parameter,
+             or a method group on/after the first projection line
+```
+
+Accepted limitation: two unrelated members in one file that separately enumerate and project are not distinguished. Mitigated by exactly-one literal base directory, production-host-only probing, and the R4 delivery/identity composition that must also hold.
+
+An earlier line-based variable-tracking draft was replaced. It matched only local-variable chains, failed two of its own negatives (one a false HIGH edge), and would not have recognised the real target shape.
+
+Regressions: positive direct-call, method-group and member-spanning fluent-chain fixtures; negative matrix as specified (ambiguous identity now reports `runtime-plugin-identity-ambiguous`). New positives are red on the pre-change code.
+
+Local verification:
+
+```text
+focused RuntimePlugin tests   42 / 42 pass
+full solution tests           408 / 408 pass
+Release build                 0 errors / 0 warnings
+```
+
+Real-target discovery (in-process `RepositoryDiscovery.Discover`, read-only, no `.pkc` written, sanitized counts):
+
+```text
+runtime-plugin-load                2  (HIGH, 1 production host)
+project-reference                  205 (unchanged)
+unresolved project-file-not-found  1  (unchanged, unrelated)
+no runtime-* unresolved reasons
+discovery elapsed                  ~60 s
+```
+
+This matches the expected result. It was reproduced from the committed build, both in-process and by a fresh CLI `discover` + `run` on a disposable copy. **RD8-C: PASS.**

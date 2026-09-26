@@ -1,37 +1,29 @@
 # PKC Status
 
-Last updated: 2026-09-25
+Last updated: 2026-09-27
 
 ## Repository state reviewed
 
-Current `main` immediately before this Phase-C0 checkpoint:
+Current `main`:
 
 ```text
-ac1b8294d8f3ce183802dd6d4e36349fc67c2722
-docs: lock RD8 runtime plugin repair authority [skip ci]
+9e2397e83f56df2533fecc7184cadc80b74acddb
+Continue
 ```
 
-Latest production-code ancestor remains:
+Active RD8-B repair branch:
 
 ```text
-fa30e3eb140357da5453702090be307417abb4e2
-fix: report the preserved workspace when it could not replace the current one
+codex/rd8-b-same-line-conditional-state
+production candidate: 82b5ffd7aac7db491042873b594ef2c5e987b55b
+fix: harden conditional state effect branches
+parent repair: 7eab43dd14de114f1328aa94f2959a3b3aa0fcac
+fix: preserve conditional state effect branches
 ```
 
-Important merged RD8 production checkpoints beneath this docs HEAD:
+Draft PR: `#7 fix: harden conditional state effect branches`.
 
-```text
-612fa998da6983662a90eed2836714c9928243b5
-feat: make large runs failure-safe, resumable and self-describing
-
-48ce2f10c1e506b28e37aa3ff15ba5e241a3da0c
-feat: follow sole implementations and surface mapped-field, gate and guard rules
-
-fa30e3eb140357da5453702090be307417abb4e2
-fix: report the preserved workspace when it could not replace the current one
-```
-
-This checkpoint is documentation/audit only. It does not change production behavior or runtime authority.
+`main` has not been modified by this checkpoint. The candidate remains on a topic branch pending the approved private RD8-B re-probe.
 
 ## Current priority state
 
@@ -44,195 +36,145 @@ V0.4.7-B computation and later change               PASS / COMPLETE
 V0.4.7-C backend to API                             PASS / COMPLETE
 V0.4.7-D / R7.9 API to rendered value               PASS / COMPLETE
 V0.4.7-D / R7.10 joint visibility                   OPEN / REVIEW PAUSED / NOT ACCEPTED
-V0.4.7-E0 repository discovery + bounded run        ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
-V0.4.7-E0 / RD1 inventory + safe exclusion          PASS / COMPLETE
-V0.4.7-E0 / RD2 application boundaries + ownership PASS / COMPLETE
-V0.4.7-E0 / RD3 vendor/custom frontend              PASS / COMPLETE
-V0.4.7-E0 / RD4 runtime/plugin provenance           PASS / COMPLETE (deterministic/synthetic gate)
-V0.4.7-E0 / RD5 deterministic ScanPlan              PASS / COMPLETE
-V0.4.7-E0 / RD6 scoped/bounded semantic execution   PASS / COMPLETE
-V0.4.7-E0 / RD7 coverage + observability            PASS / COMPLETE
-V0.4.7-E0 / RD8 private large-repository validation ACTIVE / C0 CLASSIFIED / RUNTIME-PLUGIN REPAIR AUTHORIZED / NOT PASS
+V0.4.7-E0 repository discovery + bounded run        ACTIVE
+V0.4.7-E0 / RD1-RD7                                 PASS / COMPLETE
+V0.4.7-E0 / RD8-A operability                       PASS
+V0.4.7-E0 / RD8-C runtime/plugin real-target proof  PASS
+V0.4.7-E0 / RD8-B targeted product value            NOT PASS / REPAIR (a) AWAITING PRIVATE RE-PROBE
 V0.4.7-E1 remaining product-value repairs           LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14          LOCKED behind E1
 continuous update/diff                              LOCKED
 V0.5 Azure DevOps input evidence                    LOCKED
 ```
 
-The E0 priority override remains active because practical scan operability is required for the demo. It does not self-certify R7.10/D and does not permit weaker semantic/runtime authority.
+Do not advance E1 or resume formal R7.10/D acceptance until the active RD8/E0 checkpoint explicitly permits it.
 
-## RD1-RD7
+## RD8 accepted evidence
 
-RD1-RD7 remain `PASS / COMPLETE`.
+Authoritative sanitized result:
 
-RD4 specifically accepted the currently supported fail-closed runtime-plugin rule. It did not prove that every real runtime loader/copy topology is supported.
+`docs/reviews/2026-09-25-rd8-private-validation-result.md`
 
-Current RD4 authority is:
+RD8-C is PASS: the approved large target produced two deterministic HIGH `runtime-plugin-load` edges after the bounded runtime-plugin repair.
 
-```text
-production host loader
-+ unique literal assembly identity
-+ deterministic build/copy delivery into the host tree
--> HIGH runtime-plugin-load edge
-```
-
-Unsupported or ambiguous shapes remain unresolved/UNKNOWN.
-
-## RD8 supporting evidence
-
-Historical approved private exercise remains supporting evidence only:
+RD8-A is PASS on the approved large target:
 
 ```text
-repository scale: about 26.9k files / 18 hosts
-planned semantic files: about 16.8k
-facts / relations: about 263.6k / 2.04M
-workflow candidates: 4,186
-
-run 1: ~41.5 min / ~18.6 GB / OOM during artifact write
-run 2 with resource repairs: ~29 min / ~7.5 GB / exit 0
-pkc discover: about 98 s
-run-2 workspace: about 703 product features / 4,709 files
+fresh run:              ~31.1 min
+peak process-tree RAM:  ~5.42 GB
+repository files:       25,355
+semantic planned:       16,712
+semantic executed:      16,709
+facts:                  265,120
+relations:              1,206,340
+workflow candidates:    4,186
+product features:       703
+workspace files:        ~4,711
 ```
 
-The old successful run predates the fully integrated current production state and cannot close RD8-A or RD8-B.
+These results prove practical integrated operation; they do not prove RD8-B product value.
 
-## RD8 Gate A — fresh current-main operability
+## RD8-B baseline — still NOT PASS
 
-Still required in the approved source-enabled/company environment:
+Known-answer probes from the approved private run:
 
 ```text
-build PKC Release from current main
-pkc discover <approved-private-copy>
-pkc run <approved-private-copy>      # fresh acceptance run; no --resume
+#7 scheduled updates / invoice period   FAIL    ~27%
+#1 LostDate / CustomerWeb access        FAIL    ~38%  (calibration blocker)
+#10 Worklog                             PARTIAL ~55%
 ```
 
-Record sanitized elapsed time, peak process-tree memory, coverage, evidence counts, artifact status, final workspace path and file count. Confirm run summaries, discovery/coverage/checkpoint metadata and workspace output are internally plausible.
+The #1 blocker was that mutually exclusive state-effect branches could be rendered together as one proven effect.
 
-## RD8 Gate B — targeted Level-1 product value
+Separate later candidate gaps remain:
 
-After the fresh workspace exists, run 2-3 known-answer probes using `docs/benchmarks/product-value-benchmark-protocol.md`:
+- (b) deferred command-queue producer -> handler linking when the handler is named by type-name string;
+- (c) recurring background jobs as workflow triggers;
+- static factory / bulk-insert entity creation and other benchmark-driven gaps only when a later probe proves they are next-highest ROI.
+
+Do not combine (b) or (c) into repair (a).
+
+## Repair (a) — repo-local implementation complete, private proof pending
+
+Primary implementation spec:
+
+`docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
+
+`7eab43d` implemented branch context and honest if/else, else-if, switch and nested state-effect rendering. Independent source review in this web checkpoint found two additional compile-valid generic defects inside that same repair boundary:
+
+1. same-line mutations to the same target could collide on fact ID and be dropped or attached to the wrong branch;
+2. a branch arm containing both direct and nested mutations could index past a shorter branch path during knowledge rendering.
+
+Candidate `82b5ffd` closes both defects regression-first and also makes the existing flat-output regression newline-neutral across Windows/Linux. It does not broaden business authority or add queue/scheduler support.
+
+### Exact candidate verification
+
+Exact production candidate:
 
 ```text
-phase 1: workspace-only answer
-phase 2: approved source-enabled known answer
-phase 3: compare and score
+82b5ffd7aac7db491042873b594ef2c5e987b55b
+fix: harden conditional state effect branches
 ```
 
-Prefer the quantity-adjustment probe plus materially different questions from `docs/question-trainning.md`.
-
-A compiler exit or generated workspace alone is not product-value acceptance.
-
-## RD8 Gate C — runtime/plugin target blocker
-
-The intended large-repository class is now known to contain runtime-loaded plugins:
+Clean-environment gates on that candidate / PR merge ref:
 
 ```text
-host
-  -> reflection-based plugin load from runtime output
-  -> plugin projects are not host project references
-
-build delivery
-  -> custom post-build copy into runtime output
+Release build:                    PASS, 0 warnings / 0 errors
+C# tests:                         399 / 399 PASS
+frontend tests:                   23 / 23 PASS
+full solution total:              422 / 422 PASS
+pack + local tool install:        PASS
+WorkPlay end-to-end knowledge:    PASS
+PokeTrade business + knowledge:   PASS
+Loren external trial:             PASS
+Jellyfin generalization trial:    PASS
 ```
 
-Therefore target applicability is `YES`; the old `N/A` path is invalid. Earlier PKC output without runtime-plugin edges is missing discovery yield, not proof that the topology is absent.
+CI run: `36258951904` / #439 — PASS after one retry of the failed PokeTrade job. The first PokeTrade attempt failed before Angular build because npm registry returned HTTP 404 for the `webpack-sources-3.6.0.tgz` tarball; the retry passed Angular build, business acceptance, and PKC knowledge verification without any code change.
 
-### Repo-local audit completed on 2026-09-25
+Loren run: `36258951922` / #338 — PASS.
 
-Current production support was re-audited against RD4 regressions and code.
+Jellyfin run: `36258951931` / #185 — PASS. This is especially material because the prior candidate exposed the mixed-depth branch renderer crash during Jellyfin synthesis; the final candidate passes the same real-repository gate.
 
-Supported loader identity shapes include direct string-literal assembly names and direct literal `.dll` names in supported reflection load APIs. Supported delivery shapes are literal `OutputPath`/`OutDir`/`BaseOutputPath`, supported MSBuild `<Copy>` forms, or the existing unconditional project-reference fallback.
+This web environment has no local .NET runtime, so the final candidate was source-reviewed here and verified by the repository clean-environment gates. The earlier `7eab43d` handoff already recorded its local Windows verification before this hardening pass.
 
-Current production intentionally fails closed for important candidate target shapes including:
+## RD8-OBS-1 — observation only
 
-- folder enumeration such as `GetFiles(..., "*.dll")` followed by a variable-path assembly load;
-- post-build `copy` / `xcopy` / `<Exec>` command delivery;
-- loaders implemented in shared libraries rather than the production host's own project;
-- configuration-driven plugin identities;
-- solution-level `ProjectDependencies` as dependency provenance.
+The approved real target previously emitted zero `applies-mapped-field-rule` relations.
 
-The `.sln` parser currently records solution project membership only; it does not model `ProjectDependencies`.
+Repo-local wiring review confirms mapped-field analysis is not dead code: semantic enrichment scans loaded project models for `mapped-field-rule` facts and links them only when a callable projects the matching destination type.
 
-This is not a newly introduced defect. RD4's own acceptance record explicitly carried folder-scan loaders and post-build shell copy commands as known fail-closed gaps for RD8 to measure.
-
-Authoritative audit/decision aid:
-
-`docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
-
-### Phase C0 complete on 2026-09-25 — repair authorized
-
-Read-only source-enabled inspection classified the real target (sanitized; no names, paths or source):
+Do not add speculative parser support yet. On the next approved target run, first record:
 
 ```text
-loader ownership:     production web host, own project
-identity shape:       folder scan of <runtime-base>/<M>/ subdirectories, load <subdir>/<subdir-name>.dll
-load API:             Assembly.LoadFrom passed as a method group (no call parenthesis)
-delivery:             plugin-owned MSBuild <Copy> in an AfterTargets=Build target,
-                      SourceFiles via a target-local item = $(TargetDir)**,
-                      destination <host>/$(OutDir)<M>/$(ProjectName)/%(RecursiveDir)
-                      (2 plugins; also copies into test projects and a conditional $(<external-dest>) copy)
-solution dependency:  .slnx BuildDependency present and relevant; build provenance only, not needed
-current PKC result:   0 runtime-plugin-load, 0 for every runtime unresolved reason
+mapped-field-rule fact count
+applies-mapped-field-rule relation count
 ```
 
-Root cause: the loader regex requires a call parenthesis, so the method-group load is never observed; the copy check requires an own-output token literally in `SourceFiles`, so item indirection hides delivery. Both gaps suppress even the unresolved signal.
-
-Decision: support-matrix row "folder-scan loader" applies. Regression-first minimum generic repair R1-R4 is authorized and fully specified in:
-
-`docs/reviews/2026-09-25-rd8-c0-target-classification.md`
-
-Out of scope for this repair: `.slnx`/`.sln` dependency parsing, `PostBuildEvent`, `<Exec>`/xcopy, `GetFiles("*.dll")`, shared-library loaders, config-driven identities.
-
-HIGH authority still requires deterministic composition of loader scan directory, actual assembly load, unique plugin identity, and unconditional delivery of that exact plugin output into the same runtime directory. Solution build dependency alone is never runtime-use authority.
-
-## E0 completion rule
-
-E0 is PASS only when:
+Interpretation:
 
 ```text
-RD1-RD7 PASS / COMPLETE
-+ RD8-A fresh current-main run closes
-+ RD8-B targeted Level-1 product value closes
-+ RD8-C applicable runtime-plugin topology is deterministically represented on the real target
-+ normal product path practically produces the workspace
-+ coverage remains honest
+facts = 0                 -> rule grammar/yield miss
+facts > 0, relations = 0  -> projection/linking miss
 ```
 
-Only then may E1 unlock.
-
-## Parked work
-
-Construction/default/computation remains parked until E0 PASS:
-
-```text
-branch  fix/product-value-construction-state
-commit  35c8e5c5f856e15568aa963bb2d76268008c5570
-```
-
-Do not merge it during RD8.
-
-## Formal D state
-
-R7.10/D remains OPEN and not accepted. The prior independent-review lane is paused by product priority, not passed. A fresh independent review is still required before final V0.4.7 acceptance.
+Only the resulting evidence may authorize a repair.
 
 ## Exact next action
 
+The current checkpoint has reached an external gate.
+
+Approved source-enabled/company environment only:
+
 ```text
-implementer (no private-target access needed):
-  implement R1-R4 from docs/reviews/2026-09-25-rd8-c0-target-classification.md
-  -> red synthetic regressions first (positive + listed negatives)
-  -> minimum generic fail-closed repair
-  -> focused / related / full local verification + Release build
-  -> one coherent implementation commit on a topic branch
-
-approved-environment operator, after it lands:
-  pkc discover on a disposable copy of the target
-  -> expect runtime-plugin-load = 2, no unexplained unresolved reasons
-  -> record sanitized counts = RD8-C proof
-
-then:
-  RD8-A fresh discover + full run without --resume
-  -> RD8-B 2-3 Level-1 probes
-
-Do not start E1 until RD8 and E0 are explicitly PASS.
+1. Build/run production candidate 82b5ffd on a fresh disposable copy of the approved target.
+2. Run fresh `pkc run <target>`; do not stack repair (b) or (c) into this run.
+3. Re-score RD8-B probe #1 first using the product-value benchmark protocol.
+4. Confirm the mutually exclusive state branches are no longer merged into a false proven claim.
+5. Record only sanitized benchmark evidence.
+6. In the same generated evidence, record the two RD8-OBS-1 counts above.
 ```
+
+If and only if probe #1 clears the calibration blocker, close repair (a). Then open repair (b) as a separate regression-first task driven by the deferred-queue miss. Repair (c) remains later and separate.
+
+RD8-B remains **NOT PASS** until the required product-value evidence closes it. E0 remains active. Do not merge the parked E1 work or claim V0.4.7 complete.
