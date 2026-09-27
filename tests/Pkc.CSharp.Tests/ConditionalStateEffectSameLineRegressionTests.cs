@@ -128,6 +128,35 @@ public sealed class ConditionalStateEffectSameLineRegressionTests
         }
     }
 
+    [Fact]
+    public async Task Same_line_same_named_methods_fail_closed_instead_of_cross_linking_mutations()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-conditional-same-line-ambiguous-owner", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "Sample.cs"),
+                "public sealed class FirstWorker { public void Execute(Entity entity) { entity.Value = true; } } public sealed class SecondWorker { public void Execute(Entity entity) { entity.Value = false; } } public sealed class Entity { public bool Value { get; set; } }");
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var mutations = facts.Facts
+                .Where(fact => fact.Kind == "mutation" && fact.Metadata.TryGetValue("target", out var target) && target == "entity.Value")
+                .ToArray();
+            Assert.Equal(2, mutations.Length);
+            Assert.Equal(2, mutations.Select(fact => fact.Id).Distinct(StringComparer.Ordinal).Count());
+
+            var mutationIds = mutations.Select(fact => fact.Id).ToHashSet(StringComparer.Ordinal);
+            Assert.DoesNotContain(
+                facts.Relations,
+                relation => relation.Kind == "mutates" && mutationIds.Contains(relation.Target));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static async Task<(FactDocument Facts, FeatureKnowledge Knowledge)> ScanAndSynthesize(string source)
     {
         var root = Path.Combine(Path.GetTempPath(), "pkc-conditional-same-line", Guid.NewGuid().ToString("N"));

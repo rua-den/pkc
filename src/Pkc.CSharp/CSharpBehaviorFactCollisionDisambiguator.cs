@@ -23,11 +23,17 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
             return document;
         }
 
-        var uniqueOwnersById = document.Facts
+        var ownerGroupsById = document.Facts
             .Where(fact => fact.Kind is "method" or "endpoint" or "constructor")
             .GroupBy(fact => fact.Id, StringComparer.Ordinal)
+            .ToArray();
+        var uniqueOwnersById = ownerGroupsById
             .Where(group => group.Count() == 1)
             .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+        var ambiguousOwnerIds = ownerGroupsById
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
 
         var occurrenceById = new Dictionary<string, int>(StringComparer.Ordinal);
         var occurrenceByFingerprint = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -72,7 +78,11 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
         {
             if (relation.Kind == "mutates" && replacementFacts.TryGetValue(relation.Target, out var replacements))
             {
-                foreach (var target in ReplacementTargetsForRelation(relation, replacements, uniqueOwnersById))
+                foreach (var target in ReplacementTargetsForRelation(
+                             relation,
+                             replacements,
+                             uniqueOwnersById,
+                             ambiguousOwnerIds))
                 {
                     relations.Add(relation with { Target = target });
                 }
@@ -100,8 +110,14 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
     private static IEnumerable<string> ReplacementTargetsForRelation(
         EvidenceRelation relation,
         IReadOnlyList<EvidenceFact> replacements,
-        IReadOnlyDictionary<string, EvidenceFact> uniqueOwnersById)
+        IReadOnlyDictionary<string, EvidenceFact> uniqueOwnersById,
+        IReadOnlySet<string> ambiguousOwnerIds)
     {
+        if (ambiguousOwnerIds.Contains(relation.FromFactId))
+        {
+            return [];
+        }
+
         if (uniqueOwnersById.TryGetValue(relation.FromFactId, out var owner))
         {
             var ownedTargets = replacements
