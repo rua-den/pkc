@@ -119,6 +119,14 @@ Jellyfin 36317759608 / #188  PASS
 
 CI #442's first PokeTrade attempt failed during `npm install` because npm registry returned HTTP 404 for `@peculiar/asn1-x509-attr-2.10.0.tgz`, before Angular build. No code changed; rerunning only that failed job passed Angular build, PokeTrade business acceptance and PKC knowledge verification.
 
+## Private gate runbook
+
+The external gate is now operationalized in:
+
+`docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
+
+The runbook fixes the exact candidate check, fresh target requirement, phase-1 workspace-only ordering, phase-2 source cross-check ordering, RD8-OBS-1 aggregate counts, privacy boundary, sanitized report shape and repair-(a) decision rule.
+
 ## RD8-OBS-1 — observation only
 
 The approved real target previously emitted zero `applies-mapped-field-rule` relations. On the next approved target run record:
@@ -131,8 +139,9 @@ applies-mapped-field-rule relation count
 Interpretation:
 
 ```text
-facts = 0                 -> rule grammar/yield miss
-facts > 0, relations = 0  -> projection/linking miss
+facts = 0                         -> rule grammar/yield miss
+facts > 0 and relations = 0      -> projection/linking miss
+relations > 0                    -> relation path active on this run
 ```
 
 Do not add speculative parser support before this classification.
@@ -142,12 +151,11 @@ Do not add speculative parser support before this classification.
 The checkpoint is at an external approved-environment gate:
 
 ```text
-1. Build/run exact production candidate 8c4055d on a fresh disposable copy of the approved target.
-2. Run fresh `pkc run <target>`; do not stack repair (b) or (c) into this run.
-3. Re-score RD8-B probe #1 first using the product-value benchmark protocol.
-4. Confirm mutually exclusive state branches are alternatives and no false combined proven effect remains.
-5. Record only sanitized score + concrete remaining miss.
-6. Record the two RD8-OBS-1 counts above.
+1. Follow docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md exactly.
+2. Build/run exact production candidate 8c4055d on a fresh disposable copy of the approved target.
+3. Re-score RD8-B probe #1 first, workspace-only before source cross-check.
+4. Record only sanitized score + concrete remaining miss.
+5. Record the two RD8-OBS-1 counts above.
 ```
 
 If and only if probe #1 clears the calibration blocker, close repair (a) and open repair (b) as its own regression-first task:

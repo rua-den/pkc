@@ -14,8 +14,9 @@ Last updated: 2026-09-27
 8. `docs/reviews/2026-09-25-rd8-private-validation-result.md`
 9. `docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
 10. `docs/benchmarks/product-value-benchmark-protocol.md`
+11. `docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
 
-Then verify current `main`, topic branch, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
+Then verify current `main`, the active topic branch, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
 
 ## Current repository state
 
@@ -32,7 +33,7 @@ Active branch:
 codex/rd8-b-same-line-conditional-state
 ```
 
-Exact production candidate awaiting the approved private product-value gate:
+Exact semantic/production candidate for the private product-value gate:
 
 ```text
 8c4055decd56e4597b2a1aa03e24b5c1a70235d5
@@ -56,33 +57,9 @@ E1 remaining semantic repairs       LOCKED behind E0
 E2 final acceptance / R7.14         LOCKED behind E1
 ```
 
-## Accepted private baseline
+## Repair (a) candidate
 
-Sanitized source of truth:
-
-`docs/reviews/2026-09-25-rd8-private-validation-result.md`
-
-RD8-A passed at ~31.1 min / ~5.42 GB peak process-tree memory with 265,120 facts, 1,206,340 relations, 4,186 workflow candidates and 703 product features.
-
-RD8-C passed with two HIGH runtime-plugin edges.
-
-RD8-B did not pass:
-
-```text
-probe #7 scheduled updates / invoice period   FAIL    ~27%
-probe #1 LostDate / CustomerWeb access        FAIL    ~38%
-probe #10 Worklog                             PARTIAL ~55%
-```
-
-Probe #1 contained the active calibration blocker: mutually exclusive state-effect branches were merged into one proven effect.
-
-## Repair (a) implementation state
-
-Spec:
-
-`docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
-
-The candidate chain remains inside the same conditional-state repair:
+The candidate chain remains inside the same conditional-state correctness boundary:
 
 ```text
 7eab43d  preserve conditional state effect branches
@@ -91,11 +68,7 @@ The candidate chain remains inside the same conditional-state repair:
 8c4055d  fail closed when the relation owner fact ID itself is ambiguous
 ```
 
-The latest rereview found a valid counterexample not covered by the prior `First`/`Second` regression: two different types can define same-named methods on the same physical line. Their method fact IDs collide, and their mutation `Container` values are also the same method name, so the prior fallback could still cross-link both mutations to the ambiguous owner.
-
-`8c4055d` records ambiguous owner IDs and emits no guessed `mutates` relation for a collision whose owner cannot be distinguished. The new regression keeps both mutation facts distinct and requires zero cross-linked ownership relations. Unique-owner collisions still preserve all mutations for that owner.
-
-No queue semantics, scheduler semantics, target-specific pattern or new business authority was added.
+`8c4055d` prevents false `mutates` ownership when different types define same-named methods whose owner IDs collide. Ambiguous ownership now fails closed instead of cross-linking mutations. No deferred-queue semantics, scheduler semantics, target-specific pattern or new business authority was added.
 
 ## Verification on `8c4055d`
 
@@ -119,11 +92,34 @@ Loren    36317759562 / #341  PASS
 Jellyfin 36317759608 / #188  PASS
 ```
 
-The first PokeTrade job in CI #442 failed during npm install because the npm registry returned HTTP 404 for the `@peculiar/asn1-x509-attr-2.10.0.tgz` tarball. No code changed. Rerunning only that failed job passed Angular build, PokeTrade business acceptance and PKC knowledge verification.
+CI #442's first PokeTrade job failed before Angular build because npm registry returned HTTP 404 for `@peculiar/asn1-x509-attr-2.10.0.tgz`. No code changed. Rerunning only that failed job passed Angular build, business acceptance and PKC knowledge verification.
+
+## Private gate is now operationalized
+
+Use:
+
+`docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
+
+The runbook fixes the exact order and privacy boundary for the next approved target run:
+
+```text
+verify exact semantic candidate 8c4055d
+-> fresh disposable target, no .pkc, no --resume
+-> one fresh pkc run
+-> record RD8-OBS-1 aggregate counts only
+-> Phase 1 probe #1 from .pkc/workspace only
+-> freeze answer
+-> Phase 2 source-known cross-check in approved environment
+-> sanitized result + decision on repair (a)
+```
+
+It also makes the repair-(a) closure rule explicit: the previous false combined proven effect must be gone, exclusive branches must not be merged, no unsupported unconditional replacement authority may appear, and remaining uncertainty must be honest.
+
+The overall probe may still be PARTIAL/FAIL because the authentication-event access-gate gap is separate. Repair (a) can close once its calibration defect is proven fixed.
 
 ## RD8-OBS-1
 
-The prior private target run emitted zero `applies-mapped-field-rule` relations. On the next approved run record:
+On the fresh private run record only:
 
 ```text
 mapped-field-rule facts
@@ -133,37 +129,37 @@ applies-mapped-field-rule relations
 Classify before touching code:
 
 ```text
-facts = 0                 -> grammar/yield issue
-facts > 0, relations = 0  -> projection/linking issue
+facts = 0                         -> grammar/yield issue
+facts > 0 and relations = 0      -> projection/linking issue
+relations > 0                    -> relation path active on this run
 ```
+
+This observation does not authorize a parser/linker repair by itself.
 
 ## Do not start yet
 
-Keep these separate from repair (a):
+Keep these later repairs separate:
 
 ```text
 (b) deferred command-queue producer -> handler linking
 (c) recurring background jobs as workflow triggers
 ```
 
-Do not implement either before probe #1 proves repair (a) cleared the calibration blocker. Otherwise the next private run changes multiple variables and loses causal attribution.
+Do not implement either before the private probe #1 result proves repair (a) cleared the calibration blocker. Otherwise the next target run changes multiple semantic variables and loses causal attribution.
 
 ## Exact next action
 
 Approved source-enabled/company environment only:
 
 ```text
-1. Build exact production candidate 8c4055d.
-2. Run fresh `pkc run <approved-disposable-target-copy>`.
-3. Re-score RD8-B probe #1 first, workspace-only before source cross-check.
-4. Verify exclusive branches are alternatives and no false combined proven effect remains.
-5. Record sanitized score + concrete remaining miss.
-6. Record the two RD8-OBS-1 fact/relation counts.
+1. Follow docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md exactly.
+2. Run semantic candidate 8c4055d on a fresh approved disposable target copy.
+3. Record sanitized probe #1 result and RD8-OBS-1 counts.
+4. If calibration clears, close repair (a) and start repair (b) regression-first.
+5. If it does not clear, use the concrete generated misstatement for the next minimum generic correction inside repair (a).
 ```
 
-If probe #1 clears the blocker, close repair (a) and start repair (b) regression-first. If it does not, use the concrete probe miss for the next minimum generic correction inside repair (a).
-
-Preserve until then:
+Preserve until that evidence exists:
 
 ```text
 RD8-B: NOT PASS
