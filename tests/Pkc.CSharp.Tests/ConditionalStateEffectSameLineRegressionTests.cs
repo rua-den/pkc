@@ -92,6 +92,42 @@ public sealed class ConditionalStateEffectSameLineRegressionTests
         Assert.Contains("Decrements `entity.Count` by 1.", rendered);
     }
 
+    [Fact]
+    public async Task Same_line_mutations_in_distinct_methods_keep_relation_ownership()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pkc-conditional-same-line-owner", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "Sample.cs"),
+                "public sealed class Worker { public void First(Entity entity) { entity.Value = true; } public void Second(Entity entity) { entity.Value = false; } } public sealed class Entity { public bool Value { get; set; } }");
+
+            var facts = await new CSharpEvidenceScanner().ScanAsync(root);
+            var first = Assert.Single(facts.Facts, fact => fact.Kind == "method" && fact.Name == "First");
+            var second = Assert.Single(facts.Facts, fact => fact.Kind == "method" && fact.Name == "Second");
+            var firstMutation = Assert.Single(facts.Facts, fact => fact.Kind == "mutation" && fact.Container == "First");
+            var secondMutation = Assert.Single(facts.Facts, fact => fact.Kind == "mutation" && fact.Container == "Second");
+
+            Assert.Equal(
+                new[] { firstMutation.Id },
+                facts.Relations
+                    .Where(relation => relation.Kind == "mutates" && relation.FromFactId == first.Id)
+                    .Select(relation => relation.Target)
+                    .ToArray());
+            Assert.Equal(
+                new[] { secondMutation.Id },
+                facts.Relations
+                    .Where(relation => relation.Kind == "mutates" && relation.FromFactId == second.Id)
+                    .Select(relation => relation.Target)
+                    .ToArray());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static async Task<(FactDocument Facts, FeatureKnowledge Knowledge)> ScanAndSynthesize(string source)
     {
         var root = Path.Combine(Path.GetTempPath(), "pkc-conditional-same-line", Guid.NewGuid().ToString("N"));

@@ -23,9 +23,15 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
             return document;
         }
 
+        var uniqueOwnersById = document.Facts
+            .Where(fact => fact.Kind is "method" or "endpoint" or "constructor")
+            .GroupBy(fact => fact.Id, StringComparer.Ordinal)
+            .Where(group => group.Count() == 1)
+            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+
         var occurrenceById = new Dictionary<string, int>(StringComparer.Ordinal);
         var occurrenceByFingerprint = new Dictionary<string, int>(StringComparer.Ordinal);
-        var replacementIds = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var replacementFacts = new Dictionary<string, List<EvidenceFact>>(StringComparer.Ordinal);
         var facts = new List<EvidenceFact>(document.Facts.Count);
 
         foreach (var fact in document.Facts)
@@ -44,28 +50,29 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
                 [MutationCollisionOrdinalMetadata] = fingerprintOccurrence.ToString(CultureInfo.InvariantCulture)
             };
             var replacementId = $"{fact.Id}:occurrence:{occurrence + 1}";
-
-            facts.Add(fact with
+            var replacement = fact with
             {
                 Id = replacementId,
                 Metadata = metadata
-            });
+            };
 
-            if (!replacementIds.TryGetValue(fact.Id, out var ids))
+            facts.Add(replacement);
+
+            if (!replacementFacts.TryGetValue(fact.Id, out var replacements))
             {
-                ids = [];
-                replacementIds[fact.Id] = ids;
+                replacements = [];
+                replacementFacts[fact.Id] = replacements;
             }
 
-            ids.Add(replacementId);
+            replacements.Add(replacement);
         }
 
         var relations = new List<EvidenceRelation>(document.Relations.Count);
         foreach (var relation in document.Relations)
         {
-            if (relation.Kind == "mutates" && replacementIds.TryGetValue(relation.Target, out var targets))
+            if (relation.Kind == "mutates" && replacementFacts.TryGetValue(relation.Target, out var replacements))
             {
-                foreach (var target in targets)
+                foreach (var target in ReplacementTargetsForRelation(relation, replacements, uniqueOwnersById))
                 {
                     relations.Add(relation with { Target = target });
                 }
@@ -88,6 +95,34 @@ internal sealed class CSharpBehaviorFactCollisionDisambiguator
             Facts = facts,
             Relations = distinctRelations
         };
+    }
+
+    private static IEnumerable<string> ReplacementTargetsForRelation(
+        EvidenceRelation relation,
+        IReadOnlyList<EvidenceFact> replacements,
+        IReadOnlyDictionary<string, EvidenceFact> uniqueOwnersById)
+    {
+        if (uniqueOwnersById.TryGetValue(relation.FromFactId, out var owner))
+        {
+            var ownedTargets = replacements
+                .Where(fact => string.Equals(fact.Container, owner.Name, StringComparison.Ordinal))
+                .Select(fact => fact.Id)
+                .ToArray();
+            if (ownedTargets.Length > 0)
+            {
+                return ownedTargets;
+            }
+        }
+
+        var containers = replacements
+            .Select(fact => fact.Container)
+            .Distinct(StringComparer.Ordinal)
+            .Take(2)
+            .ToArray();
+
+        return containers.Length == 1
+            ? replacements.Select(fact => fact.Id).ToArray()
+            : [];
     }
 
     private static int NextOccurrence(IDictionary<string, int> occurrences, string key)
