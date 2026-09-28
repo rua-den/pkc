@@ -23,6 +23,13 @@ Then verify current `main`, recent commits, production code and relevant regress
 
 ## Current repository state
 
+Latest repair-(b) planning correction on `main`:
+
+```text
+65a4449751a915261e8e90edd7062c6232174885
+docs: preserve deferred dispatch through candidate graph [skip ci]
+```
+
 RD8 integration commit on `main`:
 
 ```text
@@ -43,9 +50,7 @@ Exact semantic/production candidate for the private product-value gate:
 fix: fail closed on ambiguous mutation owners
 ```
 
-PR #7 `fix: harden conditional state effect branches` is merged. This status/handoff update is documentation-only and follows the integration commit above.
-
-The approved private re-probe is complete. The user directed consolidating the current RD8 branch chain into `main`; the merge is complete. This does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
+PR #7 `fix: harden conditional state effect branches` is merged. The approved private re-probe is complete. The user directed consolidating the current RD8 branch chain into `main`; the merge is complete. This does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
 
 ## Current checkpoint
 
@@ -147,6 +152,22 @@ Sanitized output: 25,303 files; 16,460/16,497 planned semantic files executed; 2
 
 The clean-context Phase 1 answer and approved Phase 2 source cross-check are recorded in `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`. Probe #1 is PARTIAL: Phase 1 correctly represented mutually exclusive branches and did not invent a LostDate cutoff, but the workspace under-proved login eligibility on 24/09. The source cross-check confirms access while both current-customer and active flags remain on, with access ending when either flag turns off. This clears repair (a)'s branch-calibration blocker; close (a), keep RD8-B NOT PASS / E0 ACTIVE, and open repair (b) next.
 
+## Repair (b) pre-implementation review
+
+Current-main inspection found a required pipeline hop that the first implementation-plan draft omitted: `FeatureCandidateBuilder` only transports `dispatches`, `dispatches-sole-implementation`, and `unresolved-dispatch`. A new `deferred-dispatch` relation emitted by `CSharpProjectSemanticEnricher` would therefore be dropped before `GroundedKnowledgeSynthesizer` unless candidate traversal is extended.
+
+Commit `65a4449` corrects the repair-(b) plan so implementation must:
+
+```text
+CSharpProjectSemanticEnricher
+-> deferred-dispatch / unresolved-deferred-dispatch
+-> FeatureCandidateBuilder transport + bounded handler traversal
+-> GroundedKnowledgeSynthesizer deferred wording / uncertainty
+-> ProductFeatureBuilder usable source -> handler flow
+```
+
+This is a planning correction only. No deferred-queue production behavior has been implemented or self-certified.
+
 ## Next repair scope
 
 Keep these repairs separate:
@@ -158,17 +179,32 @@ Keep these repairs separate:
 
 Do not combine (b) with (c); keep recurring background jobs unopened. The repair-(b) implementation plan is `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`.
 
+## Current external blockers / environment boundary
+
+Repair (b) Task 1 still requires the approved source-enabled/company environment. The current web session has no approved target checkout and no saved Library/Project artifact containing the required producer -> persisted identity -> dispatcher resolution -> unique handler syntax/mechanism chain. The available sanitized reconnaissance only establishes broad repository/runtime topology, not this queue identity chain. Do not invent a fixture shape from framework names or generic queue conventions.
+
+Remote branch cleanup was also audited in this web session. `main` and `fix/product-value-construction-state` are the only branches that must be retained for current/future documented work; the latter still contains the explicitly parked E1 candidate. The remaining historical benchmark/review/work branches are cleanup candidates. Actual deletion could not be executed from this session because the connected GitHub action set exposes branch create/update but no delete-ref action, local shell cannot resolve `github.com`, and forcing a zero object ID through `update_ref` was rejected by GitHub with HTTP 422 without changing the branch.
+
 ## Exact next action
 
 Approved source-enabled/company environment only:
 
 ```text
-1. On `main`, confirm the sanitized producer → queued identity → dispatcher → handler shape in the approved environment.
-2. Execute the repair-(b) plan regression-first on `main`.
-3. Keep RD8-B NOT PASS and E0 ACTIVE until remaining probes and gates close.
+1. Confirm and sanitize the exact producer -> queued identity -> dispatcher -> unique handler chain.
+2. Record only that behavior shape in docs/reviews/2026-09-28-rd8-private-queue-shape.md.
+3. Execute the corrected repair-(b) plan regression-first on current main.
+4. Keep RD8-B NOT PASS and E0 ACTIVE until remaining probes and gates close.
 ```
 
-Preserve until that evidence exists:
+Repository hygiene when a delete-capable GitHub/local environment is available:
+
+```text
+keep: main
+keep: fix/product-value-construction-state
+remove: stale benchmark/*, codex/*, docs/*, notes/*, scratch/*, sol/*, web/*, work/* branches after the normal final ancestry/relevance check
+```
+
+Preserve until the required evidence exists:
 
 ```text
 RD8-B: NOT PASS
