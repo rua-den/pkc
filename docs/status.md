@@ -4,29 +4,27 @@ Last updated: 2026-09-28
 
 ## Repository state reviewed
 
-Current `main` before the requested RD8 consolidation:
+RD8 integration commit now on `main`:
 
 ```text
-9e2397e83f56df2533fecc7184cadc80b74acddb
-Continue
+343ac18ee1b29d2c3d169dda80ec49f9fb371b18
+Merge RD8 repair-a hardening and reprobe plan
 ```
 
-RD8 integration source branch:
+Merged RD8 source branch (PR #7):
 
 ```text
 codex/rd8-b-same-line-conditional-state
 ```
 
-Exact production candidate awaiting the approved private product-value gate:
+Exact production candidate assessed by the approved private product-value gate:
 
 ```text
 8c4055decd56e4597b2a1aa03e24b5c1a70235d5
 fix: fail closed on ambiguous mutation owners
 ```
 
-Draft PR: `#7 fix: harden conditional state effect branches`.
-
-`main` is untouched.
+PR #7 `fix: harden conditional state effect branches` is merged. A docs-only handoff update follows the integration commit above.
 
 ## Current priority state
 

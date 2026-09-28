@@ -15,19 +15,22 @@ Last updated: 2026-09-28
 9. `docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
 10. `docs/benchmarks/product-value-benchmark-protocol.md`
 11. `docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
+12. `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`
+13. `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
+14. `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
 
-Then verify current `main`, the active topic branch, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
+Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
 
 ## Current repository state
 
-Current `main` before the requested RD8 consolidation:
+RD8 integration commit on `main`:
 
 ```text
-9e2397e83f56df2533fecc7184cadc80b74acddb
-Continue
+343ac18ee1b29d2c3d169dda80ec49f9fb371b18
+Merge RD8 repair-a hardening and reprobe plan
 ```
 
-RD8 integration source branch:
+Merged RD8 source branch (PR #7):
 
 ```text
 codex/rd8-b-same-line-conditional-state
@@ -40,9 +43,9 @@ Exact semantic/production candidate for the private product-value gate:
 fix: fail closed on ambiguous mutation owners
 ```
 
-Existing draft PR before consolidation: `#7 fix: harden conditional state effect branches`.
+PR #7 `fix: harden conditional state effect branches` is merged. This status/handoff update is documentation-only and follows the integration commit above.
 
-The approved private re-probe is complete. The user explicitly directed consolidating the current RD8 branch chain into `main`; this does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
+The approved private re-probe is complete. The user directed consolidating the current RD8 branch chain into `main`; the merge is complete. This does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
 
 ## Current checkpoint
 
