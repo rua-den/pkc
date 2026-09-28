@@ -1,6 +1,6 @@
 # PKC Milestones
 
-Last updated: 2026-09-24
+Last updated: 2026-09-28
 
 PKC is a Product/System Knowledge Compiler. Acceptance requires deterministic portable product knowledge, honest uncertainty, and a normal product path that can practically produce a useful workspace on the intended repository class.
 
@@ -23,22 +23,18 @@ mutation-causality repair                 PASS / CLOSED
 | --- | --- | --- |
 | D / R7.10 | What backend + frontend conditions jointly control that exact rendered value? | **OPEN / REVIEW PAUSED / NOT ACCEPTED** |
 | E0 | Can PKC discover, plan and boundedly scan a large mixed repository well enough to produce a useful AI workspace practically? | **ACTIVE AS USER-AUTHORIZED BOUNDED PREWORK** |
-| E0 / RD1 | Can PKC inventory repository shape and safely exclude only proven generated/restorable areas? | **PASS / COMPLETE** |
-| E0 / RD2 | Can PKC model application boundaries and shared ownership from deterministic evidence? | **PASS / COMPLETE** |
-| E0 / RD3 | Can PKC separate first-party, third-party runtime, generated/minified/bundled and modified-vendor frontend code? | **PASS / COMPLETE** |
-| E0 / RD4 | Can PKC prove runtime/plugin edges only from deterministic loader + identity + delivery provenance? | **PASS / COMPLETE — deterministic/synthetic gate** |
-| E0 / RD5 | Can PKC produce a stable, inspectable, privacy-safe ScanPlan? | **PASS / COMPLETE** |
-| E0 / RD6 | Can semantic scanners execute only planned scopes without changing accepted authority? | **PASS / COMPLETE** |
-| E0 / RD7 | Can users inspect detection, planned scope and honest coverage? | **PASS / COMPLETE** |
-| E0 / RD8 | Does current-main run practically on the approved large repository with honest coverage, useful answers and correct runtime topology? | **ACTIVE / KNOWN RUNTIME-PLUGIN BLOCKER / NOT PASS** |
+| E0 / RD1-RD7 | Inventory, ownership, vendor classification, deterministic runtime provenance, scan planning, bounded execution and observability | **PASS / COMPLETE** |
+| E0 / RD8-A | Does the normal product path complete practically on the approved large repository? | **PASS** |
+| E0 / RD8-C | Does PKC deterministically recover the target's applicable runtime/plugin topology? | **PASS** |
+| E0 / RD8-B | Are selected Level-1 PO/QC answers useful and correctly calibrated? | **NOT PASS — repair (a) CLOSED; repair (b) NEXT** |
 | E1 | Are remaining high-value product behaviors represented? | **LOCKED behind E0** |
 | E2 | Can an AI answer agreed PO/QC questions from the portable pack alone on unchanged real repositories? | **LOCKED behind E1** |
 
+Do not resume formal R7.10/D acceptance or advance E1 until E0 explicitly passes.
+
 ## Priority override
 
-The user explicitly authorized E0 before formal D acceptance because scan operability is a prerequisite for a credible demo.
-
-This is not a D PASS. It is bounded infrastructure/operability prework under an open formal semantic gate.
+The user explicitly authorized E0 before formal D acceptance because scan operability is a prerequisite for a credible demo. This does not make D PASS.
 
 Authoritative decision:
 
@@ -54,79 +50,95 @@ RD1 inventory + safe exclusion                    PASS
 -> RD5 deterministic ScanPlan                     PASS
 -> RD6 scoped/bounded semantic execution          PASS
 -> RD7 coverage + observability                   PASS
--> RD8 current-main private validation             ACTIVE / BLOCKED
+-> RD8-A current semantic candidate operability   PASS
+-> RD8-C real-target runtime/plugin proof          PASS
+-> RD8-B targeted product value                    NOT PASS
+   -> repair (a) exclusive branch calibration      CLOSED
+   -> repair (b) deferred queue producer->handler  NEXT
+   -> later repairs chosen from fresh evidence
 -> practical workspace + targeted answer sign-off
 -> E0 PASS
 ```
 
-## RD8 supporting resource evidence
+## RD8-A — operability PASS
 
-Historical approved private exercise:
+Approved source-enabled/company evidence shows a fresh no-`--resume` run completed successfully on the intended large repository class with practical resource use and all expected artifacts written.
 
-```text
-RD7 baseline:   41.5 min, ~18.6 GB peak, OOM at artifact write
-patched run:    29 min, ~7.5 GB peak, exit 0, workspace generated
-```
-
-The resource repair later merged in `612fa998`; later semantic/output repairs merged in `48ce2f10` and `fa30e3eb`. Therefore the old successful run is supporting evidence, not a current-main RD8 PASS.
-
-## RD8 Gate A — fresh current-main run
-
-Required in the approved source-enabled environment:
+Latest sanitized 2026-09-28 candidate run:
 
 ```text
-pkc discover <approved-private-copy>
-pkc run <approved-private-copy>     # fresh acceptance measurement; no --resume
+Release build                   PASS
+pkc run                         PASS, exit 0, 46m 29s
+repository                      25,303 files / 17 apps / 45 owned libraries / 9 test projects
+planned / executed semantic     16,497 / 16,460
+facts / relations               255,229 / 4,629,193
+workflow candidates             4,044
+product features                658
+AI workspace                    4,520 files
+mapped-field-rule facts         455
+applies-mapped-field-rule       4,298
 ```
 
-Record sanitized elapsed time, peak memory, coverage, output counts, artifact status and workspace path/count. Confirm summaries and coverage are internally plausible.
+This closes the practical-run blocker. It does not make RD8-B PASS.
 
-## RD8 Gate B — targeted product value
+## RD8-C — runtime/plugin target proof PASS
 
-Run 2-3 Level-1 known-answer probes from the generated workspace, workspace-only first, then approved source cross-check. Include the quantity-adjustment probe plus materially different questions when useful.
-
-A green compiler exit alone is insufficient.
-
-## RD8 Gate C — corrected target applicability
-
-A recovered sanitized reconnaissance proves that the intended private repository class contains runtime-loaded plugin modules:
+Approved private validation proved the intended repository contains the applicable runtime-loaded plugin topology and PKC represents it deterministically:
 
 ```text
-reflection-based load from host runtime output
-+ no host project reference to the plugin
-+ custom post-build copy into that runtime output
+runtime-plugin-load: 2 HIGH edges
+production host:     1
+unresolved runtime-* reasons: none
 ```
 
-It also identifies solution/build-dependency evidence plus post-build copy targets as necessary provenance for the real topology.
+The old `KNOWN RUNTIME-PLUGIN BLOCKER` wording is obsolete. Keep the accepted deterministic authority boundary: loader + identity + delivery provenance; do not infer runtime/plugin edges from name or directory proximity.
 
-Therefore the old `accepted N/A if the private target lacks the shape` branch is no longer available for this target.
+Authoritative sanitized evidence:
 
-Current Phase C state:
+`docs/reviews/2026-09-25-rd8-private-validation-result.md`
+
+## RD8-B — targeted product value NOT PASS
+
+Baseline probes identified shared semantic gaps:
 
 ```text
-applicability:                         YES
-current PKC proof on intended target: MISSING / NOT PROVEN
-exact loader/copy defect syntax:      SOURCE-ENABLED INSPECTION REQUIRED
-RD8-C:                                OPEN / KNOWN BLOCKER
+#7 scheduled updates / invoice period   FAIL
+#1 lost date / CustomerWeb access       PARTIAL after repair (a) re-probe
+#10 work log                            PARTIAL
 ```
 
-Do not guess the parser shape. First obtain a sanitized exact loader + delivery syntax pattern from the approved environment. Then, if current main misses it, use regression-first synthetic coverage and a minimum generic fail-closed repair.
+Repair (a) is CLOSED. The 2026-09-28 re-probe confirmed mutually exclusive branch effects are no longer rendered as one combined proven effect. The remaining #1 miss is an authentication-event eligibility path and is separate from repair (b).
 
-Review:
+Repair (b) is the current task because deferred command-queue indirection materially affects #7 and #10. Producers persist a handler identity and a later dispatcher invokes the handler; PKC must link that route only when the exact identity chain and unique handler are proven.
 
-`docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
+Primary spec:
+
+`docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
+
+Implementation plan:
+
+`docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
+
+Current external gate before implementation:
+
+```text
+approved source-enabled inspection
+-> sanitize exact producer identity expression family
+-> prove persisted identity member
+-> prove dispatcher reads/resolves the same identity
+-> prove unique callable handler selection
+-> record behavior-only shape
+-> red synthetic regression
+-> minimum generic fail-closed repair
+```
+
+Do not guess queue syntax or resolver conventions. Repair (c), recurring background jobs as workflow triggers, remains unopened and separate.
 
 ## E0 completion
 
-E0 is PASS only when RD8 closes all of:
+E0 is PASS only when RD1-RD7 remain accepted, RD8-A and RD8-C remain accepted, RD8-B selected product probes become useful and correctly calibrated, coverage stays honest, and the normal product path practically produces the portable workspace.
 
-```text
-A: fresh practical current-main run
-B: useful correctly-calibrated Level-1 answers
-C: deterministic proof of the target's applicable runtime-plugin topology
-```
-
-Coverage must remain honest and the normal product path must produce the workspace practically.
+A green build or compiler exit alone is insufficient.
 
 ## E1
 
@@ -137,7 +149,7 @@ branch  fix/product-value-construction-state
 commit  35c8e5c5f856e15568aa963bb2d76268008c5570
 ```
 
-Mediator dispatch, legacy-UI linkage and rule-language cleanup remain candidate gaps, but fresh benchmark evidence chooses the next actual repair.
+Mediator dispatch, legacy-UI linkage, entity-construction richness and rule-language cleanup remain candidate gaps, but fresh benchmark evidence chooses the next actual repair.
 
 ## E2 / formal acceptance
 
@@ -148,19 +160,18 @@ Formal R7.10/D independent acceptance must still complete before V0.4.7 closes. 
 ## Exact next action
 
 ```text
-source-enabled RD8-C shape inspection
--> sanitize actual reflection-loader + build/copy provenance pattern
--> regression-first generic repair only if current main misses it
--> rerun affected discovery evidence
-
-then fresh RD8-A without --resume
--> RD8-B Level-1 probes
--> RD8 PASS only if A+B+C close
+source-enabled repair-(b) shape inspection
+-> fill sanitized queue-shape record
+-> execute deferred command-queue linking plan regression-first
+-> focused + related + full local verification
+-> one coherent implementation commit/push
+-> re-probe affected Level-1 questions
+-> keep RD8-B NOT PASS until evidence closes it
 ```
 
 ## Version semantics
 
 ```text
-roadmap: V0.4.7-E0 active; RD1-RD7 complete; RD8 blocked; R7.10/D still open
+roadmap: V0.4.7-E0 active; RD1-RD7, RD8-A and RD8-C pass; RD8-B repair (b) next; R7.10/D still open
 package: RuaDen.Pkc.Tool 0.4.3-preview.2
 ```
