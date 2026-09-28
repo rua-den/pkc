@@ -4,27 +4,28 @@ Last updated: 2026-09-28
 
 ## Repository state reviewed
 
-RD8 integration commit now on `main`:
+Latest completed repair-(b) planning/status checkpoint before this handoff update:
+
+```text
+d5d1be99878ae4298b986e55c2afc6bd16e8f23d
+docs: align RD8 repair-b checkpoint [skip ci]
+```
+
+That checkpoint aligned `docs/milestones.md` and `docs/v0.4.7-acceptance-plan.md` with accepted RD8 evidence and added the private queue-shape capture template. It changed no production behavior.
+
+RD8 integration commit on `main`:
 
 ```text
 343ac18ee1b29d2c3d169dda80ec49f9fb371b18
 Merge RD8 repair-a hardening and reprobe plan
 ```
 
-Merged RD8 source branch (PR #7):
-
-```text
-codex/rd8-b-same-line-conditional-state
-```
-
-Exact production candidate assessed by the approved private product-value gate:
+Exact semantic candidate assessed by the approved private product-value gate:
 
 ```text
 8c4055decd56e4597b2a1aa03e24b5c1a70235d5
 fix: fail closed on ambiguous mutation owners
 ```
-
-PR #7 `fix: harden conditional state effect branches` is merged. A docs-only handoff update follows the integration commit above.
 
 ## Current priority state
 
@@ -48,7 +49,7 @@ continuous update/diff                              LOCKED
 V0.5 Azure DevOps input evidence                    LOCKED
 ```
 
-Do not advance E1 or resume formal R7.10/D acceptance until the active RD8/E0 checkpoint explicitly permits it.
+Do not advance E1, open repair (c), or resume formal R7.10/D acceptance until the active RD8/E0 checkpoint explicitly permits it.
 
 ## Accepted private evidence
 
@@ -56,97 +57,33 @@ Authoritative sanitized baseline:
 
 `docs/reviews/2026-09-25-rd8-private-validation-result.md`
 
-RD8-A PASS on the approved large target: ~31.1 min, ~5.42 GB peak process-tree RAM, 265,120 facts, 1,206,340 relations, 4,186 workflow candidates and 703 product features.
-
-RD8-C PASS: two deterministic HIGH `runtime-plugin-load` edges on the real target.
-
-RD8-B remains NOT PASS:
+Accepted state:
 
 ```text
-#7 scheduled updates / invoice period   FAIL    ~27%
-#1 LostDate / CustomerWeb access        FAIL    ~38%  (calibration blocker)
-#10 Worklog                             PARTIAL ~55%
+RD8-A operability                         PASS
+RD8-C runtime/plugin real-target proof    PASS
+RD8-B product value                       NOT PASS
 ```
 
-Probe #1's blocker was false authority from mutually exclusive state-effect branches being rendered together as one proven effect.
+The 2026-09-25 private validation identified deferred command-queue indirection as a shared material root cause for probe #7 scheduled updates and probe #10 work-log behavior. Producers persist a handler identity into a queue record; a later dispatcher runs the handler; current PKC does not link the producer to that handler.
 
-## Repair (a) — repo-local implementation complete, private proof pending
+## Repair (a) — CLOSED
 
 Primary spec:
 
 `docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
 
-The repair chain now covers five compile-valid correctness defects inside the same conditional-state boundary:
+The accepted repair chain fixed exclusive branch flattening plus related same-line/ownership defects. The 2026-09-28 workspace-only/source-known re-probe confirmed that mutually exclusive deactivation effects are represented as alternatives rather than one combined proven effect.
 
-1. exclusive if/else, else-if and switch mutations were flattened into one proven effect;
-2. same-line same-target mutations could share a fact ID and be dropped or mapped to the wrong syntax branch;
-3. direct plus nested mutations in one branch arm could crash rendering through an out-of-range branch path;
-4. same-line same-target mutations in different method names could cross-link each method to every colliding replacement fact;
-5. two different types with the same method name on the same physical line could also collide at the owner fact ID, allowing the previous same-container fallback to cross-link ambiguous ownership.
+Source-known comparison remains PARTIAL overall because the workspace under-proved a separate CustomerWeb authentication-event eligibility rule. That remaining access-gate gap is not repair (b).
 
-Current candidate `8c4055d` fixes (5) fail-closed: if a `mutates` relation's owner fact ID is ambiguous, PKC emits no guessed ownership relation. Unique-owner same-method collisions retain all owned mutations. No queue, scheduler, target-specific or new business authority was added.
+Authoritative re-probe:
 
-## Exact candidate verification
+`docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`
 
-```text
-8c4055decd56e4597b2a1aa03e24b5c1a70235d5
-fix: fail closed on ambiguous mutation owners
-```
+## 2026-09-28 candidate run
 
-Clean-environment gates:
-
-```text
-Release build:                    PASS, 0 warnings / 0 errors
-C# tests:                         401 / 401 PASS
-frontend tests:                   23 / 23 PASS
-full solution total:              424 / 424 PASS
-pack + local tool install:        PASS
-WorkPlay end-to-end knowledge:    PASS
-PokeTrade business + knowledge:   PASS
-Loren external trial:             PASS
-Jellyfin generalization trial:    PASS
-```
-
-GitHub Actions:
-
-```text
-CI       36317759550 / #442  PASS
-Loren    36317759562 / #341  PASS
-Jellyfin 36317759608 / #188  PASS
-```
-
-CI #442's first PokeTrade attempt failed during `npm install` because npm registry returned HTTP 404 for `@peculiar/asn1-x509-attr-2.10.0.tgz`, before Angular build. No code changed; rerunning only that failed job passed Angular build, PokeTrade business acceptance and PKC knowledge verification.
-
-## Private gate runbook
-
-The external gate is now operationalized in:
-
-`docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
-
-The runbook fixes the exact candidate check, fresh target requirement, phase-1 workspace-only ordering, phase-2 source cross-check ordering, RD8-OBS-1 aggregate counts, privacy boundary, sanitized report shape and repair-(a) decision rule.
-
-## RD8-OBS-1 — observation only
-
-The approved real target previously emitted zero `applies-mapped-field-rule` relations. On the next approved target run record:
-
-```text
-mapped-field-rule fact count
-applies-mapped-field-rule relation count
-```
-
-Interpretation:
-
-```text
-facts = 0                         -> rule grammar/yield miss
-facts > 0 and relations = 0      -> projection/linking miss
-relations > 0                    -> relation path active on this run
-```
-
-Do not add speculative parser support before this classification.
-
-## 2026-09-28 candidate run — operational evidence; probe #1 source cross-check complete
-
-The exact semantic candidate was built and run on the user-specified target. The target had no `.pkc` directory at start, and the run used no `--resume`.
+The exact semantic candidate built Release cleanly and completed `pkc run` successfully without `--resume`:
 
 ```text
 candidate SHA                   8c4055decd56e4597b2a1aa03e24b5c1a70235d5
@@ -159,35 +96,74 @@ not analyzable / unknown        6,990 / 0
 facts / relations               255,229 / 4,629,193
 workflow candidates             4,044
 product features                658
-AI workspace                   4,520 files
+AI workspace                    4,520 files
 mapped-field-rule facts         455
 applies-mapped-field-rule       4,298 (relation path active)
 ```
 
-The target's disposable-copy status was not recorded. The clean-context Phase 1 answer and approved-environment Phase 2 cross-check are recorded in `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`. Probe #1 is **PARTIAL**: the exclusive deactivation branches are represented correctly, and the source cross-check confirms that `LostDate` itself does not select a branch or define a calendar cutoff. The workspace under-proved login eligibility on 24/09; source establishes access while both current-customer and active flags remain on, so the remaining gap is the missing auth-event eligibility path. This clears repair (a)'s branch-calibration blocker; repair (a) is CLOSED. RD8-B overall remains NOT PASS, repair (b) is next, and no source contents or raw facts were added to this repository.
+The target had no `.pkc` directory at start. Its disposable-copy status was not recorded. No target source or raw facts are stored in this repository.
+
+## Repair (b) — deferred command queue — NEXT
+
+Primary spec:
+
+`docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
+
+Implementation plan:
+
+`docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
+
+Private shape capture template:
+
+`docs/reviews/2026-09-28-rd8-private-queue-shape.md`
+
+The template is deliberately marked:
+
+```text
+TEMPLATE / NOT EVIDENCE
+source-enabled inspection performed: NO
+capture reviewed:                  NO
+implementation authorized:         NO
+```
+
+Do not implement a guessed queue/resolver grammar while those values remain `NO`.
+
+## Repo-local pre-implementation findings
+
+Current-main review has already closed the source-independent pipeline questions:
+
+1. `CSharpProjectSemanticEnricher` already uses assembly-qualified symbol/type keys and requires unique callable facts for existing dispatch authority. Repair (b) should reuse those exact-symbol/fail-closed foundations rather than introduce name matching.
+2. `FeatureCandidateBuilder` currently transports `dispatches`, `dispatches-sole-implementation`, and `unresolved-dispatch`; without an explicit new branch, a `deferred-dispatch` edge would be dropped before synthesis.
+3. `GroundedKnowledgeSynthesizer` currently renders only synchronous `invokes`, DI `dispatches`, and sole-implementation dispatch. Deferred routing needs distinct wording plus separate unresolved-deferred uncertainty.
+4. `ProductFeatureBuilder` parses workflow flow from the literal `source → target` shape. Deferred wording must remain parseable so the producer-to-handler edge survives into product capability flow.
+5. Downstream C# semantic/authority enrichers preserve unrelated relation kinds. `CSharpBusinessPredicateAuthorityFilter` only removes relations targeting rejected business-predicate facts; a deferred edge targets a handler callable. `CSharpSelectedApiPredicateAuthorityEnricher` also preserves the existing relation set while adding/upgrading predicate evidence.
+
+Therefore the remaining unknown is the private target's exact producer identity / persisted member / dispatcher resolver / unique-handler syntax-mechanism chain, not the PKC insertion path.
 
 ## Exact next action
 
-The checkpoint is at an external approved-environment gate:
+Approved source-enabled/company environment only:
 
 ```text
-1. On `main`, follow `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`: confirm the sanitized queue identity/resolution shape, then start repair (b) regression-first.
-2. Keep RD8-B NOT PASS and E0 ACTIVE until the remaining probes and gates close.
+1. Inspect the narrow producer -> queued identity -> dispatcher -> handler path read-only.
+2. Fill `docs/reviews/2026-09-28-rd8-private-queue-shape.md` with sanitized mechanism families only.
+3. Mark implementation AUTHORIZED only if the full identity chain and unique handler are proven.
+4. Then execute repair (b) regression-first:
+   raw deferred relation
+   -> candidate transport
+   -> deferred workflow wording
+   -> product-flow retention
+   -> fail-closed negative cases
+5. Run focused, related and full local gates before one implementation commit/push.
+6. Re-probe affected Level-1 questions #7 and #10.
 ```
-
-Probe #1 clears repair (a)'s calibration blocker. Keep the overall probe and RD8-B NOT PASS while opening repair (b) as its own regression-first task:
-
-```text
-(b) deferred command-queue producer -> handler linking
-```
-
-Repair (c), recurring background jobs as workflow triggers, remains later and separate.
 
 Preserve until that evidence exists:
 
 ```text
 RD8-B: NOT PASS
 E0: ACTIVE / NOT COMPLETE
+repair (c): UNOPENED
 E1: LOCKED
 R7.10/D: OPEN / REVIEW PAUSED
 ```
