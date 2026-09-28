@@ -1,10 +1,11 @@
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace Pkc.Core.Discovery;
 
 internal sealed record ProjectReferenceRecord(string Include, bool Conditional);
 
-internal sealed record CopyTaskRecord(string SourceFiles, string DestinationFolder);
+internal sealed record CopyTaskRecord(string SourceFiles, string DestinationFolder, bool Conditional = false, bool SameTargetOwnOutput = false);
 
 internal sealed record DotnetProjectRecord(
     string Manifest,
@@ -22,7 +23,12 @@ internal sealed record DotnetProjectRecord(
     public IReadOnlyList<CopyTaskRecord> Copies { get; init; } = [];
 }
 
-internal sealed record RuntimeLoaderFinding(string ComponentManifest, string LoaderFile, string? Identity);
+internal sealed record RuntimeLoaderFinding(
+    string ComponentManifest,
+    string LoaderFile,
+    string? Identity,
+    string? ScanDirectory = null,
+    string? ScanConvention = null);
 
 internal sealed record AngularProjectRecord(
     string Id,
@@ -37,6 +43,9 @@ internal sealed record SolutionRecord(string Path, IReadOnlyList<string> Project
 /// <summary>Classifies a .NET project from its own manifest. Anything not stated by the manifest stays UNKNOWN.</summary>
 internal static class DotnetProjectIdentity
 {
+    private static readonly string[] OwnOutputItemTokens =
+        ["$(TargetPath)", "$(TargetDir)", "$(TargetFileName)", "$(OutDir)", "$(OutputPath)", "@(IntermediateAssembly)"];
+
     private static readonly string[] WebApplicationProjectTypeGuids =
     [
         "349C5851-65DF-11DA-9384-00065B846F21", // ASP.NET web application
@@ -80,7 +89,29 @@ internal static class DotnetProjectIdentity
                     outputPaths.Add(element.Value.Trim());
                     break;
                 case "Copy" when element.Attribute("DestinationFolder") is { } destination:
-                    copies.Add(new CopyTaskRecord(element.Attribute("SourceFiles")?.Value ?? string.Empty, destination.Value));
+                    var target = element.Ancestors().FirstOrDefault(ancestor => ancestor.Name.LocalName == "Target");
+                    var copyConditional = element.AncestorsAndSelf()
+                        .TakeWhile(ancestor => ancestor != root)
+                        .Any(ancestor => ancestor.Attribute("Condition") is not null || ancestor.Name.LocalName is "When" or "Otherwise");
+                    var localOwnOutputItems = target?.Descendants()
+                        .Where(group => group.Name.LocalName == "ItemGroup")
+                        .SelectMany(group => group.Elements())
+                        .GroupBy(item => "@(" + item.Name.LocalName + ")", StringComparer.OrdinalIgnoreCase)
+                        .Where(group => group.Count() == 1)
+                        .Where(group =>
+                        {
+                            var item = group.Single();
+                            var conditional = item.AncestorsAndSelf()
+                                .TakeWhile(ancestor => ancestor != root)
+                                .Any(ancestor => ancestor.Attribute("Condition") is not null || ancestor.Name.LocalName is "When" or "Otherwise");
+                            var include = item.Attribute("Include")?.Value;
+                            return !conditional && include is not null && item.Attribute("Exclude") is null && item.Attribute("Remove") is null &&
+                                   OwnOutputItemTokens.Any(token => include.Contains(token, StringComparison.OrdinalIgnoreCase));
+                        })
+                        .Select(group => group.Key)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+                    var source = element.Attribute("SourceFiles")?.Value ?? string.Empty;
+                    copies.Add(new CopyTaskRecord(source, destination.Value, copyConditional, localOwnOutputItems.Contains(source.Trim())));
                     break;
                 case "ProjectTypeGuids":
                     projectTypeGuids += element.Value;
@@ -402,6 +433,60 @@ internal static class ComponentGraph
             var test = nodes[from].Kind == ComponentKind.TestProject;
             var loaderEvidence = new DiscoveryEvidence("runtime-loader", finding.LoaderFile);
 
+            if (finding.ScanDirectory is not null && finding.ScanConvention == "subdirectory-named-assembly")
+            {
+                if (test)
+                {
+                    continue;
+                }
+
+                var scanHost = byManifest[finding.ComponentManifest];
+                foreach (var scanPlugin in projects
+                             .Where(project => project.Manifest != scanHost.Manifest)
+                             .Where(project => nodes[DotnetId(project.Manifest)].Kind != ComponentKind.TestProject))
+                {
+                    // Only plugins whose own output is delivered into this host are candidates; others are unrelated.
+                    if (OutputDelivery(scanPlugin, scanHost) is null)
+                    {
+                        continue;
+                    }
+
+                    if (scanPlugin.AssemblyName is null ||
+                        !scanPlugin.AssemblyName.Equals(Path.GetFileNameWithoutExtension(scanPlugin.Manifest), StringComparison.OrdinalIgnoreCase) ||
+                        byAssembly.GetValueOrDefault(scanPlugin.AssemblyName) is not { Length: 1 })
+                    {
+                        var ambiguous = scanPlugin.AssemblyName is not null &&
+                                        byAssembly.GetValueOrDefault(scanPlugin.AssemblyName) is { Length: > 1 };
+                        unresolved.Add(new UnresolvedReference(
+                            from,
+                            scanPlugin.Manifest,
+                            ambiguous ? "runtime-plugin-identity-ambiguous" : "runtime-plugin-scan-directory-mismatch",
+                            [loaderEvidence]));
+                        continue;
+                    }
+
+                    var scanCopy = ScanOutputDelivery(scanPlugin, scanHost, finding.ScanDirectory);
+                    if (scanCopy is null)
+                    {
+                        unresolved.Add(new UnresolvedReference(
+                            from,
+                            scanPlugin.Manifest,
+                            "runtime-plugin-scan-directory-mismatch",
+                            [loaderEvidence]));
+                        continue;
+                    }
+
+                    var scanTo = DotnetId(scanPlugin.Manifest);
+                    var scanEvidence = new[] { loaderEvidence, new DiscoveryEvidence("runtime-plugin-identity", scanPlugin.Manifest), scanCopy };
+                    var scanKey = (from, scanTo, "runtime-plugin-load");
+                    edges[scanKey] = edges.TryGetValue(scanKey, out var scanExisting)
+                        ? scanExisting with { Evidence = scanExisting.Evidence.Concat(scanEvidence).Distinct().ToArray() }
+                        : new ComponentEdge(from, scanTo, "runtime-plugin-load", DiscoveryConfidence.High, scanEvidence);
+                }
+
+                continue;
+            }
+
             if (finding.Identity is null)
             {
                 if (!test)
@@ -506,13 +591,15 @@ internal static class ComponentGraph
         }
 
         if (plugin.Copies.Any(copy =>
-                OwnOutputTokens.Any(token => copy.SourceFiles.Contains(token, StringComparison.OrdinalIgnoreCase)) &&
+                !copy.Conditional &&
+                (copy.SameTargetOwnOutput || OwnOutputTokens.Any(token => copy.SourceFiles.Contains(token, StringComparison.OrdinalIgnoreCase))) &&
                 IntoHost(ResolveLiteralPrefix(pluginDirectory, copy.DestinationFolder))))
         {
             return new DiscoveryEvidence("msbuild-copy-into-host", plugin.Manifest);
         }
 
         if (host.Copies.Any(copy =>
+                !copy.Conditional &&
                 ResolveLiteralPrefix(hostDirectory, copy.SourceFiles) is { } source &&
                 DiscoveryPaths.IsUnder(source, plugin.AreaPath) &&
                 IntoHost(ResolveLiteralPrefix(hostDirectory, copy.DestinationFolder))))
@@ -521,6 +608,58 @@ internal static class ComponentGraph
         }
 
         return null;
+    }
+
+    private static DiscoveryEvidence? ScanOutputDelivery(DotnetProjectRecord plugin, DotnetProjectRecord host, string scanDirectory)
+    {
+        if (plugin.OutputPaths.Count > 0 || host.OutputPaths.Count > 0 || plugin.AssemblyName is null ||
+            !plugin.AssemblyName.Equals(Path.GetFileNameWithoutExtension(plugin.Manifest), StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var pluginDirectory = DiscoveryPaths.Parent(plugin.Manifest);
+        foreach (var copy in plugin.Copies.Where(copy => !copy.Conditional &&
+                     (copy.SameTargetOwnOutput || OwnOutputTokens.Any(token => copy.SourceFiles.Contains(token, StringComparison.OrdinalIgnoreCase)))))
+        {
+            if (ExactScanDestination(pluginDirectory, host, copy.DestinationFolder, scanDirectory))
+            {
+                return new DiscoveryEvidence("msbuild-copy-into-host-scan-directory", plugin.Manifest);
+            }
+        }
+
+        return null;
+    }
+
+    private static bool ExactScanDestination(string pluginDirectory, DotnetProjectRecord host, string destination, string scanDirectory)
+    {
+        var text = destination.Trim().Replace('\\', '/');
+        foreach (var token in ProjectDirectoryTokens)
+        {
+            if (text.StartsWith(token, StringComparison.OrdinalIgnoreCase))
+            {
+                text = text[token.Length..].TrimStart('/');
+                break;
+            }
+        }
+
+        var outIndex = text.IndexOf("$(OutDir)", StringComparison.OrdinalIgnoreCase);
+        if (outIndex < 0 || (outIndex > 0 && text[outIndex - 1] != '/'))
+        {
+            return false;
+        }
+
+        var prefix = text[..outIndex].TrimEnd('/');
+        var suffix = text[(outIndex + "$(OutDir)".Length)..].Trim('/');
+        var normalizedScanDirectory = scanDirectory.Trim('/').Replace('\\', '/');
+        var expected = Regex.Escape(normalizedScanDirectory) + @"/\$\(ProjectName\)(?:/\%\(RecursiveDir\))?";
+        if (!Regex.IsMatch(suffix, "^" + expected + "$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            return false;
+        }
+
+        var resolvedPrefix = DiscoveryPaths.Resolve(pluginDirectory, prefix);
+        return resolvedPrefix is not null && resolvedPrefix.Equals(host.AreaPath, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

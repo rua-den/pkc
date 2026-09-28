@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Last updated: 2026-09-25
+Last updated: 2026-09-28
 
 ## Read first
 
@@ -11,239 +11,165 @@ Last updated: 2026-09-25
 5. `docs/milestones.md`
 6. `docs/product-knowledge-contract.md`
 7. `docs/v0.4.7-acceptance-plan.md`
-8. `docs/plans/2026-09-24-demo-scan-priority-override.md`
-9. `docs/plans/2026-09-24-demo-critical-sequential-execution-plan.md`
-10. `docs/plans/2026-09-24-rd8-current-main-validation-runbook.md`
-11. `docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
-12. `docs/benchmarks/product-value-benchmark-protocol.md`
-13. `docs/reviews/2026-09-24-rd8-runtime-plugin-real-repo-evidence-audit.md`
-14. `docs/reviews/2026-09-24-rd8-runtime-plugin-target-applicability.md`
-15. `docs/reviews/2026-09-25-rd8-c0-target-classification.md` — **implementation spec for the next task**
+8. `docs/reviews/2026-09-25-rd8-private-validation-result.md`
+9. `docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
+10. `docs/benchmarks/product-value-benchmark-protocol.md`
+11. `docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
 
-Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because a handoff names one.
+Then verify current `main`, the active topic branch, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
 
-## Repository state at this handoff
+## Current repository state
 
-Current `main` immediately before this Phase-C0 checkpoint:
+Current `main` before the requested RD8 consolidation:
 
 ```text
-ac1b8294d8f3ce183802dd6d4e36349fc67c2722
-docs: lock RD8 runtime plugin repair authority [skip ci]
+9e2397e83f56df2533fecc7184cadc80b74acddb
+Continue
 ```
 
-Latest production-code ancestor remains:
+RD8 integration source branch:
 
 ```text
-fa30e3eb140357da5453702090be307417abb4e2
-fix: report the preserved workspace when it could not replace the current one
+codex/rd8-b-same-line-conditional-state
 ```
 
-This handoff update is docs/audit only. It does not change production behavior.
+Exact semantic/production candidate for the private product-value gate:
 
-## Current checkpoint state
+```text
+8c4055decd56e4597b2a1aa03e24b5c1a70235d5
+fix: fail closed on ambiguous mutation owners
+```
+
+Existing draft PR before consolidation: `#7 fix: harden conditional state effect branches`.
+
+The approved private re-probe is complete. The user explicitly directed consolidating the current RD8 branch chain into `main`; this does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
+
+## Current checkpoint
 
 ```text
 V0.4.7-D / R7.10                    OPEN / REVIEW PAUSED / NOT ACCEPTED
-V0.4.7-E0                           ACTIVE / USER-AUTHORIZED BOUNDED PREWORK
-RD1 inventory + safe exclusion      PASS / COMPLETE
-RD2 application boundaries          PASS / COMPLETE
-RD3 vendor/custom frontend          PASS / COMPLETE
-RD4 runtime/plugin provenance       PASS / COMPLETE (deterministic/synthetic gate)
-RD5 deterministic ScanPlan          PASS / COMPLETE
-RD6 scoped semantic execution       PASS / COMPLETE
-RD7 coverage + observability        PASS / COMPLETE
-RD8 private large-repository gate   ACTIVE / C0 CLASSIFIED / REPAIR AUTHORIZED / NOT PASS
+V0.4.7-E0                           ACTIVE
+RD1-RD7                             PASS / COMPLETE
+RD8-A operability                   PASS
+RD8-C runtime/plugin target proof   PASS
+RD8-B product value                 NOT PASS / REPAIR (a) CLOSED; REPAIR (b) NEXT
 E1 remaining semantic repairs       LOCKED behind E0
-E2 final product acceptance         LOCKED behind E1
+E2 final acceptance / R7.14         LOCKED behind E1
 ```
 
-## Merged production work relevant to RD8
+## Repair (a) candidate
+
+The candidate chain remains inside the same conditional-state correctness boundary:
 
 ```text
-612fa998da6983662a90eed2836714c9928243b5
-feat: make large runs failure-safe, resumable and self-describing
-
-48ce2f10c1e506b28e37aa3ff15ba5e241a3da0c
-feat: follow sole implementations and surface mapped-field, gate and guard rules
-
-fa30e3eb140357da5453702090be307417abb4e2
-fix: report the preserved workspace when it could not replace the current one
+7eab43d  preserve conditional state effect branches
+82b5ffd  harden same-line mutation identity + mixed-depth rendering
+01d88b0  preserve relation ownership across distinct method names
+8c4055d  fail closed when the relation owner fact ID itself is ambiguous
 ```
 
-These provide streamed/atomic writes, shared `MSBuildWorkspace` use, checkpoint/`--resume`, staged workspace replacement, run summaries, fail-closed sole-implementation traversal, mapped-field/gate/guard rules and correct `.pkc/workspace.new` reporting.
+`8c4055d` prevents false `mutates` ownership when different types define same-named methods whose owner IDs collide. Ambiguous ownership now fails closed instead of cross-linking mutations. No deferred-queue semantics, scheduler semantics, target-specific pattern or new business authority was added.
 
-## RD8 supporting evidence
-
-Historical approved private exercise remains supporting evidence only:
+## Verification on `8c4055d`
 
 ```text
-repository scale: about 26.9k files / 18 hosts
-planned semantic files: about 16.8k
-facts / relations: about 263.6k / 2.04M
-workflow candidates: 4,186
-
-run 1: ~41.5 min / ~18.6 GB / OOM during artifact write
-run 2 with resource repairs: ~29 min / ~7.5 GB / exit 0
-pkc discover: about 98 s
-run-2 workspace: about 703 product features / 4,709 files
+Release build                     PASS, 0 warnings / 0 errors
+C# tests                          401 / 401
+frontend tests                    23 / 23
+full solution                     424 / 424
+pack/install                      PASS
+WorkPlay                          PASS
+PokeTrade                         PASS
+Loren pinned external trial       PASS
+Jellyfin generalization trial     PASS
 ```
 
-The successful run predates the fully integrated current production state and cannot close RD8-A or RD8-B.
-
-## Intended target runtime topology
-
-A saved sanitized reconnaissance proves the intended large mixed repository has runtime plugin modules with this shape:
+GitHub Actions:
 
 ```text
-production host
-  -> reflection-based runtime load from an output subfolder
-  -> plugin projects not project-referenced by the host
-
-plugin delivery
-  -> custom post-build copy into runtime output
+CI       36317759550 / #442  PASS
+Loren    36317759562 / #341  PASS
+Jellyfin 36317759608 / #188  PASS
 ```
 
-The reconnaissance also names solution/build-dependency declarations and post-build copy targets as relevant evidence for the relationship.
+CI #442's first PokeTrade job failed before Angular build because npm registry returned HTTP 404 for `@peculiar/asn1-x509-attr-2.10.0.tgz`. No code changed. Rerunning only that failed job passed Angular build, business acceptance and PKC knowledge verification.
 
-Therefore:
+## Private gate is now operationalized
+
+Use:
+
+`docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md`
+
+The runbook fixes the exact order and privacy boundary for the next approved target run:
 
 ```text
-runtime/plugin applicability on intended target: YES
-accepted N/A path:                            CLOSED
-previous PKC runtime-edge yield:              MISSING / NOT PROVEN
-RD8-C:                                        OPEN / KNOWN BLOCKER
+verify exact semantic candidate 8c4055d
+-> fresh disposable target, no .pkc, no --resume
+-> one fresh pkc run
+-> record RD8-OBS-1 aggregate counts only
+-> Phase 1 probe #1 from .pkc/workspace only
+-> freeze answer
+-> Phase 2 source-known cross-check in approved environment
+-> sanitized result + decision on repair (a)
 ```
 
-## Repo-local RD8-C audit completed
+It also makes the repair-(a) closure rule explicit: the previous false combined proven effect must be gone, exclusive branches must not be merged, no unsupported unconditional replacement authority may appear, and remaining uncertainty must be honest.
 
-Current production and RD4 regressions were re-audited before any repair.
+The overall probe may still be PARTIAL/FAIL because the authentication-event access-gate gap is separate. Repair (a) can close once its calibration defect is proven fixed.
 
-Current support:
+## RD8-OBS-1
+
+On the fresh private run record only:
 
 ```text
-loader:
-  supported Assembly.Load / LoadFrom / LoadFile / UnsafeLoadFrom
-  supported AssemblyLoadContext name/path load APIs
-  identity promoted only from accepted direct string-literal name/.dll evidence
-
-delivery:
-  OutputPath / OutDir / BaseOutputPath literal prefix into host
-  supported MSBuild <Copy> from plugin output or host copy from plugin tree
-  unconditional host ProjectReference fallback
-
-identity:
-  unique literal AssemblyName or default project-file assembly name
-  ambiguous/missing identity fails closed
+mapped-field-rule facts
+applies-mapped-field-rule relations
 ```
 
-Known fail-closed gaps carried by RD4 and relevant to the intended target class:
+Classify before touching code:
 
 ```text
-folder scan GetFiles(..., "*.dll") -> variable-path load
-PostBuildEvent / Exec copy / xcopy / robocopy
-loader in shared library
-configuration-driven identities
-VB/custom loader shapes
-solution-level ProjectDependencies provenance
+facts = 0                         -> grammar/yield issue
+facts > 0 and relations = 0      -> projection/linking issue
+relations > 0                    -> relation path active on this run
 ```
 
-The current solution parser records solution project membership only. It does not parse `.sln` `ProjectSection(ProjectDependencies)` into dependency evidence.
+This observation does not authorize a parser/linker repair by itself.
 
-Full matrix and repair authority:
+## 2026-09-28 candidate run
 
-`docs/reviews/2026-09-25-rd8-runtime-plugin-support-matrix.md`
+Exact candidate `8c4055decd56e4597b2a1aa03e24b5c1a70235d5` built Release cleanly and `pkc run` completed with exit 0 in 46m 29s. The target had no `.pkc` at start and was run without `--resume`; disposable-copy status was not recorded.
 
-## Phase C0 result (2026-09-25) — repair now authorized
+Sanitized output: 25,303 files; 16,460/16,497 planned semantic files executed; 255,229 facts; 4,629,193 relations; 4,044 workflows; 658 product features; 4,520 workspace files. RD8-OBS-1: 455 mapped-field-rule facts and 4,298 applies-mapped-field-rule relations (active relation path).
 
-Read-only inspection in the approved source-enabled environment classified the real target. Sanitized result:
+The clean-context Phase 1 answer and approved Phase 2 source cross-check are recorded in `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`. Probe #1 is PARTIAL: Phase 1 correctly represented mutually exclusive branches and did not invent a LostDate cutoff, but the workspace under-proved login eligibility on 24/09. The source cross-check confirms access while both current-customer and active flags remain on, with access ending when either flag turns off. This clears repair (a)'s branch-calibration blocker; close (a), keep RD8-B NOT PASS / E0 ACTIVE, and open repair (b) next.
+
+## Next repair scope
+
+Keep these repairs separate:
 
 ```text
-A. loader ownership      production web host, own project
-B. identity/enumeration  folder scan: subdirectories of <runtime-base>/<M>/, load <subdir>/<subdir-name>.dll
-C. load API              Assembly.LoadFrom as a METHOD GROUP (no call parenthesis)
-D. delivery              plugin <Copy> in AfterTargets=Build target; SourceFiles=@(target-local item = $(TargetDir)**);
-                         DestinationFolder=<host>/$(OutDir)<M>/$(ProjectName)/%(RecursiveDir); 2 plugins
-E. solution dependency   .slnx BuildDependency present/relevant; build provenance only; not needed now
-F. current PKC           0 runtime-plugin-load; 0 for every runtime unresolved reason
+(b) deferred command-queue producer -> handler linking — NEXT
+(c) recurring background jobs as workflow triggers
 ```
 
-Why zero: `LoaderCall` requires `(` after the API (`src/Pkc.Core/Discovery/RepositoryDiscovery.Runtime.cs:24-26`), and `OutputDelivery` needs an own-output token literally in `SourceFiles` (`src/Pkc.Core/Discovery/ComponentGraph.cs:508-513`). Both hide even the unresolved signal.
-
-Full spec — R1 method-group loads, R2 folder-scan composition, R3 target-local item copies, R4 HIGH composition rule, positive/negative regressions, verification:
-
-`docs/reviews/2026-09-25-rd8-c0-target-classification.md`
-
-The implementer needs no private-target access and must not request target source; the synthetic shape in that spec is sufficient.
-
-Never promote runtime authority from name similarity, folder proximity, solution build order, copy-only evidence or loader-only evidence. Do not add `.sln`/`.slnx` dependency parsing, `PostBuildEvent`, `<Exec>`/xcopy, `GetFiles("*.dll")`, shared-library or config-driven loader support in this repair.
-
-## RD8-A — still required
-
-Inside the approved source-enabled/company environment against an approved disposable target copy:
-
-```text
-build PKC Release at current main
-pkc discover <target>
-pkc run <target>             # fresh; no --resume
-```
-
-Capture sanitized elapsed time, peak process-tree memory, coverage, facts/relations/workflow/product counts, artifact failures, final workspace path and file count. Verify summaries, coverage, checkpoint and workspace plausibility.
-
-## RD8-B — still required
-
-After the fresh workspace exists, run 2-3 Level-1 probes using `docs/benchmarks/product-value-benchmark-protocol.md`:
-
-```text
-phase 1 workspace-only
-phase 2 source-known cross-check
-phase 3 compare and score
-```
-
-Include the quantity-adjustment probe and one or two materially different questions from `docs/question-trainning.md`.
-
-## E0 completion rule
-
-Do not mark E0 PASS until all are true:
-
-```text
-RD1-RD7 PASS / COMPLETE
-RD8-A fresh current-main run completes practically
-workspace + summaries/coverage are plausible
-RD8-B targeted Level-1 answers are useful and correctly uncertain
-RD8-C applicable runtime-plugin topology has deterministic real-target proof
-```
-
-Only then unlock E1.
-
-## Parked work
-
-Do not merge during RD8:
-
-```text
-branch  fix/product-value-construction-state
-commit  35c8e5c5f856e15568aa963bb2d76268008c5570
-```
-
-## Formal D boundary
-
-R7.10/D remains OPEN. The independent-review lane is paused, not passed. A fresh independent review is still required before final V0.4.7 acceptance.
+Do not combine (b) with (c); keep recurring background jobs unopened. The repair-(b) implementation plan is `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`.
 
 ## Exact next action
 
+Approved source-enabled/company environment only:
+
 ```text
-implementer:
-  read docs/reviews/2026-09-25-rd8-c0-target-classification.md
-  -> red synthetic regressions in tests/Pkc.CSharp.Tests/RepositoryDiscoveryRuntimePluginRegressionTests.cs
-  -> implement R1-R4 minimum generic fail-closed repair
-  -> focused + related + full local verification, Release build
-  -> one coherent implementation commit on a topic branch (never push main directly)
+1. On `main`, confirm the sanitized producer → queued identity → dispatcher → handler shape in the approved environment.
+2. Execute the repair-(b) plan regression-first on `main`.
+3. Keep RD8-B NOT PASS and E0 ACTIVE until remaining probes and gates close.
+```
 
-approved-environment operator, after it lands:
-  pkc discover on a disposable copy of the target
-  -> expect runtime-plugin-load = 2, record sanitized counts = RD8-C proof
+Preserve until that evidence exists:
 
-then:
-  fresh RD8-A run without --resume
-  -> RD8-B Level-1 probes
-  -> close RD8 only when A+B+C all pass
+```text
+RD8-B: NOT PASS
+E0: ACTIVE / NOT COMPLETE
+E1: LOCKED
+R7.10/D: OPEN / REVIEW PAUSED
 ```
