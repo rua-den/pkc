@@ -4,20 +4,11 @@ Last updated: 2026-09-28
 
 ## Repository state reviewed
 
-Latest completed repair-(b) planning/status checkpoint before this handoff update:
+Current reviewed `main` before this docs correction:
 
 ```text
-d5d1be99878ae4298b986e55c2afc6bd16e8f23d
-docs: align RD8 repair-b checkpoint [skip ci]
-```
-
-That checkpoint aligned `docs/milestones.md` and `docs/v0.4.7-acceptance-plan.md` with accepted RD8 evidence and added the private queue-shape capture template. It changed no production behavior.
-
-RD8 integration commit on `main`:
-
-```text
-343ac18ee1b29d2c3d169dda80ec49f9fb371b18
-Merge RD8 repair-a hardening and reprobe plan
+7cbf640fab7a410bc71494e63cee8fcc10f9874b
+docs: hand off RD8 repair-b source gate [skip ci]
 ```
 
 Exact semantic candidate assessed by the approved private product-value gate:
@@ -65,43 +56,27 @@ RD8-C runtime/plugin real-target proof    PASS
 RD8-B product value                       NOT PASS
 ```
 
-The 2026-09-25 private validation identified deferred command-queue indirection as a shared material root cause for probe #7 scheduled updates and probe #10 work-log behavior. Producers persist a handler identity into a queue record; a later dispatcher runs the handler; current PKC does not link the producer to that handler.
+Deferred command-queue indirection remains a shared material root cause for probe #7 scheduled updates and probe #10 work-log behavior.
 
-## Repair (a) — CLOSED
-
-Primary spec:
-
-`docs/plans/2026-09-25-exclusive-branch-state-effects-spec.md`
-
-The accepted repair chain fixed exclusive branch flattening plus related same-line/ownership defects. The 2026-09-28 workspace-only/source-known re-probe confirmed that mutually exclusive deactivation effects are represented as alternatives rather than one combined proven effect.
-
-Source-known comparison remains PARTIAL overall because the workspace under-proved a separate CustomerWeb authentication-event eligibility rule. That remaining access-gate gap is not repair (b).
-
-Authoritative re-probe:
-
-`docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`
+Repair (a) is CLOSED by the 2026-09-28 private re-probe. Probe #1 remains PARTIAL only because of the separate authentication-event eligibility gap.
 
 ## 2026-09-28 candidate run
-
-The exact semantic candidate built Release cleanly and completed `pkc run` successfully without `--resume`:
 
 ```text
 candidate SHA                   8c4055decd56e4597b2a1aa03e24b5c1a70235d5
 Release build                   PASS, 0 warnings / 0 errors
 pkc run                         PASS, exit 0, 46m 29s
-discovery / scan / link         54s / 43m 48s / 1m 32s
 repository                      25,303 files / 17 apps / 45 owned libraries / 9 test projects
 planned / executed semantic     16,497 / 16,460
-not analyzable / unknown        6,990 / 0
 facts / relations               255,229 / 4,629,193
 workflow candidates             4,044
 product features                658
 AI workspace                    4,520 files
 mapped-field-rule facts         455
-applies-mapped-field-rule       4,298 (relation path active)
+applies-mapped-field-rule       4,298
 ```
 
-The target had no `.pkc` directory at start. Its disposable-copy status was not recorded. No target source or raw facts are stored in this repository.
+No target source or raw facts are stored in this repository.
 
 ## Repair (b) — deferred command queue — NEXT
 
@@ -109,7 +84,7 @@ Primary spec:
 
 `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
 
-Implementation plan:
+Corrected implementation plan:
 
 `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
 
@@ -117,7 +92,7 @@ Private shape capture template:
 
 `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
 
-The template is deliberately marked:
+The template remains:
 
 ```text
 TEMPLATE / NOT EVIDENCE
@@ -126,35 +101,81 @@ capture reviewed:                  NO
 implementation authorized:         NO
 ```
 
-Do not implement a guessed queue/resolver grammar while those values remain `NO`.
+## 2026-09-28 source-independent plan rereview
 
-## Repo-local pre-implementation findings
+A second production-path review found three important corrections that are now incorporated into the repair-(b) implementation plan.
 
-Current-main review has already closed the source-independent pipeline questions:
+### 1. Normal `pkc run` wrapper path is confirmed
 
-1. `CSharpProjectSemanticEnricher` already uses assembly-qualified symbol/type keys and requires unique callable facts for existing dispatch authority. Repair (b) should reuse those exact-symbol/fail-closed foundations rather than introduce name matching.
-2. `FeatureCandidateBuilder` currently transports `dispatches`, `dispatches-sole-implementation`, and `unresolved-dispatch`; without an explicit new branch, a `deferred-dispatch` edge would be dropped before synthesis.
-3. `GroundedKnowledgeSynthesizer` currently renders only synchronous `invokes`, DI `dispatches`, and sole-implementation dispatch. Deferred routing needs distinct wording plus separate unresolved-deferred uncertainty.
-4. `ProductFeatureBuilder` parses workflow flow from the literal `source → target` shape. Deferred wording must remain parseable so the producer-to-handler edge survives into product capability flow.
-5. Downstream C# semantic/authority enrichers preserve unrelated relation kinds. `CSharpBusinessPredicateAuthorityFilter` only removes relations targeting rejected business-predicate facts; a deferred edge targets a handler callable. `CSharpSelectedApiPredicateAuthorityEnricher` also preserves the existing relation set while adding/upgrading predicate evidence.
+The CLI uses:
 
-Therefore the remaining unknown is the private target's exact producer identity / persisted member / dispatcher resolver / unique-handler syntax-mechanism chain, not the PKC insertion path.
+```text
+CrossStackFeatureCandidateBuilder
+  -> FeatureCandidateBuilder
+
+JointVisibilityKnowledgeSynthesizer
+  -> EvidenceAwareKnowledgeSynthesizer
+  -> GroundedKnowledgeSynthesizer
+
+ProductFeatureBuilder
+```
+
+Therefore the originally selected inner classes are on the real production path, but regression coverage must exercise the wrappers too. No wrapper production change is currently required merely to expose the new relation.
+
+### 2. Negative red/green semantics were corrected
+
+The earlier plan incorrectly implied all fail-closed negative tests should already pass on current main. That is only true for the absence of a guessed concrete edge.
+
+For a grounded producer identity with missing, mismatched, unsupported or ambiguous destination evidence, the spec requires future `unresolved-deferred-dispatch` evidence. Current main has no such relation kind, so those unresolved assertions must be **RED before implementation**.
+
+Required negative coverage now includes:
+
+```text
+mismatched identity
+ambiguous handler
+missing consumer/dispatcher
+unsupported resolver family
+duplicate/non-unique callable fact
+```
+
+### 3. Product-flow parser needs explicit deferred-marker support
+
+`GroundedKnowledgeSynthesizer.BuildFlow` uses `source → target` for ordinary invocation flow. `ProductFeatureBuilder.ParseFlow` treats everything after that Unicode separator as the target symbol and then runs method/owner/component scoring on it.
+
+Therefore appending a human label directly to the target, for example `target (deferred queue)`, would corrupt symbol identity during product-flow ranking.
+
+The corrected plan requires a narrowly recognized deferred marker contract in `ProductFeatureBuilder`: strip the marker before symbol scoring, preserve the clean source/target edge, then re-render the deferred label in product capability flow. Existing plain and DI flow behavior must remain unchanged.
+
+### 4. Deferred candidate traversal must be bounded
+
+The new `deferred-dispatch` traversal must respect the existing candidate call-depth policy. Do not alter existing synchronous/DI traversal semantics while adding the new edge.
+
+## Repo-local implementation boundary
+
+All source-independent design, wrapper tracing, pipeline preservation review, test-surface review, and parser-contract review are complete.
+
+Production implementation remains intentionally blocked until the approved source-enabled environment proves the exact private queue chain:
+
+```text
+producer identity expression family
+-> persisted identity member
+-> dispatcher reads same identity
+-> supported resolver mechanism
+-> exactly one callable handler
+```
+
+Do not create a guessed scanner fixture before that capture is authorized.
 
 ## Exact next action
 
 Approved source-enabled/company environment only:
 
 ```text
-1. Inspect the narrow producer -> queued identity -> dispatcher -> handler path read-only.
-2. Fill `docs/reviews/2026-09-28-rd8-private-queue-shape.md` with sanitized mechanism families only.
-3. Mark implementation AUTHORIZED only if the full identity chain and unique handler are proven.
-4. Then execute repair (b) regression-first:
-   raw deferred relation
-   -> candidate transport
-   -> deferred workflow wording
-   -> product-flow retention
-   -> fail-closed negative cases
-5. Run focused, related and full local gates before one implementation commit/push.
+1. Fill `docs/reviews/2026-09-28-rd8-private-queue-shape.md` with sanitized structural proof.
+2. Mark implementation AUTHORIZED only if every hop is deterministic.
+3. Execute the corrected repair-(b) plan regression-first.
+4. Verify both inner classes and normal `pkc run` wrappers.
+5. Run full local tests/build, review the full diff, then one coherent implementation commit/push.
 6. Re-probe affected Level-1 questions #7 and #10.
 ```
 

@@ -21,27 +21,11 @@ Then verify current `main`, recent commits, production code and relevant regress
 
 ## Current repository checkpoint
 
-Latest completed docs checkpoint before this handoff update:
+Reviewed `main` before this docs correction:
 
 ```text
-d5d1be99878ae4298b986e55c2afc6bd16e8f23d
-docs: align RD8 repair-b checkpoint [skip ci]
-```
-
-It aligned stale milestone/acceptance state and added the queue-shape capture template. Production behavior was unchanged.
-
-Previous repair-(b) planning correction:
-
-```text
-65a4449751a915261e8e90edd7062c6232174885
-docs: preserve deferred dispatch through candidate graph [skip ci]
-```
-
-RD8 integration commit:
-
-```text
-343ac18ee1b29d2c3d169dda80ec49f9fb371b18
-Merge RD8 repair-a hardening and reprobe plan
+7cbf640fab7a410bc71494e63cee8fcc10f9874b
+docs: hand off RD8 repair-b source gate [skip ci]
 ```
 
 Exact semantic candidate used by the private product-value gate:
@@ -65,36 +49,11 @@ E1 remaining semantic repairs       LOCKED behind E0
 E2 final acceptance / R7.14         LOCKED behind E1
 ```
 
-## Accepted evidence
-
-Authoritative private validation:
-
-`docs/reviews/2026-09-25-rd8-private-validation-result.md`
-
-Accepted high-level result:
-
-```text
-RD8-A  PASS
-RD8-C  PASS
-RD8-B  NOT PASS
-```
-
-Deferred command-queue indirection is a shared material cause of missing behavior in:
-
-```text
-#7 scheduled updates / invoice period
-#10 work log
-```
-
-The source-known baseline establishes only the sanitized behavior shape: producers persist a handler identity in a queued record and a dispatcher later executes the handler. The exact source syntax/mechanism chain was intentionally not stored and must be re-confirmed in the approved source-enabled environment.
-
 ## Repair (a)
 
-Repair (a) is CLOSED. The 2026-09-28 re-probe confirmed exclusive state-effect branches are represented as alternatives instead of a false combined effect.
+Repair (a) is CLOSED. The 2026-09-28 private re-probe confirmed exclusive state-effect branches are alternatives rather than a false combined effect.
 
-Probe #1 remains PARTIAL for a separate reason: the workspace under-proved a CustomerWeb authentication-event eligibility rule. Source establishes access while both current-customer and active flags remain on, with access ending when either flag turns off; LostDate itself is not the cutoff rule.
-
-Do not reopen repair (a) while working repair (b).
+Probe #1 remains PARTIAL for a separate authentication-event eligibility gap. Do not reopen repair (a) while working repair (b).
 
 ## Repair (b) — current work
 
@@ -102,7 +61,7 @@ Spec:
 
 `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
 
-Implementation plan:
+Corrected implementation plan:
 
 `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
 
@@ -110,7 +69,7 @@ Private shape capture:
 
 `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
 
-The capture file currently says:
+The capture file remains deliberately blocked:
 
 ```text
 Status: TEMPLATE / NOT EVIDENCE
@@ -119,36 +78,33 @@ capture reviewed:                  NO
 implementation authorized:         NO
 ```
 
-That is an intentional implementation gate. Do not create a regression based on guessed reflection/DI/queue APIs.
+Do not create a source-shape regression from guessed framework conventions.
 
-## Source-independent production review already complete
+## Production path verified
 
-### `CSharpProjectSemanticEnricher`
+The normal CLI path is now explicitly traced:
 
-Current dispatch authority already provides the right generic foundation:
+```text
+Pkc.Cli Program
+  -> CrossStackFeatureCandidateBuilder.Build(facts)
+      -> FeatureCandidateBuilder.Build(document)
+  -> ValidationConsistencyCandidateEnricher
+  -> JointVisibilityCandidateEnricher
+  -> JointVisibilityKnowledgeSynthesizer
+      -> EvidenceAwareKnowledgeSynthesizer
+          -> GroundedKnowledgeSynthesizer
+  -> ProductFeatureBuilder
+```
 
-- callable facts are indexed by exact compiler symbols;
-- symbol keys include assembly identity plus compiler display identity;
-- direct DI resolution requires exactly one proven registration and exactly one callable fact;
-- sole-implementation resolution requires exactly one concrete implementation and exactly one callable fact;
-- unsupported own-interface calls remain unresolved instead of being guessed.
+Consequences:
 
-Repair (b) should extend this semantic relation pass once the target shape is known. Do not create a second fuzzy/name-based linker.
+1. `FeatureCandidateBuilder` is the correct place to transport/traverse `deferred-dispatch` and retain `unresolved-deferred-dispatch`.
+2. `GroundedKnowledgeSynthesizer` is the correct inner renderer for the deferred flow/unknown.
+3. No wrapper production patch is currently needed solely for the new relation because the wrappers delegate/preserve the inner candidate/knowledge; nevertheless tests must exercise the wrapper path used by `pkc run`.
 
-### Downstream scanner pipeline
+## Candidate transport contract
 
-`CSharpEvidenceScanner` runs project-semantic enrichment before value-lineage, causality, API projection, wire-contract and predicate-authority enrichers.
-
-Review of the final authority stages found no generic relation-kind whitelist that would discard a handler-directed deferred edge:
-
-- `CSharpBusinessPredicateAuthorityFilter` only removes/rewrites relations whose target is a rejected/observed business-predicate fact;
-- `CSharpSelectedApiPredicateAuthorityEnricher` starts from the existing relation set and preserves it while adding/upgrading selected predicate evidence.
-
-A `deferred-dispatch` relation targeting a callable handler therefore does not need a separate late-stage preservation hook under current code.
-
-### `FeatureCandidateBuilder`
-
-Current traversal explicitly retains:
+Current `FeatureCandidateBuilder` retains:
 
 ```text
 unresolved-dispatch                       non-traversing
@@ -156,113 +112,157 @@ dispatches                                traversing target fact
 dispatches-sole-implementation            traversing target fact
 ```
 
-It does not know the proposed deferred relation kinds. Repair (b) must add:
+Repair (b) must add:
 
 ```text
 unresolved-deferred-dispatch              retained, non-traversing
 deferred-dispatch                         retained, traversing unique handler fact
 ```
 
-This was the missing plan hop found in the web review. Without it, semantic enrichment could succeed while product knowledge silently loses the edge.
+The new deferred traversal must respect the existing `MaxCallDepth` policy. Do not change existing `invokes`/DI traversal semantics as collateral work.
 
-### `GroundedKnowledgeSynthesizer`
+## Corrected regression semantics
 
-`BuildFlow` currently renders only `invokes`, `dispatches`, and `dispatches-sole-implementation`. `BuildUnresolvedDispatchUnknowns` only handles synchronous/interface unresolved dispatch.
+Create after source-shape authorization:
 
-Repair (b) must render deferred routing distinctly and add a separate unresolved-deferred unknown. The wording must not claim runtime execution, schedule timing, delivery guarantees or retries.
+`tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
 
-### `ProductFeatureBuilder`
+Positive regression:
 
-`BuildProductFlow` parses workflow strings using the literal separator:
+```text
+compile-valid invented fixture matching only the authorized mechanism family
+-> current main RED because deferred-dispatch is absent
+-> implementation turns exact producer -> handler relation green
+```
+
+Negative regressions:
+
+```text
+mismatched identity
+ambiguous handler
+missing consumer/dispatcher
+unsupported resolver family
+duplicate/non-unique callable fact
+```
+
+Important red/green rule:
+
+- before implementation, assertions that no guessed concrete edge exists may already be green;
+- however, when producer identity is grounded, the spec also requires `unresolved-deferred-dispatch` for an unproven destination;
+- current main has no unresolved-deferred relation, so those unresolved assertions are expected RED before implementation.
+
+Do not declare Task 3 green merely because current code emits nothing.
+
+## Flow-rendering/parser contract
+
+`GroundedKnowledgeSynthesizer.BuildFlow` currently uses the Unicode separator:
 
 ```text
 source → target
 ```
 
-Deferred flow rendering must preserve a parseable source/target edge so the route survives into product capability flow. Regression coverage must assert this; scanner-only coverage is insufficient.
+`ProductFeatureBuilder.ParseFlow` splits at that separator and treats everything to the right as the target symbol. It then calls `MethodName`, `SymbolOwner`, component-boundary and graph-distance logic on that value.
 
-## Regression shape once authorized
-
-Create:
-
-`tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
-
-Use existing temp-project patterns from:
+Therefore this is **not safe**:
 
 ```text
-CSharpProjectSemanticEnricherTests.cs
-DirectDiDispatchAuthorityScopeRegressionTests.cs
-DirectDiDispatchCrossProjectCollisionRegressionTests.cs
-FeatureCandidateBuilderTests.cs
-ProductFeatureCapabilityFlowTests.cs
+source → target (deferred queue)
 ```
 
-Required layers in the positive regression:
+because `(deferred queue)` becomes part of the target symbol.
+
+Repair (b) must introduce one narrowly recognized deferred marker contract:
 
 ```text
-1. raw FactDocument contains exactly one deferred-dispatch producer -> handler relation
-2. FeatureCandidateBuilder retains the relation and handler fact
-3. GroundedKnowledgeSynthesizer labels the route deferred/queued, not synchronous
-4. ProductFeatureBuilder retains a usable producer -> handler capability-flow edge
+workflow flow: clean source + clean target + explicit deferred marker
+product parser: remove marker before symbol scoring
+product render: preserve/re-render deferred marker
 ```
 
-Required fail-closed negatives:
+The final workflow and product capability flow must visibly distinguish queued/deferred routing from synchronous calls while keeping source/target symbols clean. Do not opportunistically rewrite the existing DI flow format.
+
+## Required verification layers after authorization
+
+The positive fixture must prove all of these:
 
 ```text
-mismatched persisted identity
-missing consumer/dispatcher
-ambiguous handler identity
-unsupported resolver shape
-multiple callable facts for the resolved handler
+1. CSharpEvidenceScanner / semantic output
+   -> exactly one deferred-dispatch producer -> handler relation
+
+2. FeatureCandidateBuilder
+   -> relation retained
+   -> handler fact retained
+   -> traversal bounded
+
+3. CrossStackFeatureCandidateBuilder
+   -> same relation/handler survive normal CLI candidate enrichment
+
+4. GroundedKnowledgeSynthesizer
+   -> route visibly deferred
+   -> no runtime execution claim
+
+5. JointVisibilityKnowledgeSynthesizer
+   -> deferred flow/unknown survive normal CLI synthesis wrappers
+
+6. ProductFeatureBuilder
+   -> source/target remain symbol-clean
+   -> deferred label preserved
+   -> capability edge retained
 ```
 
-When producer-side queued identity is proven but the destination cannot be proven, retain `unresolved-deferred-dispatch`; otherwise emit no speculative relation.
+Fail-closed fixtures must never create a guessed handler edge.
 
-## Verification after implementation
+## Verification sequence
 
-Follow progressive local verification:
+After the source shape is authorized:
 
 ```text
 dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --filter FullyQualifiedName~DeferredCommandQueueDispatchRegressionTests
--> related CSharpProjectSemanticEnricher / DirectDiDispatch / FeatureCandidateBuilder / product-flow tests
+-> related project-semantic/direct-DI/candidate/wrapper/product-flow tests
 -> dotnet test PKC.sln
 -> dotnet build PKC.sln --configuration Release
--> complete diff review
+-> review complete diff
 -> one coherent implementation commit/push
 -> CI final verification
--> re-probe #7 and #10
+-> re-probe #7 and #10 workspace-only first, then source-known comparison
 ```
 
-Do not use CI as the edit/test loop.
+CI is not the edit/test loop.
 
-## Branch cleanup state
+## Source-enabled gate
 
-Keep:
+The remaining implementation blocker is genuinely external to this web session. Prior context intentionally did not retain the private repository locator/name. No approved private checkout is available here.
+
+The approved source-enabled/company environment must fill only sanitized mechanism evidence for:
 
 ```text
-main
-fix/product-value-construction-state
+producer identity expression family
+persisted identity member
+proof dispatcher reads same identity
+resolver mechanism family
+exact unique callable-handler selection
 ```
 
-The second branch remains the explicitly parked E1 candidate and must not be deleted while E1 is locked.
-
-Historical `benchmark/*`, old `codex/*`, `docs/*`, `notes/*`, `scratch/*`, `sol/*`, `web/*`, and `work/*` branches remain cleanup candidates. This web environment still cannot delete them: the connected GitHub actions have no delete-ref operation; local shell cannot resolve `github.com`; a zero-object `update_ref` attempt was rejected with HTTP 422 and changed nothing. Do not force-move refs to simulate deletion.
+If any hop is ambiguous, keep implementation `NOT AUTHORIZED` and record the unproven hop rather than weakening authority.
 
 ## Exact next action
 
-Approved source-enabled/company environment only:
-
 ```text
-1. Read the narrow private queue path read-only.
-2. Fill the sanitized capture template with:
-   producer identity expression family
-   persisted member proof
-   dispatcher read proof
-   resolver mechanism family
-   unique callable handler proof
-3. Mark AUTHORIZED only if every hop is deterministic.
-4. Execute the already-reviewed regression-first repair-(b) plan on current main.
-5. Keep repair (c), E1 and R7.10/D locked.
+approved private source inspection
+-> fill queue-shape template
+-> authorize only with complete deterministic chain
+-> execute corrected repair-(b) regression plan
+-> local full verification
+-> one implementation commit/push
+-> re-probe #7 and #10
 ```
 
-Terminal state for the current web environment: the repo-local design/pipeline/test-surface review is complete; production implementation requires the source-enabled gate above.
+Preserve until then:
+
+```text
+RD8-B: NOT PASS
+E0: ACTIVE / NOT COMPLETE
+repair (c): UNOPENED
+E1: LOCKED
+R7.10/D: OPEN / REVIEW PAUSED
+```
