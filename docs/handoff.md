@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Last updated: 2026-09-27
+Last updated: 2026-09-28
 
 ## Read first
 
@@ -20,14 +20,14 @@ Then verify current `main`, the active topic branch, recent commits, production 
 
 ## Current repository state
 
-Current `main`:
+Current `main` before the requested RD8 consolidation:
 
 ```text
 9e2397e83f56df2533fecc7184cadc80b74acddb
 Continue
 ```
 
-Active branch:
+RD8 integration source branch:
 
 ```text
 codex/rd8-b-same-line-conditional-state
@@ -40,9 +40,9 @@ Exact semantic/production candidate for the private product-value gate:
 fix: fail closed on ambiguous mutation owners
 ```
 
-Draft PR: `#7 fix: harden conditional state effect branches`.
+Existing draft PR before consolidation: `#7 fix: harden conditional state effect branches`.
 
-Do not merge to `main` merely because repository CI is green. RD8-B still requires the approved private re-probe.
+The approved private re-probe is complete. The user explicitly directed consolidating the current RD8 branch chain into `main`; this does not make RD8-B or E0 PASS. Keep later checkpoints locked until their own evidence closes.
 
 ## Current checkpoint
 
@@ -52,7 +52,7 @@ V0.4.7-E0                           ACTIVE
 RD1-RD7                             PASS / COMPLETE
 RD8-A operability                   PASS
 RD8-C runtime/plugin target proof   PASS
-RD8-B product value                 NOT PASS / REPAIR (a) AWAITING PRIVATE RE-PROBE
+RD8-B product value                 NOT PASS / REPAIR (a) CLOSED; REPAIR (b) NEXT
 E1 remaining semantic repairs       LOCKED behind E0
 E2 final acceptance / R7.14         LOCKED behind E1
 ```
@@ -136,27 +136,33 @@ relations > 0                    -> relation path active on this run
 
 This observation does not authorize a parser/linker repair by itself.
 
-## Do not start yet
+## 2026-09-28 candidate run
 
-Keep these later repairs separate:
+Exact candidate `8c4055decd56e4597b2a1aa03e24b5c1a70235d5` built Release cleanly and `pkc run` completed with exit 0 in 46m 29s. The target had no `.pkc` at start and was run without `--resume`; disposable-copy status was not recorded.
+
+Sanitized output: 25,303 files; 16,460/16,497 planned semantic files executed; 255,229 facts; 4,629,193 relations; 4,044 workflows; 658 product features; 4,520 workspace files. RD8-OBS-1: 455 mapped-field-rule facts and 4,298 applies-mapped-field-rule relations (active relation path).
+
+The clean-context Phase 1 answer and approved Phase 2 source cross-check are recorded in `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`. Probe #1 is PARTIAL: Phase 1 correctly represented mutually exclusive branches and did not invent a LostDate cutoff, but the workspace under-proved login eligibility on 24/09. The source cross-check confirms access while both current-customer and active flags remain on, with access ending when either flag turns off. This clears repair (a)'s branch-calibration blocker; close (a), keep RD8-B NOT PASS / E0 ACTIVE, and open repair (b) next.
+
+## Next repair scope
+
+Keep these repairs separate:
 
 ```text
-(b) deferred command-queue producer -> handler linking
+(b) deferred command-queue producer -> handler linking — NEXT
 (c) recurring background jobs as workflow triggers
 ```
 
-Do not implement either before the private probe #1 result proves repair (a) cleared the calibration blocker. Otherwise the next target run changes multiple semantic variables and loses causal attribution.
+Do not combine (b) with (c); keep recurring background jobs unopened. The repair-(b) implementation plan is `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`.
 
 ## Exact next action
 
 Approved source-enabled/company environment only:
 
 ```text
-1. Follow docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md exactly.
-2. Run semantic candidate 8c4055d on a fresh approved disposable target copy.
-3. Record sanitized probe #1 result and RD8-OBS-1 counts.
-4. If calibration clears, close repair (a) and start repair (b) regression-first.
-5. If it does not clear, use the concrete generated misstatement for the next minimum generic correction inside repair (a).
+1. On `main`, confirm the sanitized producer → queued identity → dispatcher → handler shape in the approved environment.
+2. Execute the repair-(b) plan regression-first on `main`.
+3. Keep RD8-B NOT PASS and E0 ACTIVE until remaining probes and gates close.
 ```
 
 Preserve until that evidence exists:

@@ -1,17 +1,17 @@
 # PKC Status
 
-Last updated: 2026-09-27
+Last updated: 2026-09-28
 
 ## Repository state reviewed
 
-Current `main`:
+Current `main` before the requested RD8 consolidation:
 
 ```text
 9e2397e83f56df2533fecc7184cadc80b74acddb
 Continue
 ```
 
-Active topic branch:
+RD8 integration source branch:
 
 ```text
 codex/rd8-b-same-line-conditional-state
@@ -43,7 +43,7 @@ V0.4.7-E0 repository discovery + bounded run        ACTIVE
 V0.4.7-E0 / RD1-RD7                                 PASS / COMPLETE
 V0.4.7-E0 / RD8-A operability                       PASS
 V0.4.7-E0 / RD8-C runtime/plugin real-target proof  PASS
-V0.4.7-E0 / RD8-B targeted product value            NOT PASS / REPAIR (a) AWAITING PRIVATE RE-PROBE
+V0.4.7-E0 / RD8-B targeted product value            NOT PASS / REPAIR (a) CLOSED; REPAIR (b) NEXT
 V0.4.7-E1 remaining product-value repairs           LOCKED behind E0
 V0.4.7-E2 final product acceptance / R7.14          LOCKED behind E1
 continuous update/diff                              LOCKED
@@ -146,19 +146,38 @@ relations > 0                    -> relation path active on this run
 
 Do not add speculative parser support before this classification.
 
+## 2026-09-28 candidate run — operational evidence; probe #1 source cross-check complete
+
+The exact semantic candidate was built and run on the user-specified target. The target had no `.pkc` directory at start, and the run used no `--resume`.
+
+```text
+candidate SHA                   8c4055decd56e4597b2a1aa03e24b5c1a70235d5
+Release build                   PASS, 0 warnings / 0 errors
+pkc run                         PASS, exit 0, 46m 29s
+discovery / scan / link         54s / 43m 48s / 1m 32s
+repository                      25,303 files / 17 apps / 45 owned libraries / 9 test projects
+planned / executed semantic     16,497 / 16,460
+not analyzable / unknown        6,990 / 0
+facts / relations               255,229 / 4,629,193
+workflow candidates             4,044
+product features                658
+AI workspace                   4,520 files
+mapped-field-rule facts         455
+applies-mapped-field-rule       4,298 (relation path active)
+```
+
+The target's disposable-copy status was not recorded. The clean-context Phase 1 answer and approved-environment Phase 2 cross-check are recorded in `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`. Probe #1 is **PARTIAL**: the exclusive deactivation branches are represented correctly, and the source cross-check confirms that `LostDate` itself does not select a branch or define a calendar cutoff. The workspace under-proved login eligibility on 24/09; source establishes access while both current-customer and active flags remain on, so the remaining gap is the missing auth-event eligibility path. This clears repair (a)'s branch-calibration blocker; repair (a) is CLOSED. RD8-B overall remains NOT PASS, repair (b) is next, and no source contents or raw facts were added to this repository.
+
 ## Exact next action
 
 The checkpoint is at an external approved-environment gate:
 
 ```text
-1. Follow docs/benchmarks/2026-09-27-rd8-private-reprobe-runbook.md exactly.
-2. Build/run exact production candidate 8c4055d on a fresh disposable copy of the approved target.
-3. Re-score RD8-B probe #1 first, workspace-only before source cross-check.
-4. Record only sanitized score + concrete remaining miss.
-5. Record the two RD8-OBS-1 counts above.
+1. On `main`, follow `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`: confirm the sanitized queue identity/resolution shape, then start repair (b) regression-first.
+2. Keep RD8-B NOT PASS and E0 ACTIVE until the remaining probes and gates close.
 ```
 
-If and only if probe #1 clears the calibration blocker, close repair (a) and open repair (b) as its own regression-first task:
+Probe #1 clears repair (a)'s calibration blocker. Keep the overall probe and RD8-B NOT PASS while opening repair (b) as its own regression-first task:
 
 ```text
 (b) deferred command-queue producer -> handler linking
