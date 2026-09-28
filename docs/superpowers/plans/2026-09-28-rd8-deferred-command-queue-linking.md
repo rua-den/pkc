@@ -4,7 +4,7 @@
 
 **Goal:** Link a deferred command-queue producer to its concrete handler only when the scanned C# solution proves the exact queued identity and dispatch path.
 
-**Architecture:** Extend `CSharpProjectSemanticEnricher` to correlate the producer's persisted handler identity with dispatcher resolution and one unique callable handler. Add a distinct deferred relation and render it separately from synchronous calls; leave the path unresolved when any identity hop is missing or ambiguous.
+**Architecture:** Extend `CSharpProjectSemanticEnricher` to correlate the producer's persisted handler identity with dispatcher resolution and one unique callable handler. Propagate the resulting deferred relation through `FeatureCandidateBuilder` so the handler fact and relation survive into the product-knowledge candidate graph. Render the relation separately from synchronous calls in `GroundedKnowledgeSynthesizer`; leave the path unresolved when any identity hop is missing or ambiguous.
 
 **Tech Stack:** .NET, Roslyn, xUnit, existing PKC evidence facts/relations and knowledge renderers.
 
@@ -39,6 +39,7 @@
 **Files:**
 - Create: `tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
 - Read: `src/Pkc.CSharp/CSharpProjectSemanticEnricher.cs`
+- Read: `src/Pkc.Knowledge/FeatureCandidateBuilder.cs`
 - Read: `src/Pkc.Knowledge/GroundedKnowledgeSynthesizer.cs`
 
 **Interfaces:**
@@ -63,20 +64,23 @@
 - [ ] **Step 3: Add a missing-consumer fixture.** The producer queues a handler identity but the scanned solution has no proven dispatcher resolution; assert no producer-to-handler edge and preserve an unresolved unknown.
 - [ ] **Step 4: Run the focused tests.** Confirm all negative tests pass on the current implementation, establishing that they guard false-link behavior before production code is added.
 
-### Task 4: Implement exact deferred-dispatch correlation
+### Task 4: Implement exact deferred-dispatch correlation and candidate propagation
 
 **Files:**
 - Modify: `src/Pkc.CSharp/CSharpProjectSemanticEnricher.cs`
+- Modify: `src/Pkc.Knowledge/FeatureCandidateBuilder.cs`
 - Modify: `tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
 
 **Interfaces:**
-- Consumes: compiler symbols, queued identity facts from Task 1, and callable facts already indexed by `CSharpProjectSemanticEnricher`.
-- Produces: `deferred-dispatch` from the producer fact ID to one unique handler fact ID; otherwise `unresolved-deferred-dispatch` only when the producer identity itself is grounded.
+- Consumes: compiler symbols, queued identity facts from Task 1, callable facts already indexed by `CSharpProjectSemanticEnricher`, and the existing feature-candidate traversal model.
+- Produces: `deferred-dispatch` from the producer fact ID to one unique handler fact ID and carries that relation plus handler fact into the feature candidate graph; otherwise carries `unresolved-deferred-dispatch` only when the producer identity itself is grounded.
 
 - [ ] **Step 1: Add the regression-backed relation constants.** Define `DeferredDispatchRelation = "deferred-dispatch"` and `UnresolvedDeferredDispatchRelation = "unresolved-deferred-dispatch"` beside the existing dispatch relation constants.
 - [ ] **Step 2: Correlate only the confirmed chain.** Resolve producer identity, persisted member read, dispatcher resolution, and callable handler using exact Roslyn/project identity. Require exactly one producer/handler match and retain the dispatcher call as the relation source location.
 - [ ] **Step 3: Fail closed at every incomplete hop.** Do not emit a handler relation for missing, mismatched, unsupported, or ambiguous paths. Emit unresolved evidence only where a queue producer identity is proven.
-- [ ] **Step 4: Run the focused regression suite.** Confirm the positive test changes from red to green and all negative tests remain green.
+- [ ] **Step 4: Propagate the new relation kinds through `FeatureCandidateBuilder`.** Treat `deferred-dispatch` as a traversable dispatch edge so its uniquely proven handler fact is included and can continue bounded call traversal. Retain `unresolved-deferred-dispatch` as non-traversing uncertainty evidence. Do not broaden synchronous `invokes` or DI-dispatch authority.
+- [ ] **Step 5: Assert candidate transport explicitly.** Build the feature candidate from the positive fixture and assert the `deferred-dispatch` relation and concrete handler fact are present. For unresolved fixtures, assert the unresolved relation survives without a guessed handler fact/edge.
+- [ ] **Step 6: Run the focused regression suite.** Confirm the positive test changes from red to green and all negative tests remain green.
 
 ### Task 5: Render deferred flow distinctly
 
@@ -85,12 +89,12 @@
 - Modify: `tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
 
 **Interfaces:**
-- Consumes: the two relation kinds from Task 4 and existing feature-flow facts.
+- Consumes: the two relation kinds transported by `FeatureCandidateBuilder` and existing feature-flow facts.
 - Produces: a readable deferred queue route and an honest unresolved-dispatch unknown without changing synchronous flow wording.
 
 - [ ] **Step 1: Add deferred flow rendering.** Render `deferred-dispatch` as a queued/deferred route; do not phrase it as a direct `invokes` edge or as proof the handler ran.
 - [ ] **Step 2: Add unresolved rendering.** Explain that the queued handler could not be proven when `unresolved-deferred-dispatch` is present; never invent a concrete handler.
-- [ ] **Step 3: Assert output wording.** Verify the positive fixture renders a deferred route, not a synchronous call, and the ambiguous fixture reports uncertainty without a handler claim.
+- [ ] **Step 3: Assert output wording and downstream product flow.** Verify the positive fixture renders a deferred route, not a synchronous call, and the ambiguous fixture reports uncertainty without a handler claim. Also assert `ProductFeatureBuilder` receives a usable source→handler edge rather than silently dropping the deferred route.
 
 ### Task 6: Verify and hand off the checkpoint
 
@@ -103,7 +107,7 @@
 - Consumes: the completed regression, implementation diff, and focused/full verification output.
 - Produces: a reviewed main-branch checkpoint with exact SHA, tests/build results, sanitized product result, and remaining RD8-B status.
 
-- [ ] **Step 1: Run related semantic regressions.** Run `dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --filter "FullyQualifiedName~CSharpProjectSemanticEnricher|FullyQualifiedName~DirectDiDispatch"` and resolve any regression.
+- [ ] **Step 1: Run related semantic regressions.** Run `dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --filter "FullyQualifiedName~CSharpProjectSemanticEnricher|FullyQualifiedName~DirectDiDispatch|FullyQualifiedName~FeatureCandidateBuilder"` and resolve any regression.
 - [ ] **Step 2: Run repository gates.** Run `dotnet test PKC.sln` followed by `dotnet build PKC.sln --configuration Release`; record the exact exit codes and totals.
 - [ ] **Step 3: Review the complete diff.** Confirm no target-specific names, source bodies, raw facts, speculative schedule behavior, or unrelated refactors appear.
 - [ ] **Step 4: Update status and handoff.** Keep RD8-B NOT PASS until the remaining probe questions score; keep repair (c), E1, and later checkpoints locked.
