@@ -1,6 +1,6 @@
 # PKC Handoff
 
-Last updated: 2026-09-28
+Last updated: 2026-09-30
 
 ## Read first
 
@@ -13,19 +13,20 @@ Last updated: 2026-09-28
 7. `docs/v0.4.7-acceptance-plan.md`
 8. `docs/reviews/2026-09-25-rd8-private-validation-result.md`
 9. `docs/reviews/2026-09-28-rd8-private-reprobe-phase1.md`
-10. `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
-11. `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
-12. `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
+10. `docs/reviews/2026-09-30-rd8-private-queue-shape-reconciliation.md`
+11. `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
+12. `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
+13. `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
 
 Then verify current `main`, recent commits, production code and relevant regressions. Never reset to an older SHA merely because an older review names one.
 
 ## Current repository checkpoint
 
-Reviewed `main` before this docs correction:
+Reviewed base before this reconciliation:
 
 ```text
-7cbf640fab7a410bc71494e63cee8fcc10f9874b
-docs: hand off RD8 repair-b source gate [skip ci]
+832831cf7de0cc2f74c876ceecdc7592ba04e0a2
+docs: harden RD8 repair-b execution plan [skip ci]
 ```
 
 Exact semantic candidate used by the private product-value gate:
@@ -55,34 +56,59 @@ Repair (a) is CLOSED. The 2026-09-28 private re-probe confirmed exclusive state-
 
 Probe #1 remains PARTIAL for a separate authentication-event eligibility gap. Do not reopen repair (a) while working repair (b).
 
-## Repair (b) — current work
+## Repair (b) — accepted evidence reconciliation
 
-Spec:
+The previous handoff overstated how much of the queue shape remained unknown. The accepted 2026-09-25 private validation already records this sanitized source-known behavior:
 
-`docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
+```text
+PRODUCER
+  -> inserts a queue row
+  -> queue row names its handler by a type-name string
+  -> DISPATCHER later runs that handler
+```
 
-Corrected implementation plan:
+Carry these forward as accepted evidence:
 
-`docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
+```text
+queue persistence exists:             PROVEN
+producer inserts queue row:           PROVEN
+handler identity representation:      type-name string — PROVEN
+later dispatcher exists:              PROVEN
+```
 
-Private shape capture:
+Do not waste another private-source pass rediscovering those four facts.
+
+The remaining source gate is narrower:
+
+```text
+exact type-name expression / encoding
+-> exact persisted member
+-> dispatcher reads same member
+-> resolver mechanism
+-> callable handler entry point
+-> exactly one callable fact
+```
+
+Examples such as `FullName`, `AssemblyQualifiedName`, `Type.GetType`, assembly scanning, DI resolution, dictionary/factory lookup or reflection invocation are not evidence until actually observed.
+
+Authoritative reconciliation:
+
+`docs/reviews/2026-09-30-rd8-private-queue-shape-reconciliation.md`
+
+Updated capture:
 
 `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
 
-The capture file remains deliberately blocked:
+Current authorization remains:
 
 ```text
-Status: TEMPLATE / NOT EVIDENCE
-source-enabled inspection performed: NO
-capture reviewed:                  NO
-implementation authorized:         NO
+PARTIAL SANITIZED EVIDENCE
+IMPLEMENTATION NOT AUTHORIZED
 ```
-
-Do not create a source-shape regression from guessed framework conventions.
 
 ## Production path verified
 
-The normal CLI path is now explicitly traced:
+Normal CLI path:
 
 ```text
 Pkc.Cli Program
@@ -98,163 +124,99 @@ Pkc.Cli Program
 
 Consequences:
 
-1. `FeatureCandidateBuilder` is the correct place to transport/traverse `deferred-dispatch` and retain `unresolved-deferred-dispatch`.
-2. `GroundedKnowledgeSynthesizer` is the correct inner renderer for the deferred flow/unknown.
-3. No wrapper production patch is currently needed solely for the new relation because the wrappers delegate/preserve the inner candidate/knowledge; nevertheless tests must exercise the wrapper path used by `pkc run`.
+1. `CSharpProjectSemanticEnricher` is the intended semantic correlation surface once resolver shape is authorized.
+2. `FeatureCandidateBuilder` must transport/traverse `deferred-dispatch` and retain `unresolved-deferred-dispatch`.
+3. `CrossStackFeatureCandidateBuilder` needs wrapper-path regression coverage even though no production change is currently expected there.
+4. `GroundedKnowledgeSynthesizer` must render deferred routing separately from synchronous calls.
+5. `JointVisibilityKnowledgeSynthesizer` wrapper-path tests must prove deferred flow/unknowns survive normal synthesis.
+6. `ProductFeatureBuilder` requires a narrow deferred-marker parser contract so target symbols remain clean during ranking.
 
-## Candidate transport contract
+## Regression contract once authorized
 
-Current `FeatureCandidateBuilder` retains:
-
-```text
-unresolved-dispatch                       non-traversing
-dispatches                                traversing target fact
-dispatches-sole-implementation            traversing target fact
-```
-
-Repair (b) must add:
-
-```text
-unresolved-deferred-dispatch              retained, non-traversing
-deferred-dispatch                         retained, traversing unique handler fact
-```
-
-The new deferred traversal must respect the existing `MaxCallDepth` policy. Do not change existing `invokes`/DI traversal semantics as collateral work.
-
-## Corrected regression semantics
-
-Create after source-shape authorization:
+Create:
 
 `tests/Pkc.CSharp.Tests/DeferredCommandQueueDispatchRegressionTests.cs`
 
-Positive regression:
+Positive layers:
 
 ```text
-compile-valid invented fixture matching only the authorized mechanism family
--> current main RED because deferred-dispatch is absent
--> implementation turns exact producer -> handler relation green
+CSharpEvidenceScanner / semantic output
+-> FeatureCandidateBuilder
+-> CrossStackFeatureCandidateBuilder
+-> GroundedKnowledgeSynthesizer
+-> JointVisibilityKnowledgeSynthesizer
+-> ProductFeatureBuilder
 ```
 
-Negative regressions:
+Negative matrix:
 
 ```text
-mismatched identity
-ambiguous handler
+mismatched persisted identity
 missing consumer/dispatcher
 unsupported resolver family
+ambiguous handler identity
 duplicate/non-unique callable fact
 ```
 
-Important red/green rule:
+Red/green rule:
 
-- before implementation, assertions that no guessed concrete edge exists may already be green;
-- however, when producer identity is grounded, the spec also requires `unresolved-deferred-dispatch` for an unproven destination;
-- current main has no unresolved-deferred relation, so those unresolved assertions are expected RED before implementation.
+- no false concrete edge may already be green on current main;
+- grounded producer identity with unproven destination must eventually emit `unresolved-deferred-dispatch`;
+- current main does not implement that relation, so unresolved assertions must be RED before the fix.
 
-Do not declare Task 3 green merely because current code emits nothing.
+Deferred traversal must respect existing `MaxCallDepth` and must not broaden ordinary `invokes`/DI dispatch authority.
 
-## Flow-rendering/parser contract
+## Flow parser contract
 
-`GroundedKnowledgeSynthesizer.BuildFlow` currently uses the Unicode separator:
-
-```text
-source → target
-```
-
-`ProductFeatureBuilder.ParseFlow` splits at that separator and treats everything to the right as the target symbol. It then calls `MethodName`, `SymbolOwner`, component-boundary and graph-distance logic on that value.
-
-Therefore this is **not safe**:
+Do not render a deferred relation as plain:
 
 ```text
 source → target (deferred queue)
 ```
 
-because `(deferred queue)` becomes part of the target symbol.
+and then feed it unchanged into current `ProductFeatureBuilder.ParseFlow`, because everything after ` → ` is currently treated as the target symbol.
 
-Repair (b) must introduce one narrowly recognized deferred marker contract:
+Repair (b) must use one narrowly recognized deferred marker contract:
 
 ```text
 workflow flow: clean source + clean target + explicit deferred marker
 product parser: remove marker before symbol scoring
-product render: preserve/re-render deferred marker
+product output: preserve/re-render deferred marker
 ```
 
-The final workflow and product capability flow must visibly distinguish queued/deferred routing from synchronous calls while keeping source/target symbols clean. Do not opportunistically rewrite the existing DI flow format.
+Do not opportunistically rewrite unrelated DI flow formatting.
 
-## Required verification layers after authorization
+## Environment proof
 
-The positive fixture must prove all of these:
+On 2026-09-30 the installed GitHub repository connection was enumerated to exhaustion. It exposes only connected `rua-den/*` repositories and no approved company target. The private target locator/name is intentionally absent from sanitized PKC records.
+
+This web session therefore cannot inspect the missing resolver/member/callable hops without guessing, which is forbidden by the repair spec.
+
+## Branch cleanup state
+
+Keep:
 
 ```text
-1. CSharpEvidenceScanner / semantic output
-   -> exactly one deferred-dispatch producer -> handler relation
-
-2. FeatureCandidateBuilder
-   -> relation retained
-   -> handler fact retained
-   -> traversal bounded
-
-3. CrossStackFeatureCandidateBuilder
-   -> same relation/handler survive normal CLI candidate enrichment
-
-4. GroundedKnowledgeSynthesizer
-   -> route visibly deferred
-   -> no runtime execution claim
-
-5. JointVisibilityKnowledgeSynthesizer
-   -> deferred flow/unknown survive normal CLI synthesis wrappers
-
-6. ProductFeatureBuilder
-   -> source/target remain symbol-clean
-   -> deferred label preserved
-   -> capability edge retained
+main
+fix/product-value-construction-state
 ```
 
-Fail-closed fixtures must never create a guessed handler edge.
-
-## Verification sequence
-
-After the source shape is authorized:
-
-```text
-dotnet test tests/Pkc.CSharp.Tests/Pkc.CSharp.Tests.csproj --filter FullyQualifiedName~DeferredCommandQueueDispatchRegressionTests
--> related project-semantic/direct-DI/candidate/wrapper/product-flow tests
--> dotnet test PKC.sln
--> dotnet build PKC.sln --configuration Release
--> review complete diff
--> one coherent implementation commit/push
--> CI final verification
--> re-probe #7 and #10 workspace-only first, then source-known comparison
-```
-
-CI is not the edit/test loop.
-
-## Source-enabled gate
-
-The remaining implementation blocker is genuinely external to this web session. Prior context intentionally did not retain the private repository locator/name. No approved private checkout is available here.
-
-The approved source-enabled/company environment must fill only sanitized mechanism evidence for:
-
-```text
-producer identity expression family
-persisted identity member
-proof dispatcher reads same identity
-resolver mechanism family
-exact unique callable-handler selection
-```
-
-If any hop is ambiguous, keep implementation `NOT AUTHORIZED` and record the unproven hop rather than weakening authority.
+The latter is the explicitly parked E1 candidate. Historical branches remain cleanup candidates, but the current connector still has no delete-ref action and shell GitHub networking is unavailable. Do not force-move refs to simulate deletion.
 
 ## Exact next action
 
+Approved source-enabled/company environment only:
+
 ```text
-approved private source inspection
--> fill queue-shape template
--> authorize only with complete deterministic chain
--> execute corrected repair-(b) regression plan
--> local full verification
--> one implementation commit/push
--> re-probe #7 and #10
+1. Read only the narrow queue path needed for the remaining hops.
+2. Confirm exact type-name expression/encoding and the queue-record member.
+3. Prove dispatcher reads that same member.
+4. Record the actual resolver mechanism family.
+5. Prove the handler entry point and exact unique callable selection.
+6. Update the queue-shape capture and mark AUTHORIZED only if the full chain is deterministic.
+7. Execute the corrected repair-(b) plan regression-first.
+8. Run focused -> related -> full local tests/build, review diff, then one implementation commit/push.
+9. CI final verification, then re-probe #7 and #10.
 ```
 
 Preserve until then:

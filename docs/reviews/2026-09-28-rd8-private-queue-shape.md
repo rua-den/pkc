@@ -1,12 +1,14 @@
 # RD8-B Repair (b) — Private Queue Shape Capture
 
-Date: 2026-09-28
-Status: **TEMPLATE / NOT EVIDENCE**
+Date: 2026-09-30
+Status: **PARTIAL SANITIZED EVIDENCE / IMPLEMENTATION NOT AUTHORIZED**
 Checkpoint: V0.4.7-E0 / RD8-B repair (b)
 
-This file is the approved sanitized capture shape for the source-enabled inspection required before deferred command-queue linking is implemented.
+This file is the approved sanitized capture for the source-enabled inspection required before deferred command-queue linking is implemented.
 
-Do **not** treat unfilled fields, examples, framework conventions, naming guesses or generic queue patterns as evidence. This document becomes evidence only after the approved source-enabled/company inspection fills the structural fields below and explicitly marks the capture reviewed.
+Accepted evidence from `docs/reviews/2026-09-25-rd8-private-validation-result.md` is carried forward here. Unfilled fields remain unproven; examples, framework conventions and naming guesses are never evidence.
+
+See also `docs/reviews/2026-09-30-rd8-private-queue-shape-reconciliation.md`.
 
 ## Privacy boundary
 
@@ -23,55 +25,59 @@ Do not record:
 - customer/business identities;
 - secrets or credentials.
 
-Invented labels such as `PRODUCER`, `QUEUE_RECORD`, `IDENTITY_MEMBER`, `DISPATCHER`, `RESOLVER`, and `HANDLER` are allowed when needed to explain the shape.
+Invented labels such as `PRODUCER`, `QUEUE_RECORD`, `IDENTITY_MEMBER`, `DISPATCHER`, `RESOLVER`, and `HANDLER` are allowed.
 
 ## Capture state
 
 ```text
-source-enabled inspection performed: NO
-capture reviewed:                  NO
-implementation authorized:         NO
+accepted prior queue evidence reconciled: YES
+source-enabled inspection of missing hops: NO
+full chain reviewed:                       NO
+implementation authorized:                 NO
 ```
 
-Implementation remains gated while any value above is `NO`.
+Implementation remains gated until the missing hops below are proven deterministically.
 
 ## 1. Producer identity write
 
-Fill after inspection:
+Accepted sanitized evidence:
 
 ```text
-producer callable shape:                 <UNFILLED>
-queue/message construction shape:        <UNFILLED>
-handler identity expression family:      <UNFILLED>
+producer callable shape:                 producer inserts a persisted queue row — PROVEN behavior-level
+queue/message construction shape:        persisted queue row — PROVEN
+handler identity representation family:  type-name string — PROVEN
+exact type-name expression/encoding:      <UNFILLED>
 identity stability basis:                <UNFILLED>
 identity written directly or via helper: <UNFILLED>
 ```
 
-Questions to answer:
-
-- What semantic expression creates the handler identity?
-- Is that identity compiler/symbol-grounded, a stable runtime type identity, or something else deterministic?
-- Can PKC prove the expression belongs to the producer callable rather than a neighboring helper/site?
-
-Fail closed if the producer-side identity itself cannot be grounded.
+The remaining inspection must establish the exact semantic expression that produces the already-proven type-name string. Do not assume `FullName`, `AssemblyQualifiedName`, `nameof`, or any other representation.
 
 ## 2. Persisted identity member
 
-Fill after inspection:
+Accepted sanitized evidence establishes that the queue row carries the handler type-name string, but not the exact member or copy path.
 
 ```text
-persisted member role:                 <UNFILLED>
+persisted member role:                 handler type-name identity — PROVEN role
+exact persisted member:               <UNFILLED>
 producer writes this exact member:     <UNFILLED>
 dispatcher later reads same member:    <UNFILLED>
 intermediate copy/transform present:   <UNFILLED>
 transform preserves identity exactly:  <UNFILLED>
 ```
 
-The capture must prove the producer and dispatcher are connected by the same persisted identity, not by similar member names or nearby queue operations.
+The capture must prove producer and dispatcher are connected by the same persisted identity, not by similar names or neighboring queue operations.
 
 ## 3. Dispatcher read + resolution
 
-Fill after inspection:
+Accepted sanitized evidence:
+
+```text
+later dispatcher exists:              PROVEN
+dispatcher later runs the handler:     PROVEN behavior-level
+```
+
+Still required:
 
 ```text
 dispatcher trigger shape:             <UNFILLED>
@@ -85,7 +91,7 @@ Do not infer recurring schedule semantics here. Repair (c) owns scheduler-trigge
 
 ## 4. Handler selection
 
-Fill after inspection:
+Fill after narrow source inspection:
 
 ```text
 handler entry-point shape:             <UNFILLED>
@@ -97,79 +103,81 @@ selection proof basis:                 <UNFILLED>
 
 A concrete `deferred-dispatch` edge is authorized only when exactly one callable handler is proven through the full identity chain.
 
-## 5. Ambiguity / unsupported cases observed
+## 5. Ambiguity / unsupported cases
 
-Fill after inspection:
+Regression coverage must fail closed for:
 
 ```text
-missing-consumer possibility:          <UNFILLED>
-identity mismatch possibility:         <UNFILLED>
-unsupported resolver variants:         <UNFILLED>
-duplicate/ambiguous handlers possible: <UNFILLED>
+mismatched persisted identity
+missing consumer/dispatcher
+unsupported resolver family
+ambiguous handler identity
+duplicate/non-unique callable fact
 ```
 
-Expected fail-closed behavior:
+Expected behavior:
 
-- no guessed handler edge for any incomplete/ambiguous chain;
-- retain `unresolved-deferred-dispatch` only when producer-side queued identity is itself proven;
+- no guessed handler edge for any incomplete or ambiguous chain;
+- retain `unresolved-deferred-dispatch` only when the producer-side queued identity is itself grounded;
 - no inference from simple names, suffixes, matching method names, folder proximity, unrelated queue operations or framework convention.
 
 ## 6. Sanitized structural chain
 
-After inspection, write one behavior-only chain using invented labels:
+Current evidence state:
 
 ```text
 PRODUCER
-  -> <identity expression family>
-  -> QUEUE_RECORD.IDENTITY_MEMBER
-  -> DISPATCHER reads the same identity
-  -> <resolver mechanism family>
-  -> exactly one HANDLER callable
+  -> type-name string [PROVEN representation family; exact encoding UNPROVEN]
+  -> QUEUE_RECORD.IDENTITY_MEMBER [persisted role PROVEN; exact member UNPROVEN]
+  -> DISPATCHER exists and later runs handler [PROVEN behavior-level]
+  -> same-member read [UNPROVEN]
+  -> resolver mechanism [UNPROVEN]
+  -> exactly one HANDLER callable [UNPROVEN]
 ```
 
-If any hop is not proven, replace that hop with `UNPROVEN` and keep implementation unauthorized until the design is revised or evidence is sufficient.
+Source-enabled inspection should fill only the `UNPROVEN` hops.
 
 ## 7. Regression fixture contract
 
-Fill only after sections 1-6 are reviewed:
+Fill only after the remaining structural chain is reviewed:
 
 ```text
-positive fixture can reproduce shape without private identifiers: <UNFILLED>
-negative: mismatched identity:                                  <UNFILLED>
-negative: missing consumer:                                     <UNFILLED>
-negative: ambiguous handler:                                    <UNFILLED>
-negative: unsupported resolver:                                 <UNFILLED>
+positive fixture can reproduce authorized mechanism without private identifiers: <UNFILLED>
+negative: mismatched identity:                                           REQUIRED
+negative: missing consumer:                                              REQUIRED
+negative: ambiguous handler:                                             REQUIRED
+negative: unsupported resolver:                                          REQUIRED
+negative: duplicate callable fact:                                       REQUIRED
 ```
 
-The synthetic fixture must use invented names and only the sanitized mechanism family confirmed above.
+The synthetic fixture must use invented names and only the sanitized mechanism family actually confirmed.
 
 ## 8. Implementation authorization decision
 
-One of:
-
 ```text
-AUTHORIZED
-  Full producer -> persisted identity -> dispatcher -> unique handler chain is proven and reproducible synthetically.
-
 NOT AUTHORIZED
-  At least one required identity/resolution hop is missing, ambiguous or cannot be represented without weakening provenance.
 ```
 
-Current decision:
+Reason:
 
 ```text
-NOT AUTHORIZED — template is unfilled; no source-enabled queue-shape inspection is recorded here yet.
+Queue persistence, producer insertion, type-name-string handler identity, and later dispatcher execution are accepted evidence.
+The shareable record still lacks exact identity encoding/member continuity, resolver mechanism and unique-callable proof.
 ```
 
-## 9. Review record
+Do not write production code that guesses those missing mechanisms.
 
-Fill after source-enabled inspection:
+## 9. Exact next inspection
+
+Approved source-enabled/company environment only:
 
 ```text
-inspection date:            <UNFILLED>
-reviewed sanitized capture: <UNFILLED>
-implementation decision:    <UNFILLED>
-remaining unproven hop:     <UNFILLED or NONE>
+1. confirm exact type-name expression/encoding family;
+2. confirm exact queue-record member carrying it;
+3. prove dispatcher reads that same member;
+4. record resolver mechanism family;
+5. prove callable entry-point selection and uniqueness;
+6. mark AUTHORIZED only if the complete chain is deterministic.
 ```
 
 No private source contents or raw facts belong in this file.

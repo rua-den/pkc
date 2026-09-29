@@ -1,14 +1,14 @@
 # PKC Status
 
-Last updated: 2026-09-28
+Last updated: 2026-09-30
 
 ## Repository state reviewed
 
-Current reviewed `main` before this docs correction:
+Reviewed base before this reconciliation:
 
 ```text
-7cbf640fab7a410bc71494e63cee8fcc10f9874b
-docs: hand off RD8 repair-b source gate [skip ci]
+832831cf7de0cc2f74c876ceecdc7592ba04e0a2
+docs: harden RD8 repair-b execution plan [skip ci]
 ```
 
 Exact semantic candidate assessed by the approved private product-value gate:
@@ -56,27 +56,7 @@ RD8-C runtime/plugin real-target proof    PASS
 RD8-B product value                       NOT PASS
 ```
 
-Deferred command-queue indirection remains a shared material root cause for probe #7 scheduled updates and probe #10 work-log behavior.
-
-Repair (a) is CLOSED by the 2026-09-28 private re-probe. Probe #1 remains PARTIAL only because of the separate authentication-event eligibility gap.
-
-## 2026-09-28 candidate run
-
-```text
-candidate SHA                   8c4055decd56e4597b2a1aa03e24b5c1a70235d5
-Release build                   PASS, 0 warnings / 0 errors
-pkc run                         PASS, exit 0, 46m 29s
-repository                      25,303 files / 17 apps / 45 owned libraries / 9 test projects
-planned / executed semantic     16,497 / 16,460
-facts / relations               255,229 / 4,629,193
-workflow candidates             4,044
-product features                658
-AI workspace                    4,520 files
-mapped-field-rule facts         455
-applies-mapped-field-rule       4,298
-```
-
-No target source or raw facts are stored in this repository.
+Repair (a) is CLOSED by the 2026-09-28 private re-probe. Probe #1 remains PARTIAL for the separate authentication-event eligibility gap.
 
 ## Repair (b) — deferred command queue — NEXT
 
@@ -84,51 +64,74 @@ Primary spec:
 
 `docs/plans/2026-09-28-rd8-repair-b-deferred-command-queue-spec.md`
 
-Corrected implementation plan:
+Execution plan:
 
 `docs/superpowers/plans/2026-09-28-rd8-deferred-command-queue-linking.md`
 
-Private shape capture template:
+Queue-shape capture:
 
 `docs/reviews/2026-09-28-rd8-private-queue-shape.md`
 
-The template remains:
+Evidence reconciliation:
+
+`docs/reviews/2026-09-30-rd8-private-queue-shape-reconciliation.md`
+
+### Accepted repair-(b) baseline is narrower than previously recorded
+
+The accepted 2026-09-25 private validation already proves, at sanitized behavior level:
 
 ```text
-TEMPLATE / NOT EVIDENCE
-source-enabled inspection performed: NO
-capture reviewed:                  NO
-implementation authorized:         NO
+producer
+  -> inserts a persisted queue row
+  -> the row names its handler by a type-name string
+  -> a dispatcher later runs the handler
 ```
 
-## 2026-09-28 source-independent plan rereview
-
-A second production-path review found three important corrections that are now incorporated into the repair-(b) implementation plan.
-
-### 1. Normal `pkc run` wrapper path is confirmed
-
-The CLI uses:
+Therefore these are no longer open questions:
 
 ```text
-CrossStackFeatureCandidateBuilder
-  -> FeatureCandidateBuilder
-
-JointVisibilityKnowledgeSynthesizer
-  -> EvidenceAwareKnowledgeSynthesizer
-  -> GroundedKnowledgeSynthesizer
-
-ProductFeatureBuilder
+queue persistence exists                    PROVEN
+producer creates/inserts queue row          PROVEN
+handler identity representation is string   PROVEN: type-name string
+later dispatcher exists                     PROVEN
 ```
 
-Therefore the originally selected inner classes are on the real production path, but regression coverage must exercise the wrappers too. No wrapper production change is currently required merely to expose the new relation.
+The implementation gate is still **NOT AUTHORIZED** because the shareable record does not prove:
 
-### 2. Negative red/green semantics were corrected
+```text
+exact type-name expression/encoding family
+exact persisted member carrying that string
+proof dispatcher reads that same persisted member
+resolver mechanism mapping string -> runtime type/service/handler
+callable entry-point selection
+exactly one callable handler
+```
 
-The earlier plan incorrectly implied all fail-closed negative tests should already pass on current main. That is only true for the absence of a guessed concrete edge.
+Do not assume `FullName`, `AssemblyQualifiedName`, `Type.GetType`, assembly scanning, DI resolution, dictionary/factory lookup, reflection invocation, or any other mechanism.
 
-For a grounded producer identity with missing, mismatched, unsupported or ambiguous destination evidence, the spec requires future `unresolved-deferred-dispatch` evidence. Current main has no such relation kind, so those unresolved assertions must be **RED before implementation**.
+## Source-independent implementation review complete
 
-Required negative coverage now includes:
+Production path is confirmed:
+
+```text
+Pkc.Cli
+  -> CrossStackFeatureCandidateBuilder
+      -> FeatureCandidateBuilder
+  -> JointVisibilityKnowledgeSynthesizer
+      -> EvidenceAwareKnowledgeSynthesizer
+          -> GroundedKnowledgeSynthesizer
+  -> ProductFeatureBuilder
+```
+
+Required repair behavior is already planned:
+
+- `CSharpProjectSemanticEnricher`: exact semantic deferred correlation; reuse existing exact-symbol/fail-closed foundations.
+- `FeatureCandidateBuilder`: carry `deferred-dispatch`; retain `unresolved-deferred-dispatch`; bounded traversal only.
+- wrapper-path regressions: prove normal `pkc run` candidate/synthesis path retains the edge.
+- `GroundedKnowledgeSynthesizer`: distinguish deferred routing from synchronous calls and report unresolved deferred identity honestly.
+- `ProductFeatureBuilder`: preserve clean source/target symbols while carrying a deferred marker; do not append human annotation into the target symbol before parsing/scoring.
+
+Negative regression matrix:
 
 ```text
 mismatched identity
@@ -138,45 +141,27 @@ unsupported resolver family
 duplicate/non-unique callable fact
 ```
 
-### 3. Product-flow parser needs explicit deferred-marker support
+Current main has no `unresolved-deferred-dispatch`, so unresolved assertions are expected RED before implementation even where no false concrete edge is already emitted.
 
-`GroundedKnowledgeSynthesizer.BuildFlow` uses `source → target` for ordinary invocation flow. `ProductFeatureBuilder.ParseFlow` treats everything after that Unicode separator as the target symbol and then runs method/owner/component scoring on it.
+## Environment proof
 
-Therefore appending a human label directly to the target, for example `target (deferred queue)`, would corrupt symbol identity during product-flow ranking.
+The GitHub installation available to this web session was enumerated completely on 2026-09-30. It exposes only the connected `rua-den/*` repositories and does not expose the approved company target. The target locator was intentionally not retained in sanitized PKC docs.
 
-The corrected plan requires a narrowly recognized deferred marker contract in `ProductFeatureBuilder`: strip the marker before symbol scoring, preserve the clean source/target edge, then re-render the deferred label in product capability flow. Existing plain and DI flow behavior must remain unchanged.
-
-### 4. Deferred candidate traversal must be bounded
-
-The new `deferred-dispatch` traversal must respect the existing candidate call-depth policy. Do not alter existing synchronous/DI traversal semantics while adding the new edge.
-
-## Repo-local implementation boundary
-
-All source-independent design, wrapper tracing, pipeline preservation review, test-surface review, and parser-contract review are complete.
-
-Production implementation remains intentionally blocked until the approved source-enabled environment proves the exact private queue chain:
-
-```text
-producer identity expression family
--> persisted identity member
--> dispatcher reads same identity
--> supported resolver mechanism
--> exactly one callable handler
-```
-
-Do not create a guessed scanner fixture before that capture is authorized.
+Therefore the remaining queue-shape inspection cannot be performed from this session without inventing private-source details.
 
 ## Exact next action
 
 Approved source-enabled/company environment only:
 
 ```text
-1. Fill `docs/reviews/2026-09-28-rd8-private-queue-shape.md` with sanitized structural proof.
-2. Mark implementation AUTHORIZED only if every hop is deterministic.
-3. Execute the corrected repair-(b) plan regression-first.
-4. Verify both inner classes and normal `pkc run` wrappers.
-5. Run full local tests/build, review the full diff, then one coherent implementation commit/push.
-6. Re-probe affected Level-1 questions #7 and #10.
+1. Inspect only the remaining missing queue hops; do not redo the already accepted high-level queue finding.
+2. Confirm exact type-name expression/encoding and queue-record member.
+3. Prove dispatcher reads that same member.
+4. Record the actual resolver mechanism family and callable entry-point selection.
+5. Prove exactly one handler callable or remain unresolved.
+6. Mark the queue-shape capture AUTHORIZED only if the full chain is deterministic.
+7. Execute repair (b) regression-first, then focused/related/full local verification.
+8. One coherent implementation commit/push, CI final verification, then re-probe #7 and #10.
 ```
 
 Preserve until that evidence exists:
